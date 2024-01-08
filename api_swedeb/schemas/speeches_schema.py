@@ -1,0 +1,15 @@
+from typing import List
+from pydantic import BaseModel, Field
+
+
+class SpeechesResultItem(BaseModel):
+    speaker_column: str = Field(None, description="Name of speaker")
+    year_column: str = Field(None, description="Year of speech", examples=[1960])
+    gender_column: str = Field(None, description="Gender of speeker")
+    party_column: str = Field(None, description="Party of speaker")
+    source_column: str = Field(None, description="Source of speech")
+    speech_id_column: str = Field(None, description="Unique id of speech")
+
+
+class SpeechesResult(BaseModel):
+    speech_list: List[SpeechesResultItem]

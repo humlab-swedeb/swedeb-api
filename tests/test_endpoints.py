@@ -1,0 +1,180 @@
+
+from fastapi.testclient import TestClient
+from main import app
+from fastapi import status
+
+# since there is no real data for yet, these tests mainly check that the endpoints are reachable
+
+client = TestClient(app)
+
+def test_read_nonexisting():
+    response = client.get("/kwic/ost/")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+############## TOOLS #####################
+
+def test_kwic():
+    response = client.get("/tools/kwic/search_term")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    first_result = json['kwic_list'][0]
+    
+    assert 'kwic_list' in json
+    assert 'left_word' in first_result
+    assert 'node_word' in first_result
+    assert 'right_word' in first_result
+    assert 'year_title' in first_result
+    assert 'name' in first_result
+    assert 'party_abbrev' in first_result
+    assert 'speech_title' in first_result
+    assert 'gender' in first_result
+
+def test_kwic_with_with_parameters():
+    response = client.get("/tools/kwic/search_term?from_year=1960&to_year=1970&office_types=riksdagsledamot&sub_office_types=riksdagsledamot&speaker_ids=1&sort_by=year_title&parties=S&genders=M&chambers=riksdagen&limit=10&offset=0&sort_order=asc")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+    assert 'kwic_list' in json
+
+def test_kwic_without_search_term():
+    response = client.get("tools/kwic")
+    assert response.status_code == status.HTTP_404_NOT_FOUND # search term is missing
+
+def test_kwic_bad_param():
+    response = client.get("tools/kwic/search_term?made_up_param=1")
+    json = response.json()
+    print(json)
+
+def test_word_trends():
+
+
+    response = client.get("/tools/word_trends/search_term")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    first_result = json['wt_list'][0]
+
+    assert 'year' in first_result
+    assert 'count' in first_result
+    assert 'search_term' in first_result['count']
+    assert first_result['count']['search_term'] == 1
+
+
+def test_ngrams():
+    response = client.get("/tools/ngrams/search_term")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+
+    assert 'ngram_list' in json
+    first_result = json['ngram_list'][0]
+    assert 'ngram' in first_result
+    assert 'count' in first_result
+
+def test_speeches():
+    response = client.get("tools/speeches")
+    assert response.status_code == status.HTTP_200_OK
+    
+    json = response.json()
+    first_result = json['speech_list'][0]
+    
+    assert 'speech_list' in json
+    assert 'speaker_column' in first_result
+    assert 'year_column' in first_result
+    assert 'gender_column' in first_result
+    assert 'party_column' in first_result
+    assert 'source_column' in first_result
+    assert 'speech_id_column' in first_result
+
+
+def test_speech_by_id():
+    response = client.get("tools/speeches/1")
+    assert response.status_code == status.HTTP_200_OK
+    
+    json = response.json()
+    assert 'speaker_note' in json
+    assert 'speech_text' in json
+
+def test_topics():
+    response = client.get("tools/topics")
+    assert response.status_code == status.HTTP_200_OK
+    
+    json = response.json()
+    assert 'message' in json
+    assert json['message'] == 'Not implemented yet'
+
+
+############## METADATA #####################
+
+def test_start_year():
+    response = client.get("/metadata/start_year")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+    json = response.json()
+    assert 'year' in json
+    assert len(json['year']) == 4
+    
+
+def test_end_year():
+    response = client.get("/metadata/end_year")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'year' in json
+    assert len(json['year']) == 4
+    
+
+def test_parties():
+    response = client.get("/metadata/parties")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+    assert 'parties' in json
+    assert len(json['parties']) > 0
+
+def test_genders():
+    response = client.get("/metadata/genders")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'genders' in json
+    assert len(json['genders']) > 0
+
+def test_chambers():
+    
+    response = client.get("/metadata/chambers")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'chambers' in json
+    assert len(json['chambers']) > 0
+
+def test_office_types():
+    
+    response = client.get("/metadata/office_types")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+
+    assert 'office_types' in json
+    assert len(json['office_types']) > 0
+
+def test_sub_office_types():
+    
+    response = client.get("/metadata/sub_office_types")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'sub_office_types' in json
+    assert len(json['sub_office_types']) > 0
+
+def test_speakers():
+    
+    response = client.get("/metadata/speakers")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'speaker_list' in json
+    first_result = json['speaker_list'][0]
+    assert 'speaker_name' in first_result
+    assert 'speaker_party' in first_result
+    assert 'speaker_birth_year' in first_result
+    assert 'speaker_death_year' in first_result
