@@ -1,19 +1,23 @@
 
+import pytest
 from fastapi.testclient import TestClient
 from main import app
 from fastapi import status
 
-# since there is no real data for yet, these tests mainly check that the endpoints are reachable
+# since there is no real data yet, these tests mainly check that the endpoints are reachable
 
-client = TestClient(app)
+@pytest.fixture(scope="module")
+def client():
+    client = TestClient(app)
+    yield client
 
-def test_read_nonexisting():
+def test_read_nonexisting(client):
     response = client.get("/kwic/ost/")
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 ############## TOOLS #####################
 
-def test_kwic():
+def test_kwic(client):
     response = client.get("/tools/kwic/search_term")
     assert response.status_code == status.HTTP_200_OK
 
@@ -30,23 +34,22 @@ def test_kwic():
     assert 'speech_title' in first_result
     assert 'gender' in first_result
 
-def test_kwic_with_with_parameters():
+def test_kwic_with_with_parameters(client):
     response = client.get("/tools/kwic/search_term?from_year=1960&to_year=1970&office_types=riksdagsledamot&sub_office_types=riksdagsledamot&speaker_ids=1&sort_by=year_title&parties=S&genders=M&chambers=riksdagen&limit=10&offset=0&sort_order=asc")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
     assert 'kwic_list' in json
 
-def test_kwic_without_search_term():
+def test_kwic_without_search_term(client):
     response = client.get("tools/kwic")
     assert response.status_code == status.HTTP_404_NOT_FOUND # search term is missing
 
-def test_kwic_bad_param():
+def test_kwic_bad_param(client):
     response = client.get("tools/kwic/search_term?made_up_param=1")
     json = response.json()
     print(json)
 
-def test_word_trends():
-
+def test_word_trends(client):
 
     response = client.get("/tools/word_trends/search_term")
     assert response.status_code == status.HTTP_200_OK
@@ -60,7 +63,7 @@ def test_word_trends():
     assert first_result['count']['search_term'] == 1
 
 
-def test_ngrams():
+def test_ngrams(client):
     response = client.get("/tools/ngrams/search_term")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
@@ -70,7 +73,7 @@ def test_ngrams():
     assert 'ngram' in first_result
     assert 'count' in first_result
 
-def test_speeches():
+def test_speeches(client):
     response = client.get("tools/speeches")
     assert response.status_code == status.HTTP_200_OK
     
@@ -86,7 +89,7 @@ def test_speeches():
     assert 'speech_id_column' in first_result
 
 
-def test_speech_by_id():
+def test_speech_by_id(client):
     response = client.get("tools/speeches/1")
     assert response.status_code == status.HTTP_200_OK
     
@@ -94,7 +97,7 @@ def test_speech_by_id():
     assert 'speaker_note' in json
     assert 'speech_text' in json
 
-def test_topics():
+def test_topics(client):
     response = client.get("tools/topics")
     assert response.status_code == status.HTTP_200_OK
     
@@ -105,7 +108,7 @@ def test_topics():
 
 ############## METADATA #####################
 
-def test_start_year():
+def test_start_year(client):
     response = client.get("/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
@@ -114,7 +117,7 @@ def test_start_year():
     assert len(json['year']) == 4
     
 
-def test_end_year():
+def test_end_year(client):
     response = client.get("/metadata/end_year")
     assert response.status_code == status.HTTP_200_OK
 
@@ -123,14 +126,14 @@ def test_end_year():
     assert len(json['year']) == 4
     
 
-def test_parties():
+def test_parties(client):
     response = client.get("/metadata/parties")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
     assert 'parties' in json
     assert len(json['parties']) > 0
 
-def test_genders():
+def test_genders(client):
     response = client.get("/metadata/genders")
     assert response.status_code == status.HTTP_200_OK
 
@@ -138,7 +141,7 @@ def test_genders():
     assert 'genders' in json
     assert len(json['genders']) > 0
 
-def test_chambers():
+def test_chambers(client):
     
     response = client.get("/metadata/chambers")
     assert response.status_code == status.HTTP_200_OK
@@ -147,7 +150,7 @@ def test_chambers():
     assert 'chambers' in json
     assert len(json['chambers']) > 0
 
-def test_office_types():
+def test_office_types(client):
     
     response = client.get("/metadata/office_types")
     assert response.status_code == status.HTTP_200_OK
@@ -157,7 +160,7 @@ def test_office_types():
     assert 'office_types' in json
     assert len(json['office_types']) > 0
 
-def test_sub_office_types():
+def test_sub_office_types(client):
     
     response = client.get("/metadata/sub_office_types")
     assert response.status_code == status.HTTP_200_OK
@@ -166,7 +169,7 @@ def test_sub_office_types():
     assert 'sub_office_types' in json
     assert len(json['sub_office_types']) > 0
 
-def test_speakers():
+def test_speakers(client):
     
     response = client.get("/metadata/speakers")
     assert response.status_code == status.HTTP_200_OK
