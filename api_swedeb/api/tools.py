@@ -37,7 +37,7 @@ async def get_word_trends(
     commons: Annotated[CommonQueryParams, Depends()],
 ):
     """Get word trends"""
-    return dummy_wt.get_word_trends(search)
+    return dummy_wt.get_word_trends(search, commons)
 
 
 @router.get("/ngrams/{search}", response_model=NGramResult)
@@ -46,7 +46,7 @@ async def get_ngrams(
     commons: Annotated[CommonQueryParams, Depends()],
 ):
     """Get ngrams"""
-    return dummy_ngrams.get_ngrams(search)
+    return dummy_ngrams.get_ngrams(search, commons)
 
 
 @router.get("/speeches", response_model=SpeechesResult)
