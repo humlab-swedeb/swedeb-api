@@ -24,7 +24,7 @@ from api_swedeb.api.dummy_data.dummy_meta import (
 )
 
 router = fastapi.APIRouter(
-    prefix="/metadata", tags=["Metadata"], responses={404: {"description": "Not found"}}
+    prefix="/v1/metadata", tags=["Metadata"], responses={404: {"description": "Not found"}}
 )
 
 year = r"^\d{4}$"
@@ -83,4 +83,4 @@ async def get_meta_speakers(
         None, description="List of selected sub office types"
     ),
 ):
-    return get_speakers()
+    return get_speakers(from_year, to_year, parties, genders, chambers, office_types, sub_office_types)

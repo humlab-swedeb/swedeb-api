@@ -12,7 +12,7 @@ from fastapi import Query, Depends
 from typing import List, Annotated
 
 router = fastapi.APIRouter(
-    prefix="/tools", tags=["Tools"], responses={404: {"description": "Not found"}}
+    prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}}
 )
 
 year_regex = r"^\d{4}$"

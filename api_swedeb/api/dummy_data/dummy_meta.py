@@ -22,7 +22,7 @@ def get_end_year():
 
 
 def get_parties():
-    return Parties(parties=["Så", "Mä", "SD", "V", "C", "L", "KD", "MP"])
+    return Parties(parties=["S", "M", "SD", "V", "C", "L", "KD", "MP"])
 
 
 def get_genders():
@@ -53,12 +53,13 @@ def get_speakers(
     sub_office_types: Optional[List[str]] = None,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
-):
-    return SpeakerResult(
-        speaker_list=[
+):  
+
+
+    speaker_list = [
             SpeakerItem(
                 speaker_name="Olof Palme",
-                speaker_party=["S"],
+                speaker_party=[str(parties)],
                 speaker_birth_year=Year(year="1927"),
                 speaker_death_year=Year(year="1986"),
             ),
@@ -68,4 +69,18 @@ def get_speakers(
                 speaker_birth_year=Year(year="1927"),
             ),
         ]
+
+
+    if parties:
+        for party in parties:
+            speaker_list.append(SpeakerItem(
+                speaker_name = f"Partiperson_{party}",
+                speaker_party = [party],
+                speaker_birth_year = Year(year="1927"),
+                speaker_death_year = Year(year="1986")
+            ))
+    sr = SpeakerResult(
+        speaker_list=speaker_list
     )
+    
+    return sr
