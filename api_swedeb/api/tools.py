@@ -1,4 +1,5 @@
 import fastapi
+from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.word_trends_schema import WordTrendsResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
@@ -9,58 +10,13 @@ from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.api.dummy_data import dummy_ngrams, dummy_speech
 from api_swedeb.api.dummy_data import dummy_kwic, dummy_wt
 from fastapi import Query, Depends
-from typing import List, Annotated
+from typing import  Annotated
 
 router = fastapi.APIRouter(
     prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}}
 )
 
-year_regex = r"^\d{4}$"
 
-
-class CommonQueryParams:
-    def __init__(
-        self,
-        from_year: str = Query(
-            None,
-            description="The first year to be included",
-            pattern=year_regex,
-        ),
-        to_year: str = Query(
-            None,
-            description="The last year to be included",
-            pattern=year_regex,
-        ),
-        office_types: List[str] = Query(
-            None, description="List of selected office types"
-        ),
-        sub_office_types: List[str] = Query(
-            None, description="List of selected suboffice types"
-        ),
-        speaker_ids: List[str] = Query(
-            None,
-            description="List of selected speaker ids. With this parameter, other metadata filters are unnecessary",
-        ),
-        sort_by: str = Query("year_title", description="Column to sort by"),
-        parties: List[str] = Query(None, description="List of selected parties"),
-        genders: List[str] = Query(None, description="List of selected genders"),
-        chambers: List[str] = Query(None, description="List of selected chambers"),
-        limit: int = Query(None, description="The number of results per page"),
-        offset: int = Query(None, description="Result offset"),
-        sort_order: str = Query("asc", description="Sort order. Default is asc"),
-    ):
-        self.from_year = from_year
-        self.to_year = to_year
-        self.office_types = office_types
-        self.sub_office_types = sub_office_types
-        self.speaker_ids = speaker_ids
-        self.sort_by = sort_by
-        self.parties = parties
-        self.genders = genders
-        self.chambers = chambers
-        self.limit = limit
-        self.offset = offset
-        self.sort_order = sort_order
 
 
 @router.get("/kwic/{search}", response_model=KeywordInContextResult)
@@ -97,7 +53,7 @@ async def get_ngrams(
 async def get_speeches(
     commons: Annotated[CommonQueryParams, Depends()],
 ):
-    return dummy_speech.get_speeches()
+    return dummy_speech.get_speeches(commons)
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
