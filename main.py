@@ -1,12 +1,21 @@
 
 from fastapi import FastAPI # Response
 from fastapi.middleware.cors import CORSMiddleware
+from api_swedeb.api.utils.corpus import load_corpus
 #import json
 
 
 from api_swedeb.api import tools, metadata
 
+
+
+
+
 app = FastAPI()
+
+
+loaded_corpus = load_corpus()
+
 
 origins = ['http://localhost:8080'] # http://localhost:8080
 

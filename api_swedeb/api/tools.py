@@ -11,12 +11,16 @@ from api_swedeb.api.dummy_data import dummy_ngrams, dummy_speech
 from api_swedeb.api.dummy_data import dummy_kwic, dummy_wt
 from fastapi import Query, Depends
 from typing import  Annotated
+import main
+
 
 router = fastapi.APIRouter(
     prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}}
 )
 
 
+def get_loaded_corpus():
+    return main.loaded_corpus
 
 
 @router.get("/kwic/{search}", response_model=KeywordInContextResult)
@@ -26,9 +30,10 @@ async def get_kwic(
     lemmatized: bool = Query(
         True, description="Whether to search for lemmatized version of search string"
     ),
+    corpus=Depends(get_loaded_corpus)
 ):
     """Get keyword in context"""
-    return dummy_kwic.get_kwic(search, commons, lemmatized)
+    return dummy_kwic.get_kwic(search, commons, lemmatized, corpus)
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)

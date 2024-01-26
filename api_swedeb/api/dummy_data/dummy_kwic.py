@@ -1,10 +1,14 @@
+
+
 from api_swedeb.schemas.kwic_schema import (
     KeywordInContextItem,
     KeywordInContextResult,
 )
 
 
-def get_kwic(search, commons, lemmatized):
+
+def get_kwic(search, commons, lemmatized, corpus):
+    # corpus.get_kwic...
     kwic1 = KeywordInContextItem(
         left_word="en god",
         node_word=search,
@@ -20,7 +24,7 @@ def get_kwic(search, commons, lemmatized):
     kwic2 = KeywordInContextItem(
         left_word="annan",
         node_word="smörgås",
-        right_word="med ost",
+        right_word=corpus.read_corpus(),
         year_title="2021",
         name="Anna Larsson",
         party_abbrev="M",
