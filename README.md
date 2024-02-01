@@ -62,3 +62,7 @@ Run:  ```uvicorn main:app --reload```
     └── test_endpoints.py
 
 ```
+
+
+Notes:
+Manually edited registry-file in KWIC_DIR (See .env_example)

@@ -24,7 +24,7 @@ def get_kwic(search, commons, lemmatized, corpus):
     kwic2 = KeywordInContextItem(
         left_word="annan",
         node_word="smörgås",
-        right_word=corpus.read_corpus(),
+        right_word=str(corpus.get_something()),
         year_title="2021",
         name="Anna Larsson",
         party_abbrev="M",

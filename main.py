@@ -8,18 +8,18 @@ from api_swedeb.api.utils.corpus import load_corpus
 from api_swedeb.api import tools, metadata
 
 
-async def get_corpus():
-    return load_corpus()
+def get_corpus():
+    return load_corpus('.env_1960')
 
 
 
 app = FastAPI(dependencies=[Depends(get_corpus)])
 
 
-loaded_corpus = load_corpus()
+loaded_corpus = get_corpus()
 
 
-origins = ['http://localhost:8080'] # http://localhost:8080
+origins = ['http://localhost:8080'] 
 
 app.add_middleware(
     CORSMiddleware,

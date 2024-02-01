@@ -12,6 +12,8 @@ fastapi = "^0.105.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
 humlab-penelope = "^0.7.47"
 humlab-westac = "^0.5.35"
+python-dotenv = "^1.0.1"
+cwb-ccc = "^0.12.1"
 
 
 [tool.poetry.group.dev.dependencies]
