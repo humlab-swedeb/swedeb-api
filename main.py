@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI # Response
+from fastapi import FastAPI, Depends # Response
 from fastapi.middleware.cors import CORSMiddleware
 from api_swedeb.api.utils.corpus import load_corpus
 #import json
@@ -8,10 +8,12 @@ from api_swedeb.api.utils.corpus import load_corpus
 from api_swedeb.api import tools, metadata
 
 
+async def get_corpus():
+    return load_corpus()
 
 
 
-app = FastAPI()
+app = FastAPI(dependencies=[Depends(get_corpus)])
 
 
 loaded_corpus = load_corpus()
