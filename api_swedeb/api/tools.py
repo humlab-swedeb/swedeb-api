@@ -9,6 +9,7 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.api.dummy_data import dummy_ngrams, dummy_speech
 from api_swedeb.api.dummy_data import dummy_kwic, dummy_wt
+from api_swedeb.api.utils.speech import get_speeches
 from fastapi import Query, Depends
 from typing import  Annotated
 import main
@@ -65,10 +66,11 @@ async def get_ngrams(
 
 
 @router.get("/speeches", response_model=SpeechesResult)
-async def get_speeches(
+async def get_speeches_result(
     commons: CommonParams,
+    corpus=Depends(get_loaded_corpus),
 ):
-    return dummy_speech.get_speeches(commons)
+    return get_speeches(commons, corpus)
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)

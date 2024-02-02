@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 from main import app
 from fastapi import status
 
-# since there is no real data yet, these tests mainly check that the endpoints are reachable
+# these tests mainly check that the endpoints are reachable and returns something
+# the actual content of the response is not checked
 
 version = "v1"
 

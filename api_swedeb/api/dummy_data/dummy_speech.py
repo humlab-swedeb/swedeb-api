@@ -23,6 +23,8 @@ def get_speeches(commons: CommonQueryParams):
     else:
         parties = ['Parti 1']
 
+    print(commons, '*************')
+
 
     if commons.genders:
         genders = commons.genders

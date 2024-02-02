@@ -48,3 +48,16 @@ class CommonQueryParams:
         self.limit = limit
         self.offset = offset
         self.sort_order = sort_order
+
+    def get_selection_dict(self):
+        # Currently returns gender_id and party_id, to mimic 
+        # prototype. who (speaker_id), was also included in the prototype, but
+        # not included here yet. key for genders is gender_id, key for parties is party_id
+        # and key for speaker id is who
+        # if no selections are made, return empty dict
+        selections = {}
+        if self.parties:
+            selections.update({"party_id": self.parties})
+        if self.genders:
+            selections.update({"gender_id": self.genders})
+        return selections
