@@ -34,8 +34,10 @@ def test_speeches_get_years(client):
         assert speech['year_column'] <= end_year, 'year_column is greater than end_year'
 
 
-def test_additional_parameters(client):
-    # asserts that there are no errors with additional paramters
-    # but these are not really tested yet, since not fully implemented
-    response = client.get(f"{version}/tools/speeches??from_year=1960&to_year=1962&office_types=adskfjl&sub_office_types=d&speaker_ids=lkkl&sort_by=year_title&sort_order=asc")
-    assert response.status_code == status.HTTP_200_OK
+def test_speaker_id(client):
+    # retrieve speeches from a specific speaker
+    response = client.get(f"{version}/tools/speeches?speaker_ids=Q1606431")
+    speeches = response.json()['speech_list']
+    for speech in speeches:
+        assert 'speaker_column' in speech, 'speaker_column is missing in response'
+        assert speech['speaker_column'] == 'Henry Allard', 'Q1606431 should be Henry Allard'

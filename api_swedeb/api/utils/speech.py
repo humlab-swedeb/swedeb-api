@@ -6,14 +6,8 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultIte
 
 
 def get_speeches(commons: CommonQueryParams, corpus):
-    if commons.from_year:
-        from_year = int(commons.from_year)
-    else:
-        from_year = 0
-    if commons.to_year:
-        to_year = int(commons.to_year)
-    else:
-        to_year = 5000
+    from_year = int(commons.from_year) if commons.from_year else 0
+    to_year = int(commons.to_year) if commons.to_year else 2021
     df = corpus.get_anforanden(from_year=from_year,
                                      to_year=to_year,
                                      selections=commons.get_selection_dict(),

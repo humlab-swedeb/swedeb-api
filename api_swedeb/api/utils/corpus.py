@@ -125,3 +125,4 @@ def load_corpus(env_file: str):
 if __name__ == "__main__":
     c = load_corpus('.env_1960')
     print(c.get_something())
+    print(c.person_codecs.pid2person_id)

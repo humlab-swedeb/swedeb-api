@@ -60,4 +60,7 @@ class CommonQueryParams:
             selections.update({"party_id": self.parties})
         if self.genders:
             selections.update({"gender_id": self.genders})
+        if self.speaker_ids:
+            selections.update({"who": self.speaker_ids})
         return selections
+    
