@@ -47,7 +47,8 @@ class Corpus:
         return corpus
     
 
-    def get_something(self):
+    def get_corpus_shape(self):
+        # not needed, just nice to know at the moment
         return self.vectorized_corpus.document_index.shape
     
     def get_link(self, person_id, name):
@@ -124,5 +125,4 @@ def load_corpus(env_file: str):
 
 if __name__ == "__main__":
     c = load_corpus('.env_1960')
-    print(c.get_something())
-    print(c.person_codecs.pid2person_id)
+
