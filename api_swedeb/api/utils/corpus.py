@@ -23,7 +23,6 @@ class Corpus:
         self.tagged_corpus_folder = os.getenv("TAGGED_CORPUS_FOLDER")
 
         self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
-
         self.metadata: md.Codecs = md.Codecs().load(source=self.metadata_filename)
         
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
@@ -36,6 +35,11 @@ class Corpus:
         )
 
         self.kwic_corpus = self.load_kwic_corpus()
+
+        self.decoded_persons = self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
+
+
+
 
     
     def load_vectorized_corpus(self) -> None:
@@ -81,6 +85,30 @@ class Corpus:
                 "year": "year_column",
             }
         )
+    
+    def _filter_speakers(self, current_selection_key, current_df_key, selection_dict, df):
+        if current_selection_key in selection_dict:
+            df = df[df[current_df_key].isin(selection_dict[current_selection_key])]            
+        return df
+    
+    def _get_filtered_speakers(self, selection_keys_dict, selection_dict, df):
+        for key in selection_keys_dict:
+            if key in selection_dict:
+                df = self._filter_speakers(key, selection_keys_dict[key], selection_dict, df)
+        return df
+
+    def get_speakers(self, selections):
+        current_speakers = self.decoded_persons.copy()
+        current_speakers = self._get_filtered_speakers({"party_id":"party_abbrev",
+                                                        "gender_id":"gender"
+                                                        }, selections, current_speakers)
+
+        current_speakers.rename(columns={"party_abbrev": "speaker_party",
+                                         "name":"speaker_name",
+                                         "year_of_birth":"speaker_birth_year",
+                                         "year_of_death": "speaker_death_year"}, inplace=True)
+        return current_speakers
+
     
     def get_anforanden(
         self,

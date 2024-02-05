@@ -28,9 +28,9 @@ class Genders(BaseModel):
 
 class SpeakerItem(BaseModel):
     speaker_name: str
-    speaker_party: List[str]
-    speaker_birth_year: Optional[Year] = None
-    speaker_death_year: Optional[Year] = None
+    speaker_party: str  #TODO change to List[str] or otherwise handle multiple parties
+    speaker_birth_year: int = None
+    speaker_death_year: int = None
 
 
 class SpeakerResult(BaseModel):

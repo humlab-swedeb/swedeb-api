@@ -1,7 +1,11 @@
 import fastapi
 
-from typing import List
-from fastapi import Query
+from fastapi import Depends
+from api_swedeb.api.utils.common_params import CommonQueryParams
+import main
+from typing import Annotated
+
+from api_swedeb.api.utils.metadata import get_speakers
 
 from api_swedeb.schemas.metadata_schema import (
     Year,
@@ -13,7 +17,6 @@ from api_swedeb.schemas.metadata_schema import (
     SpeakerResult,
 )
 from api_swedeb.api.dummy_data.dummy_meta import (
-    get_speakers,
     get_start_year,
     get_end_year,
     get_parties,
@@ -22,6 +25,11 @@ from api_swedeb.api.dummy_data.dummy_meta import (
     get_office_types,
     get_sub_office_types,
 )
+CommonParams = Annotated[CommonQueryParams, Depends()] 
+
+def get_loaded_corpus():
+    return main.loaded_corpus
+
 
 router = fastapi.APIRouter(
     prefix="/v1/metadata", tags=["Metadata"], responses={404: {"description": "Not found"}}
@@ -67,20 +75,7 @@ async def get_meta_sub_office_types():
 
 @router.get("/speakers", response_model=SpeakerResult)
 async def get_meta_speakers(
-    from_year: str = Query(
-        None,
-        description="The first year to be included in the result",
-        pattern=year,
-    ),
-    to_year: str = Query(
-        None, description="The last year to be included in the result", pattern=year
-    ),
-    parties: List[str] = Query(None, description="List of selected parties"),
-    genders: List[str] = Query(None, description="List of selected genders"),
-    chambers: List[str] = Query(None, description="List of selected chambers"),
-    office_types: List[str] = Query(None, description="List of selected office types"),
-    sub_office_types: List[str] = Query(
-        None, description="List of selected sub office types"
-    ),
+    commons: CommonParams,
+    corpus = Depends(get_loaded_corpus)
 ):
-    return get_speakers(from_year, to_year, parties, genders, chambers, office_types, sub_office_types)
+    return get_speakers(commons, corpus)

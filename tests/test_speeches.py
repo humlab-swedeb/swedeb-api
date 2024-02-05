@@ -76,3 +76,4 @@ def test_get_speech_by_api(client):
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
     assert len(response.json()['speaker_note']) > 0
+
