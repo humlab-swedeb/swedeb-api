@@ -10,7 +10,7 @@ from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.api.dummy_data import dummy_ngrams
 from api_swedeb.api.dummy_data import dummy_kwic, dummy_wt
 from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id
-from fastapi import Query, Depends, Path
+from fastapi import Query, Depends
 from typing import  Annotated
 import main
 
