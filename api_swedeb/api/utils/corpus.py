@@ -106,6 +106,21 @@ class Corpus:
 
         return self.prepare_anforande_display(di_selected)
     
+    def get_speech_text(self, document_name: str):  # type: ignore
+        return self.repository.to_text(self.get_speech(document_name))
+    
+    def get_speech(self, document_name: str):  # type: ignore
+        return self.repository.speech(speech_name=document_name, mode="dict")
+
+    def get_speaker_note(self, document_name: str) -> str:
+        speech = self.get_speech(document_name)
+        if "speaker_note_id" not in speech:
+            return ""
+        if speech["speaker_note_id"] == "missing":
+            return "Talet saknar notering"
+        else:
+            return speech["speaker_note"]
+    
     def filter_corpus(
         self, filter_dict: dict, corpus: VectorizedCorpus
     ) -> VectorizedCorpus:
@@ -125,4 +140,5 @@ def load_corpus(env_file: str):
 
 if __name__ == "__main__":
     c = load_corpus('.env_1960')
+    c.get_speech_text('prot-1960--1_001')
 

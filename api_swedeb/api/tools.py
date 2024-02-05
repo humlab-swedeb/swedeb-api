@@ -7,10 +7,10 @@ from api_swedeb.schemas.ngrams_schema import NGramResult
 # from api_swedeb.schemas.topics_schema import TopicResult
 from api_swedeb.schemas.speeches_schema import SpeechesResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-from api_swedeb.api.dummy_data import dummy_ngrams, dummy_speech
+from api_swedeb.api.dummy_data import dummy_ngrams
 from api_swedeb.api.dummy_data import dummy_kwic, dummy_wt
-from api_swedeb.api.utils.speech import get_speeches
-from fastapi import Query, Depends
+from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id
+from fastapi import Query, Depends, Path
 from typing import  Annotated
 import main
 
@@ -74,8 +74,18 @@ async def get_speeches_result(
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
-async def get_speech_by_id(id: str):
-    return dummy_speech.get_speech_by_id(id)
+async def get_speech_by_id_result(id: str,
+                                  corpus=Depends(get_loaded_corpus)):
+    """_summary_
+
+    Args:
+        id (str): eg. prot-1971--1_007.
+        corpus (Corpus): Vectorized corpus.
+
+    Returns:
+        SpeechesTextResultItem: keys: speaker_note, speech_text
+    """
+    return get_speech_by_id(id, corpus)
 
 
 @router.get("/topics")

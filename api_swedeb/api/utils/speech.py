@@ -1,6 +1,8 @@
 # To replace dummy_speech.py
 from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
+from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 
 
 
@@ -22,3 +24,14 @@ def get_speeches(commons: CommonQueryParams, corpus):
     
     # Return the response using the DataFrameResponse model
     return SpeechesResult(speech_list=rows)
+
+def get_speech_by_id(id: str, corpus: Corpus):
+    #if id == "non_id":
+    #    raise HTTPException(status_code=404, detail=f"Speech with id {id} not found")
+    
+    speech_text = corpus.get_speech_text(id)
+    speaker_note = corpus.get_speaker_note(id)
+    return SpeechesTextResultItem(
+        speaker_note=speaker_note,
+        speech_text=speech_text,
+    )   
