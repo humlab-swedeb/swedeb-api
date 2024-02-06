@@ -114,19 +114,14 @@ def test_topics(client):
 def test_start_year(client):
     response = client.get(f"{version}/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK
-    json = response.json()
-    json = response.json()
-    assert 'year' in json
-    assert len(json['year']) == 4
+
     
 
 def test_end_year(client):
     response = client.get(f"{version}/metadata/end_year")
     assert response.status_code == status.HTTP_200_OK
 
-    json = response.json()
-    assert 'year' in json
-    assert len(json['year']) == 4
+
     
 
 def test_parties(client):

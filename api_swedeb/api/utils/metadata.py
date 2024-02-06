@@ -1,4 +1,4 @@
-from api_swedeb.schemas.metadata_schema import SpeakerItem, SpeakerResult
+from api_swedeb.schemas.metadata_schema import SpeakerItem, SpeakerResult, Parties
 from api_swedeb.api.utils.common_params import SpeakerQueryParams
 
 
@@ -16,4 +16,12 @@ def get_speakers(
         speaker_list=speaker_list
     )
 
-    
+
+def get_start_year(corpus):
+    return corpus.get_years_start()
+
+def get_end_year(corpus):
+    return corpus.get_years_end()
+
+def get_parties(corpus):
+    return Parties(parties=corpus.get_available_parties())

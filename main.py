@@ -5,7 +5,7 @@ from api_swedeb.api.utils.corpus import load_corpus
 #import json
 
 
-from api_swedeb.api import tools, metadata
+from api_swedeb.api import metadata_router, tool_router
 
 
 def get_corpus():
@@ -31,8 +31,8 @@ app.add_middleware(
 
 
 
-app.include_router(tools.router)
-app.include_router(metadata.router)
+app.include_router(tool_router.router)
+app.include_router(metadata_router.router)
 
 
 

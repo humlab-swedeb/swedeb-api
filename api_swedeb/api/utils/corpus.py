@@ -5,7 +5,7 @@ from penelope.corpus import VectorizedCorpus
 from westac.riksprot.parlaclarin import speech_text as sr
 from ccc import Corpora, Corpus
 import pandas as pd
-
+from typing import Union, Mapping
 
 
 class Corpus:
@@ -156,6 +156,31 @@ class Corpus:
             for key in filter_dict:
                 corpus = corpus.filter(lambda row: row[key] in filter_dict[key])
         return corpus
+    
+    def get_years_start(self) -> int:
+        """Returns the first year in the corpus"""
+        return int(self.vectorized_corpus.document_index["year"].min())
+
+    def get_years_end(self) -> int:
+        """Returns the last year in the corpus"""
+        return int(self.vectorized_corpus.document_index["year"].max())
+    
+    def get_available_parties(self) -> list:
+        return list(self.get_party_specs().keys())
+    
+    def get_party_specs(self) -> Union[str, Mapping[str, int]]:
+        for specification in self.metadata.property_values_specs:
+            if specification["text_name"] == "party_abbrev":
+                specs = specification["values"]
+                selected = {}
+                for k, v in specs.items():
+                    if v in self.get_only_parties_with_data():
+                        selected[k] = v
+                return selected
+    
+    def get_only_parties_with_data(self):
+        parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
+        return parties_in_data
 
 
 

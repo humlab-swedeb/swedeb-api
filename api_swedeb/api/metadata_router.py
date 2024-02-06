@@ -1,14 +1,16 @@
 import fastapi
 
 from fastapi import Depends
-from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.utils.common_params import SpeakerQueryParams
 import main
 from typing import Annotated
 
-from api_swedeb.api.utils.metadata import get_speakers
+from api_swedeb.api.utils.metadata import get_speakers, get_end_year, get_start_year, get_parties
+
+
+
 
 from api_swedeb.schemas.metadata_schema import (
-    Year,
     Parties,
     Genders,
     Chambers,
@@ -17,15 +19,13 @@ from api_swedeb.schemas.metadata_schema import (
     SpeakerResult,
 )
 from api_swedeb.api.dummy_data.dummy_meta import (
-    get_start_year,
-    get_end_year,
-    get_parties,
     get_genders,
     get_chambers,
     get_office_types,
     get_sub_office_types,
 )
-CommonParams = Annotated[CommonQueryParams, Depends()] 
+SpeakerParams = Annotated[SpeakerQueryParams, Depends()]
+
 
 def get_loaded_corpus():
     return main.loaded_corpus
@@ -38,19 +38,19 @@ router = fastapi.APIRouter(
 year = r"^\d{4}$"
 
 
-@router.get("/start_year", response_model=Year)
-async def get_meta_start_year():
-    return get_start_year()
+@router.get("/start_year", response_model=int)
+async def get_meta_start_year(corpus = Depends(get_loaded_corpus)):
+    return get_start_year(corpus)
 
 
-@router.get("/end_year", response_model=Year)
-async def get_meta_end_year():
-    return get_end_year()
+@router.get("/end_year", response_model=int)
+async def get_meta_end_year(corpus = Depends(get_loaded_corpus)):
+    return get_end_year(corpus)
 
 
 @router.get("/parties", response_model=Parties)
-async def get_meta_parties():
-    return get_parties()
+async def get_meta_parties(corpus = Depends(get_loaded_corpus)):
+    return get_parties(corpus)
 
 
 @router.get("/genders", response_model=Genders)
@@ -75,7 +75,7 @@ async def get_meta_sub_office_types():
 
 @router.get("/speakers", response_model=SpeakerResult)
 async def get_meta_speakers(
-    commons: CommonParams,
+    query_params: SpeakerParams,
     corpus = Depends(get_loaded_corpus)
 ):
-    return get_speakers(commons, corpus)
+    return get_speakers(query_params, corpus)
