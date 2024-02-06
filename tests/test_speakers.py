@@ -6,8 +6,7 @@ from main import app
 from fastapi import status
 from api_swedeb.api.utils.corpus import load_corpus
 
-# these tests mainly check that the endpoints are reachable and returns something
-# the actual content of the response is not checked
+
 
 version = "v1"
 
@@ -59,5 +58,6 @@ def test_get_speakers_api_with_params(client):
     assert 'speaker_list' in json
     for speaker in json['speaker_list']:
         assert speaker['speaker_party'] == 'S'
+        assert 'Tage' not in speaker['speaker_name']
         
     print(json)
