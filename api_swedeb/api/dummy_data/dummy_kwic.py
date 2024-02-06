@@ -1,10 +1,7 @@
-
-
 from api_swedeb.schemas.kwic_schema import (
     KeywordInContextItem,
     KeywordInContextResult,
 )
-
 
 
 def get_kwic(search, commons, lemmatized, corpus):

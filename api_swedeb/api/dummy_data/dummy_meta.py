@@ -53,34 +53,31 @@ def get_speakers(
     sub_office_types: Optional[List[str]] = None,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
-):  
-
-
+):
     speaker_list = [
-            SpeakerItem(
-                speaker_name="Olof Palme",
-                speaker_party=[str(parties)],
-                speaker_birth_year=Year(year="1927"),
-                speaker_death_year=Year(year="1986"),
-            ),
-            SpeakerItem(
-                speaker_name="Påhittad person",
-                speaker_party=["M"],
-                speaker_birth_year=Year(year="1927"),
-            ),
-        ]
-
+        SpeakerItem(
+            speaker_name="Olof Palme",
+            speaker_party=[str(parties)],
+            speaker_birth_year=Year(year="1927"),
+            speaker_death_year=Year(year="1986"),
+        ),
+        SpeakerItem(
+            speaker_name="Påhittad person",
+            speaker_party=["M"],
+            speaker_birth_year=Year(year="1927"),
+        ),
+    ]
 
     if parties:
         for party in parties:
-            speaker_list.append(SpeakerItem(
-                speaker_name = f"Partiperson_{party}",
-                speaker_party = [party],
-                speaker_birth_year = Year(year="1927"),
-                speaker_death_year = Year(year="1986")
-            ))
-    sr = SpeakerResult(
-        speaker_list=speaker_list
-    )
-    
+            speaker_list.append(
+                SpeakerItem(
+                    speaker_name=f"Partiperson_{party}",
+                    speaker_party=[party],
+                    speaker_birth_year=Year(year="1927"),
+                    speaker_death_year=Year(year="1986"),
+                )
+            )
+    sr = SpeakerResult(speaker_list=speaker_list)
+
     return sr

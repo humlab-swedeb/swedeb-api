@@ -13,23 +13,20 @@ def get_speech_by_id(id: str):
     )
 
 
-
 def get_speeches(commons: CommonQueryParams):
-
     speech_list = []
-    
+
     if commons.parties:
         parties = commons.parties
     else:
-        parties = ['Parti 1']
+        parties = ["Parti 1"]
 
-    print(commons, '*************')
-
+    print(commons, "*************")
 
     if commons.genders:
         genders = commons.genders
     else:
-        genders = ['M', 'K', '?']
+        genders = ["M", "K", "?"]
     years = []
     if commons.from_year:
         years.append(commons.from_year)
@@ -45,26 +42,27 @@ def get_speeches(commons: CommonQueryParams):
     for party in parties:
         for gender in genders:
             for year in years:
-                sri = SpeechesResultItem( speaker_column=f"Talare {id}",
-                    year_column= year,
-                    gender_column= gender,
+                sri = SpeechesResultItem(
+                    speaker_column=f"Talare {id}",
+                    year_column=year,
+                    gender_column=gender,
                     source_column="www.riksdagen.se",
                     speech_id_column=str(id),
-                    party_column=party)
+                    party_column=party,
+                )
                 speech_list.append(sri)
                 id += 1
 
     if len(speech_list) == 0:
-        speech_list.append(  SpeechesResultItem(
+        speech_list.append(
+            SpeechesResultItem(
                 speaker_column="Herr Ej vald Metadata",
-                year_column= commons.from_year if commons.from_year else "1920",
-                gender_column= 'M',
+                year_column=commons.from_year if commons.from_year else "1920",
+                gender_column="M",
                 source_column="www.riksdagen.se",
                 speech_id_column="1",
                 party_column="S",
-            ))
+            )
+        )
 
-
-    return SpeechesResult(
-        speech_list=speech_list
-    )
+    return SpeechesResult(speech_list=speech_list)

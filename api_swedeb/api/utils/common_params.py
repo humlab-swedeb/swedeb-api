@@ -3,6 +3,7 @@ from fastapi import Query
 
 year_regex = r"^\d{4}$"
 
+
 class SpeakerQueryParams:
     def __init__(
         self,
@@ -15,29 +16,26 @@ class SpeakerQueryParams:
         parties: List[str] = Query(None, description="List of selected parties"),
         genders: List[str] = Query(None, description="List of selected genders"),
         chambers: List[str] = Query(None, description="List of selected chambers"),
-
     ):
         self.offiece_types = office_types
         self.sub_office_types = sub_office_types
         self.parties = parties
         self.genders = genders
         self.chambers = chambers
-        
 
     def get_selection_dict(self):
-            # Currently returns gender_id and party_id, to mimic 
-            # prototype. who (speaker_id), was also included in the prototype, but
-            # not included here yet. key for genders is gender_id, key for parties is party_id
-            # and key for speaker id is who
-            # if no selections are made, return empty dict
-            selections = {}
-            if self.parties:
-                selections.update({"party_id": self.parties})
-            if self.genders:
-                selections.update({"gender_id": self.genders})
+        # Currently returns gender_id and party_id, to mimic
+        # prototype. who (speaker_id), was also included in the prototype, but
+        # not included here yet. key for genders is gender_id, key for parties is party_id
+        # and key for speaker id is who
+        # if no selections are made, return empty dict
+        selections = {}
+        if self.parties:
+            selections.update({"party_id": self.parties})
+        if self.genders:
+            selections.update({"gender_id": self.genders})
 
-            return selections
-    
+        return selections
 
 
 class CommonQueryParams(SpeakerQueryParams):
@@ -81,7 +79,7 @@ class CommonQueryParams(SpeakerQueryParams):
         self.sort_order = sort_order
 
     def get_selection_dict(self):
-        # Currently returns gender_id and party_id, to mimic 
+        # Currently returns gender_id and party_id, to mimic
         # prototype. who (speaker_id), was also included in the prototype, but
         # not included here yet. key for genders is gender_id, key for parties is party_id
         # and key for speaker id is who
@@ -94,7 +92,3 @@ class CommonQueryParams(SpeakerQueryParams):
         if self.speaker_ids:
             selections.update({"who": self.speaker_ids})
         return selections
-    
-
-
-

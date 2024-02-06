@@ -11,7 +11,7 @@ from api_swedeb.api.dummy_data import dummy_ngrams
 from api_swedeb.api.dummy_data import dummy_kwic, dummy_wt
 from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id
 from fastapi import Query, Depends
-from typing import  Annotated
+from typing import Annotated
 import main
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
@@ -23,7 +23,6 @@ router = fastapi.APIRouter(
 
 def get_loaded_corpus():
     return main.loaded_corpus
-
 
 
 @router.get("/kwic/{search}", response_model=KeywordInContextResult)
@@ -46,6 +45,7 @@ async def get_word_trends(
 ):
     """Get word trends"""
     return dummy_wt.get_word_trends(search, commons)
+
 
 @router.get("/word_trend_speeches/{search}", response_model=SpeechesResult)
 async def get_word_trend_speeches(
@@ -74,8 +74,7 @@ async def get_speeches_result(
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
-async def get_speech_by_id_result(id: str,
-                                  corpus=Depends(get_loaded_corpus)):
+async def get_speech_by_id_result(id: str, corpus=Depends(get_loaded_corpus)):
     """_summary_
 
     Args:

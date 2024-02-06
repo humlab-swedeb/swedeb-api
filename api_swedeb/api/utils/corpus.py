@@ -24,7 +24,7 @@ class Corpus:
 
         self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
         self.metadata: md.Codecs = md.Codecs().load(source=self.metadata_filename)
-        
+
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
             source=self.metadata_filename
         )
@@ -36,12 +36,10 @@ class Corpus:
 
         self.kwic_corpus = self.load_kwic_corpus()
 
-        self.decoded_persons = self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
+        self.decoded_persons = self.metadata.decode(
+            self.person_codecs.persons_of_interest, drop=False
+        )
 
-
-
-
-    
     def load_vectorized_corpus(self) -> None:
         self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
 
@@ -49,17 +47,15 @@ class Corpus:
         corpora: Corpora = Corpora(registry_dir=self.kwic_corpus_dir)
         corpus: Corpus = corpora.corpus(corpus_name=self.kwic_corpus_name)
         return corpus
-    
 
     def get_corpus_shape(self):
         # not needed, just nice to know at the moment
         return self.vectorized_corpus.document_index.shape
-    
+
     def get_link(self, person_id, name):
         if name == "":
             return "Okänd"
         return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
-    
 
     def prepare_anforande_display(
         self, anforanden_doc_index: pd.DataFrame
@@ -85,31 +81,41 @@ class Corpus:
                 "year": "year_column",
             }
         )
-    
-    def _filter_speakers(self, current_selection_key, current_df_key, selection_dict, df):
+
+    def _filter_speakers(
+        self, current_selection_key, current_df_key, selection_dict, df
+    ):
         if current_selection_key in selection_dict:
-            df = df[df[current_df_key].isin(selection_dict[current_selection_key])]            
+            df = df[df[current_df_key].isin(selection_dict[current_selection_key])]
         return df
-    
+
     def _get_filtered_speakers(self, selection_keys_dict, selection_dict, df):
         for key in selection_keys_dict:
             if key in selection_dict:
-                df = self._filter_speakers(key, selection_keys_dict[key], selection_dict, df)
+                df = self._filter_speakers(
+                    key, selection_keys_dict[key], selection_dict, df
+                )
         return df
 
     def get_speakers(self, selections):
         current_speakers = self.decoded_persons.copy()
-        current_speakers = self._get_filtered_speakers({"party_id":"party_abbrev",
-                                                        "gender_id":"gender"
-                                                        }, selections, current_speakers)
+        current_speakers = self._get_filtered_speakers(
+            {"party_id": "party_abbrev", "gender_id": "gender"},
+            selections,
+            current_speakers,
+        )
 
-        current_speakers.rename(columns={"party_abbrev": "speaker_party",
-                                         "name":"speaker_name",
-                                         "year_of_birth":"speaker_birth_year",
-                                         "year_of_death": "speaker_death_year"}, inplace=True)
+        current_speakers.rename(
+            columns={
+                "party_abbrev": "speaker_party",
+                "name": "speaker_name",
+                "year_of_birth": "speaker_birth_year",
+                "year_of_death": "speaker_death_year",
+            },
+            inplace=True,
+        )
         return current_speakers
 
-    
     def get_anforanden(
         self,
         from_year: int,
@@ -133,10 +139,10 @@ class Corpus:
         di_selected = di_selected[di_selected["year"].between(from_year, to_year)]
 
         return self.prepare_anforande_display(di_selected)
-    
+
     def get_speech_text(self, document_name: str):  # type: ignore
         return self.repository.to_text(self.get_speech(document_name))
-    
+
     def get_speech(self, document_name: str):  # type: ignore
         return self.repository.speech(speech_name=document_name, mode="dict")
 
@@ -148,7 +154,7 @@ class Corpus:
             return "Talet saknar notering"
         else:
             return speech["speaker_note"]
-    
+
     def filter_corpus(
         self, filter_dict: dict, corpus: VectorizedCorpus
     ) -> VectorizedCorpus:
@@ -156,7 +162,7 @@ class Corpus:
             for key in filter_dict:
                 corpus = corpus.filter(lambda row: row[key] in filter_dict[key])
         return corpus
-    
+
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""
         return int(self.vectorized_corpus.document_index["year"].min())
@@ -164,10 +170,10 @@ class Corpus:
     def get_years_end(self) -> int:
         """Returns the last year in the corpus"""
         return int(self.vectorized_corpus.document_index["year"].max())
-    
+
     def get_available_parties(self) -> list:
         return list(self.get_party_specs().keys())
-    
+
     def get_party_specs(self) -> Union[str, Mapping[str, int]]:
         for specification in self.metadata.property_values_specs:
             if specification["text_name"] == "party_abbrev":
@@ -177,12 +183,10 @@ class Corpus:
                     if v in self.get_only_parties_with_data():
                         selected[k] = v
                 return selected
-    
+
     def get_only_parties_with_data(self):
         parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
         return parties_in_data
-
-
 
 
 def load_corpus(env_file: str):
@@ -192,6 +196,5 @@ def load_corpus(env_file: str):
 
 
 if __name__ == "__main__":
-    c = load_corpus('.env_1960')
-    c.get_speech_text('prot-1960--1_001')
-
+    c = load_corpus(".env_1960")
+    c.get_speech_text("prot-1960--1_001")
