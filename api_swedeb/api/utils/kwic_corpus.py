@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 from ccc import Corpora, Corpus
+from westac.riksprot.parlaclarin import codecs as md
+
 import pandas as pd
 from typing import List
 
@@ -12,14 +14,30 @@ class KwicCorpus:
         self.kwic_corpus_dir = os.getenv("KWIC_DIR")
         self.kwic_corpus_name = os.getenv("KWIC_CORPUS_NAME")
         self.corpus = self.load_kwic_corpus()
-        
+
+        self.metadata_filename = os.getenv("METADATA_FILENAME")
+
+        self.metadata: md.Codecs = md.Codecs().load(source=self.metadata_filename)
+
+        self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
+            source=self.metadata_filename
+        )
+        self.renamed_columns = {
+            "left_word": "Kontext Vänster",
+            "node_word": "Sökord",
+            "right_word": "Kontext Höger",
+            "year": "År",
+            "name": "Talare",
+            "party_abbrev": "Parti",
+            "speech_title": "Protokoll",
+            "gender": "Kön",
+        }
 
     def load_kwic_corpus(self) -> Corpus:
         corpora: Corpora = Corpora(registry_dir=self.kwic_corpus_dir)
         corpus: Corpus = corpora.corpus(corpus_name=self.kwic_corpus_name)
         return corpus
 
-    
     def _construct_multiword_query(search_terms):
         # [lemma="information"] [lemma="om"]
         query = ""
@@ -52,7 +70,7 @@ class KwicCorpus:
         for term in search_terms:
             query += f' [{search_setting}="{term}"]'
         return query[1:]
-    
+
     def get_kwic_results_for_search_hits(
         self,
         search_hits: List[str],
@@ -75,8 +93,8 @@ class KwicCorpus:
             p_show=["word"],  # ['word', 'pos', 'lemma']
             s_show=[
                 "speech_who",
-                "speech_party_id",
-                "speech_gender_id",
+                # "speech_party_id",
+                # "speech_gender_id",
                 "speech_date",
                 "speech_title",
             ],
@@ -91,16 +109,17 @@ class KwicCorpus:
             return pd.DataFrame()
 
         renamed_selections = {
-            "speech_gender_id": "gender_id",
-            "speech_party_id": "party_id",
+            # "speech_gender_id": "gender_id",
+            # "speech_party_id": "party_id",
             "speech_who": "person_id",
         }
-
+        
         data.reset_index(inplace=True)
 
         data.rename(columns=renamed_selections, inplace=True)
+        
 
-        data = data.astype({"gender_id": int, "party_id": int})
+        # data = data.astype({"gender_id": int, "party_id": int})
         data["year"] = data.apply(lambda x: int(x["speech_date"].split("-")[0]), axis=1)
 
         data = data[data["year"].between(from_year, to_year)]
@@ -109,23 +128,41 @@ class KwicCorpus:
         data["link"] = data.apply(
             lambda x: self.get_link(x["person_id"], x["name"]), axis=1
         )
+        
+        #data.rename(columns=self.renamed_columns, inplace=True)
+        data['party_abbrev'] = 'not in test corpus'
+        data['gender'] = 'not in test corpus'
 
-        data.rename(columns=self.renamed_columns, inplace=True)
-
-        return data[
-            [
-                "Kontext Vänster",
-                "Sökord",
-                "Kontext Höger",
-                "Parti",
-                "Talare",
-                "År",
-                "Kön",
-                "Protokoll",
+        return data[[
+                "left_word",
+                "node_word",
+                "right_word",
+                "year",
+                "name",
+                "party_abbrev",
+                "speech_title",
+                "gender",
                 "person_id",
                 "link",
+
             ]
         ]
+
+    def get_link(self, person_id, name):
+        if name == "":
+            return "Okänd"
+        return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
+
+    def rename_selection_keys(self, selections):
+        renames = {
+            # "gender_id": "speech_gender_id",
+            # "party_id": "speech_party_id",
+            "who": "speech_who",
+        }
+        for key, value in renames.items():
+            if key in selections:
+                selections[value] = selections.pop(key)
+        return selections
 
 
 if __name__ == "__main__":

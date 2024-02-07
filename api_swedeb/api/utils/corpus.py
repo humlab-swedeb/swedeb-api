@@ -31,14 +31,12 @@ class Corpus:
             document_index=self.vectorized_corpus.document_index,
         )
 
-
         self.decoded_persons = self.metadata.decode(
             self.person_codecs.persons_of_interest, drop=False
         )
 
     def load_vectorized_corpus(self) -> None:
         self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
-
 
     def get_corpus_shape(self):
         # not needed, just nice to know at the moment

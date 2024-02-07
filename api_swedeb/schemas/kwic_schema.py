@@ -9,7 +9,7 @@ class KeywordInContextItem(BaseModel):
         None, description="The hits correpsonding to the search string"
     )
     right_word: Optional[str] = Field(None, description="Right context of search hit")
-    year_title: Optional[str] = Field(None, description="Year of speech")
+    year: Optional[int] = Field(None, description="Year of speech")
     name: Optional[str] = Field(None, description="Name of speaker")
     party_abbrev: Optional[str] = Field(None, description="Party abbreviation")
     speech_title: Optional[str] = Field(None, description="Title of speech (id)")
@@ -24,7 +24,7 @@ class SortBy(Enum):
     left_word = "left_word"
     node_word = "node_word"
     right_word = "right_word"
-    year_title = "year_title"
+    year = "year"
     name = "name"
     party_abbrev = "party_abbrev"
     speech_title = "speech_title"

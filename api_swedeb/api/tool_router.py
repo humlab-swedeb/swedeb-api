@@ -8,8 +8,9 @@ from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speeches_schema import SpeechesResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.api.dummy_data import dummy_ngrams
-from api_swedeb.api.dummy_data import dummy_kwic, dummy_wt
+from api_swedeb.api.dummy_data import dummy_wt
 from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id
+from api_swedeb.api.utils.kwic import get_kwic_data
 from fastapi import Query, Depends
 from typing import Annotated
 import main
@@ -25,17 +26,24 @@ def get_loaded_corpus():
     return main.loaded_corpus
 
 
+def get_loaded_kwic_corpus():
+    return main.kwic_corpus
+
+
 @router.get("/kwic/{search}", response_model=KeywordInContextResult)
-async def get_kwic(
+async def get_kwic_results(
     commons: CommonParams,
+    
     search: str,
     lemmatized: bool = Query(
         True, description="Whether to search for lemmatized version of search string"
     ),
-    corpus=Depends(get_loaded_corpus),
+    words_before: int = Query(2, description="Number of tokens before the search word(s)"),
+    words_after: int = Query(2, description="Number of tokens after the search word(s)"),
+    corpus=Depends(get_loaded_kwic_corpus),
 ):
     """Get keyword in context"""
-    return dummy_kwic.get_kwic(search, commons, lemmatized, corpus)
+    return get_kwic_data(search, commons, lemmatized, words_before, words_after, corpus)
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)

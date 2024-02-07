@@ -2,6 +2,7 @@
 from fastapi import FastAPI, Depends # Response
 from fastapi.middleware.cors import CORSMiddleware
 from api_swedeb.api.utils.corpus import load_corpus
+from api_swedeb.api.utils.kwic_corpus import KwicCorpus
 #import json
 
 
@@ -10,6 +11,9 @@ from api_swedeb.api import metadata_router, tool_router
 
 def get_corpus():
     return load_corpus('.env_1960')
+
+
+kwic_corpus = KwicCorpus(env_file='.env_1960')
 
 
 
