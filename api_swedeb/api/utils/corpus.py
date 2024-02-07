@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from westac.riksprot.parlaclarin import codecs as md
 from penelope.corpus import VectorizedCorpus
 from westac.riksprot.parlaclarin import speech_text as sr
-from ccc import Corpora, Corpus
 import pandas as pd
 from typing import Union, Mapping
 
@@ -17,8 +16,6 @@ class Corpus:
         load_dotenv(self.env_file)
         self.tag: str = os.getenv("TAG")
         self.folder = os.getenv("FOLDER")
-        self.kwic_corpus_dir = os.getenv("KWIC_DIR")
-        self.kwic_corpus_name = os.getenv("KWIC_CORPUS_NAME")
         self.metadata_filename = os.getenv("METADATA_FILENAME")
         self.tagged_corpus_folder = os.getenv("TAGGED_CORPUS_FOLDER")
 
@@ -34,7 +31,6 @@ class Corpus:
             document_index=self.vectorized_corpus.document_index,
         )
 
-        self.kwic_corpus = self.load_kwic_corpus()
 
         self.decoded_persons = self.metadata.decode(
             self.person_codecs.persons_of_interest, drop=False
@@ -43,10 +39,6 @@ class Corpus:
     def load_vectorized_corpus(self) -> None:
         self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
 
-    def load_kwic_corpus(self) -> Corpus:
-        corpora: Corpora = Corpora(registry_dir=self.kwic_corpus_dir)
-        corpus: Corpus = corpora.corpus(corpus_name=self.kwic_corpus_name)
-        return corpus
 
     def get_corpus_shape(self):
         # not needed, just nice to know at the moment
