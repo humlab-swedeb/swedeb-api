@@ -177,6 +177,11 @@ class Corpus:
     def get_only_parties_with_data(self):
         parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
         return parties_in_data
+    
+
+    def get_word_hits(self, search_term: str, n_hits: int = 5) -> list[str]:
+        search_term = search_term.lower()
+        return self.vectorized_corpus.find_matching_words({f"{search_term}"}, n_hits)
 
 
 def load_corpus(env_file: str):

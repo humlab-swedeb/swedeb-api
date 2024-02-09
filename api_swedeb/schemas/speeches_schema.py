@@ -13,3 +13,12 @@ class SpeechesResultItem(BaseModel):
 
 class SpeechesResult(BaseModel):
     speech_list: List[SpeechesResultItem]
+
+
+class SpeechesResultItemWT(SpeechesResultItem):
+    hit: str = Field(None, description="Search hit in speech")
+
+
+class SpeechesResultWT(BaseModel):
+    speech_list: List[SpeechesResultItemWT]
+
