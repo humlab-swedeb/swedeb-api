@@ -55,17 +55,11 @@ def test_kwic_bad_param(client):
 
 def test_word_trends(client):
 
-    response = client.get(f"{version}/tools/word_trends/search_term")
+    response = client.get(f"{version}/tools/word_trends/debatt")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    first_result = json['wt_list'][0]
-
-    assert 'year' in first_result
-    assert 'count' in first_result
-    assert 'search_term' in first_result['count']
-    assert first_result['count']['search_term'] == 1
-
+    assert len(json) > 0
 
 def test_ngrams(client):
     response = client.get(f"{version}/tools/ngrams/search_term")

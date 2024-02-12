@@ -51,7 +51,7 @@ def test_get_speakers_api(client):
 
 def test_get_speakers_api_with_params(client):
     
-    response = client.get(f"{version}/metadata/speakers?parties=S&genders=woman")
+    response = client.get(f"{version}/metadata/speakers?party_id=9&gender_id=2")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()

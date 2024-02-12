@@ -44,7 +44,7 @@ def test_dynamic_base_model():
         counts_list.append(year_counts)
 
     # Create a YearCountsList object
-    year_counts_list = WordTrendsResult(counts_list=counts_list)
+    year_counts_list = WordTrendsResult(wt_list=counts_list)
 
     # Print the YearCountsList object
     print(year_counts_list)
@@ -63,7 +63,7 @@ def test_word_trends_with_base_model(corpus):
         counts_list.append(year_counts)
 
     # Create a YearCountsList object
-    year_counts_list = WordTrendsResult(counts_list=counts_list)
+    year_counts_list = WordTrendsResult(wt_list=counts_list)
 
     # Print the YearCountsList object
     print(year_counts_list)
@@ -82,7 +82,7 @@ def test_word_trends_api(client):
 
 def test_word_trends_api_with_filter(client):
     search_term = 'att,och'
-    response = client.get(f"{version}/tools/word_trends/{search_term}?parties=S&genders=woman&from_year=1960&to_year=1970")
+    response = client.get(f"{version}/tools/word_trends/{search_term}?parties=9&genders=2&from_year=1960&to_year=1970")
     json = response.json()
     first_result = json['wt_list'][0]
     print(json)
@@ -93,7 +93,7 @@ def test_word_trends_api_with_filter(client):
 
 
 def test_word_trends_speeches(client):
-    search_term = '*debatt'
+    search_term = 'debatt'
 
     response = client.get(f"{version}/tools/word_trend_speeches/{search_term}")
     assert response.status_code == status.HTTP_200_OK
@@ -136,3 +136,7 @@ def test_word_hits_api(client):
     json = response.json()
     assert 'hit_list' in json
     assert len(json['hit_list']) > 0
+
+
+def test_parlaclarin():
+    pass

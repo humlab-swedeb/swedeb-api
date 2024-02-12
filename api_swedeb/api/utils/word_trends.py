@@ -38,13 +38,13 @@ def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus):
 def get_word_trend_speeches(search: str, commons: CommonQueryParams, corpus: Corpus):
     speech_list = []
 
-    if commons.parties:
-        parties = commons.parties
+    if commons.party_id:
+        parties = commons.party_id
     else:
         parties = ["Parti 1"]
 
-    if commons.genders:
-        genders = commons.genders
+    if commons.gender_id:
+        genders = commons.gender_id
     else:
         genders = ["M", "K", "?"]
     years = []
