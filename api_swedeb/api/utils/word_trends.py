@@ -1,6 +1,10 @@
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult, SearchHits
+from api_swedeb.schemas.word_trends_schema import (
+    WordTrendsItem,
+    WordTrendsResult,
+    SearchHits,
+)
 from api_swedeb.schemas.speeches_schema import SpeechesResultWT, SpeechesResultItemWT
 
 
@@ -9,14 +13,26 @@ def get_search_hit_results(search: str, corpus: Corpus, n_hits: int):
 
 
 def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus):
-    first_year = commons.from_year if commons.from_year else 2020
-    last_year = commons.to_year if commons.to_year else 2022
-    return WordTrendsResult(
-        wt_list=[
-            WordTrendsItem(year=first_year, count={search: 1, "word2": 2}),
-            WordTrendsItem(year=last_year, count={search: 3, "word2": 4}),
-        ]
+    first_year = commons.from_year if commons.from_year else corpus.get_years_start()
+    last_year = commons.to_year if commons.to_year else corpus.get_years_end()
+    if "," in search:
+        search_terms = search.split(",")
+    else:
+        search_terms = [search]
+    df = corpus.get_word_trend_results(
+        search_terms=search_terms,
+        filter_opts=commons.get_selection_dict(),
+        start_year=first_year,
+        end_year=last_year,
     )
+
+    counts_list = []
+    for year, row in df.iterrows():
+        counts_dict = row.to_dict()
+        year_counts = WordTrendsItem(year=year, counts=counts_dict)
+        counts_list.append(year_counts)
+
+    return WordTrendsResult(wt_list=counts_list)
 
 
 def get_word_trend_speeches(search: str, commons: CommonQueryParams, corpus: Corpus):

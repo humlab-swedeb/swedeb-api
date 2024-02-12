@@ -21,17 +21,18 @@ def test_read_nonexisting(client):
 ############## TOOLS #####################
 
 def test_kwic(client):
-    response = client.get(f"{version}/tools/kwic/search_term")
+    response = client.get(f"{version}/tools/kwic/debatt")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
     first_result = json['kwic_list'][0]
+    print(first_result)
     
     assert 'kwic_list' in json
     assert 'left_word' in first_result
     assert 'node_word' in first_result
     assert 'right_word' in first_result
-    assert 'year_title' in first_result
+    assert 'year' in first_result
     assert 'name' in first_result
     assert 'party_abbrev' in first_result
     assert 'speech_title' in first_result

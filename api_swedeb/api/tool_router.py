@@ -10,7 +10,11 @@ from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.api.dummy_data import dummy_ngrams
 from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id
 from api_swedeb.api.utils.kwic import get_kwic_data
-from api_swedeb.api.utils.word_trends import get_word_trend_speeches, get_word_trends, get_search_hit_results
+from api_swedeb.api.utils.word_trends import (
+    get_word_trend_speeches,
+    get_word_trends,
+    get_search_hit_results,
+)
 from fastapi import Query, Depends
 from typing import Annotated
 import main
@@ -33,13 +37,16 @@ def get_loaded_kwic_corpus():
 @router.get("/kwic/{search}", response_model=KeywordInContextResult)
 async def get_kwic_results(
     commons: CommonParams,
-    
     search: str,
     lemmatized: bool = Query(
         True, description="Whether to search for lemmatized version of search string"
     ),
-    words_before: int = Query(2, description="Number of tokens before the search word(s)"),
-    words_after: int = Query(2, description="Number of tokens after the search word(s)"),
+    words_before: int = Query(
+        2, description="Number of tokens before the search word(s)"
+    ),
+    words_after: int = Query(
+        2, description="Number of tokens after the search word(s)"
+    ),
     corpus=Depends(get_loaded_kwic_corpus),
 ):
     """Get keyword in context"""
@@ -51,7 +58,6 @@ async def get_word_trends_result(
     search: str,
     commons: CommonParams,
     corpus=Depends(get_loaded_corpus),
-
 ):
     """Get word trends"""
     return get_word_trends(search, commons, corpus)
@@ -66,13 +72,15 @@ async def get_word_trend_speeches_result(
     """Get word trends"""
     return get_word_trend_speeches(search, commons, corpus)
 
+
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
-async def get_word_hits(search: str,
-                         corpus=Depends(get_loaded_corpus),
-                         n_hits: int = Query(5, description="Number of hits to return")):
+async def get_word_hits(
+    search: str,
+    corpus=Depends(get_loaded_corpus),
+    n_hits: int = Query(5, description="Number of hits to return"),
+):
     return get_search_hit_results(search=search, n_hits=n_hits, corpus=corpus)
-        
-    
+
 
 @router.get("/ngrams/{search}", response_model=NGramResult)
 async def get_ngrams(

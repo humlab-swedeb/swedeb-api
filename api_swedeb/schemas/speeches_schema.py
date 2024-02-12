@@ -21,4 +21,3 @@ class SpeechesResultItemWT(SpeechesResultItem):
 
 class SpeechesResultWT(BaseModel):
     speech_list: List[SpeechesResultItemWT]
-

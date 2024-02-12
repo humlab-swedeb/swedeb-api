@@ -4,13 +4,17 @@ from westac.riksprot.parlaclarin import codecs as md
 from penelope.corpus import VectorizedCorpus
 from westac.riksprot.parlaclarin import speech_text as sr
 import pandas as pd
-from typing import Union, Mapping
+from typing import Union, Mapping, List
+from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
+from penelope.common.keyness import KeynessMetric  # type: ignore
+import penelope.utility as pu  # type: ignore
+from penelope.utility import PropertyValueMaskingOpts  # type: ignore
 
 
 class Corpus:
     def __init__(self, env_file=None):
         self.env_file = env_file
-        self.vectorized_corpus = self.read_corpus()
+        self.read_corpus()
 
     def read_corpus(self):
         load_dotenv(self.env_file)
@@ -34,6 +38,82 @@ class Corpus:
         self.decoded_persons = self.metadata.decode(
             self.person_codecs.persons_of_interest, drop=False
         )
+
+        self.possible_pivots = [
+            v["text_name"] for v in self.person_codecs.property_values_specs
+        ]
+
+    def get_word_trend_results(
+        self,
+        search_terms: List[str],
+        filter_opts: dict,
+        start_year: int,
+        end_year: int,
+    ) -> pd.DataFrame:
+        search_terms = [
+            x.lower() for x in search_terms if x in self.vectorized_corpus.vocabulary
+        ]
+
+        if not search_terms:
+            return pd.DataFrame()
+
+        trends_data: SweDebTrendsData = SweDebTrendsData(
+            corpus=self.vectorized_corpus,
+            person_codecs=self.person_codecs,
+            n_top=1000000,
+        )
+        pivot_keys = list(filter_opts.keys()) if filter_opts else []
+
+        opts: SweDebComputeOpts = SweDebComputeOpts(
+            fill_gaps=True,
+            keyness=KeynessMetric.TF,
+            normalize=False,
+            pivot_keys_id_names=pivot_keys,
+            filter_opts=PropertyValueMaskingOpts(**filter_opts),
+            smooth=False,
+            temporal_key="year",
+            top_count=100000,
+            unstack_tabular=False,
+            words=search_terms,
+        )
+
+        trends_data.transform(opts)
+
+        trends: pd.DataFrame = trends_data.extract(
+            indices=trends_data.find_word_indices(opts)
+        )
+
+        trends = trends[trends["year"].between(start_year, end_year)]
+
+        trends.rename(columns={"who": "person_id"}, inplace=True)
+        trends_data.person_codecs.decode(trends)
+        trends["year"] = trends["year"].astype(str)
+
+        if not pivot_keys:
+            unstacked_trends = trends.set_index(opts.temporal_key)
+
+        else:
+            current_pivot_keys = [opts.temporal_key] + [
+                x for x in trends.columns if x in self.possible_pivots
+            ]
+            unstacked_trends = pu.unstack_data(trends, current_pivot_keys)
+        self.translate_dataframe(unstacked_trends)
+        # remove COLUMNS with only 0s, with serveral filtering options, there
+        # are sometimes many such columns
+        unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
+        return unstacked_trends
+
+    def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Translates the (gender) columns of a data frame to Swedish
+
+        Args:
+            df DataFrame: data frame to translate
+        """
+        cols = df.columns.tolist()
+        translations = {}
+        for col in cols:
+            translations[col] = self.translate_gender_col_header(col)
+        df.rename(columns=translations, inplace=True)
 
     def load_vectorized_corpus(self) -> None:
         self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
@@ -177,11 +257,29 @@ class Corpus:
     def get_only_parties_with_data(self):
         parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
         return parties_in_data
-    
 
     def get_word_hits(self, search_term: str, n_hits: int = 5) -> list[str]:
         search_term = search_term.lower()
         return self.vectorized_corpus.find_matching_words({f"{search_term}"}, n_hits)
+
+    def translate_gender_col_header(self, col: str) -> str:
+        """Translates gender column names to Swedish
+
+        Args:
+            col str: column name, possibly a gender
+
+        Returns:
+            str: Swedish translation of column name if it represents a gender,
+            else the original column name
+        """
+        new_col = col
+        if "man" in col and "woman" not in col:
+            new_col = col.replace("man", "Män ")
+        if "woman" in col:
+            new_col = col.replace("woman", "Kvinnor ")
+        if "unknown" in col:
+            new_col = col.replace("unknown", "Okänt kön")
+        return new_col
 
 
 def load_corpus(env_file: str):

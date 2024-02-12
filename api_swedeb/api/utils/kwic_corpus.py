@@ -113,11 +113,10 @@ class KwicCorpus:
             # "speech_party_id": "party_id",
             "speech_who": "person_id",
         }
-        
+
         data.reset_index(inplace=True)
 
         data.rename(columns=renamed_selections, inplace=True)
-        
 
         # data = data.astype({"gender_id": int, "party_id": int})
         data["year"] = data.apply(lambda x: int(x["speech_date"].split("-")[0]), axis=1)
@@ -128,12 +127,13 @@ class KwicCorpus:
         data["link"] = data.apply(
             lambda x: self.get_link(x["person_id"], x["name"]), axis=1
         )
-        
-        #data.rename(columns=self.renamed_columns, inplace=True)
-        data['party_abbrev'] = 'not in test corpus'
-        data['gender'] = 'not in test corpus'
 
-        return data[[
+        # data.rename(columns=self.renamed_columns, inplace=True)
+        data["party_abbrev"] = "not in test corpus"
+        data["gender"] = "not in test corpus"
+
+        return data[
+            [
                 "left_word",
                 "node_word",
                 "right_word",
@@ -144,7 +144,6 @@ class KwicCorpus:
                 "gender",
                 "person_id",
                 "link",
-
             ]
         ]
 
