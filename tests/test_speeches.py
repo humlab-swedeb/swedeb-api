@@ -34,9 +34,38 @@ def test_speeches_get_years(client):
     assert response.status_code == status.HTTP_200_OK
     speeches = response.json()['speech_list']
     for speech in speeches:
-        assert 'year_column' in speech, 'year_column is missing in response'
-        assert speech['year_column'] >= start_year, 'year_column is less than start_year'
-        assert speech['year_column'] <= end_year, 'year_column is greater than end_year'
+        assert 'year' in speech, 'year is missing in response'
+        assert speech['year'] >= start_year, 'year is less than start_year'
+        assert speech['year'] <= end_year, 'year is greater than end_year'
+
+
+def test_get_speeches_corpus(corpus):
+    df_filtered = corpus.get_anforanden(
+        from_year= 1900,
+        to_year= 2000,
+        selections = {'party_id':[4,5], 'gender_id':[1,2]},
+        di_selected= None)
+     
+    print(df_filtered.head()[['year', 'gender', 'party_abbrev']])
+    print(df_filtered.columns)
+    df_unfiltered = corpus.get_anforanden(
+        from_year= 1900,
+        to_year= 2000,
+        selections = {},
+        di_selected= None)
+    assert len(df_filtered) < len(df_unfiltered)
+    assert df_filtered['party_abbrev'].unique() == ['L']
+
+
+def test_get_speeches_corpus_party_id(corpus):
+    df_filtered = corpus.get_anforanden(
+        from_year= 1900,
+        to_year= 2000,
+        selections = {'party_id':[4,5]},
+        di_selected= None)
+     
+     
+    print(df_filtered.head())
 
 
 def test_speaker_id(client):

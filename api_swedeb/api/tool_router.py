@@ -34,7 +34,7 @@ def get_loaded_kwic_corpus():
     return main.kwic_corpus
 
 
-@router.get("/kwic/{search}", response_model=KeywordInContextResult)
+@router.get("/kwic/{search}", response_model=KeywordInContextResult, description='NOTE: query parameters are not available in test data')
 async def get_kwic_results(
     commons: CommonParams,
     search: str,
@@ -101,14 +101,7 @@ async def get_speeches_result(
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
 async def get_speech_by_id_result(id: str, corpus=Depends(get_loaded_corpus)):
-    """_summary_
-
-    Args:
-        id (str): eg. prot-1971--1_007.
-        corpus (Corpus): Vectorized corpus.
-
-    Returns:
-        SpeechesTextResultItem: keys: speaker_note, speech_text
+    """ eg. prot-1971--1_007.
     """
     return get_speech_by_id(id, corpus)
 

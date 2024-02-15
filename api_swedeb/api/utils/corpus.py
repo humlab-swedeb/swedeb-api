@@ -102,6 +102,67 @@ class Corpus:
         # are sometimes many such columns
         unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
         return unstacked_trends
+    
+    def get_anforanden_for_word_trends(
+        self, selected_terms, filter_opts, start_year, end_year
+    ):
+        filtered_corpus = self.filter_corpus(filter_opts, self.vectorized_corpus)
+        vectors = self.get_word_vectors(selected_terms, filtered_corpus)
+        hits = []
+        for word, vec in vectors.items():
+            hit_di = filtered_corpus.document_index[vec.astype(bool)]
+            anforanden = self.prepare_anforande_display(hit_di)
+            anforanden["hit"] = word
+            hits.append(anforanden)
+
+        all_hits = pd.concat(hits)
+        all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
+
+        return all_hits
+    
+    def prepare_anforande_display(
+        self, anforanden_doc_index: pd.DataFrame
+    ) -> pd.DataFrame:
+        anforanden_doc_index = anforanden_doc_index[
+            ["who", "year", "document_name", "gender_id", "party_id"]
+        ]
+        adi = anforanden_doc_index.rename(columns={"who": "person_id"})
+        self.person_codecs.decode(adi, drop=False)
+        adi["link"] = adi.apply(
+            lambda x: self.get_link(x["person_id"], x["name"]), axis=1
+        )
+        adi['speech_link'] = self.get_speech_link()
+        adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
+
+        # to sort unknowns to the end of the results
+        sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
+        return sorted_adi
+    
+    def get_speech_link(self):
+        # temporary. Should be link to pdf/speech/something interesting
+        return 'https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot'
+    
+    def get_word_vectors(
+        self, words: list[str], corpus: VectorizedCorpus = None
+    ) -> dict:
+        """Returns individual corpus columns vectors for each search term
+
+        Args:
+            words: list of strings (search terms)
+            corpus (VectorizedCorpus, optional): current corpus in None.
+            Defaults to None.
+
+        Returns:
+            dict: key: search term, value: corpus column vector
+        """
+        vectors = {}
+        if corpus is None:
+            corpus = self.corpus
+
+        for word in words:
+            vectors[word] = corpus.get_word_vector(word)
+        return vectors
+
 
     def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Translates the (gender) columns of a data frame to Swedish
@@ -127,30 +188,7 @@ class Corpus:
             return "Okänd"
         return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
 
-    def prepare_anforande_display(
-        self, anforanden_doc_index: pd.DataFrame
-    ) -> pd.DataFrame:
-        anforanden_doc_index = anforanden_doc_index[
-            ["who", "year", "document_name", "gender_id", "party_id"]
-        ]
-        adi = anforanden_doc_index.rename(columns={"who": "person_id"})
-        self.person_codecs.decode(adi, drop=False)
-        adi["source_column"] = adi.apply(
-            lambda x: self.get_link(x["person_id"], x["name"]), axis=1
-        )
-        adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
-
-        # to sort unknowns to the end of the results
-        sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
-        return sorted_adi.rename(
-            columns={
-                "name": "speaker_column",
-                "document_name": "speech_id_column",
-                "gender": "gender_column",
-                "party_abbrev": "party_column",
-                "year": "year_column",
-            }
-        )
+    
 
     def _filter_speakers(
         self, current_selection_key, current_df_key, selection_dict, df

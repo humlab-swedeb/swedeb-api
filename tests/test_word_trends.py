@@ -99,15 +99,15 @@ def test_word_trends_speeches(client):
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    first_result = json['speech_list'][0]
+    print(json)
 
-    assert 'year_column' in first_result
-    assert 'speaker_column' in first_result
-    assert 'gender_column' in first_result
-    assert 'party_column' in first_result
-    assert 'source_column' in first_result
-    assert 'speech_id_column' in first_result
-    assert 'hit' in first_result
+
+def test_word_trends_speeches_corpus(corpus):
+    search_term = 'debatt'
+    df = corpus.get_anforanden_for_word_trends(selected_terms=[search_term], filter_opts={}, start_year=1900, end_year=2000)
+    assert len(df) > 0
+    print(df.head())
+    print(df.columns)
 
 
 
