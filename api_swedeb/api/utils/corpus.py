@@ -193,16 +193,13 @@ class Corpus:
     def _filter_speakers(
         self, current_selection_key, current_df_key, selection_dict, df
     ):
-        if current_selection_key in selection_dict:
-            df = df[df[current_df_key].isin(selection_dict[current_selection_key])]
-        return df
+        return  df[df[current_df_key].isin(selection_dict[current_selection_key])]
 
     def _get_filtered_speakers(self, selection_keys_dict, selection_dict, df):
-        for key in selection_keys_dict:
-            if key in selection_dict:
-                df = self._filter_speakers(
-                    key, selection_keys_dict[key], selection_dict, df
-                )
+        for selection_key, selection_value in selection_dict.items():
+
+        
+            df = df[df[selection_key].isin(selection_value)]
         return df
 
     def get_speakers(self, selections):

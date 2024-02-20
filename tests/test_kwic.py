@@ -44,6 +44,7 @@ def test_get_kwic_results_for_search_hits(kwic_corpus):
     assert len(kwic_results) > 0
 
 
+
 def test_get_kwic_name(kwic_corpus):
     search_hits = ["att"]
     from_year = 1900

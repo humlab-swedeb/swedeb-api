@@ -28,12 +28,14 @@ def test_get_speakers(corpus):
     print(speakers.columns)
     print(speakers['has_multiple_parties'].unique())
 
-def test_get_filtered_speakers_by_party(corpus):
-    speakers = corpus.get_speakers(selections={'party_id':['S']})
+
+def test_get_filtered_speakers_by_party_int(corpus):
+    speakers = corpus.get_speakers(selections={'party_id':[9]})
     assert len(speakers) > 0
     assert 'Tage Erlander'in speakers['speaker_name'].values
     assert 'S' in speakers['speaker_party'].unique()
     assert len(speakers['speaker_party'].unique()) == 1
+    print(speakers.columns)
 
 def test_get_speakers_api(client):
     

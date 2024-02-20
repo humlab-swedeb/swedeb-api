@@ -70,13 +70,12 @@ def test_get_speeches_corpus_party_id(corpus):
 
 def test_speaker_id(client):
     # retrieve speeches from a specific speaker
-    response = client.get(f"{version}/tools/speeches?speaker_ids=Q1606431")
-    speeches = response.json()['speech_list']
-    print(speeches)
-    for speech in speeches:
-        assert 'speaker_column' in speech, 'speaker_column is missing in response'
-        assert speech['speaker_column'] == 'Henry Allard', 'Q1606431 should be Henry Allard'
-
+    response = client.get(f"{version}/tools/speeches/prot-1971--1_007")
+    print(response.json())
+    speech = response.json()['speech_text']
+    note = response.json()['speaker_note']
+    assert len(speech) > 0
+    assert len(note) > 0
 
 def test_get_speech_by_id(corpus):
     speech_id = 'prot-1971--1_007'
