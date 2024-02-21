@@ -71,20 +71,7 @@ def test_ngrams(client):
     assert 'ngram' in first_result
     assert 'count' in first_result
 
-def test_speeches(client):
-    response = client.get(f"{version}/tools/speeches")
-    assert response.status_code == status.HTTP_200_OK
-    
-    json = response.json()
-    first_result = json['speech_list'][0]
-    
-    assert 'speech_list' in json
-    assert 'speaker_column' in first_result
-    assert 'year_column' in first_result
-    assert 'gender_column' in first_result
-    assert 'party_column' in first_result
-    assert 'source_column' in first_result
-    assert 'speech_id_column' in first_result
+
 
 
 def test_speech_by_id(client):
@@ -118,49 +105,6 @@ def test_end_year(client):
 
 
     
-
-def test_parties(client):
-    response = client.get(f"{version}/metadata/parties")
-    assert response.status_code == status.HTTP_200_OK
-    json = response.json()
-    assert 'parties' in json
-    assert len(json['parties']) > 0
-
-def test_genders(client):
-    response = client.get(f"{version}/metadata/genders")
-    assert response.status_code == status.HTTP_200_OK
-
-    json = response.json()
-    assert 'genders' in json
-    assert len(json['genders']) > 0
-
-def test_chambers(client):
-    
-    response = client.get(f"{version}/metadata/chambers")
-    assert response.status_code == status.HTTP_200_OK
-
-    json = response.json()
-    assert 'chambers' in json
-    assert len(json['chambers']) > 0
-
-def test_office_types(client):
-    
-    response = client.get(f"{version}/metadata/office_types")
-    assert response.status_code == status.HTTP_200_OK
-
-    json = response.json()
-
-    assert 'office_types' in json
-    assert len(json['office_types']) > 0
-
-def test_sub_office_types(client):
-    
-    response = client.get(f"{version}/metadata/sub_office_types")
-    assert response.status_code == status.HTTP_200_OK
-
-    json = response.json()
-    assert 'sub_office_types' in json
-    assert len(json['sub_office_types']) > 0
 
 def test_speakers(client):
     

@@ -10,22 +10,20 @@ from api_swedeb.api.utils.metadata import (
     get_end_year,
     get_start_year,
     get_parties,
-)
-
-
-from api_swedeb.schemas.metadata_schema import (
-    Parties,
-    Genders,
-    Chambers,
-    OfficeTypes,
-    SubOfficeTypes,
-    SpeakerResult,
-)
-from api_swedeb.api.dummy_data.dummy_meta import (
     get_genders,
     get_chambers,
     get_office_types,
     get_sub_office_types,
+)
+
+
+from api_swedeb.schemas.metadata_schema import (
+    PartyList,
+    GenderList,
+    ChamberList,
+    OfficeTypeList,
+    SubOfficeTypeList,
+    SpeakerResult,
 )
 
 SpeakerParams = Annotated[SpeakerQueryParams, Depends()]
@@ -54,29 +52,29 @@ async def get_meta_end_year(corpus=Depends(get_loaded_corpus)):
     return get_end_year(corpus)
 
 
-@router.get("/parties", response_model=Parties)
+@router.get("/parties", response_model=PartyList)
 async def get_meta_parties(corpus=Depends(get_loaded_corpus)):
     return get_parties(corpus)
 
 
-@router.get("/genders", response_model=Genders)
-async def get_meta_genders():
-    return get_genders()
+@router.get("/genders", response_model=GenderList)
+async def get_meta_genders(corpus=Depends(get_loaded_corpus)):
+    return get_genders(corpus)
 
 
-@router.get("/chambers", response_model=Chambers)
-async def get_meta_chambers():
-    return get_chambers()
+@router.get("/chambers", response_model=ChamberList)
+async def get_meta_chambers(corpus=Depends(get_loaded_corpus)):
+    return get_chambers(corpus)
 
 
-@router.get("/office_types", response_model=OfficeTypes)
-async def get_meta_office_types():
-    return get_office_types()
+@router.get("/office_types", response_model=OfficeTypeList)
+async def get_meta_office_types(corpus=Depends(get_loaded_corpus)):
+    return get_office_types(corpus)
 
 
-@router.get("/sub_office_types", response_model=SubOfficeTypes)
-async def get_meta_sub_office_types():
-    return get_sub_office_types()
+@router.get("/sub_office_types", response_model=SubOfficeTypeList)
+async def get_meta_sub_office_types(corpus=Depends(get_loaded_corpus)):
+    return get_sub_office_types(corpus)
 
 
 @router.get("/speakers", response_model=SpeakerResult)

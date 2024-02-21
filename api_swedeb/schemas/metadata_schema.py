@@ -6,20 +6,64 @@ class Year(BaseModel):
     year: str = Field(pattern=r"^\d{4}$")
 
 
-class Parties(BaseModel):
-    parties: List[str]
+class PartyItem(BaseModel):
+    party_id: int
+    party: str
+    party_abbrev: str
+    party_color: str
 
 
-class Chambers(BaseModel):
-    chambers: List[str]
+class PartyList(BaseModel):
+    party_list: List[PartyItem]
 
 
-class OfficeTypes(BaseModel):
-    office_types: List[str]
+class GenderItem(BaseModel):
+    gender_id: int
+    gender: str
+    gender_abbrev: str
+    swedish_gender: str
 
 
-class SubOfficeTypes(BaseModel):
-    sub_office_types: List[str]
+class GenderList(BaseModel):
+    gender_list: List[GenderItem]
+
+
+class SearchHits(BaseModel):
+    """When doing a search for word trends, this endpoint returs a list of hits for the search term
+        One search can return zero, one or multiple hits in the corpus
+    Args:
+        BaseModel (_type_): _description_
+    """
+
+    hit_list: List[str]
+
+
+class ChamberItem(BaseModel):
+    chamber_id: int
+    chamber: str
+
+
+class ChamberList(BaseModel):
+    chamber_list: List[ChamberItem]
+
+
+class OfficeTypeItem(BaseModel):
+    office_type_id: int
+    office: str
+
+
+class OfficeTypeList(BaseModel):
+    office_type_list: List[OfficeTypeItem]
+
+
+class SubOfficeTypeItem(BaseModel):
+    sub_office_type_id: int
+    office_type_id: int
+    identifier: str | None
+
+
+class SubOfficeTypeList(BaseModel):
+    sub_office_type_list: List[SubOfficeTypeItem]
 
 
 class Genders(BaseModel):
@@ -35,48 +79,3 @@ class SpeakerItem(BaseModel):
 
 class SpeakerResult(BaseModel):
     speaker_list: List[SpeakerItem]
-
-
-""" 
-class StartYearGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class EndYearGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class PartiesGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class GendersGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class ChambersGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class OfficeTypesGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class SubOfficeTypesGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class SpeakersGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class NgramsGetResponse(BaseModel):
-    message: Optional[str] = None
-
-
-class TopicsGetResponse(BaseModel):
-    message: Optional[str] = Field(None, example='This endpoint is not yet implemented')
-
-
-
- """

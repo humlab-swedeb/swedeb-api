@@ -11,16 +11,19 @@ from api_swedeb.schemas.speeches_schema import SpeechesResultWT, SpeechesResultI
 def get_search_hit_results(search: str, corpus: Corpus, n_hits: int):
     return SearchHits(hit_list=corpus.get_word_hits(search, n_hits))
 
-def split_search(search:str):
+
+def split_search(search: str):
     if "," in search:
         return search.split(",")
 
-    return  [search]
+    return [search]
+
 
 def get_start_year(commons: CommonQueryParams, corpus: Corpus):
     if commons.from_year:
         return commons.from_year
     return corpus.get_years_start()
+
 
 def get_end_year(commons: CommonQueryParams, corpus: Corpus):
     if commons.to_year:
@@ -31,7 +34,7 @@ def get_end_year(commons: CommonQueryParams, corpus: Corpus):
 def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus):
     first_year = get_start_year(commons, corpus)
     last_year = get_end_year(commons, corpus)
-    
+
     df = corpus.get_word_trend_results(
         search_terms=split_search(search),
         filter_opts=commons.get_selection_dict(),
@@ -49,15 +52,13 @@ def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus):
 
 
 def get_word_trend_speeches(search: str, commons: CommonQueryParams, corpus: Corpus):
-
     first_year = get_start_year(commons, corpus)
     last_year = get_end_year(commons, corpus)
 
-
-    df =  corpus.get_anforanden_for_word_trends(
-        split_search(search), commons.get_selection_dict(), first_year, last_year)
+    df = corpus.get_anforanden_for_word_trends(
+        split_search(search), commons.get_selection_dict(), first_year, last_year
+    )
 
     data = df.to_dict(orient="records")
     rows = [SpeechesResultItemWT(**row) for row in data]
     return SpeechesResultWT(speech_list=rows)
-

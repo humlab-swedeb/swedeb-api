@@ -102,7 +102,7 @@ class Corpus:
         # are sometimes many such columns
         unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
         return unstacked_trends
-    
+
     def get_anforanden_for_word_trends(
         self, selected_terms, filter_opts, start_year, end_year
     ):
@@ -119,7 +119,7 @@ class Corpus:
         all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
 
         return all_hits
-    
+
     def prepare_anforande_display(
         self, anforanden_doc_index: pd.DataFrame
     ) -> pd.DataFrame:
@@ -131,17 +131,17 @@ class Corpus:
         adi["link"] = adi.apply(
             lambda x: self.get_link(x["person_id"], x["name"]), axis=1
         )
-        adi['speech_link'] = self.get_speech_link()
+        adi["speech_link"] = self.get_speech_link()
         adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
 
         # to sort unknowns to the end of the results
         sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
         return sorted_adi
-    
+
     def get_speech_link(self):
         # temporary. Should be link to pdf/speech/something interesting
-        return 'https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot'
-    
+        return "https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot"
+
     def get_word_vectors(
         self, words: list[str], corpus: VectorizedCorpus = None
     ) -> dict:
@@ -162,7 +162,6 @@ class Corpus:
         for word in words:
             vectors[word] = corpus.get_word_vector(word)
         return vectors
-
 
     def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Translates the (gender) columns of a data frame to Swedish
@@ -188,17 +187,13 @@ class Corpus:
             return "Okänd"
         return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
 
-    
-
     def _filter_speakers(
         self, current_selection_key, current_df_key, selection_dict, df
     ):
-        return  df[df[current_df_key].isin(selection_dict[current_selection_key])]
+        return df[df[current_df_key].isin(selection_dict[current_selection_key])]
 
     def _get_filtered_speakers(self, selection_keys_dict, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
-
-        
             df = df[df[selection_key].isin(selection_value)]
         return df
 
@@ -210,7 +205,7 @@ class Corpus:
             current_speakers,
         )
 
-        current_speakers.rename(
+        current_speakers.rename(  # TODO OBS
             columns={
                 "party_abbrev": "speaker_party",
                 "name": "speaker_name",
@@ -220,6 +215,31 @@ class Corpus:
             inplace=True,
         )
         return current_speakers
+
+    def get_party_meta(self):
+        df = self.metadata.party
+        return df.reset_index()
+
+    def get_gender_meta(self):
+        df = self.metadata.gender
+        gender_df = df.reset_index()
+        swe_mapping = {"unknown": "Okänt", "man": "Man", "woman": "Kvinna"}
+        abbrev_mapping = {"unknown": "?", "man": "M", "woman": "K"}
+        gender_df["swedish_gender"] = gender_df["gender"].map(swe_mapping)
+        gender_df["gender_abbrev"] = gender_df["gender"].map(abbrev_mapping)
+        return gender_df
+
+    def get_chamber_meta(self):
+        df = self.metadata.chamber
+        return df.reset_index()
+
+    def get_office_type_meta(self):
+        df = self.metadata.office_type
+        return df.reset_index()
+
+    def get_sub_office_type_meta(self):
+        df = self.metadata.sub_office_type
+        return df.reset_index()
 
     def get_anforanden(
         self,
@@ -275,9 +295,6 @@ class Corpus:
     def get_years_end(self) -> int:
         """Returns the last year in the corpus"""
         return int(self.vectorized_corpus.document_index["year"].max())
-
-    def get_available_parties(self) -> list:
-        return list(self.get_party_specs().keys())
 
     def get_party_specs(self) -> Union[str, Mapping[str, int]]:
         for specification in self.metadata.property_values_specs:
