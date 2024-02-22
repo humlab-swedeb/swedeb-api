@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "api_swedeb"}]
 
 [tool.poetry.dependencies]
-python = "3.11"
+python = "3.11.*"
 fastapi = "^0.105.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
 humlab-penelope = "^0.7.47"
