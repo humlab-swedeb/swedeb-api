@@ -45,7 +45,7 @@ def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus):
     counts_list = []
     for year, row in df.iterrows():
         counts_dict = row.to_dict()
-        year_counts = WordTrendsItem(year=year, counts=counts_dict)
+        year_counts = WordTrendsItem(year=year, count=counts_dict)
         counts_list.append(year_counts)
 
     return WordTrendsResult(wt_list=counts_list)

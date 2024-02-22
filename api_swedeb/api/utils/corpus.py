@@ -14,9 +14,6 @@ from penelope.utility import PropertyValueMaskingOpts  # type: ignore
 class Corpus:
     def __init__(self, env_file=None):
         self.env_file = env_file
-        self.read_corpus()
-
-    def read_corpus(self):
         load_dotenv(self.env_file)
         self.tag: str = os.getenv("TAG")
         self.folder = os.getenv("FOLDER")
@@ -205,15 +202,6 @@ class Corpus:
             current_speakers,
         )
 
-        current_speakers.rename(  # TODO OBS
-            columns={
-                "party_abbrev": "speaker_party",
-                "name": "speaker_name",
-                "year_of_birth": "speaker_birth_year",
-                "year_of_death": "speaker_death_year",
-            },
-            inplace=True,
-        )
         return current_speakers
 
     def get_party_meta(self):
@@ -336,7 +324,6 @@ class Corpus:
 
 def load_corpus(env_file: str):
     c = Corpus(env_file=env_file)
-    c.read_corpus()
     return c
 
 

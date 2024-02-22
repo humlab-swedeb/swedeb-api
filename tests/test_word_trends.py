@@ -27,7 +27,7 @@ def test_dynamic_base_model():
     # each year will have a row in the result table in the UI
     # and there is a variable number of columns, one for each search term
     # and combination of metadata filters
-    # {'wt_list': [{'year': 1960, 'counts': {'att': 455, 'och': 314}}, {'year': 1961, 'counts': {'att': 136, 'och': 109}}, ...
+    # {'wt_list': [{'year': 1960, 'count': {'att': 455, 'och': 314}}, {'year': 1961, 'count': {'att': 136, 'och': 109}}, ...
     # i.e. 1960 has 455 hits for 'att' and 314 hits for 'och'
     # and 1961 has 136 hits for 'att' and 109 hits for 'och'
 
@@ -40,7 +40,7 @@ def test_dynamic_base_model():
     counts_list = []
     for year, row in df.iterrows():
         counts_dict = row.to_dict()
-        year_counts = WordTrendsItem(year=year, counts=counts_dict)
+        year_counts = WordTrendsItem(year=year, count=counts_dict)
         counts_list.append(year_counts)
 
     # Create a YearCountsList object
@@ -59,7 +59,7 @@ def test_word_trends_with_base_model(corpus):
     counts_list = []
     for year, row in df.iterrows():
         counts_dict = row.to_dict()
-        year_counts = WordTrendsItem(year=year, counts=counts_dict)
+        year_counts = WordTrendsItem(year=year, count=counts_dict)
         counts_list.append(year_counts)
 
     # Create a YearCountsList object
@@ -76,9 +76,9 @@ def test_word_trends_api(client):
     json = response.json()
     first_result = json['wt_list'][0]
 
-    counts = first_result['counts']
+    count = first_result['count']
     for word in search_term.split(','):
-        assert word in counts
+        assert word in count
 
 def test_word_trends_api_with_filter(client):
     search_term = 'att,och'
@@ -87,9 +87,9 @@ def test_word_trends_api_with_filter(client):
     first_result = json['wt_list'][0]
     print(json)
 
-    counts = first_result['counts']
+    count = first_result['count']
     for word in search_term.split(','):
-        assert word in counts
+        assert word in count
 
 
 def test_word_trends_speeches(client):

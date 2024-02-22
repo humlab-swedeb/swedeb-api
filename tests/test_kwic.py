@@ -65,10 +65,7 @@ def test_get_kwic_name(kwic_corpus):
 
 
 
-def test_reminder():
-    # the corpus '.env_1960' is not correct for kwic
-    # gender, parties not in result
-    assert 1 == 0
+
 
 
 def test_kwic_api(client):
