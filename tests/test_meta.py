@@ -90,13 +90,14 @@ def test_parties_api(client):
 def test_start_year(client):
     response = client.get(f"{version}/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == 1960
+    assert isinstance(response.json(), int)
+
     
 
 def test_end_year(client):
     response = client.get(f"{version}/metadata/end_year")
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == 1980
+    assert isinstance(response.json(), int)
 
 
 

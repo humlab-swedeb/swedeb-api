@@ -14,6 +14,8 @@ class KeywordInContextItem(BaseModel):
     party_abbrev: Optional[str] = Field(None, description="Party abbreviation")
     speech_title: Optional[str] = Field(None, description="Title of speech (id)")
     gender: Optional[str] = Field(None, description="gender of speaker")
+    person_id: Optional[str] = Field(None, description="Id of speaker")
+    link: Optional[str] = Field(None, description="Link to speaker wiki")
 
 
 class KeywordInContextResult(BaseModel):

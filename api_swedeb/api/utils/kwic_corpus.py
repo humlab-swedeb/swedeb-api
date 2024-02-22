@@ -22,16 +22,7 @@ class KwicCorpus:
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
             source=self.metadata_filename
         )
-        self.renamed_columns = {
-            "left_word": "Kontext Vänster",
-            "node_word": "Sökord",
-            "right_word": "Kontext Höger",
-            "year": "År",
-            "name": "Talare",
-            "party_abbrev": "Parti",
-            "speech_title": "Protokoll",
-            "gender": "Kön",
-        }
+
 
     def load_kwic_corpus(self) -> Corpus:
         corpora: Corpora = Corpora(registry_dir=self.kwic_corpus_dir)
@@ -93,8 +84,8 @@ class KwicCorpus:
             p_show=["word"],  # ['word', 'pos', 'lemma']
             s_show=[
                 "speech_who",
-                # "speech_party_id",
-                # "speech_gender_id",
+                "speech_party_id",
+                "speech_gender_id",
                 "speech_date",
                 "speech_title",
             ],
@@ -109,8 +100,8 @@ class KwicCorpus:
             return pd.DataFrame()
 
         renamed_selections = {
-            # "speech_gender_id": "gender_id",
-            # "speech_party_id": "party_id",
+            "speech_gender_id": "gender_id",
+            "speech_party_id": "party_id",
             "speech_who": "person_id",
         }
 
@@ -118,7 +109,7 @@ class KwicCorpus:
 
         data.rename(columns=renamed_selections, inplace=True)
 
-        # data = data.astype({"gender_id": int, "party_id": int})
+        data = data.astype({"gender_id": int, "party_id": int})
         data["year"] = data.apply(lambda x: int(x["speech_date"].split("-")[0]), axis=1)
 
         data = data[data["year"].between(from_year, to_year)]
@@ -128,9 +119,8 @@ class KwicCorpus:
             lambda x: self.get_link(x["person_id"], x["name"]), axis=1
         )
 
-        # data.rename(columns=self.renamed_columns, inplace=True)
-        data["party_abbrev"] = "not in test corpus"
-        data["gender"] = "not in test corpus"
+        #data["party_abbrev"] = "not in test corpus"
+        #data["gender"] = "not in test corpus"
 
         return data[
             [
@@ -146,6 +136,7 @@ class KwicCorpus:
                 "link",
             ]
         ]
+        return data
 
     def get_link(self, person_id, name):
         if name == "":
@@ -154,8 +145,8 @@ class KwicCorpus:
 
     def rename_selection_keys(self, selections):
         renames = {
-            # "gender_id": "speech_gender_id",
-            # "party_id": "speech_party_id",
+            "gender_id": "speech_gender_id",
+            "party_id": "speech_party_id",
             "who": "speech_who",
         }
         for key, value in renames.items():

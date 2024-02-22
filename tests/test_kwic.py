@@ -46,9 +46,9 @@ def test_get_kwic_results_for_search_hits(kwic_corpus):
 
 
 def test_get_kwic_name(kwic_corpus):
-    search_hits = ["att"]
-    from_year = 1900
-    to_year = 2000
+    search_hits = ["debatt"]
+    from_year = 1960
+    to_year = 1970
     selections = {}
     words_before = 2
     words_after = 2
@@ -58,6 +58,11 @@ def test_get_kwic_name(kwic_corpus):
     assert len(kwic_results) > 0
     print(kwic_results['name'])
     print(kwic_results['name'].unique())
+    print(kwic_results.head())
+    print(kwic_results.columns)
+    print(kwic_results['gender'].unique())
+    print(kwic_results['gender_id'].unique())
+
 
 
 def test_reminder():
