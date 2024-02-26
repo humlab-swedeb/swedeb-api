@@ -7,7 +7,7 @@ from api_swedeb.schemas.ngrams_schema import NGramResult
 # from api_swedeb.schemas.topics_schema import TopicResult
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-from api_swedeb.api.dummy_data import dummy_ngrams
+from api_swedeb.api.utils.ngrams import get_ngrams
 from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id
 from api_swedeb.api.utils.kwic import get_kwic_data
 from api_swedeb.api.utils.word_trends import (
@@ -87,12 +87,13 @@ async def get_word_hits(
 
 
 @router.get("/ngrams/{search}", response_model=NGramResult)
-async def get_ngrams(
+async def get_ngram_results(
     search: str,
     commons: CommonParams,
+    kwic_corpus=Depends(get_loaded_kwic_corpus),
 ):
     """Get ngrams"""
-    return dummy_ngrams.get_ngrams(search, commons)
+    return get_ngrams(search, commons, kwic_corpus)
 
 
 @router.get("/speeches", response_model=SpeechesResult)

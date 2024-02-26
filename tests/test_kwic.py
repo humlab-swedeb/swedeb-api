@@ -61,7 +61,6 @@ def test_get_kwic_name(kwic_corpus):
     print(kwic_results.head())
     print(kwic_results.columns)
     print(kwic_results['gender'].unique())
-    print(kwic_results['gender_id'].unique())
 
 
 

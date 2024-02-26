@@ -1,4 +1,3 @@
-# To replace dummy_speech.py
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem

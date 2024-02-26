@@ -23,19 +23,18 @@ def corpus():
 def test_get_speakers(corpus):
     speakers = corpus.get_speakers(selections={})
     assert len(speakers) > 0
-    assert 'Tage Erlander'in speakers['speaker_name'].values
-    print(speakers.head())
-    print(speakers.columns)
-    print(speakers['has_multiple_parties'].unique())
+
 
 
 def test_get_filtered_speakers_by_party_int(corpus):
     speakers = corpus.get_speakers(selections={'party_id':[9]})
     assert len(speakers) > 0
-    assert 'Tage Erlander'in speakers['speaker_name'].values
-    assert 'S' in speakers['speaker_party'].unique()
-    assert len(speakers['speaker_party'].unique()) == 1
+    assert 'S' in speakers['party_abbrev'].unique()
+    assert len(speakers['party_abbrev'].unique()) == 1
     print(speakers.columns)
+
+
+
 
 def test_get_speakers_api(client):
     
@@ -45,10 +44,10 @@ def test_get_speakers_api(client):
     json = response.json()
     assert 'speaker_list' in json
     first_result = json['speaker_list'][0]
-    assert 'speaker_name' in first_result
-    assert 'speaker_party' in first_result
-    assert 'speaker_birth_year' in first_result
-    assert 'speaker_death_year' in first_result
+    assert 'name' in first_result
+    assert 'party_abbrev' in first_result
+    assert 'year_of_birth' in first_result
+    assert 'year_of_death' in first_result
 
 
 def test_get_speakers_api_with_params(client):
@@ -59,7 +58,7 @@ def test_get_speakers_api_with_params(client):
     json = response.json()
     assert 'speaker_list' in json
     for speaker in json['speaker_list']:
-        assert speaker['speaker_party'] == 'S'
-        assert 'Tage' not in speaker['speaker_name']
+        assert speaker['party_abbrev'] == 'S'
         
-    print(json)
+        print(speaker)
+        

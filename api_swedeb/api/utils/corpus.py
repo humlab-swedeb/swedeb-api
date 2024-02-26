@@ -326,7 +326,3 @@ def load_corpus(env_file: str):
     c = Corpus(env_file=env_file)
     return c
 
-
-if __name__ == "__main__":
-    c = load_corpus(".env_1960")
-    c.get_speech_text("prot-1960--1_001")

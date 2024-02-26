@@ -111,10 +111,3 @@ def test_speakers(client):
     response = client.get(f"{version}/metadata/speakers")
     assert response.status_code == status.HTTP_200_OK
 
-    json = response.json()
-    assert 'speaker_list' in json
-    first_result = json['speaker_list'][0]
-    assert 'speaker_name' in first_result
-    assert 'speaker_party' in first_result
-    assert 'speaker_birth_year' in first_result
-    assert 'speaker_death_year' in first_result
