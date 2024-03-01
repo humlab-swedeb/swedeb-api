@@ -1,27 +1,10 @@
 
 from fastapi import FastAPI, Depends # Response
 from fastapi.middleware.cors import CORSMiddleware
-from api_swedeb.api.utils.corpus import load_corpus
-from api_swedeb.api.utils.kwic_corpus import KwicCorpus
-#import json
-
-
+from api_swedeb.api.utils.dependencies import get_corpus, get_kwic_corpus
 from api_swedeb.api import metadata_router, tool_router
 
-
-def get_corpus():
-    return load_corpus('.env_1960')
-
-
-kwic_corpus = KwicCorpus(env_file='.env_1960')
-
-
-
-app = FastAPI(dependencies=[Depends(get_corpus)])
-
-
-loaded_corpus = get_corpus()
-
+app = FastAPI(dependencies=[Depends(get_corpus), Depends(get_kwic_corpus)])
 
 origins = ['http://localhost:8080'] 
 

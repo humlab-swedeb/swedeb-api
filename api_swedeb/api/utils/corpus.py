@@ -325,4 +325,3 @@ class Corpus:
 def load_corpus(env_file: str):
     c = Corpus(env_file=env_file)
     return c
-

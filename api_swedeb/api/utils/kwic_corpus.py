@@ -23,7 +23,6 @@ class KwicCorpus:
             source=self.metadata_filename
         )
 
-
     def load_kwic_corpus(self) -> Corpus:
         corpora: Corpora = Corpora(registry_dir=self.kwic_corpus_dir)
         corpus: Corpus = corpora.corpus(corpus_name=self.kwic_corpus_name)
@@ -119,8 +118,8 @@ class KwicCorpus:
             lambda x: self.get_link(x["person_id"], x["name"]), axis=1
         )
 
-        #data["party_abbrev"] = "not in test corpus"
-        #data["gender"] = "not in test corpus"
+        # data["party_abbrev"] = "not in test corpus"
+        # data["gender"] = "not in test corpus"
 
         return data[
             [
@@ -153,8 +152,3 @@ class KwicCorpus:
             if key in selections:
                 selections[value] = selections.pop(key)
         return selections
-
-
-if __name__ == "__main__":
-    kwic_corpus = KwicCorpus(env_file=".env_1960")
-    print(type(kwic_corpus))
