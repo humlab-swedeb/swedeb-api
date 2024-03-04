@@ -75,6 +75,7 @@ class SpeakerItem(BaseModel):
     party_abbrev: str  # TODO change to List[str] or otherwise handle multiple parties
     year_of_birth: int = None
     year_of_death: int = None
+    person_id: str = None
 
 
 class SpeakerResult(BaseModel):

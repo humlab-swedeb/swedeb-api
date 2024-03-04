@@ -189,20 +189,20 @@ class Corpus:
     ):
         return df[df[current_df_key].isin(selection_dict[current_selection_key])]
 
-    def _get_filtered_speakers(self, selection_keys_dict, selection_dict, df):
+    def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
             df = df[df[selection_key].isin(selection_value)]
         return df
 
     def get_speakers(self, selections):
         current_speakers = self.decoded_persons.copy()
+
         current_speakers = self._get_filtered_speakers(
-            {"party_id": "party_abbrev", "gender_id": "gender"},
             selections,
             current_speakers,
         )
 
-        return current_speakers
+        return current_speakers.reset_index(inplace=False)
 
     def get_party_meta(self):
         df = self.metadata.party
