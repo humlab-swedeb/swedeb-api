@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api_swedeb.api.utils.dependencies import get_corpus, get_kwic_corpus
 from api_swedeb.api import metadata_router, tool_router
 
-app = FastAPI(dependencies=[Depends(get_corpus), Depends(get_kwic_corpus)])
+app = FastAPI()
 
 origins = ['http://localhost:8080'] 
 

@@ -19,6 +19,7 @@ from fastapi import Query, Depends
 from typing import Annotated
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.kwic_corpus import KwicCorpus
+from api_swedeb.api.utils.dependencies import get_corpus, get_kwic_corpus
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
@@ -44,7 +45,7 @@ async def get_kwic_results(
     words_after: int = Query(
         2, description="Number of tokens after the search word(s)"
     ),
-    corpus: KwicCorpus = Depends(),
+    corpus: KwicCorpus = Depends(get_kwic_corpus),
 ):
     """Get keyword in context"""
     return get_kwic_data(search, commons, lemmatized, words_before, words_after, corpus)
@@ -54,7 +55,7 @@ async def get_kwic_results(
 async def get_word_trends_result(
     search: str,
     commons: CommonParams,
-    corpus: Corpus = Depends(),
+    corpus: Corpus = Depends(get_corpus),
 ):
     """Get word trends"""
     return get_word_trends(search, commons, corpus)
@@ -64,7 +65,7 @@ async def get_word_trends_result(
 async def get_word_trend_speeches_result(
     search: str,
     commons: CommonParams,
-    corpus: Corpus = Depends(),
+    corpus: Corpus = Depends(get_corpus),
 ):
     """Get word trends"""
     return get_word_trend_speeches(search, commons, corpus)
@@ -73,7 +74,7 @@ async def get_word_trend_speeches_result(
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
 async def get_word_hits(
     search: str,
-    corpus: Corpus = Depends(),
+    corpus: Corpus = Depends(get_corpus),
     n_hits: int = Query(5, description="Number of hits to return"),
 ):
     return get_search_hit_results(search=search, n_hits=n_hits, corpus=corpus)
@@ -83,7 +84,7 @@ async def get_word_hits(
 async def get_ngram_results(
     search: str,
     commons: CommonParams,
-    kwic_corpus: KwicCorpus = Depends(),
+    kwic_corpus: KwicCorpus = Depends(get_corpus),
 ):
     """Get ngrams"""
     return get_ngrams(search, commons, kwic_corpus)
@@ -92,13 +93,13 @@ async def get_ngram_results(
 @router.get("/speeches", response_model=SpeechesResult)
 async def get_speeches_result(
     commons: CommonParams,
-    corpus: Corpus = Depends(),
+    corpus: Corpus = Depends(get_corpus),
 ):
     return get_speeches(commons, corpus)
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
-async def get_speech_by_id_result(id: str, corpus: Corpus = Depends()):
+async def get_speech_by_id_result(id: str, corpus: Corpus = Depends(get_corpus)):
     """eg. prot-1971--1_007."""
     return get_speech_by_id(id, corpus)
 

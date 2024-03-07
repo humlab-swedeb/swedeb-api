@@ -39,7 +39,7 @@ def test_kwic(client):
     assert 'gender' in first_result
 
 def test_kwic_with_with_parameters(client):
-    response = client.get(f"{version}/tools/kwic/search_term?from_year=1960&to_year=1970&office_types=riksdagsledamot&sub_office_types=riksdagsledamot&speaker_ids=1&sort_by=year_title&parties=S&genders=M&chambers=riksdagen&limit=10&offset=0&sort_order=asc")
+    response = client.get(f"{version}/tools/kwic/search_term?from_year=1960&to_year=1970&office_types=riksdagsledamot&sub_office_types=riksdagsledamot&who=1&sort_by=year_title&parties=S&genders=M&chambers=riksdagen&limit=10&offset=0&sort_order=asc")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
     assert 'kwic_list' in json

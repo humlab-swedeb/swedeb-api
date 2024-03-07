@@ -52,7 +52,7 @@ class CommonQueryParams(SpeakerQueryParams):
         sub_office_types: List[str] = Query(
             None, description="List of selected suboffice types"
         ),
-        speaker_ids: List[str] = Query(
+        who: List[str] = Query(
             None,
             description="List of selected speaker ids. With this parameter, other metadata filters are unnecessary",
         ),
@@ -67,23 +67,21 @@ class CommonQueryParams(SpeakerQueryParams):
         super().__init__(office_types, sub_office_types, party_id, gender_id, chambers)
         self.from_year = from_year
         self.to_year = to_year
-        self.speaker_ids = speaker_ids
+        self.who = who
         self.sort_by = sort_by
         self.limit = limit
         self.offset = offset
         self.sort_order = sort_order
 
     def get_selection_dict(self):
-        # Currently returns gender_id and party_id, to mimic
-        # prototype. who (speaker_id), was also included in the prototype, but
-        # not included here yet. key for genders is gender_id, key for parties is party_id
-        # and key for speaker id is who
+        # Currently returns gender_id, party_id and person_id (who)
+        # chambers, office and suboffice not yet supported
         # if no selections are made, return empty dict
         selections = {}
         if self.party_id:
             selections.update({"party_id": self.party_id})
         if self.gender_id:
             selections.update({"gender_id": self.gender_id})
-        if self.speaker_ids:
-            selections.update({"who": self.speaker_ids})
+        if self.who:
+            selections.update({"who": self.who})
         return selections
