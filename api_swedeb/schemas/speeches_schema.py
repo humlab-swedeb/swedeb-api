@@ -10,6 +10,7 @@ class SpeechesResultItem(BaseModel):
     speech_link: str = Field(None, description="Source of speech")
     document_name: str = Field(None, description="Unique id of speech")
     link: str = Field(None, description="Link to the speaker")
+    formatted_speech_id: str = Field(None, description="Formatted speech id")
 
 
 class SpeechesResult(BaseModel):

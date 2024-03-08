@@ -130,6 +130,9 @@ class Corpus:
         )
         adi["speech_link"] = self.get_speech_link()
         adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
+        adi["formatted_speech_id"] = adi.apply(
+            lambda x: self.format_protocol_id(x["document_name"]), axis=1
+        )
 
         # to sort unknowns to the end of the results
         sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
@@ -320,6 +323,17 @@ class Corpus:
         if "unknown" in col:
             new_col = col.replace("unknown", "Okänt kön")
         return new_col
+    
+    def format_protocol_id(self, selected_protocol: str):
+        protocol_parts = selected_protocol.split("-")
+
+        if "ak" in selected_protocol or "fk" in selected_protocol:
+
+            ch = "Andra" if 'ak' in selected_protocol else "Första"
+            chamber = f"{ch} kammaren" 
+            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5].split('_')[0]}"
+        else:
+            return protocol_parts[1] + ":" + protocol_parts[3].split("_")[0]
 
 
 def load_corpus(env_file: str):

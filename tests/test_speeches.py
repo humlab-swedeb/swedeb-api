@@ -26,6 +26,23 @@ def test_speeches_get(client):
     print(response.json())
 
 
+
+def test_format_speech_id(corpus):
+    prot = 'prot-1966-höst-fk--38_044'
+    assert corpus.format_protocol_id(prot) == 'Första kammaren 1966:38' 
+    prot = 'prot-200405--113_075'
+    assert corpus.format_protocol_id(prot) == '200405:113'
+
+def test_get_formatted_sppech_id(corpus):
+    df_filtered = corpus.get_anforanden(
+    from_year= 1900,
+    to_year= 2000,
+    selections = {'party_id':[4,5], 'gender_id':[1,2]},
+    di_selected= None)
+    assert 'formatted_speech_id' in df_filtered.columns
+
+
+
 def test_speeches_get_years(client):
     # assert that the returned speeches comes from the correct years
     start_year = 1960
