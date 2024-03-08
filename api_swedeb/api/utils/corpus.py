@@ -317,8 +317,8 @@ class Corpus:
             else the original column name
         """
         new_col = col
-        if "man" in col and "woman" not in col:
-            new_col = col.replace("man", "Män ")
+        if " man" in col and "woman" not in col:
+            new_col = col.replace(" man", " Män ")
         if "woman" in col:
             new_col = col.replace("woman", "Kvinnor ")
         if "unknown" in col:
