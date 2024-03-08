@@ -8,14 +8,14 @@ from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.api.utils.ngrams import get_ngrams
-from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id
+from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id, get_speech_zip
 from api_swedeb.api.utils.kwic import get_kwic_data
 from api_swedeb.api.utils.word_trends import (
     get_word_trend_speeches,
     get_word_trends,
     get_search_hit_results,
 )
-from fastapi import Query, Depends
+from fastapi import Query, Depends, HTTPException
 from typing import Annotated
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.kwic_corpus import KwicCorpus
@@ -102,6 +102,12 @@ async def get_speeches_result(
 async def get_speech_by_id_result(id: str, corpus: Corpus = Depends(get_corpus)):
     """eg. prot-1971--1_007."""
     return get_speech_by_id(id, corpus)
+
+@router.get("/speech_download/")
+async def get_zip(ids: list=Query(..., min_length=1, max_length=2), corpus: Corpus = Depends(get_corpus)):
+    if not ids:
+        raise HTTPException(status_code=400, detail="Speech ids are required") 
+    return get_speech_zip(ids, corpus)
 
 
 @router.get("/topics")

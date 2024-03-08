@@ -56,6 +56,15 @@ def test_speeches_get_years(client):
         assert speech['year'] <= end_year, 'year is greater than end_year'
 
 
+def test_speeches_zip(client):
+    # assert that the speeches zip endpoint is reachable
+    response = client.get(f"{version}/tools/speech_download/?ids=prot-1966-h%C3%B6st-fk--38_044&ids=prot-1966-h%C3%B6st-fk--38_043")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
+    assert response.headers['Content-Type'] == 'application/zip'
+    assert len(response.content) > 0
+
+
 def test_get_speeches_corpus(corpus):
     df_filtered = corpus.get_anforanden(
         from_year= 1900,
