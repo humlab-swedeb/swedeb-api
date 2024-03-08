@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from ccc import Corpora, Corpus
+from ccc import Corpora, Corpus, __version__ as ccc_version
 from westac.riksprot.parlaclarin import codecs as md
 
 import pandas as pd
@@ -22,10 +22,11 @@ class KwicCorpus:
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
             source=self.metadata_filename
         )
+        self.data_dir: str | None = os.getenv("KWIC_TEMP_DIR") or f'/tmp/ccc-{str(ccc_version)}-{os.environ.get('USER', 'swedeb')}'
 
     def load_kwic_corpus(self) -> Corpus:
         corpora: Corpora = Corpora(registry_dir=self.kwic_corpus_dir)
-        corpus: Corpus = corpora.corpus(corpus_name=self.kwic_corpus_name)
+        corpus: Corpus = corpora.corpus(corpus_name=self.kwic_corpus_name, data_dir=self.data_dir)
         return corpus
 
     def _construct_multiword_query(search_terms):
