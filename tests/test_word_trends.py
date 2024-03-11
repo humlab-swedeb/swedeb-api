@@ -138,5 +138,13 @@ def test_word_hits_api(client):
     assert len(json['hit_list']) > 0
 
 
-def test_parlaclarin():
-    pass
+
+
+def test_chambers(corpus):
+    df = corpus.get_word_trend_results(search_terms=["arbete"], filter_opts={"chamber_id": [0]}, start_year=1960, end_year=1961)
+    print(df.head())
+
+def test_chambers_di(corpus):
+    di = corpus.vectorized_corpus.document_index
+    print(di.columns)
+    print(di.head()[['document_id', 'document_name']])

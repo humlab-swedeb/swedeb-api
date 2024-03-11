@@ -8,10 +8,13 @@ app = FastAPI()
 
 origins = ['http://localhost:8080'] 
 
+kwic_corpus = get_kwic_corpus()
+corpus = get_corpus()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_methods=['GET', 'POST'],
+    allow_methods=['GET', 'POST', 'FETCH'],
     allow_headers=[],
     allow_credentials=True,
 )
