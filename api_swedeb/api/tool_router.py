@@ -17,8 +17,6 @@ from api_swedeb.api.utils.word_trends import (
 )
 from fastapi import Query, Depends, HTTPException, Body
 from typing import Annotated
-from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.api.utils.kwic_corpus import KwicCorpus
 from api_swedeb.api.utils.dependencies import shared_corpus, shared_kwic_corpus
 
 CommonParams = Annotated[CommonQueryParams, Depends()]

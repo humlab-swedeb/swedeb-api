@@ -2,7 +2,6 @@ import fastapi
 
 from fastapi import Depends
 from api_swedeb.api.utils.common_params import SpeakerQueryParams
-from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.dependencies import shared_corpus
 from typing import Annotated
 
