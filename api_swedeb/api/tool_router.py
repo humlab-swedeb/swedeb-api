@@ -15,7 +15,7 @@ from api_swedeb.api.utils.word_trends import (
     get_word_trends,
     get_search_hit_results,
 )
-from fastapi import Query, Depends, HTTPException
+from fastapi import Query, Depends, HTTPException, Body
 from typing import Annotated
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.kwic_corpus import KwicCorpus
@@ -103,8 +103,8 @@ async def get_speech_by_id_result(id: str, corpus: Corpus = Depends(get_corpus))
     """eg. prot-1971--1_007."""
     return get_speech_by_id(id, corpus)
 
-@router.get("/speech_download/")
-async def get_zip(ids: list=Query(..., min_length=1, max_length=2), corpus: Corpus = Depends(get_corpus)):
+@router.post("/speech_download/")
+async def get_zip(ids: list=Body(..., min_length=1, max_length=100), corpus: Corpus = Depends(get_corpus)):
     if not ids:
         raise HTTPException(status_code=400, detail="Speech ids are required") 
     return get_speech_zip(ids, corpus)

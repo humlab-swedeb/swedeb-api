@@ -6,7 +6,7 @@ from typing import List
 import io
 import zipfile
 from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, Response, HTTPException
+
 
 
 def get_speeches(commons: CommonQueryParams, corpus)->SpeechesResult:
