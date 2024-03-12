@@ -62,6 +62,3 @@ def get_word_trend_speeches(search: str, commons: CommonQueryParams, corpus: Cor
     data = df.to_dict(orient="records")
     rows = [SpeechesResultItemWT(**row) for row in data]
     return SpeechesResultWT(speech_list=rows)
-
-
-

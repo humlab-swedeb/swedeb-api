@@ -26,7 +26,6 @@ router = fastapi.APIRouter(
 )
 
 
-
 @router.get(
     "/kwic/{search}",
     response_model=KeywordInContextResult,
@@ -44,17 +43,17 @@ async def get_kwic_results(
     words_after: int = Query(
         2, description="Number of tokens after the search word(s)"
     ),
-   
 ):
     """Get keyword in context"""
-    return get_kwic_data(search, commons, lemmatized, words_before, words_after, shared_kwic_corpus)
+    return get_kwic_data(
+        search, commons, lemmatized, words_before, words_after, shared_kwic_corpus
+    )
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
 async def get_word_trends_result(
     search: str,
     commons: CommonParams,
-
 ):
     """Get word trends"""
     return get_word_trends(search, commons, shared_corpus)
@@ -64,7 +63,6 @@ async def get_word_trends_result(
 async def get_word_trend_speeches_result(
     search: str,
     commons: CommonParams,
-   
 ):
     """Get word trends"""
     return get_word_trend_speeches(search, commons, shared_corpus)
@@ -82,7 +80,6 @@ async def get_word_hits(
 async def get_ngram_results(
     search: str,
     commons: CommonParams,
-
 ):
     """Get ngrams"""
     return get_ngrams(search, commons, shared_kwic_corpus)
@@ -100,10 +97,11 @@ async def get_speech_by_id_result(id: str):
     """eg. prot-1971--1_007."""
     return get_speech_by_id(id, shared_corpus)
 
+
 @router.post("/speech_download/")
-async def get_zip(ids: list=Body(..., min_length=1, max_length=100)):
+async def get_zip(ids: list = Body(..., min_length=1, max_length=100)):
     if not ids:
-        raise HTTPException(status_code=400, detail="Speech ids are required") 
+        raise HTTPException(status_code=400, detail="Speech ids are required")
     return get_speech_zip(ids, shared_corpus)
 
 
