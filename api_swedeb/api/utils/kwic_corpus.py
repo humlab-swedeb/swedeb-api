@@ -1,10 +1,12 @@
 import os
 from dotenv import load_dotenv
+
+from api_swedeb.api.parlaclarin import codecs as md
 from ccc import Corpora, Corpus, __version__ as ccc_version
-from westac.riksprot.parlaclarin import codecs as md
+
 
 import pandas as pd
-from typing import List
+from typing import List 
 
 
 class KwicCorpus:

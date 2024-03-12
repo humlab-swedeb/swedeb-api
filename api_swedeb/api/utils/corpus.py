@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
-from westac.riksprot.parlaclarin import codecs as md
+from api_swedeb.api.parlaclarin import codecs as md
 from penelope.corpus import VectorizedCorpus
-from westac.riksprot.parlaclarin import speech_text as sr
+from api_swedeb.api.parlaclarin import speech_text as sr
 import pandas as pd
 from typing import Union, Mapping, List
 from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
