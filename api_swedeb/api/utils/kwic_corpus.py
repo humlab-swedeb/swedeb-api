@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from ccc import Corpora, Corpus
-from westac.riksprot.parlaclarin import codecs as md
+from api_swedeb.api.parlaclarin import codecs as md
 
 import pandas as pd
 from typing import List
