@@ -11,11 +11,15 @@ from typing import List
 
 class KwicCorpus:
     def __init__(self, env_file=None):
+        
         self.env_file = env_file
         load_dotenv(self.env_file)
-        self.kwic_corpus_dir = os.getenv("KWIC_DIR")
-        self.kwic_corpus_name = os.getenv("KWIC_CORPUS_NAME")
-        self.corpus = self.load_kwic_corpus()
+
+        kwic_corpus_dir = os.getenv("KWIC_DIR")
+        kwic_corpus_name = os.getenv("KWIC_CORPUS_NAME")
+        data_dir: str | None = os.getenv("KWIC_TEMP_DIR") or f"/tmp/ccc-{str(ccc_version)}-{os.environ.get('USER', 'swedeb')}"
+        
+        self.corpus = self.load_kwic_corpus(data_dir, kwic_corpus_dir, kwic_corpus_name)
 
         self.metadata_filename = os.getenv("METADATA_FILENAME")
 
@@ -24,11 +28,10 @@ class KwicCorpus:
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
             source=self.metadata_filename
         )
-        self.data_dir: str | None = os.getenv("KWIC_TEMP_DIR") or f'/tmp/ccc-{str(ccc_version)}-{os.environ.get('USER', 'swedeb')}'
 
-    def load_kwic_corpus(self) -> Corpus:
-        corpora: Corpora = Corpora(registry_dir=self.kwic_corpus_dir)
-        corpus: Corpus = corpora.corpus(corpus_name=self.kwic_corpus_name, data_dir=self.data_dir)
+    def load_kwic_corpus(self, data_dir, kwic_corpus_dir, kwic_corpus_name) -> Corpus:
+        corpora: Corpora = Corpora(registry_dir=kwic_corpus_dir)
+        corpus: Corpus = corpora.corpus(corpus_name=kwic_corpus_name, data_dir=data_dir)
         return corpus
 
     def _construct_multiword_query(search_terms):
@@ -138,7 +141,6 @@ class KwicCorpus:
                 "link",
             ]
         ]
-        return data
 
     def get_link(self, person_id, name):
         if name == "":
