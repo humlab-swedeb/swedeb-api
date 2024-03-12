@@ -15,11 +15,9 @@ from api_swedeb.api.utils.word_trends import (
     get_word_trends,
     get_search_hit_results,
 )
-from fastapi import Query, Depends, HTTPException
+from fastapi import Query, Depends, HTTPException, Body
 from typing import Annotated
-from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.api.utils.kwic_corpus import KwicCorpus
-from api_swedeb.api.utils.dependencies import get_corpus, get_kwic_corpus
+from api_swedeb.api.utils.dependencies import shared_corpus, shared_kwic_corpus
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
@@ -45,69 +43,66 @@ async def get_kwic_results(
     words_after: int = Query(
         2, description="Number of tokens after the search word(s)"
     ),
-    corpus: KwicCorpus = Depends(get_kwic_corpus),
 ):
     """Get keyword in context"""
-    return get_kwic_data(search, commons, lemmatized, words_before, words_after, corpus)
+    return get_kwic_data(
+        search, commons, lemmatized, words_before, words_after, shared_kwic_corpus
+    )
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
 async def get_word_trends_result(
     search: str,
     commons: CommonParams,
-    corpus: Corpus = Depends(get_corpus),
 ):
     """Get word trends"""
-    return get_word_trends(search, commons, corpus)
+    return get_word_trends(search, commons, shared_corpus)
 
 
 @router.get("/word_trend_speeches/{search}", response_model=SpeechesResultWT)
 async def get_word_trend_speeches_result(
     search: str,
     commons: CommonParams,
-    corpus: Corpus = Depends(get_corpus),
 ):
     """Get word trends"""
-    return get_word_trend_speeches(search, commons, corpus)
+    return get_word_trend_speeches(search, commons, shared_corpus)
 
 
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
 async def get_word_hits(
     search: str,
-    corpus: Corpus = Depends(get_corpus),
     n_hits: int = Query(5, description="Number of hits to return"),
 ):
-    return get_search_hit_results(search=search, n_hits=n_hits, corpus=corpus)
+    return get_search_hit_results(search=search, n_hits=n_hits, corpus=shared_corpus)
 
 
 @router.get("/ngrams/{search}", response_model=NGramResult)
 async def get_ngram_results(
     search: str,
     commons: CommonParams,
-    kwic_corpus: KwicCorpus = Depends(get_corpus),
 ):
     """Get ngrams"""
-    return get_ngrams(search, commons, kwic_corpus)
+    return get_ngrams(search, commons, shared_kwic_corpus)
 
 
 @router.get("/speeches", response_model=SpeechesResult)
 async def get_speeches_result(
     commons: CommonParams,
-    corpus: Corpus = Depends(get_corpus),
 ):
-    return get_speeches(commons, corpus)
+    return get_speeches(commons, shared_corpus)
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
-async def get_speech_by_id_result(id: str, corpus: Corpus = Depends(get_corpus)):
+async def get_speech_by_id_result(id: str):
     """eg. prot-1971--1_007."""
-    return get_speech_by_id(id, corpus)
+    return get_speech_by_id(id, shared_corpus)
 
-@router.get("/speech_download/")
-async def get_zip(ids: list=Query(..., min_length=1, max_length=2), corpus: Corpus = Depends(get_corpus)):
+
+@router.post("/speech_download/")
+async def get_zip(ids: list = Body(..., min_length=1, max_length=100)):
     if not ids:
-        raise HTTPException(status_code=400, detail="Speech ids are required") 
-    return get_speech_zip(ids, corpus)
+        raise HTTPException(status_code=400, detail="Speech ids are required")
+    return get_speech_zip(ids, shared_corpus)
 
 
 @router.get("/topics")

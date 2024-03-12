@@ -6,10 +6,9 @@ from typing import List
 import io
 import zipfile
 from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, Response, HTTPException
 
 
-def get_speeches(commons: CommonQueryParams, corpus)->SpeechesResult:
+def get_speeches(commons: CommonQueryParams, corpus) -> SpeechesResult:
     from_year = int(commons.from_year) if commons.from_year else 0
     to_year = int(commons.to_year) if commons.to_year else 2024
     df = corpus.get_anforanden(
@@ -40,8 +39,12 @@ def get_speech_by_id(id: str, corpus: Corpus) -> SpeechesTextResultItem:
         speech_text=speech_text,
     )
 
-def get_speech_zip(ids:List[str], corpus: Corpus):
-    file_contents = [(f"{protocol_id}.txt", corpus.get_speech_text(protocol_id)) for protocol_id in ids ]
+
+def get_speech_zip(ids: List[str], corpus: Corpus):
+    file_contents = [
+        (f"{protocol_id}.txt", corpus.get_speech_text(protocol_id))
+        for protocol_id in ids
+    ]
 
     # Create an in-memory buffer for the zip file
     zip_buffer = io.BytesIO()
@@ -55,7 +58,9 @@ def get_speech_zip(ids:List[str], corpus: Corpus):
     zip_buffer.seek(0)
 
     # Create a StreamingResponse to send the zip file back to the client
-    response = StreamingResponse(iter([zip_buffer.getvalue()]), media_type="application/zip")
+    response = StreamingResponse(
+        iter([zip_buffer.getvalue()]), media_type="application/zip"
+    )
     response.headers["Content-Disposition"] = "attachment; filename=speeches.zip"
 
     return response
