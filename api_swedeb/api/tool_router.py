@@ -16,10 +16,10 @@ from api_swedeb.api.utils.word_trends import (
     get_search_hit_results,
 )
 from fastapi import Query, Depends, HTTPException
-from typing import Annotated
+from typing import Annotated, Any
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.kwic_corpus import KwicCorpus
-from api_swedeb.api.utils.dependencies import get_corpus, get_kwic_corpus
+from api_swedeb.api.utils.dependencies import get_corpus, get_kwic_corpus, get_cwb_corpus
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
@@ -84,10 +84,12 @@ async def get_word_hits(
 async def get_ngram_results(
     search: str,
     commons: CommonParams,
-    kwic_corpus: KwicCorpus = Depends(get_corpus),
+    width: int = Query(default=3, description="Width of n-gram"),
+    target: int = Query(default='word', description="Target for n-gram (word/lemma)"), # FIXME: Add enum to schema
+    corpus: Any = Depends(get_cwb_corpus),
 ):
     """Get ngrams"""
-    return get_ngrams(search, commons, kwic_corpus)
+    return get_ngrams(search_term=search, commons=commons, corpus=corpus, n_gram_width=width, search_target=target, display_target=target)
 
 
 @router.get("/speeches", response_model=SpeechesResult)
@@ -106,7 +108,7 @@ async def get_speech_by_id_result(id: str, corpus: Corpus = Depends(get_corpus))
 @router.get("/speech_download/")
 async def get_zip(ids: list=Query(..., min_length=1, max_length=2), corpus: Corpus = Depends(get_corpus)):
     if not ids:
-        raise HTTPException(status_code=400, detail="Speech ids are required") 
+        raise HTTPException(status_code=400, detail="Speech ids are required")
     return get_speech_zip(ids, corpus)
 
 

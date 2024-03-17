@@ -17,7 +17,7 @@ class SpeakerQueryParams:
         gender_id: List[int] = Query(None, description="List of selected genders"),
         chambers: List[str] = Query(None, description="List of selected chambers"),
     ):
-        self.offiece_types = office_types
+        self.office_types = office_types
         self.sub_office_types = sub_office_types
         self.party_id = party_id
         self.gender_id = gender_id
