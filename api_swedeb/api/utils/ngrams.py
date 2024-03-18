@@ -1,10 +1,30 @@
+from typing import Any, Literal
+
+import pandas as pd
+
+from api_swedeb import mappers, schemas
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.kwic_corpus import KwicCorpus
-from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
+from api_swedeb.core import n_grams
 
 
-def get_ngrams(search_term: str, commons: CommonQueryParams, corpus: KwicCorpus):
-    # DUMMY DATA
-    ngram1 = NGramResultItem(ngram=f"{search_term}", count=1)
-    ngram2 = NGramResultItem(ngram=f"{search_term} Dummy", count=2)
-    return NGramResult(ngram_list=[ngram1, ngram2])
+def get_ngrams(
+    search_term: str,
+    commons: CommonQueryParams,
+    corpus: Any | KwicCorpus,
+    n_gram_width: int = 2,
+    n_threshold: int = 2,
+    search_target: Literal["word", "lemma"] = "word",
+    display_target: Literal["word", "lemma"] = "word",
+) -> schemas.NGramResult:
+
+    if isinstance(corpus, KwicCorpus):
+        corpus = corpus.load_kwic_corpus()
+
+    # attribs: cwb.CorpusAttribs = n_grams.cwb(corpus)
+    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(commons, [(search_term, search_target)])
+    ngrams: pd.DataFrame = n_grams.compute_n_grams(
+        corpus, opts, n=n_gram_width, p_show=display_target, threshold=n_threshold
+    )
+
+    return mappers.ngrams_to_ngram_result(ngrams)
