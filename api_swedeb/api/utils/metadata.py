@@ -1,18 +1,18 @@
+from api_swedeb.api.utils.common_params import SpeakerQueryParams
 from api_swedeb.schemas.metadata_schema import (
-    SpeakerItem,
-    SpeakerResult,
-    PartyItem,
-    PartyList,
-    GenderItem,
-    GenderList,
     ChamberItem,
     ChamberList,
+    GenderItem,
+    GenderList,
     OfficeTypeItem,
     OfficeTypeList,
+    PartyItem,
+    PartyList,
+    SpeakerItem,
+    SpeakerResult,
     SubOfficeTypeItem,
     SubOfficeTypeList,
 )
-from api_swedeb.api.utils.common_params import SpeakerQueryParams
 
 
 def get_speakers(query_params: SpeakerQueryParams, corpus):

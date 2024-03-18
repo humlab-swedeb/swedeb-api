@@ -1,16 +1,29 @@
-from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
-from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-from typing import List
 import io
 import zipfile
+from typing import List
+
 from fastapi.responses import StreamingResponse
+
+from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
+from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 
 
 def get_speeches(commons: CommonQueryParams, corpus) -> SpeechesResult:
+    """
+    Retrieves speeches based on the given query parameters.
+
+    Args:
+        commons (CommonQueryParams): The query parameters.
+        corpus: A corpus object.
+
+    Returns:
+        SpeechesResult: The result containing the list of speeches.
+
+    """
     from_year = int(commons.from_year) if commons.from_year else 0
-    to_year = int(commons.to_year) if commons.to_year else 2024
+    to_year = int(commons.to_year) if commons.to_year else 3000
     df = corpus.get_anforanden(
         from_year=from_year,
         to_year=to_year,

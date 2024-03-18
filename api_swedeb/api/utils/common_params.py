@@ -1,4 +1,5 @@
 from typing import List
+
 from fastapi import Query
 
 year_regex = r"^\d{4}$"

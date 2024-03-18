@@ -1,29 +1,27 @@
-import fastapi
-
-from fastapi import Depends
-from api_swedeb.api.utils.common_params import SpeakerQueryParams
-from api_swedeb.api.utils.dependencies import shared_corpus
 from typing import Annotated
 
+import fastapi
+from fastapi import Depends
+
+from api_swedeb.api.utils.common_params import SpeakerQueryParams
+from api_swedeb.api.utils.dependencies import shared_corpus
 from api_swedeb.api.utils.metadata import (
-    get_speakers,
-    get_end_year,
-    get_start_year,
-    get_parties,
-    get_genders,
     get_chambers,
+    get_end_year,
+    get_genders,
     get_office_types,
+    get_parties,
+    get_speakers,
+    get_start_year,
     get_sub_office_types,
 )
-
-
 from api_swedeb.schemas.metadata_schema import (
-    PartyList,
-    GenderList,
     ChamberList,
+    GenderList,
     OfficeTypeList,
-    SubOfficeTypeList,
+    PartyList,
     SpeakerResult,
+    SubOfficeTypeList,
 )
 
 SpeakerParams = Annotated[SpeakerQueryParams, Depends()]

@@ -1,11 +1,11 @@
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.schemas.speeches_schema import SpeechesResultItemWT, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import (
+    SearchHits,
     WordTrendsItem,
     WordTrendsResult,
-    SearchHits,
 )
-from api_swedeb.schemas.speeches_schema import SpeechesResultWT, SpeechesResultItemWT
 
 
 def get_search_hit_results(search: str, corpus: Corpus, n_hits: int):

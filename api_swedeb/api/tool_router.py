@@ -1,23 +1,25 @@
+from typing import Annotated
+
 import fastapi
+from fastapi import Body, Depends, HTTPException, Query
+
 from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.utils.dependencies import shared_corpus, shared_kwic_corpus
+from api_swedeb.api.utils.kwic import get_kwic_data
+from api_swedeb.api.utils.ngrams import get_ngrams
+from api_swedeb.api.utils.speech import get_speech_by_id, get_speech_zip, get_speeches
+from api_swedeb.api.utils.word_trends import (
+    get_search_hit_results,
+    get_word_trend_speeches,
+    get_word_trends,
+)
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
-from api_swedeb.schemas.word_trends_schema import WordTrendsResult, SearchHits
 from api_swedeb.schemas.ngrams_schema import NGramResult
+from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 
 # from api_swedeb.schemas.topics_schema import TopicResult
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
-from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-from api_swedeb.api.utils.ngrams import get_ngrams
-from api_swedeb.api.utils.speech import get_speeches, get_speech_by_id, get_speech_zip
-from api_swedeb.api.utils.kwic import get_kwic_data
-from api_swedeb.api.utils.word_trends import (
-    get_word_trend_speeches,
-    get_word_trends,
-    get_search_hit_results,
-)
-from fastapi import Query, Depends, HTTPException, Body
-from typing import Annotated
-from api_swedeb.api.utils.dependencies import shared_corpus, shared_kwic_corpus
+from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
 

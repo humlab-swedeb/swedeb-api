@@ -1,8 +1,5 @@
 from api_swedeb.api.utils.kwic_corpus import KwicCorpus
-from api_swedeb.schemas.kwic_schema import (
-    KeywordInContextItem,
-    KeywordInContextResult,
-)
+from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
 
 
 def get_kwic_data(

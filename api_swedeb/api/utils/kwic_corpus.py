@@ -1,24 +1,26 @@
 import os
+from typing import List
+
+import pandas as pd
+from ccc import Corpora, Corpus
+from ccc import __version__ as ccc_version
 from dotenv import load_dotenv
 
 from api_swedeb.api.parlaclarin import codecs as md
-from ccc import Corpora, Corpus, __version__ as ccc_version
-
-
-import pandas as pd
-from typing import List 
 
 
 class KwicCorpus:
     def __init__(self, env_file=None):
-        
         self.env_file = env_file
         load_dotenv(self.env_file)
 
         kwic_corpus_dir = os.getenv("KWIC_DIR")
         kwic_corpus_name = os.getenv("KWIC_CORPUS_NAME")
-        data_dir: str | None = os.getenv("KWIC_TEMP_DIR") or f"/tmp/ccc-{str(ccc_version)}-{os.environ.get('USER', 'swedeb')}"
-        
+        data_dir: str | None = (
+            os.getenv("KWIC_TEMP_DIR")
+            or f"/tmp/ccc-{str(ccc_version)}-{os.environ.get('USER', 'swedeb')}"
+        )
+
         self.corpus = self.load_kwic_corpus(data_dir, kwic_corpus_dir, kwic_corpus_name)
 
         self.metadata_filename = os.getenv("METADATA_FILENAME")

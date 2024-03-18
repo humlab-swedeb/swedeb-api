@@ -1,6 +1,6 @@
-from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.kwic_corpus import KwicCorpus
+from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
 
 
 def get_ngrams(search_term: str, commons: CommonQueryParams, corpus: KwicCorpus):

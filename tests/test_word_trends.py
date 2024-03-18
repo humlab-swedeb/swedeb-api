@@ -139,8 +139,8 @@ def test_word_hits_api(client):
 
 
 
-
 def test_chambers(corpus):
+    # chamber id not included, needs to be added
     df = corpus.get_word_trend_results(search_terms=["arbete"], filter_opts={"chamber_id": [0]}, start_year=1960, end_year=1961)
     print(df.head())
 

@@ -1,30 +1,31 @@
 import os
-from dotenv import load_dotenv
-from api_swedeb.api.parlaclarin import codecs as md
-from penelope.corpus import VectorizedCorpus
-from api_swedeb.api.parlaclarin import speech_text as sr
+from typing import List, Mapping, Union
+
 import pandas as pd
-from typing import Union, Mapping, List
-from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
-from penelope.common.keyness import KeynessMetric  # type: ignore
 import penelope.utility as pu  # type: ignore
+from dotenv import load_dotenv
+from penelope.common.keyness import KeynessMetric  # type: ignore
+from penelope.corpus import VectorizedCorpus
 from penelope.utility import PropertyValueMaskingOpts  # type: ignore
+
+from api_swedeb.api.parlaclarin import codecs as md
+from api_swedeb.api.parlaclarin import speech_text as sr
+from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
 
 
 class Corpus:
     def __init__(self, env_file=None):
-        self.env_file = env_file
-        load_dotenv(self.env_file)
-        self.tag: str = os.getenv("TAG")
-        self.folder = os.getenv("FOLDER")
-        self.metadata_filename = os.getenv("METADATA_FILENAME")
+        load_dotenv(env_file)
+        tag: str = os.getenv("TAG")
+        folder = os.getenv("FOLDER")
+        metadata_filename = os.getenv("METADATA_FILENAME")
         self.tagged_corpus_folder = os.getenv("TAGGED_CORPUS_FOLDER")
 
-        self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
-        self.metadata: md.Codecs = md.Codecs().load(source=self.metadata_filename)
+        self.vectorized_corpus = VectorizedCorpus.load(folder=folder, tag=tag)
+        self.metadata: md.Codecs = md.Codecs().load(source=metadata_filename)
 
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
-            source=self.metadata_filename
+            source=metadata_filename
         )
         self.repository: sr.SpeechTextRepository = sr.SpeechTextRepository(
             source=self.tagged_corpus_folder,
@@ -111,11 +112,9 @@ class Corpus:
             anforanden = self.prepare_anforande_display(hit_di)
             anforanden["hit"] = word
             hits.append(anforanden)
-
+            
         all_hits = pd.concat(hits)
-        all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
-
-        return all_hits
+        return all_hits[all_hits["year"].between(start_year, end_year)]
 
     def prepare_anforande_display(
         self, anforanden_doc_index: pd.DataFrame
@@ -148,7 +147,7 @@ class Corpus:
     def get_word_vectors(
         self, words: list[str], corpus: VectorizedCorpus = None
     ) -> dict:
-        """Returns individual corpus columns vectors for each search term
+        """Returns individual corpus column vectors for each search term
 
         Args:
             words: list of strings (search terms)
@@ -160,7 +159,7 @@ class Corpus:
         """
         vectors = {}
         if corpus is None:
-            corpus = self.corpus
+            corpus = self.vectorized_corpus
 
         for word in words:
             vectors[word] = corpus.get_word_vector(word)
@@ -178,12 +177,6 @@ class Corpus:
             translations[col] = self.translate_gender_col_header(col)
         df.rename(columns=translations, inplace=True)
 
-    def load_vectorized_corpus(self) -> None:
-        self.vectorized_corpus = VectorizedCorpus.load(folder=self.folder, tag=self.tag)
-
-    def get_corpus_shape(self):
-        # not needed, just nice to know at the moment
-        return self.vectorized_corpus.document_index.shape
 
     def get_link(self, person_id, name):
         if name == "":
@@ -271,8 +264,7 @@ class Corpus:
             return ""
         if speech["speaker_note_id"] == "missing":
             return "Talet saknar notering"
-        else:
-            return speech["speaker_note"]
+        return speech["speaker_note"]
 
     def filter_corpus(
         self, filter_dict: dict, corpus: VectorizedCorpus
@@ -291,14 +283,14 @@ class Corpus:
         return int(self.vectorized_corpus.document_index["year"].max())
 
     def get_party_specs(self) -> Union[str, Mapping[str, int]]:
+        selected = {}
         for specification in self.metadata.property_values_specs:
             if specification["text_name"] == "party_abbrev":
                 specs = specification["values"]
-                selected = {}
                 for k, v in specs.items():
                     if v in self.get_only_parties_with_data():
                         selected[k] = v
-                return selected
+        return selected
 
     def get_only_parties_with_data(self):
         parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
@@ -330,10 +322,9 @@ class Corpus:
     def translate_gender_column(self, english_gender: str) -> str:
         if english_gender == "woman":
             return "kvinna"
-        elif english_gender == "unknown":
+        if english_gender == "unknown":
             return "okänt"
-        else:
-            return english_gender
+        return english_gender
 
     def format_protocol_id(self, selected_protocol: str):
         protocol_parts = selected_protocol.split("-")
@@ -342,8 +333,7 @@ class Corpus:
             ch = "Andra" if "ak" in selected_protocol else "Första"
             chamber = f"{ch} kammaren"
             return f"{chamber} {protocol_parts[1]}:{protocol_parts[5].split('_')[0]}"
-        else:
-            return protocol_parts[1] + ":" + protocol_parts[3].split("_")[0]
+        return protocol_parts[1] + ":" + protocol_parts[3].split("_")[0]
 
 
 def load_corpus(env_file: str):
