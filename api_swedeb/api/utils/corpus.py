@@ -133,7 +133,9 @@ class Corpus:
         adi["formatted_speech_id"] = adi.apply(
             lambda x: self.format_protocol_id(x["document_name"]), axis=1
         )
-        adi['gender'] = adi.apply(lambda x: self.translate_gender_column(x['gender']), axis=1)
+        adi["gender"] = adi.apply(
+            lambda x: self.translate_gender_column(x["gender"]), axis=1
+        )
 
         # to sort unknowns to the end of the results
         sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
@@ -324,22 +326,21 @@ class Corpus:
         if "unknown" in col:
             new_col = col.replace("unknown", "Okänt kön")
         return new_col
-    
+
     def translate_gender_column(self, english_gender: str) -> str:
-        if english_gender == 'woman':
-            return 'kvinna'
-        elif english_gender == 'unknown':
-            return 'okänt'
+        if english_gender == "woman":
+            return "kvinna"
+        elif english_gender == "unknown":
+            return "okänt"
         else:
             return english_gender
-    
+
     def format_protocol_id(self, selected_protocol: str):
         protocol_parts = selected_protocol.split("-")
 
         if "ak" in selected_protocol or "fk" in selected_protocol:
-
-            ch = "Andra" if 'ak' in selected_protocol else "Första"
-            chamber = f"{ch} kammaren" 
+            ch = "Andra" if "ak" in selected_protocol else "Första"
+            chamber = f"{ch} kammaren"
             return f"{chamber} {protocol_parts[1]}:{protocol_parts[5].split('_')[0]}"
         else:
             return protocol_parts[1] + ":" + protocol_parts[3].split("_")[0]

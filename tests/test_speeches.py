@@ -57,8 +57,8 @@ def test_speeches_get_years(client):
 
 
 def test_speeches_zip(client):
-    # assert that the speeches zip endpoint is reachable
-    response = client.get(f"{version}/tools/speech_download/?ids=prot-1966-h%C3%B6st-fk--38_044&ids=prot-1966-h%C3%B6st-fk--38_043")
+    payload = ['prot-1966-höst-fk--38_044', 'prot-1966-höst-fk--38_043']
+    response = client.post(f"{version}/tools/speech_download/", json=payload)
     assert response.status_code == status.HTTP_200_OK
     assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
     assert response.headers['Content-Type'] == 'application/zip'

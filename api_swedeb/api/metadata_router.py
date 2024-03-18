@@ -2,8 +2,7 @@ import fastapi
 
 from fastapi import Depends
 from api_swedeb.api.utils.common_params import SpeakerQueryParams
-from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.api.utils.dependencies import get_corpus
+from api_swedeb.api.utils.dependencies import shared_corpus
 from typing import Annotated
 
 from api_swedeb.api.utils.metadata import (
@@ -40,43 +39,43 @@ year = r"^\d{4}$"
 
 
 @router.get("/start_year", response_model=int)
-async def get_meta_start_year(corpus: Corpus = Depends(get_corpus)):
-    return get_start_year(corpus)
+async def get_meta_start_year():
+    return get_start_year(shared_corpus)
 
 
 @router.get("/end_year", response_model=int)
-async def get_meta_end_year(corpus: Corpus = Depends(get_corpus)):
-    return get_end_year(corpus)
+async def get_meta_end_year():
+    return get_end_year(shared_corpus)
 
 
 @router.get("/parties", response_model=PartyList)
-async def get_meta_parties(corpus: Corpus = Depends(get_corpus)):
-    return get_parties(corpus)
+async def get_meta_parties():
+    return get_parties(shared_corpus)
 
 
 @router.get("/genders", response_model=GenderList)
-async def get_meta_genders(corpus: Corpus = Depends(get_corpus)):
-    return get_genders(corpus)
+async def get_meta_genders():
+    return get_genders(shared_corpus)
 
 
 @router.get("/chambers", response_model=ChamberList)
-async def get_meta_chambers(corpus: Corpus = Depends(get_corpus)):
-    return get_chambers(corpus)
+async def get_meta_chambers():
+    return get_chambers(shared_corpus)
 
 
 @router.get("/office_types", response_model=OfficeTypeList)
-async def get_meta_office_types(corpus: Corpus = Depends(get_corpus)):
-    return get_office_types(corpus)
+async def get_meta_office_types():
+    return get_office_types(shared_corpus)
 
 
 @router.get("/sub_office_types", response_model=SubOfficeTypeList)
-async def get_meta_sub_office_types(corpus: Corpus = Depends(get_corpus)):
-    return get_sub_office_types(corpus)
+async def get_meta_sub_office_types():
+    return get_sub_office_types(shared_corpus)
 
 
 @router.get("/speakers", response_model=SpeakerResult)
-async def get_meta_speakers(query_params: SpeakerParams, corpus: Corpus = Depends(get_corpus)):
-    return get_speakers(query_params, corpus)
+async def get_meta_speakers(query_params: SpeakerParams):
+    return get_speakers(query_params, shared_corpus)
 
 
 # [Depends(get_corpus), Depends(get_kwic_corpus)]

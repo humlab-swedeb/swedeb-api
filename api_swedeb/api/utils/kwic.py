@@ -11,7 +11,6 @@ def get_kwic_data(
     from_year = int(commons.from_year) if commons.from_year else 0
     to_year = int(commons.to_year) if commons.to_year else 2021
 
-
     df = corpus.get_kwic_results_for_search_hits(
         search_hits=[search],
         from_year=from_year,
