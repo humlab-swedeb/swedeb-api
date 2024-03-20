@@ -3,7 +3,6 @@ from unittest.mock import Mock, MagicMock
 
 import pandas as pd
 from api_swedeb.api.utils.kwic import RiksprotKwicConfig
-from api_swedeb.api.utils.kwic_corpus import KwicCorpus
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,13 +15,6 @@ import ccc
 # pylint: disable=redefined-outer-name
 
 version = "v1"
-
-
-@pytest.fixture(scope="module")
-def kwic_corpus():
-    env_file = ".env_1960"
-    kwic_corpus = KwicCorpus(env_file=env_file)
-    return kwic_corpus
 
 
 @pytest.fixture(scope="module")
