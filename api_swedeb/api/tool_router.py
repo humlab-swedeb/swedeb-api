@@ -4,7 +4,7 @@ import fastapi
 from fastapi import Body, Depends, HTTPException, Query
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.dependencies import get_cwb_corpus, shared_corpus, shared_kwic_corpus
+from api_swedeb.api.utils.dependencies import get_cwb_corpus, shared_corpus, get_corpus_decoder
 from api_swedeb.api.utils.kwic import get_kwic_data
 from api_swedeb.api.utils.ngrams import get_ngrams
 from api_swedeb.api.utils.speech import get_speech_by_id, get_speech_zip, get_speeches
@@ -32,9 +32,23 @@ async def get_kwic_results(
     lemmatized: bool = Query(True, description="Whether to search for lemmatized version of search string"),
     words_before: int = Query(2, description="Number of tokens before the search word(s)"),
     words_after: int = Query(2, description="Number of tokens after the search word(s)"),
-):
+    cut_off: int = Query(200000, description="Maximum number of hits to return"),
+    corpus: Any = Depends(get_cwb_corpus),
+    decoder: Any = Depends(get_corpus_decoder),
+) -> KeywordInContextResult:
     """Get keyword in context"""
-    return get_kwic_data(search, commons, lemmatized, words_before, words_after, shared_kwic_corpus)
+    return get_kwic_data(
+        corpus,
+        commons,
+        search=search,
+        lemmatized=lemmatized,
+        words_before=words_before,
+        words_after=words_after,
+        cut_off=cut_off,
+        decoder=decoder,
+        strip_s_tags=True,
+        display_target="word",
+    )
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
