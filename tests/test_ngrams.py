@@ -67,7 +67,7 @@ def test_n_gram_service():
         n_gram_width=3,
     )
     assert result is not None
-    assert result.ngram_list > 0
+    assert len(result.ngram_list) > 0
 
 
 def test_bench():

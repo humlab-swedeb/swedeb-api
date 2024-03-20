@@ -6,6 +6,8 @@ from fastapi import Depends
 from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
 
+shared_corpus = Corpus(".env_1960")
+
 
 async def get_corpus():
     return Corpus(".env_1960")
