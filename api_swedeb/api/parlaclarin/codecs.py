@@ -46,11 +46,7 @@ class Codecs:
 
     def load(self, source: str | sqlite3.Connection | str) -> Codecs:
         self.source_filename = source if isinstance(source, str) else None
-        with (
-            sqlite3.connect(database=source)
-            if isinstance(source, str)
-            else nullcontext(source)
-        ) as db:
+        with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
             tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
             for table_name, table in tables.items():
                 setattr(self, table_name, table)
@@ -100,21 +96,11 @@ class Codecs:
             Codec("decode", "gender_id", "gender", self.gender2name.get),
             Codec("decode", "office_type_id", "office_type", self.office_type2name.get),
             Codec("decode", "party_id", "party_abbrev", self.party_abbrev2name.get),
-            Codec(
-                "decode",
-                "sub_office_type_id",
-                "sub_office_type",
-                self.sub_office_type2name.get,
-            ),
+            Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name.get),
             Codec("encode", "gender", "gender_id", self.gender2id.get),
             Codec("encode", "office_type", "office_type_id", self.office_type2id.get),
             Codec("encode", "party", "party_id", self.party_abbrev2id.get),
-            Codec(
-                "encode",
-                "sub_office_type",
-                "sub_office_type_id",
-                self.sub_office_type2id.get,
-            ),
+            Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id.get),
         ]
 
     @property
@@ -125,9 +111,7 @@ class Codecs:
     def encoders(self) -> list[dict]:
         return [c for c in self.codecs if c.type == "encode"]
 
-    def apply_codec(
-        self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True
-    ) -> pd.DataFrame:
+    def apply_codec(self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True) -> pd.DataFrame:
         for codec in codecs:
             if codec.from_column in df.columns:
                 if codec.to_column not in df:
@@ -167,11 +151,7 @@ class Codecs:
 
     @cached_property
     def key_name_translate_id2text(self) -> dict:
-        return {
-            codec.from_column: codec.to_column
-            for codec in self.codecs
-            if codec.type == "decode"
-        }
+        return {codec.from_column: codec.to_column for codec in self.codecs if codec.type == "decode"}
 
     @cached_property
     def key_name_translate_text2id(self) -> dict:
@@ -225,10 +205,7 @@ class PersonCodecs(Codecs):
     @cached_property
     def person_name2pid(self) -> dict:
         fg = self.person_id2pid.get
-        return {
-            f"{name} ({person_id})": fg(person_id)
-            for person_id, name in self.person_id2name.items()
-        }
+        return {f"{name} ({person_id})": fg(person_id) for person_id, name in self.person_id2name.items()}
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:

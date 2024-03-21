@@ -4,22 +4,18 @@ import pandas as pd
 
 from api_swedeb import mappers, schemas
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.kwic_corpus import KwicCorpus
 from api_swedeb.core import n_grams
 
 
 def get_ngrams(
     search_term: str,
     commons: CommonQueryParams,
-    corpus: Any | KwicCorpus,
+    corpus: Any,
     n_gram_width: int = 2,
     n_threshold: int = 2,
     search_target: Literal["word", "lemma"] = "word",
     display_target: Literal["word", "lemma"] = "word",
 ) -> schemas.NGramResult:
-
-    if isinstance(corpus, KwicCorpus):
-        corpus = corpus.load_kwic_corpus()
 
     # attribs: cwb.CorpusAttribs = n_grams.cwb(corpus)
     opts: dict[str, Any] = mappers.query_params_to_CQP_opts(commons, [(search_term, search_target)])
