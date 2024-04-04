@@ -7,6 +7,7 @@ from ccc import __version__ as ccc_version
 from dotenv import load_dotenv
 
 from api_swedeb.api.parlaclarin import codecs as md
+from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 
 class KwicCorpus:
@@ -125,9 +126,10 @@ class KwicCorpus:
         data["link"] = data.apply(
             lambda x: self.get_link(x["person_id"], x["name"]), axis=1
         )
-
-        # data["party_abbrev"] = "not in test corpus"
-        # data["gender"] = "not in test corpus"
+        data["formatted_speech_id"] = data.apply(
+            lambda x: format_protocol_id(x["speech_title"]), axis=1
+        )
+        data["name"].replace("", "Metadata saknas", inplace=True)
 
         return data[
             [
@@ -141,6 +143,7 @@ class KwicCorpus:
                 "gender",
                 "person_id",
                 "link",
+                "formatted_speech_id"
             ]
         ]
 

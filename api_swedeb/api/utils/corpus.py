@@ -11,7 +11,7 @@ from penelope.utility import PropertyValueMaskingOpts  # type: ignore
 from api_swedeb.api.parlaclarin import codecs as md
 from api_swedeb.api.parlaclarin import speech_text as sr
 from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
-
+from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 class Corpus:
     def __init__(self, env_file=None):
@@ -100,21 +100,30 @@ class Corpus:
         # are sometimes many such columns
         unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
         return unstacked_trends
+    
+    def filter_existing_terms(self, selected_terms):
+        return [word for word in selected_terms if word in self.vectorized_corpus.vocabulary]
 
     def get_anforanden_for_word_trends(
         self, selected_terms, filter_opts, start_year, end_year
     ):
-        filtered_corpus = self.filter_corpus(filter_opts, self.vectorized_corpus)
-        vectors = self.get_word_vectors(selected_terms, filtered_corpus)
-        hits = []
-        for word, vec in vectors.items():
-            hit_di = filtered_corpus.document_index[vec.astype(bool)]
-            anforanden = self.prepare_anforande_display(hit_di)
-            anforanden["hit"] = word
-            hits.append(anforanden)
-            
-        all_hits = pd.concat(hits)
-        return all_hits[all_hits["year"].between(start_year, end_year)]
+        
+        selected_terms = self.filter_existing_terms(selected_terms)
+        if selected_terms:
+        
+            filtered_corpus = self.filter_corpus(filter_opts, self.vectorized_corpus)
+            vectors = self.get_word_vectors(selected_terms, filtered_corpus)
+            hits = []
+
+            for word, vec in vectors.items():
+                hit_di = filtered_corpus.document_index[vec.astype(bool)]
+                anforanden = self.prepare_anforande_display(hit_di)
+                anforanden["node_word"] = word
+                hits.append(anforanden)
+                
+            all_hits = pd.concat(hits)
+            return all_hits[all_hits["year"].between(start_year, end_year)]
+        return pd.DataFrame()
 
     def prepare_anforande_display(
         self, anforanden_doc_index: pd.DataFrame
@@ -130,7 +139,7 @@ class Corpus:
         adi["speech_link"] = self.get_speech_link()
         adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
         adi["formatted_speech_id"] = adi.apply(
-            lambda x: self.format_protocol_id(x["document_name"]), axis=1
+            lambda x: format_protocol_id(x["document_name"]), axis=1
         )
         adi["gender"] = adi.apply(
             lambda x: self.translate_gender_column(x["gender"]), axis=1
@@ -326,14 +335,6 @@ class Corpus:
             return "okänt"
         return english_gender
 
-    def format_protocol_id(self, selected_protocol: str):
-        protocol_parts = selected_protocol.split("-")
-
-        if "ak" in selected_protocol or "fk" in selected_protocol:
-            ch = "Andra" if "ak" in selected_protocol else "Första"
-            chamber = f"{ch} kammaren"
-            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5].split('_')[0]}"
-        return protocol_parts[1] + ":" + protocol_parts[3].split("_")[0]
 
 
 def load_corpus(env_file: str):

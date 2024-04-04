@@ -8,8 +8,10 @@ def get_kwic_data(
     from_year = int(commons.from_year) if commons.from_year else 0
     to_year = int(commons.to_year) if commons.to_year else 2021
 
+    search_query = search.split(" ") if " " in search else [search]    
+
     df = corpus.get_kwic_results_for_search_hits(
-        search_hits=[search],
+        search_hits=search_query,
         from_year=from_year,
         to_year=to_year,
         selections=commons.get_selection_dict(),

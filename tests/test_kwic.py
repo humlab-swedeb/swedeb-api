@@ -31,6 +31,32 @@ def test_run_query(kwic_corpus):
     assert 'lemma' in lemma_query
 
 
+def test_kwic_phrase_api(client):
+    response = client.get(f"{version}/tools/kwic/information%20om")
+    assert response.status_code == 200
+    print(response.json())
+    assert len(response.json()['kwic_list']) > 0
+    assert 'name' in response.json()['kwic_list'][0]
+    assert 'party_abbrev' in response.json()['kwic_list'][0]
+
+    #http://127.0.0.1:4000/v1/tools/kwic/information%20om
+
+
+def test_kwic_phrase(kwic_corpus):
+    search_hits = ["information", "om"]
+    from_year = 1960
+    to_year = 1980
+    selections = {}
+    words_before = 2
+    words_after = 2
+    lemmatized = False
+    kwic_results = kwic_corpus.get_kwic_results_for_search_hits(search_hits, from_year, to_year, selections, words_before, words_after, lemmatized)
+    assert kwic_results is not None
+    assert len(kwic_results) > 0
+    print(kwic_results.head())
+    assert 'information om' in kwic_results['node_word'].unique()
+
+
 def test_get_kwic_results_for_search_hits(kwic_corpus):
     search_hits = ["att"]
     from_year = 1960
