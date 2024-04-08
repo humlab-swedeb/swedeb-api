@@ -77,6 +77,14 @@ bash:
 	  --env-file .env \
 	  swedeb-api:latest /bin/bash
 
+.PHONY: add-host-user
+add-host-user:
+	@if [ "$(shell getent passwd swedeb && echo FOO)" != "FOO" ]; then \
+		sudo addgroup --gid 2021 swedeb \
+		  && sudo adduser --no-create-home --disabled-login --gecos '' --uid 2021 --gid 1006 swedeb \
+		  && echo "info: user swedeb created." ; \
+	fi
+
 
 .PHONY: tools
 tools:

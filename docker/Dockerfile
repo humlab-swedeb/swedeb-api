@@ -109,9 +109,13 @@ RUN tar xf /tmp/cwb.bin.install.tar -C /usr/local/bin \
 
 WORKDIR /app
 
+COPY dist /backend-wheels
+RUN pip3.11 install /wheels/*.whl \
+    && pip3.11 install /backend-wheels/api_swedeb-0.1.0-py3-none-any.whl \
+    && rm -rf /backend-wheels
+
 COPY cwb/registry /data/cwb/registry
-COPY public /app/static
-COPY dist /frontend-wheels
+COPY public /app/public
 COPY main.py /app/main.py
 COPY entrypoint.sh entrypoint.sh
 
@@ -120,19 +124,20 @@ RUN ln -s /data/cwb/registry /usr/local/share/cwb/registry \
 
 RUN chown -R ${SWEDEB_USER}:${SWEDEB_USER} /app /data
 
-USER ${SWEDEB_USER}
+# USER ${SWEDEB_USER}
 
+ENV SHELL=/bin/bash
 ENV HOME=/app
 ENV CORPUS_REGISTRY=/data/cwb/registry
 
-RUN python3.11 -m venv ${HOME}/.venv \
-    && . ${HOME}/.venv/bin/activate \
-    && pip install /wheels/*.whl \
-    && pip install /frontend-wheels/api_swedeb-0.1.0-py3-none-any.whl \
-    && rm -rf /dist
+# RUN python3.11 -m venv ${HOME}/.venv \
+#     && . ${HOME}/.venv/bin/activate \
+#     && pip install /wheels/*.whl \
+#     && pip install /backend-wheels/api_swedeb-0.1.0-py3-none-any.whl \
+#     && rm -rf /dist
 
 ENV SWEDEB_PORT=${SWEDEB_PORT:-8092}
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", ${SWEDEB_PORT}]
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", ${SWEDEB_PORT}]
 
-# TODOS:
+ENTRYPOINT ["./entrypoint.sh"]
