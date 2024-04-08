@@ -22,13 +22,13 @@ services:
       # - METADATA_FILENAME=/data/metadata/${HOST_METADATA_FILENAME}
       - METADATA_FILENAME=/data/metadata/riksprot_metadata.v0.10.0.db
       - TAGGED_CORPUS_FOLDER=/data/corpus/tagged_frames
-      - DTM_FOLDER=/data/corpus/dtm
+      - DTM_FOLDER=/data/corpus/dtm/${HOST_DTM_TAG}
       - DTM_TAG=${HOST_DTM_TAG}
       - CWB_CORPUS_NAME=${HOST_CWB_CORPUS_NAME}
       - CWB_REGISTRY_FOLDER=/data/cwb/registry
       - CWB_DATA_FOLDER=/data/cwb/data
       # Legacy variables
-      - FOLDER=/data/corpus/dtm
+      - FOLDER=/data/corpus/dtm/${HOST_DTM_TAG}
       - TAG=${HOST_DTM_TAG}
       - KWIC_CORPUS_NAME=${HOST_CWB_CORPUS_NAME}
       - KWIC_DIR=/data/cwb/registry
@@ -38,3 +38,13 @@ services:
       - "${HOST_METADATA_FOLDER}:/data/metadata"
       - "${HOST_DTM_FOLDER}:/data/corpus/dtm"
       - "${HOST_TAGGED_CORPUS_FOLDER}:/data/corpus/tagged_frames"
+    networks:
+      - swedeb_network
+
+networks:
+  swedeb_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.33.0.0/16
