@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from main import app
 from fastapi import status
 from api_swedeb.api.utils.corpus import load_corpus
+from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
@@ -26,14 +27,33 @@ def test_speeches_get(client):
     print(response.json())
 
 
+def test_get_all_protocol_ids(corpus):
+
+    df = corpus.get_anforanden(
+    from_year= 1900,
+    to_year= 2000,
+    selections = {},
+    di_selected= None)
+    all_ids = df['document_name']
+    for id in all_ids:
+        try:
+            format_protocol_id(id)
+        except IndexError:
+            print(id)
+            assert False
+    
+
 
 def test_format_speech_id(corpus):
     prot = 'prot-1966-höst-fk--38_044'
-    assert corpus.format_protocol_id(prot) == 'Första kammaren 1966:38' 
+    assert format_protocol_id(prot) == 'Första kammaren 1966:38 044' 
     prot = 'prot-200405--113_075'
-    assert corpus.format_protocol_id(prot) == '200405:113'
+    assert format_protocol_id(prot) == '200405:113 075'
+    prot = 'prot-1958-a-ak--17-01_001'
+    assert format_protocol_id(prot) == 'Andra kammaren 1958:17 01 001'
 
-def test_get_formatted_sppech_id(corpus):
+
+def test_get_formatted_speech_id(corpus):
     df_filtered = corpus.get_anforanden(
     from_year= 1900,
     to_year= 2000,

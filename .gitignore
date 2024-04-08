@@ -255,5 +255,6 @@ $RECYCLE.BIN/
 
 # environment file for corpus paths
 .env_1960
+.env_1920_2020
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,macos,windows
