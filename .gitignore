@@ -257,3 +257,7 @@ $RECYCLE.BIN/
 .env_1960
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,macos,windows
+
+docker/public
+docker/dist
+docker/swedeb_frontend
