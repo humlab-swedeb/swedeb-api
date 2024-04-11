@@ -148,6 +148,7 @@ class KwicCorpus:
         ]
 
     def get_link(self, person_id, name):
+        
         if name == "":
             return "Okänd"
         return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
