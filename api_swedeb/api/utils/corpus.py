@@ -41,8 +41,6 @@ class Corpus:
             v["text_name"] for v in self.person_codecs.property_values_specs
         ]
 
-        self.add_multi_party()
-
     def get_word_trend_results(
         self,
         search_terms: List[str],
@@ -201,11 +199,6 @@ class Corpus:
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
-            if selection_key == "party_id":
-                print(df.head())
-                print(selection_value)
-                print(df['multi_party'].head()  )
-                df = df[df["multi_party"].apply(lambda x: any(str(val) in str(x) for val in selection_value))]
             df = df[df[selection_key].isin(selection_value)]
         return df
 
@@ -349,22 +342,6 @@ class Corpus:
             return "okänt"
         return english_gender
 
-    def add_multi_party(self):
-        di = self.vectorized_corpus.document_index
-
-        multiple_party_ids = self.decoded_persons[self.decoded_persons['has_multiple_parties'] == 1].index.tolist()
-
-        unique_combinations = di[di['who'].isin(multiple_party_ids)][['who', 'party_id']].drop_duplicates()
-        
-        new_df = pd.DataFrame(columns=['who', 'multi_party'])
-    
-        new_df = unique_combinations.groupby('who')['party_id'].apply(lambda x: ','.join(x.astype(str))).reset_index()
-        new_df.rename(columns={'party_id': 'multi_party'}, inplace=True)
-
-        
-        self.decoded_persons = pd.merge(self.decoded_persons.reset_index(), new_df, left_on='person_id', right_on='who', how='left')
-        self.decoded_persons['multi_party'] = self.decoded_persons.apply(lambda row: row['party_id'] if pd.isnull(row['multi_party']) else row['multi_party'], axis=1)
-        self.decoded_persons['who'] = self.decoded_persons.apply(lambda row: row['person_id'] if pd.isnull(row['who']) else row['who'], axis=1)
 
 
 def load_corpus(env_file: str):
