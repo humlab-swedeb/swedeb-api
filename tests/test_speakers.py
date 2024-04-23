@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 from main import app
 from fastapi import status
 from api_swedeb.api.utils.corpus import load_corpus
+import pandas as pd
 
-
+pd.set_option('display.max_columns', None)
 
 version = "v1"
 
@@ -19,6 +20,24 @@ def client():
 def corpus():
     return load_corpus('.env_1960')
 
+@pytest.fixture(scope="module")
+def corpus_1900():
+    return load_corpus('.env_1920_2020')
+
+
+
+
+def test_multi_part(corpus_1900):
+    df = corpus_1900.decoded_persons
+    assert 'multi_party' in df.columns
+    print(df.info())
+    print(df.head())
+    speakers = corpus_1900.get_speakers(selections={'party_id':[8]})
+    assert len(speakers) > 0
+
+
+
+    
 
 def test_get_speakers(corpus):
     speakers = corpus.get_speakers(selections={})

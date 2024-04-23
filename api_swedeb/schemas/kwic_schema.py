@@ -17,6 +17,7 @@ class KeywordInContextItem(BaseModel):
     gender: Optional[str] = Field(None, description="gender of speaker")
     person_id: Optional[str] = Field(None, description="Id of speaker")
     link: Optional[str] = Field(None, description="Link to speaker wiki")
+    formatted_speech_id: Optional[str] = Field(None, description="Formatted speech id")
 
 
 class KeywordInContextResult(BaseModel):

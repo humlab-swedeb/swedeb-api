@@ -19,7 +19,7 @@ class SpeechesResult(BaseModel):
 
 
 class SpeechesResultItemWT(SpeechesResultItem):
-    hit: str = Field(None, description="Search hit in speech")
+    node_word: str = Field(None, description="Search hit in speech")
 
 
 class SpeechesResultWT(BaseModel):
