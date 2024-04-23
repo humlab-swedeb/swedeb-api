@@ -77,16 +77,42 @@ class RiksprotKwicConfig:
 
 
 def get_kwic_data(
-    search, commons, lemmatized, words_before, words_after, corpus: KwicCorpus
-):
-    from_year = int(commons.from_year) if commons.from_year else 0
-    to_year = int(commons.to_year) if commons.to_year else 2021
+    corpus: Any,
+    commons: CommonQueryParams,
+    *,
+    search: str | list[str],
+    lemmatized: bool,
+    words_before: int = 3,
+    words_after: int = 3,
+    display_target: str = "word",
+    cut_off: int = 200000,
+    decoder: Codecs = None,
+    strip_s_tags: bool = True,
+) -> KeywordInContextResult:
+    """_summary_
 
-    df = corpus.get_kwic_results_for_search_hits(
-        search_hits=[search],
-        from_year=from_year,
-        to_year=to_year,
-        selections=commons.get_selection_dict(),
+    Args:
+        corpus (ccc.Corpus): A CWB corpus object.
+        commons (CommonQueryParams): Common query parameters.
+        search (str | list[str]): Search term(s).
+        lemmatized (bool): Search for lemmatized words.
+        words_before (int, optional): Number of words before search term(s). Defaults to 3.
+        words_after (int, optional): Number of words after search term(s). Defaults to 3.
+        display_target (str, optional): What to display, `word` or `lemma`. Defaults to "word".
+        cut_off (int, optional): Cut off. Defaults to 200000.
+        decoder (Codecs, optional): `Codecs` object for decoding numerical categories. Defaults to None.
+        strip_s_tags (bool, optional): Strip away CWB structural tag prefixes from attribute names. Defaults to True.
+
+    Returns:
+        KeywordInContextResult: _description_
+    """
+    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
+        commons, [(w, "lemma" if lemmatized else "word") for w in ([search] if isinstance(search, str) else search)]
+    )
+
+    data: pd.DataFrame = compute.kwik(
+        corpus=corpus,
+        opts=opts,
         words_before=words_before,
         words_after=words_after,
         p_show=display_target,
