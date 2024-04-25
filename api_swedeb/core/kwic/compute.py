@@ -49,10 +49,13 @@ def kwik(
     query: str = to_cqp_exprs(opts, within="speech")
 
     subcorpus: SubCorpus | str = corpus.query(query, context_left=words_before, context_right=words_after)
+    print('asdf')
+    print(subcorpus.corpus_size, corpus.corpus_size)
     segments: pd.DataFrame = subcorpus.concordance(
         form="kwic", p_show=[p_show], s_show=s_show or [], order="first", cut_off=cut_off
     ).reset_index(drop=True)
-
+    if segments.empty:
+        return segments
     if s_show and strip_s_tags:
         segments = segments.rename(columns={name: name.split("_", maxsplit=1)[1] for name in s_show})
         display_columns = [name.split("_", maxsplit=1)[1] if name in s_show else name for name in display_columns]

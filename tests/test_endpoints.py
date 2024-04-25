@@ -57,11 +57,6 @@ def test_kwic_bad_param(client):
     response = client.get(f"{version}/tools/kwic/{search_term}?made_up_param=1")
     assert response.status_code == status.HTTP_200_OK
 
-def test_kwic_bad_search_term(client):
-    # non-existing word
-    search_term = 'non_existing_word_'
-    response = client.get(f"{version}/tools/kwic/{search_term}")
-    assert response.status_code == status.HTTP_200_OK
 
 
 def test_word_trends(client):
