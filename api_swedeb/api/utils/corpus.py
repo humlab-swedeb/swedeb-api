@@ -265,7 +265,8 @@ class Corpus:
         return self.repository.to_text(self.get_speech(document_name))
 
     def get_speech(self, document_name: str):  # type: ignore
-        return self.repository.speech(speech_name=document_name, mode="dict")
+        res =self.repository.speech(speech_name=document_name, mode="dict")
+        return res
     
     def get_speaker(self, document_name: str) -> str:
         speech = self.repository.speech(speech_name=document_name, mode="dict")

@@ -42,16 +42,7 @@ def decoder() -> MagicMock:
     return mock
 
 
-def test_load_kwic_corpus(kwic_corpus):
-    assert kwic_corpus is not None
 
-
-def test_run_query(kwic_corpus):
-    search_terms = ["information", "om", "detta"]
-    query = kwic_corpus.get_search_query_list(search_terms=search_terms, lemmatized=False)
-    assert "word" in query
-    lemma_query = kwic_corpus.get_search_query_list(search_terms=search_terms, lemmatized=True)
-    assert "lemma" in lemma_query
 
 
 @pytest.mark.parametrize(

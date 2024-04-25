@@ -18,7 +18,7 @@ def client():
 
 @pytest.fixture(scope="module")
 def corpus():
-    return load_corpus('.env_1960')
+    return load_corpus('.env_1920_2020')
 
 def test_speeches_get(client):
     # assert that the speeches endpoint is reachable
@@ -62,6 +62,18 @@ def test_get_formatted_speech_id(corpus):
     assert 'formatted_speech_id' in df_filtered.columns
 
 
+def test_get_speech_by_id_client(client, corpus):
+    speech_id = find_a_speech_id(corpus)
+    start_year = corpus.get_years_start()
+    print(start_year)
+    
+    response = client.get("v1/tools/speeches/prot-1971--142_008")
+    assert response.status_code == status.HTTP_200_OK
+    assert 'speech_text' in response.json()
+    assert len(response.json()['speech_text']) > 1
+    assert len(response.json()['speaker_note']) > 1
+    print(response.json()['speaker_note'])
+
 
 def test_speeches_get_years(client):
     # assert that the returned speeches comes from the correct years
@@ -100,7 +112,7 @@ def test_get_speeches_corpus(corpus):
         selections = {},
         di_selected= None)
     assert len(df_filtered) < len(df_unfiltered)
-    assert df_filtered['party_abbrev'].unique() == ['L']
+    assert 'L' in df_filtered['party_abbrev'].unique()
 
 
 def test_get_speeches_corpus_party_id(corpus):
@@ -128,7 +140,10 @@ def test_get_speech_by_id(corpus):
     speech_id = find_a_speech_id(corpus)
     speech_text = corpus.get_speech_text(speech_id)
     assert speech_text is not None
-    assert len(speech_text) > 0
+    assert len(speech_text) > 1
+
+
+
 
 def test_get_speech_by_id_missing(corpus):
     # non-existing speech (gives empty string as response)

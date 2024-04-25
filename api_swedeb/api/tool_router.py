@@ -105,7 +105,7 @@ async def get_speeches_result(
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
 async def get_speech_by_id_result(id: str):
-    """eg. prot-1971--1_007."""
+    """eg. prot-1971--1_007"""
     return get_speech_by_id(id, shared_corpus)
 
 
