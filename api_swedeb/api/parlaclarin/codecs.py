@@ -179,6 +179,7 @@ class PersonCodecs(Codecs):
     def tablenames(self) -> dict[str, str]:
         tables: dict[str, str] = dict(CODE_TABLENAMES)
         tables["persons_of_interest"] = "person_id"
+        tables["person_party"] = "person_party_id"
         return tables
 
     def load(self, source: str | sqlite3.Connection | dict) -> Codecs:

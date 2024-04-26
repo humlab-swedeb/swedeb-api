@@ -29,12 +29,34 @@ def test_multiple_parties(corpus):
     assert metadata is not None
 
     person_data = corpus.person_codecs.persons_of_interest
+    party_data = corpus.party_data
     assert person_data is not None
 
-    print(person_data[person_data['has_multiple_parties']==1]['party_id'].unique())   
-    print(person_data[person_data['has_multiple_parties']==1]['party_abbrev'].unique())    
- 
-    print(corpus.person_codecs.tablenames())
+   
+    print(corpus.person_codecs.person_party.head())
+
+    print(party_data[party_data['has_multiple_parties']==1])
+
+    
+    grouped_parties = party_data.groupby('person_id')['party_id'].apply(lambda x: ', '.join(set((map(str, x))))).reset_index()
+    
+    print(grouped_parties.head())
+
+
+    print(corpus.get_party_meta())
+
+    
+    print('-------- person data with multi party abbrevs --------')
+    print(person_data.head())
+    print('-------- person data with multi party abbrevs MULTI--------')
+
+    print(person_data[person_data['has_multiple_parties']==1].head())
+
+    party_person_dict = party_data.groupby('party_id')['person_id'].apply(list).to_dict()
+    for k,v in party_person_dict.items():
+        print(k,len(v))
+
+
 
 def test_meta_genders(corpus):
     print()

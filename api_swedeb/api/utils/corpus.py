@@ -27,6 +27,17 @@ class Corpus:
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
             source=metadata_filename
         )
+        # fixa detta så det inte är så himla dumt!
+        self.party_data = self.person_codecs.person_party
+        #self.person_data = self.person_codecs.persons_of_interest
+        party_specs_rev = {v: k for k, v in self.get_party_specs().items()}
+        self.party_data['party_abbrev'] = self.party_data['party_id'].map(party_specs_rev)
+        #self.party_data['party_abbrev'].fillna('?', inplace=True)
+
+        grouped_party_abbrevs = self.party_data.groupby('person_id')['party_abbrev'].apply(lambda x: ', '.join(set(x))).reset_index()
+        self.person_codecs.persons_of_interest = self.person_codecs.persons_of_interest.merge(grouped_party_abbrevs, on='person_id', how='left')
+        self.person_codecs.persons_of_interest['party_abbrev'].fillna('?', inplace=True)
+
         self.repository: sr.SpeechTextRepository = sr.SpeechTextRepository(
             source=self.tagged_corpus_folder,
             person_codecs=self.person_codecs,
@@ -123,6 +134,9 @@ class Corpus:
                 
             all_hits = pd.concat(hits)
             all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
+       
+            all_hits["name"].replace("", "metadata saknas", inplace=True)
+            all_hits["party_abbrev"].replace("", "metadata saknas", inplace=True)
             # if several words in same speech, merge them
             return all_hits.groupby(['year', 'document_name', 'gender', 'party_abbrev', 'name', 'link',
        'speech_link', 'formatted_speech_id']).agg({'node_word': ','.join}).reset_index()
@@ -202,10 +216,6 @@ class Corpus:
             return "Okänd"
         return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
 
-    def _filter_speakers(
-        self, current_selection_key, current_df_key, selection_dict, df
-    ):
-        return df[df[current_df_key].isin(selection_dict[current_selection_key])]
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
