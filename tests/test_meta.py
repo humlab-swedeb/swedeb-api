@@ -4,7 +4,11 @@ from fastapi.testclient import TestClient
 from main import app
 from fastapi import status
 from api_swedeb.api.utils.corpus import load_corpus
-from api_swedeb.schemas.metadata_schema import PartyItem, PartyList, GenderItem, GenderList, ChamberItem, ChamberList, OfficeTypeItem, OfficeTypeList, SubOfficeTypeItem, SubOfficeTypeList 
+from api_swedeb.schemas.metadata_schema import  GenderItem, GenderList, ChamberItem, ChamberList, OfficeTypeItem, OfficeTypeList, SubOfficeTypeItem, SubOfficeTypeList 
+import pandas as pd
+
+
+pd.set_option('display.max_columns', None)
 
 version = "v1"
 
@@ -18,35 +22,19 @@ def corpus():
     return load_corpus('.env_1960')
 
 
-def test_property_value_specs(corpus):
+
+
+def test_multiple_parties(corpus):
     metadata = corpus.metadata
     assert metadata is not None
 
-    person_codecs = corpus.person_codecs
-    assert person_codecs is not None
+    person_data = corpus.person_codecs.persons_of_interest
+    assert person_data is not None
 
-    property_value_specs = metadata.property_values_specs
-    for thingy in property_value_specs:
-        if thingy['text_name'] == 'gender':
-            print('GENDER:   ', thingy['values'])
-        elif thingy['text_name'] == 'office_type':
-            print('OFFICE_TYPE:   ',thingy['values'])
-        elif thingy['text_name'] == 'sub_office_type':
-            print('SUB_OFFICE_TYPE', thingy['values'])
-        elif thingy['text_name'] == 'party_abbrev':
-            print('PARTY_ABBREV', thingy['values'])
-        else:
-            print('>>>>',thingy['text_name'])
-
-
-    party_df = corpus.get_party_meta()
-    data = party_df.to_dict(orient="records")
-    rows = [PartyItem(**row) for row in data]
-    party_list =  PartyList(party_list=rows)
-    print(party_list)
-
-    df2 = metadata.party
-    print(df2)
+    print(person_data[person_data['has_multiple_parties']==1]['party_id'].unique())   
+    print(person_data[person_data['has_multiple_parties']==1]['party_abbrev'].unique())    
+ 
+    print(corpus.person_codecs.tablenames())
 
 def test_meta_genders(corpus):
     print()

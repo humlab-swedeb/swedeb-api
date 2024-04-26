@@ -48,7 +48,7 @@ def test_format_speech_id(corpus):
     prot = 'prot-1966-höst-fk--38_044'
     assert format_protocol_id(prot) == 'Första kammaren 1966:38 044' 
     prot = 'prot-200405--113_075'
-    assert format_protocol_id(prot) == '200405:113 075'
+    assert format_protocol_id(prot) == '2004/05:113 075'
     prot = 'prot-1958-a-ak--17-01_001'
     assert format_protocol_id(prot) == 'Andra kammaren 1958:17 01 001'
 
@@ -67,7 +67,7 @@ def test_get_speech_by_id_client(client, corpus):
     start_year = corpus.get_years_start()
     print(start_year)
     
-    response = client.get("v1/tools/speeches/prot-1971--142_008")
+    response = client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
     assert 'speech_text' in response.json()
     assert len(response.json()['speech_text']) > 1
