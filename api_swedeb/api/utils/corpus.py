@@ -122,7 +122,10 @@ class Corpus:
                 hits.append(anforanden)
                 
             all_hits = pd.concat(hits)
-            return all_hits[all_hits["year"].between(start_year, end_year)]
+            all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
+            # if several words in same speech, merge them
+            return all_hits.groupby(['year', 'document_name', 'gender', 'party_abbrev', 'name', 'link',
+       'speech_link', 'formatted_speech_id']).agg({'node_word': ','.join}).reset_index()
         return pd.DataFrame()
 
     def prepare_anforande_display(
@@ -166,13 +169,20 @@ class Corpus:
         Returns:
             dict: key: search term, value: corpus column vector
         """
+        
         vectors = {}
         if corpus is None:
             corpus = self.vectorized_corpus
 
         for word in words:
-            vectors[word] = corpus.get_word_vector(word)
+            vectors[word]  = corpus.get_word_vector(word)
+     
+
         return vectors
+    
+    def merge_word_vectors(self, vectors:dict) -> dict:
+        pass
+        
 
     def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Translates the (gender) columns of a data frame to Swedish

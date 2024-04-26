@@ -6,6 +6,10 @@ from main import app
 from fastapi import status
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 import pandas as pd
+import numpy as np
+
+pd.set_option('display.max_columns', None)
+
 version = 'v1'
 @pytest.fixture(scope="module")
 def corpus():
@@ -148,3 +152,21 @@ def test_chambers_di(corpus):
     di = corpus.vectorized_corpus.document_index
     print(di.columns)
     print(di.head()[['document_id', 'document_name']])
+
+
+def test_merged_vectors():
+    input_dict = {'debatt': np.array([0, 1, 1,0]), 'riksdagsdebatt': np.array([1, 1, 0,0]), 'cat':np.array([0, 0, 0, 1])}
+    for position in range(len(input_dict['debatt'])):
+        keys = [key for key, value in input_dict.items() if value[position] == 1]
+        print(keys)
+
+    # sen ska de ju också inte vara med i riksdagsdebatt om de är med i debatt,riksdagsdebatt
+    # kanske bättre att mergea i dataframen
+
+def test_merged_speeches(corpus):
+    # if same speech_id, search terms should be concatenated
+    df_merged = corpus.get_anforanden_for_word_trends(selected_terms=["debatt","debattörer"], filter_opts={"who":["Q5991041"]}, start_year=1971, end_year=1971)
+    #  Björn Molin L Man uses both debatt and debattörer in the same speech: 1971:100 003
+
+    assert len(df_merged['document_name']) == len(df_merged['document_name'].unique()) 
+    assert ('debatt,debattörer'in df_merged['node_word'].to_list() or 'debattörer,debatt' in df_merged['node_word'].to_list())

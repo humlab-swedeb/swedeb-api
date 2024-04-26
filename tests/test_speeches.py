@@ -115,15 +115,6 @@ def test_get_speeches_corpus(corpus):
     assert 'L' in df_filtered['party_abbrev'].unique()
 
 
-def test_get_speeches_corpus_party_id(corpus):
-    df_filtered = corpus.get_anforanden(
-        from_year= 1900,
-        to_year= 2000,
-        selections = {'party_id':[4,5]},
-        di_selected= None)
-     
-     
-    print(df_filtered.head())
 
 
 
