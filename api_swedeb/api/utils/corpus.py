@@ -27,16 +27,8 @@ class Corpus:
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
             source=metadata_filename
         )
-        # fixa detta så det inte är så himla dumt!
-        self.party_data = self.person_codecs.person_party
-        #self.person_data = self.person_codecs.persons_of_interest
-        party_specs_rev = {v: k for k, v in self.get_party_specs().items()}
-        self.party_data['party_abbrev'] = self.party_data['party_id'].map(party_specs_rev)
-        #self.party_data['party_abbrev'].fillna('?', inplace=True)
-
-        grouped_party_abbrevs = self.party_data.groupby('person_id')['party_abbrev'].apply(lambda x: ', '.join(set(x))).reset_index()
-        self.person_codecs.persons_of_interest = self.person_codecs.persons_of_interest.merge(grouped_party_abbrevs, on='person_id', how='left')
-        self.person_codecs.persons_of_interest['party_abbrev'].fillna('?', inplace=True)
+        
+        self.add_multiple_party_abbrevs()
 
         self.repository: sr.SpeechTextRepository = sr.SpeechTextRepository(
             source=self.tagged_corpus_folder,
@@ -51,6 +43,17 @@ class Corpus:
         self.possible_pivots = [
             v["text_name"] for v in self.person_codecs.property_values_specs
         ]
+
+    def add_multiple_party_abbrevs(self):
+        party_data = self.person_codecs.person_party
+        party_specs_rev = {v: k for k, v in self.get_party_specs().items()}
+        party_data['party_abbrev'] = party_data['party_id'].map(party_specs_rev)
+
+        grouped_party_abbrevs = party_data.groupby('person_id').agg({'party_abbrev': lambda x: ', '.join(set(x)), 'party_id': lambda x: ','.join(set(map(str, x)))}).reset_index()
+        grouped_party_abbrevs.rename(columns={'party_id': 'multi_party_id'}, inplace=True)
+
+        self.person_codecs.persons_of_interest = self.person_codecs.persons_of_interest.merge(grouped_party_abbrevs, on='person_id', how='left')
+        self.person_codecs.persons_of_interest['party_abbrev'].fillna('?', inplace=True)
 
     def get_word_trend_results(
         self,
@@ -219,7 +222,10 @@ class Corpus:
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
-            df = df[df[selection_key].isin(selection_value)]
+            if selection_key == "party_id":
+                df = df[df['multi_party_id'].astype(str).str.contains(str(selection_value))]
+            else:
+                df = df[df[selection_key].isin(selection_value)]
         return df
 
     def get_speakers(self, selections):

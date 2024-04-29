@@ -25,36 +25,24 @@ def corpus():
 
 
 def test_multiple_parties(corpus):
-    metadata = corpus.metadata
-    assert metadata is not None
 
     person_data = corpus.person_codecs.persons_of_interest
-    party_data = corpus.party_data
-    assert person_data is not None
-
-   
-    print(corpus.person_codecs.person_party.head())
-
-    print(party_data[party_data['has_multiple_parties']==1])
-
     
-    grouped_parties = party_data.groupby('person_id')['party_id'].apply(lambda x: ', '.join(set((map(str, x))))).reset_index()
-    
-    print(grouped_parties.head())
+    multi_party_people = person_data[person_data["has_multiple_parties"]==1]
+    print(multi_party_people.head())
+    assert all([',' in abbrev for abbrev in multi_party_people['party_abbrev'].to_list()])
+    assert all([',' in abbrev for abbrev in multi_party_people['multi_party_id'].to_list()])
 
 
-    print(corpus.get_party_meta())
-
-    
-    print('-------- person data with multi party abbrevs --------')
-    print(person_data.head())
-    print('-------- person data with multi party abbrevs MULTI--------')
-
-    print(person_data[person_data['has_multiple_parties']==1].head())
-
-    party_person_dict = party_data.groupby('party_id')['person_id'].apply(list).to_dict()
-    for k,v in party_person_dict.items():
-        print(k,len(v))
+def test_get_speaker_with_multiple_parties(corpus):
+    # Raoul Hamilton should be returned for L, FRIS and X, party_id: 5, 12, 1
+    speakers_5 = corpus.get_speakers(selections={'party_id':[5]})
+    speakers_12 = corpus.get_speakers(selections={'party_id':[12]})
+    speakers_1 = corpus.get_speakers(selections={'party_id':[1]})
+    print(speakers_5.head())
+    assert 'Raoul Hamilton' in speakers_5['name'].to_list()
+    assert 'Raoul Hamilton' in speakers_12['name'].to_list()
+    assert 'Raoul Hamilton' in speakers_1['name'].to_list()
 
 
 
