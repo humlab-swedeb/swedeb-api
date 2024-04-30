@@ -142,6 +142,59 @@ def test_word_hits_api(client):
     assert len(json['hit_list']) > 0
 
 
+def test_ordered_word_hits_api(corpus):
+    search_term = 'debatt*'
+    descending_true = corpus.get_word_hits(search_term, descending=True, n_hits=10)
+    descending_false = corpus.get_word_hits(search_term, descending=False, n_hits=10)
+    print('TRUE', descending_true)
+    print('FALSE', descending_false)
+    # 'debatterar', 'debattera', 'debatter', 'debatt', 'debatten'
+
+
+def test_summed_word_trends(corpus):
+    # If more than one trend, the sum of the trends should be included
+    df = corpus.get_word_trend_results(search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={}, start_year=1960, end_year=1961)
+    assert 'Totalt' in df.columns
+    df = corpus.get_word_trend_results(search_terms=['debatt'], filter_opts={}, start_year=1960, end_year=1961)
+    assert 'Totalt' not in df.columns   
+
+def test_word_order(corpus):
+    # Most common words not in same order using wordtrends and word hits
+    # ...but almost. 
+    # Top 20 hits for *debatt, hund*, samhälls* 'information*', '*motion'
+    # have the same content but in slightly different order
+    
+    search_terms = ['information*', '*motion', '*debatt', 'hund*', 'samhälls*']
+
+    for search_term in search_terms:
+        descending_false = corpus.get_word_hits(search_term, descending=False, n_hits=20)
+        
+
+        df = corpus.get_word_trend_results(search_terms=descending_false, filter_opts={}, start_year=1900, end_year=3000)
+        row_sum = df.sum(axis=0)
+        print(row_sum)
+
+        sorted_list = row_sum.sort_values(ascending=False).index.tolist()
+        sorted_list.remove('Totalt')
+
+
+        print('SORTED                    ', sorted_list)
+        print('DESCENDING FALSE REVERSED', descending_false[::-1])
+        
+        print('order sorted vs descending_false', sorted_list == descending_false)
+        print('order sorted vs REVERSED descending_false', sorted_list == descending_false[::-1])
+        
+        content_diff = len(set(sorted_list))- len(set(descending_false))
+        assert content_diff == 0
+
+def test_eu_debatt(corpus):
+    df = corpus.get_word_trend_results(search_terms=['EU-debatt'], filter_opts={}, start_year=1900, end_year=3000)
+    print(df.head())
+    df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
+    print(df_small.head())
+    assert 'EU-debatt' in corpus.vectorized_corpus.vocabulary
+    assert 'eu-debatt' not in corpus.vectorized_corpus.vocabulary
+
 
 def test_chambers(corpus):
     # chamber id not included, needs to be added

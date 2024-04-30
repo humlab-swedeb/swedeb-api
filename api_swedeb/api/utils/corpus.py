@@ -55,6 +55,17 @@ class Corpus:
         self.person_codecs.persons_of_interest = self.person_codecs.persons_of_interest.merge(grouped_party_abbrevs, on='person_id', how='left')
         self.person_codecs.persons_of_interest['party_abbrev'].fillna('?', inplace=True)
 
+    
+    def word_in_vocabulary(self, word):
+        if word in self.vectorized_corpus.vocabulary:
+            return word
+        if word.lower() in self.vectorized_corpus.vocabulary:
+            return word.lower()
+        return None
+    
+    def filter_search_terms(self, search_terms):
+        return [self.word_in_vocabulary(word) for word in search_terms if self.word_in_vocabulary(word)]
+
     def get_word_trend_results(
         self,
         search_terms: List[str],
@@ -62,9 +73,8 @@ class Corpus:
         start_year: int,
         end_year: int,
     ) -> pd.DataFrame:
-        search_terms = [
-            x.lower() for x in search_terms if x in self.vectorized_corpus.vocabulary
-        ]
+        search_terms = self.filter_search_terms(search_terms)
+            
 
         if not search_terms:
             return pd.DataFrame()
@@ -113,16 +123,17 @@ class Corpus:
         # remove COLUMNS with only 0s, with serveral filtering options, there
         # are sometimes many such columns
         unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
+        if len(unstacked_trends.columns) > 1:
+            unstacked_trends['Totalt'] = unstacked_trends.sum(axis=1)
         return unstacked_trends
     
-    def filter_existing_terms(self, selected_terms):
-        return [word for word in selected_terms if word in self.vectorized_corpus.vocabulary]
+ 
 
     def get_anforanden_for_word_trends(
         self, selected_terms, filter_opts, start_year, end_year
     ):
         
-        selected_terms = self.filter_existing_terms(selected_terms)
+        selected_terms = self.filter_search_terms(selected_terms)
         if selected_terms:
         
             filtered_corpus = self.filter_corpus(filter_opts, self.vectorized_corpus)
@@ -196,10 +207,7 @@ class Corpus:
      
 
         return vectors
-    
-    def merge_word_vectors(self, vectors:dict) -> dict:
-        pass
-        
+
 
     def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Translates the (gender) columns of a data frame to Swedish
@@ -339,9 +347,9 @@ class Corpus:
         parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
         return parties_in_data
 
-    def get_word_hits(self, search_term: str, n_hits: int = 5) -> list[str]:
+    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = True) -> list[str]:
         search_term = search_term.lower()
-        return self.vectorized_corpus.find_matching_words({f"{search_term}"}, n_hits)
+        return self.vectorized_corpus.find_matching_words({f"{search_term}"}, n_max_count=n_hits, descending=descending)
 
     def translate_gender_col_header(self, col: str) -> str:
         """Translates gender column names to Swedish
