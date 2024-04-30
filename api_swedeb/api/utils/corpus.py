@@ -268,6 +268,7 @@ class Corpus:
 
     def get_party_meta(self):
         df = self.metadata.party
+        df = df[df['party_abbrev'] != '?']
         return df.reset_index()
 
     def get_gender_meta(self):

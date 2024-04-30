@@ -75,6 +75,16 @@ def test_meta_sub_office_type(corpus):
     return SubOfficeTypeList(sub_office_type_list=rows)
 
 
+def test_meta_parties(corpus):
+    df = corpus.get_party_meta()
+    print(df.head())
+    assert 'party_abbrev' in df.columns
+    assert 'party_id' in df.columns
+    assert 'party' in df.columns
+    assert 'C' in df.party_abbrev.to_list()
+    assert '?' not in df.party_abbrev.to_list()
+    assert len(df)>0
+
 
 def test_parties_api(client):
     response = client.get(f"{version}/metadata/parties")
