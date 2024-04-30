@@ -55,9 +55,10 @@ async def get_kwic_results(
 async def get_word_trends_result(
     search: str,
     commons: CommonParams,
+    normalize: bool = Query(False, description="Normalize counts by total number of tokens per year"),
 ):
     """Get word trends"""
-    return get_word_trends(search, commons, shared_corpus)
+    return get_word_trends(search, commons, shared_corpus, normalize=normalize)
 
 
 @router.get("/word_trend_speeches/{search}", response_model=SpeechesResultWT)

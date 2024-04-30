@@ -43,6 +43,14 @@ class Corpus:
         self.possible_pivots = [
             v["text_name"] for v in self.person_codecs.property_values_specs
         ]
+        self.words_per_year = self._set_words_per_year()
+
+    def normalize_word_per_year(self, data: pd.DataFrame) -> pd.DataFrame:
+        data = data.merge(self.words_per_year, left_index=True, right_index=True)
+        data = data.iloc[:, :].div(data.n_raw_tokens, axis=0)
+        data.drop(columns=["n_raw_tokens"], inplace=True)
+
+        return data
 
     def add_multiple_party_abbrevs(self):
         party_data = self.person_codecs.person_party
@@ -72,6 +80,7 @@ class Corpus:
         filter_opts: dict,
         start_year: int,
         end_year: int,
+        normalize: bool = False,
     ) -> pd.DataFrame:
         search_terms = self.filter_search_terms(search_terms)
             
@@ -125,6 +134,10 @@ class Corpus:
         unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
         if len(unstacked_trends.columns) > 1:
             unstacked_trends['Totalt'] = unstacked_trends.sum(axis=1)
+        
+        if normalize:
+
+            unstacked_trends = self.normalize_word_per_year(unstacked_trends)
         return unstacked_trends
     
  
@@ -155,6 +168,13 @@ class Corpus:
             return all_hits.groupby(['year', 'document_name', 'gender', 'party_abbrev', 'name', 'link',
        'speech_link', 'formatted_speech_id']).agg({'node_word': ','.join}).reset_index()
         return pd.DataFrame()
+    
+    def _set_words_per_year(self) -> pd.DataFrame:
+        data_year_series = self.vectorized_corpus.document_index.groupby("year")[
+            "n_raw_tokens"
+        ].sum()
+        return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
+
 
     def prepare_anforande_display(
         self, anforanden_doc_index: pd.DataFrame
