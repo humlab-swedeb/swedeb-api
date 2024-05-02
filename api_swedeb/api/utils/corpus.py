@@ -245,7 +245,7 @@ class Corpus:
     def get_link(self, person_id, name):
         if name == "":
             return "Okänd"
-        return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
+        return f"https://www.wikidata.org/wiki/{person_id}"
 
 
     def _get_filtered_speakers(self, selection_dict, df):
