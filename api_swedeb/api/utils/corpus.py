@@ -268,6 +268,7 @@ class Corpus:
 
     def get_party_meta(self):
         df = self.metadata.party
+        df['party'].replace('Other', 'Obunden', inplace=True)
         df = df[df['party_abbrev'] != '?']
         return df.reset_index()
 
