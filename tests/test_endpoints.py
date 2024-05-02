@@ -68,7 +68,22 @@ def test_word_trends(client):
     assert len(json) > 0
 
 def test_ngrams(client):
-    response = client.get(f"{version}/tools/ngrams/search_term")
+    search_term = 'debatt'
+
+    response = client.get(f"{version}/tools/ngrams/{search_term}")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+
+    assert 'ngram_list' in json
+    first_result = json['ngram_list'][0]
+    assert 'ngram' in first_result
+    assert 'count' in first_result
+
+def test_ngrams_non_existing_word(client):
+    # ngram should handle unknown words
+    search_term = 'xyzåölkråka'
+
+    response = client.get(f"{version}/tools/ngrams/{search_term}")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
 
