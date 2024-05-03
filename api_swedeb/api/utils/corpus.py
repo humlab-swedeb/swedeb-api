@@ -330,7 +330,7 @@ class Corpus:
         
         if 'error' in speech:
             return 'Okänd'
-        if speech['name'] == "unknown":
+        if 'name' in speech and speech['name'] == "unknown":
             return "Okänd"       
         return self.decoded_persons.loc[self.decoded_persons['person_id'] == speech['name']]['name'].values[0]
         

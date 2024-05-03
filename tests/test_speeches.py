@@ -59,7 +59,8 @@ def test_get_speaker_name_for_unknown_speaker(corpus):
 
 def test_get_speaker_name_for_non_existing_speech(corpus):
     speech_id = "prot-made_up_and_missing"
-    speaker = ''
+    speaker = corpus.get_speaker(speech_id)
+    assert speaker == "Okänd"
 
 
   
