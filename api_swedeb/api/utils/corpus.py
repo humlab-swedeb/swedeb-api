@@ -326,10 +326,15 @@ class Corpus:
     
     def get_speaker(self, document_name: str) -> str:
         speech = self.repository.speech(speech_name=document_name, mode="dict")
-        print(speech.keys())
-        if 'name' in speech:
-            return speech['name']
-        return '_'
+        #print(speech)
+        
+        if 'error' in speech:
+            return 'Okänd'
+        if speech['name'] == "unknown":
+            return "Okänd"       
+        return self.decoded_persons.loc[self.decoded_persons['person_id'] == speech['name']]['name'].values[0]
+        
+        # return speech['name']
 
     def get_speaker_note(self, document_name: str) -> str:
         speech = self.get_speech(document_name)

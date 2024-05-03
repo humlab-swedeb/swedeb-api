@@ -41,6 +41,28 @@ def test_get_all_protocol_ids(corpus):
         except IndexError:
             print(id)
             assert False
+
+
+def test_get_speaker_name(corpus):
+    #
+    speech_id = find_a_speech_id(corpus)
+    speaker = corpus.get_speaker(speech_id)
+    assert speaker is not None
+    assert len(speaker) > 0
+    # speech with unknown speaker prot-1963-höst-ak--35_090.txt
+
+def test_get_speaker_name_for_unknown_speaker(corpus):
+    speech_id = "prot-1963-höst-ak--35_090"
+    speaker = corpus.get_speaker(speech_id)
+    assert speaker == "Okänd"
+
+
+def test_get_speaker_name_for_non_existing_speech(corpus):
+    speech_id = "prot-made_up_and_missing"
+    speaker = ''
+
+
+  
     
 
 
