@@ -197,3 +197,34 @@ def test_kwic_non_existing_search_term(client):
     assert 'kwic_list' in response.json()
     assert len(response.json()['kwic_list']) == 0
 
+
+def test_kwic_speech_id_in_search_results(client):
+    response = client.get(
+        f"{version}/tools/kwic/hund?words_before=2&words_after=2&cut_off=10&"
+        "&from_year=1960&to_year=1961"
+    )
+    assert response.status_code == 200
+    print(response.json())
+    first_result = response.json()["kwic_list"][0]
+    assert 'left_word' in first_result
+    assert first_result['left_word'] is not None
+    assert 'right_word' in first_result
+    assert first_result['right_word'] is not None
+    assert 'node_word' in first_result
+    assert first_result['node_word'] is not None
+    assert 'name' in first_result
+    assert first_result['name'] is not None
+    assert 'party_abbrev' in first_result
+    assert first_result['party_abbrev'] is not None
+    assert 'title' in first_result
+    assert first_result['title'] is not None
+    assert 'gender' in first_result
+    assert first_result['gender'] is not None
+    assert 'person_id' in first_result
+    assert first_result['person_id'] is not None
+    assert 'link' in first_result
+    assert first_result['link'] is not None
+    assert 'formatted_speech_id' in first_result
+    assert first_result['formatted_speech_id'] is not None
+
+
