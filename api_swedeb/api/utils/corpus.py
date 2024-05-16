@@ -392,11 +392,11 @@ class Corpus:
         """
         new_col = col
         if " man" in col and "woman" not in col:
-            new_col = col.replace(" man", " Män ")
+            new_col = col.replace(" man", " Män")
         if "woman" in col:
-            new_col = col.replace("woman", "Kvinnor ")
+            new_col = col.replace("woman", "Kvinnor")
         if "unknown" in col:
-            new_col = col.replace("unknown", "Okänt kön")
+            new_col = col.replace("unknown", "Okänt")
         return new_col
 
     def translate_gender_column(self, english_gender: str) -> str:
