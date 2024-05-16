@@ -6,6 +6,7 @@ from api_swedeb.api.parlaclarin import Codecs
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.core.kwic import compute
 from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
+from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 
 class RiksprotKwicConfig:
@@ -43,6 +44,7 @@ class RiksprotKwicConfig:
         "link",
         "office_type",
         "sub_office_type",
+        "formatted_speech_id",
     ]
 
     DTYPES: dict[str, Any] = {
@@ -57,6 +59,10 @@ class RiksprotKwicConfig:
             "link",
             lambda data: data.apply(lambda x: RiksprotKwicConfig.get_link(x.get("person_id"), x.get("name")), axis=1),
         ),
+        (
+            "formatted_speech_id", 
+            lambda data: data.apply(lambda x: format_protocol_id(x["title"]), axis=1),
+        )
     ]
 
     @classmethod

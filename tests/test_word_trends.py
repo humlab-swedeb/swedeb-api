@@ -6,6 +6,10 @@ from main import app
 from fastapi import status
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 import pandas as pd
+import numpy as np
+
+pd.set_option('display.max_columns', None)
+
 version = 'v1'
 @pytest.fixture(scope="module")
 def corpus():
@@ -138,6 +142,31 @@ def test_word_hits_api(client):
     assert len(json['hit_list']) > 0
 
 
+def test_ordered_word_hits_api(corpus):
+    search_term = 'debatt*'
+    descending_true = corpus.get_word_hits(search_term, descending=True, n_hits=10)
+    descending_false = corpus.get_word_hits(search_term, descending=False, n_hits=10)
+    print('TRUE', descending_true)
+    print('FALSE', descending_false)
+    # 'debatterar', 'debattera', 'debatter', 'debatt', 'debatten'
+
+
+def test_summed_word_trends(corpus):
+    # If more than one trend, the sum of the trends should be included
+    df = corpus.get_word_trend_results(search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={}, start_year=1960, end_year=1961)
+    assert 'Totalt' in df.columns
+    df = corpus.get_word_trend_results(search_terms=['debatt'], filter_opts={}, start_year=1960, end_year=1961)
+    assert 'Totalt' not in df.columns   
+
+
+def test_eu_debatt(corpus):
+    df = corpus.get_word_trend_results(search_terms=['EU-debatt'], filter_opts={}, start_year=1900, end_year=3000)
+    print(df.head())
+    df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
+    print(df_small.head())
+    assert 'EU-debatt' in corpus.vectorized_corpus.vocabulary
+    assert 'eu-debatt' not in corpus.vectorized_corpus.vocabulary
+
 
 def test_chambers(corpus):
     # chamber id not included, needs to be added
@@ -148,3 +177,54 @@ def test_chambers_di(corpus):
     di = corpus.vectorized_corpus.document_index
     print(di.columns)
     print(di.head()[['document_id', 'document_name']])
+
+
+def test_merged_vectors():
+    input_dict = {'debatt': np.array([0, 1, 1,0]), 'riksdagsdebatt': np.array([1, 1, 0,0]), 'cat':np.array([0, 0, 0, 1])}
+    for position in range(len(input_dict['debatt'])):
+        keys = [key for key, value in input_dict.items() if value[position] == 1]
+        print(keys)
+
+    # sen ska de ju också inte vara med i riksdagsdebatt om de är med i debatt,riksdagsdebatt
+    # kanske bättre att mergea i dataframen
+
+def test_merged_speeches(corpus):
+    # if same speech_id, search terms should be concatenated
+    df_merged = corpus.get_anforanden_for_word_trends(selected_terms=["debatt","debattörer"], filter_opts={"who":["Q5991041"]}, start_year=1971, end_year=1971)
+    #  Björn Molin L Man uses both debatt and debattörer in the same speech: 1971:100 003
+
+    assert len(df_merged['document_name']) == len(df_merged['document_name'].unique()) 
+    assert ('debatt,debattörer'in df_merged['node_word'].to_list() or 'debattörer,debatt' in df_merged['node_word'].to_list())
+
+
+def test_frequent_words(corpus):
+    word_hits_non_descending = corpus.get_word_hits('katt*', n_hits=10, descending=False)
+    word_hits_descending = corpus.get_word_hits('katt*', n_hits=10, descending=True)   
+
+
+    print('word sums TOP WORDS DESCENDING')
+    print(word_hits_descending)
+    df = corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={}, start_year=1900, end_year=3000)
+    df_sum = df.sum(axis=0)
+    df_sum_sorted = df_sum.sort_values(ascending=False)
+    print(df_sum_sorted)
+
+    print('word sums TOP WORDS non DESCENDING')
+    print(word_hits_non_descending)
+    df = corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={}, start_year=1900, end_year=3000)
+    df_sum = df.sum(axis=0)
+    df_sum_sorted = df_sum.sort_values(ascending=False)
+    print(df_sum_sorted)
+    word_order_word_trends = df_sum_sorted.index.to_list()
+    word_order_word_trends.remove('Totalt')
+    print('WT ORDER',word_order_word_trends)
+
+    #assert word_order_word_trends == word_hits_non_descending
+    # word-trend counting and word-hits counting does not give the exact same results
+    # setting descening to true gives words in alphabetical order
+
+    for wt, hit in zip(word_order_word_trends, word_hits_non_descending):
+        print(wt, hit, wt==hit)
+
+
+

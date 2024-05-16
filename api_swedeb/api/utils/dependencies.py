@@ -6,11 +6,11 @@ from fastapi import Depends
 from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
 
-shared_corpus = Corpus(".env_1960")
+shared_corpus = Corpus(".env_1920_2020")
 
 
 async def get_corpus():
-    return Corpus(".env_1960")
+    return Corpus(".env_1920_2020")
 
 
 def get_cwb_corpus_opts() -> dict[str, str | None]:

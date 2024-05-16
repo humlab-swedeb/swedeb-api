@@ -39,7 +39,11 @@ def test_kwic(client):
     assert 'gender' in first_result
 
 def test_kwic_with_with_parameters(client):
-    response = client.get(f"{version}/tools/kwic/search_term?from_year=1960&to_year=1970&office_types=riksdagsledamot&sub_office_types=riksdagsledamot&who=1&sort_by=year_title&parties=S&genders=M&chambers=riksdagen&limit=10&offset=0&sort_order=asc")
+    search_term = 'debatt'
+    response = client.get(
+        f"{version}/tools/kwic/{search_term}?words_before=2&words_after=2&cut_off=200&lemmatized=false"
+        "&from_year=1960&to_year=1961&who=Q5781896&who=Q5584283&who=Q5746460&party_id=1&office_types=1&sub_office_types=1&sub_office_types=2&gender_id=1"
+    )
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
     assert 'kwic_list' in json
@@ -49,9 +53,11 @@ def test_kwic_without_search_term(client):
     assert response.status_code == status.HTTP_404_NOT_FOUND # search term is missing
 
 def test_kwic_bad_param(client):
-    response = client.get(f"{version}/tools/kwic/search_term?made_up_param=1")
-    json = response.json()
-    print(json)
+    search_term = 'debatt'
+    response = client.get(f"{version}/tools/kwic/{search_term}?made_up_param=1")
+    assert response.status_code == status.HTTP_200_OK
+
+
 
 def test_word_trends(client):
 
@@ -62,7 +68,22 @@ def test_word_trends(client):
     assert len(json) > 0
 
 def test_ngrams(client):
-    response = client.get(f"{version}/tools/ngrams/search_term")
+    search_term = 'debatt'
+
+    response = client.get(f"{version}/tools/ngrams/{search_term}")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+
+    assert 'ngram_list' in json
+    first_result = json['ngram_list'][0]
+    assert 'ngram' in first_result
+    assert 'count' in first_result
+
+def test_ngrams_non_existing_word(client):
+    # ngram should handle unknown words
+    search_term = 'xyzåölkråka'
+
+    response = client.get(f"{version}/tools/ngrams/{search_term}")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
 

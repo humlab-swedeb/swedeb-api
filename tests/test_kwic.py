@@ -6,6 +6,7 @@ from api_swedeb.api.utils.kwic import RiksprotKwicConfig
 
 import pytest
 from fastapi.testclient import TestClient
+from fastapi import status
 from api_swedeb.core import kwic
 from api_swedeb.core.cwb.compiler import to_cqp_exprs
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
@@ -42,16 +43,7 @@ def decoder() -> MagicMock:
     return mock
 
 
-def test_load_kwic_corpus(kwic_corpus):
-    assert kwic_corpus is not None
 
-
-def test_run_query(kwic_corpus):
-    search_terms = ["information", "om", "detta"]
-    query = kwic_corpus.get_search_query_list(search_terms=search_terms, lemmatized=False)
-    assert "word" in query
-    lemma_query = kwic_corpus.get_search_query_list(search_terms=search_terms, lemmatized=True)
-    assert "lemma" in lemma_query
 
 
 @pytest.mark.parametrize(
@@ -196,3 +188,43 @@ def test_kwic_api(client):
     assert len(response.json()["kwic_list"]) > 0
     assert "name" in response.json()["kwic_list"][0]
     assert "party_abbrev" in response.json()["kwic_list"][0]
+
+def test_kwic_non_existing_search_term(client):
+    # non-existing word
+    search_term = 'non_existing_word_'
+    response = client.get(f"{version}/tools/kwic/{search_term}")
+    assert response.status_code == status.HTTP_200_OK
+    assert 'kwic_list' in response.json()
+    assert len(response.json()['kwic_list']) == 0
+
+
+def test_kwic_speech_id_in_search_results(client):
+    response = client.get(
+        f"{version}/tools/kwic/hund?words_before=2&words_after=2&cut_off=10&"
+        "&from_year=1960&to_year=1961"
+    )
+    assert response.status_code == 200
+    print(response.json())
+    first_result = response.json()["kwic_list"][0]
+    assert 'left_word' in first_result
+    assert first_result['left_word'] is not None
+    assert 'right_word' in first_result
+    assert first_result['right_word'] is not None
+    assert 'node_word' in first_result
+    assert first_result['node_word'] is not None
+    assert 'name' in first_result
+    assert first_result['name'] is not None
+    assert 'party_abbrev' in first_result
+    assert first_result['party_abbrev'] is not None
+    assert 'title' in first_result
+    assert first_result['title'] is not None
+    assert 'gender' in first_result
+    assert first_result['gender'] is not None
+    assert 'person_id' in first_result
+    assert first_result['person_id'] is not None
+    assert 'link' in first_result
+    assert first_result['link'] is not None
+    assert 'formatted_speech_id' in first_result
+    assert first_result['formatted_speech_id'] is not None
+
+

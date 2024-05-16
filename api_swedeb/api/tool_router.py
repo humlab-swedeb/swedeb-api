@@ -55,9 +55,10 @@ async def get_kwic_results(
 async def get_word_trends_result(
     search: str,
     commons: CommonParams,
+    normalize: bool = Query(False, description="Normalize counts by total number of tokens per year"),
 ):
     """Get word trends"""
-    return get_word_trends(search, commons, shared_corpus)
+    return get_word_trends(search, commons, shared_corpus, normalize=normalize)
 
 
 @router.get("/word_trend_speeches/{search}", response_model=SpeechesResultWT)
@@ -82,7 +83,7 @@ async def get_ngram_results(
     search: str,
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
-    target: int = Query(default="word", description="Target for n-gram (word/lemma)"),  # FIXME: Add enum to schema
+    target: str = Query(default="word", description="Target for n-gram (word/lemma)"),  # FIXME: Add enum to schema
     corpus: Any = Depends(get_cwb_corpus),
 ):
     """Get ngrams"""
@@ -105,7 +106,7 @@ async def get_speeches_result(
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
 async def get_speech_by_id_result(id: str):
-    """eg. prot-1971--1_007."""
+    """eg. prot-1971--1_007"""
     return get_speech_by_id(id, shared_corpus)
 
 

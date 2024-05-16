@@ -4,7 +4,11 @@ from fastapi.testclient import TestClient
 from main import app
 from fastapi import status
 from api_swedeb.api.utils.corpus import load_corpus
-from api_swedeb.schemas.metadata_schema import PartyItem, PartyList, GenderItem, GenderList, ChamberItem, ChamberList, OfficeTypeItem, OfficeTypeList, SubOfficeTypeItem, SubOfficeTypeList 
+from api_swedeb.schemas.metadata_schema import  GenderItem, GenderList, ChamberItem, ChamberList, OfficeTypeItem, OfficeTypeList, SubOfficeTypeItem, SubOfficeTypeList 
+import pandas as pd
+
+
+pd.set_option('display.max_columns', None)
 
 version = "v1"
 
@@ -18,35 +22,29 @@ def corpus():
     return load_corpus('.env_1960')
 
 
-def test_property_value_specs(corpus):
-    metadata = corpus.metadata
-    assert metadata is not None
-
-    person_codecs = corpus.person_codecs
-    assert person_codecs is not None
-
-    property_value_specs = metadata.property_values_specs
-    for thingy in property_value_specs:
-        if thingy['text_name'] == 'gender':
-            print('GENDER:   ', thingy['values'])
-        elif thingy['text_name'] == 'office_type':
-            print('OFFICE_TYPE:   ',thingy['values'])
-        elif thingy['text_name'] == 'sub_office_type':
-            print('SUB_OFFICE_TYPE', thingy['values'])
-        elif thingy['text_name'] == 'party_abbrev':
-            print('PARTY_ABBREV', thingy['values'])
-        else:
-            print('>>>>',thingy['text_name'])
 
 
-    party_df = corpus.get_party_meta()
-    data = party_df.to_dict(orient="records")
-    rows = [PartyItem(**row) for row in data]
-    party_list =  PartyList(party_list=rows)
-    print(party_list)
+def test_multiple_parties(corpus):
 
-    df2 = metadata.party
-    print(df2)
+    person_data = corpus.person_codecs.persons_of_interest
+    
+    multi_party_people = person_data[person_data["has_multiple_parties"]==1]
+    print(multi_party_people.head())
+    assert all([',' in abbrev for abbrev in multi_party_people['party_abbrev'].to_list()])
+    assert all([',' in abbrev for abbrev in multi_party_people['multi_party_id'].to_list()])
+
+
+def test_get_speaker_with_multiple_parties(corpus):
+    # Raoul Hamilton should be returned for L, FRIS and X, party_id: 5, 12, 1
+    speakers_5 = corpus.get_speakers(selections={'party_id':[5]})
+    speakers_12 = corpus.get_speakers(selections={'party_id':[12]})
+    speakers_1 = corpus.get_speakers(selections={'party_id':[1]})
+    print(speakers_5.head())
+    assert 'Raoul Hamilton' in speakers_5['name'].to_list()
+    assert 'Raoul Hamilton' in speakers_12['name'].to_list()
+    assert 'Raoul Hamilton' in speakers_1['name'].to_list()
+
+
 
 def test_meta_genders(corpus):
     print()
@@ -76,6 +74,16 @@ def test_meta_sub_office_type(corpus):
     rows = [SubOfficeTypeItem(**row) for row in data]
     return SubOfficeTypeList(sub_office_type_list=rows)
 
+
+def test_meta_parties(corpus):
+    df = corpus.get_party_meta()
+    assert 'party_abbrev' in df.columns
+    assert 'party_id' in df.columns
+    assert 'party' in df.columns
+    assert 'C' in df.party_abbrev.to_list()
+    assert '?' not in df.party_abbrev.to_list()
+
+    assert len(df)>0
 
 
 def test_parties_api(client):
