@@ -374,9 +374,11 @@ class Corpus:
         parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
         return parties_in_data
 
-    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = True) -> list[str]:
-        search_term = search_term.lower()
-        return self.vectorized_corpus.find_matching_words({f"{search_term}"}, n_max_count=n_hits, descending=descending)
+    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = False) -> list[str]:
+        if search_term not in self.vectorized_corpus.vocabulary:
+            search_term = search_term.lower()
+        result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=descending)
+        return result[::-1]
 
     def translate_gender_col_header(self, col: str) -> str:
         """Translates gender column names to Swedish

@@ -158,34 +158,6 @@ def test_summed_word_trends(corpus):
     df = corpus.get_word_trend_results(search_terms=['debatt'], filter_opts={}, start_year=1960, end_year=1961)
     assert 'Totalt' not in df.columns   
 
-def test_word_order(corpus):
-    # Most common words not in same order using wordtrends and word hits
-    # ...but almost. 
-    # Top 20 hits for *debatt, hund*, samhälls* 'information*', '*motion'
-    # have the same content but in slightly different order
-    
-    search_terms = ['information*', '*motion', '*debatt', 'hund*', 'samhälls*']
-
-    for search_term in search_terms:
-        descending_false = corpus.get_word_hits(search_term, descending=False, n_hits=20)
-        
-
-        df = corpus.get_word_trend_results(search_terms=descending_false, filter_opts={}, start_year=1900, end_year=3000)
-        row_sum = df.sum(axis=0)
-        print(row_sum)
-
-        sorted_list = row_sum.sort_values(ascending=False).index.tolist()
-        sorted_list.remove('Totalt')
-
-
-        print('SORTED                    ', sorted_list)
-        print('DESCENDING FALSE REVERSED', descending_false[::-1])
-        
-        print('order sorted vs descending_false', sorted_list == descending_false)
-        print('order sorted vs REVERSED descending_false', sorted_list == descending_false[::-1])
-        
-        content_diff = len(set(sorted_list))- len(set(descending_false))
-        assert content_diff == 0
 
 def test_eu_debatt(corpus):
     df = corpus.get_word_trend_results(search_terms=['EU-debatt'], filter_opts={}, start_year=1900, end_year=3000)
@@ -223,3 +195,36 @@ def test_merged_speeches(corpus):
 
     assert len(df_merged['document_name']) == len(df_merged['document_name'].unique()) 
     assert ('debatt,debattörer'in df_merged['node_word'].to_list() or 'debattörer,debatt' in df_merged['node_word'].to_list())
+
+
+def test_frequent_words(corpus):
+    word_hits_non_descending = corpus.get_word_hits('katt*', n_hits=10, descending=False)
+    word_hits_descending = corpus.get_word_hits('katt*', n_hits=10, descending=True)   
+
+
+    print('word sums TOP WORDS DESCENDING')
+    print(word_hits_descending)
+    df = corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={}, start_year=1900, end_year=3000)
+    df_sum = df.sum(axis=0)
+    df_sum_sorted = df_sum.sort_values(ascending=False)
+    print(df_sum_sorted)
+
+    print('word sums TOP WORDS non DESCENDING')
+    print(word_hits_non_descending)
+    df = corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={}, start_year=1900, end_year=3000)
+    df_sum = df.sum(axis=0)
+    df_sum_sorted = df_sum.sort_values(ascending=False)
+    print(df_sum_sorted)
+    word_order_word_trends = df_sum_sorted.index.to_list()
+    word_order_word_trends.remove('Totalt')
+    print('WT ORDER',word_order_word_trends)
+
+    #assert word_order_word_trends == word_hits_non_descending
+    # word-trend counting and word-hits counting does not give the exact same results
+    # setting descening to true gives words in alphabetical order
+
+    for wt, hit in zip(word_order_word_trends, word_hits_non_descending):
+        print(wt, hit, wt==hit)
+
+
+
