@@ -83,7 +83,7 @@ async def get_ngram_results(
     search: str,
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
-    target: int = Query(default="word", description="Target for n-gram (word/lemma)"),  # FIXME: Add enum to schema
+    target: str = Query(default="word", description="Target for n-gram (word/lemma)"),  # FIXME: Add enum to schema
     corpus: Any = Depends(get_cwb_corpus),
 ):
     """Get ngrams"""
