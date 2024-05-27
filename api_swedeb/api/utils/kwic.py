@@ -69,7 +69,7 @@ class RiksprotKwicConfig:
     def get_link(cls, person_id: str, name: str) -> str:
         if not name:
             return "Okänd"
-        return f"[{name}](https://www.wikidata.org/wiki/{person_id})"
+        return f"https://www.wikidata.org/wiki/{person_id}"
 
     @classmethod
     def opts(cls) -> dict[str, Any]:
