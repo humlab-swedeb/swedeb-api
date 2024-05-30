@@ -45,6 +45,7 @@ class RiksprotKwicConfig:
         "office_type",
         "sub_office_type",
         "formatted_speech_id",
+        "speech_link",
     ]
 
     DTYPES: dict[str, Any] = {
@@ -62,8 +63,40 @@ class RiksprotKwicConfig:
         (
             "formatted_speech_id", 
             lambda data: data.apply(lambda x: format_protocol_id(x["title"]), axis=1),
-        )
+        ),
+        (
+            "speech_link",
+            lambda data: data.apply(lambda x: "https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot", axis=1),
+        ),
+        (
+            "gender",
+            lambda data: data.apply(lambda x: RiksprotKwicConfig.translate_gender(x["gender"]), axis=1),
+        ),
+        (
+            "name",
+            lambda data: data.apply(lambda x: RiksprotKwicConfig.add_missing_metadata_notice(x["name"]), axis=1),
+        ),
     ]
+
+    
+
+    @classmethod
+    def translate_gender(cls, gender: str) -> str:
+        if gender == 'unknown':
+            return 'Metadata saknas'
+        elif gender == 'woman':
+
+            return 'Kvinna'
+        else:
+            return 'Man'
+    
+    @classmethod
+    def add_missing_metadata_notice(cls, name: str) -> str:
+        if not name:
+            return "Metadata saknas"
+        else:
+            return name
+    
 
     @classmethod
     def get_link(cls, person_id: str, name: str) -> str:
