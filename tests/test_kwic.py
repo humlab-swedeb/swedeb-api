@@ -226,5 +226,7 @@ def test_kwic_speech_id_in_search_results(client):
     assert first_result['link'] is not None
     assert 'formatted_speech_id' in first_result
     assert first_result['formatted_speech_id'] is not None
+    assert 'speech_link' in first_result
+    assert first_result['speech_link'] is not None
 
 

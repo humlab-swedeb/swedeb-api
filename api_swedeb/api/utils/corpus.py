@@ -152,13 +152,16 @@ class Corpus:
             filtered_corpus = self.filter_corpus(filter_opts, self.vectorized_corpus)
             vectors = self.get_word_vectors(selected_terms, filtered_corpus)
             hits = []
-
             for word, vec in vectors.items():
-                hit_di = filtered_corpus.document_index[vec.astype(bool)]
-                anforanden = self.prepare_anforande_display(hit_di)
-                anforanden["node_word"] = word
-                hits.append(anforanden)
-                
+                if sum(vec) > 0:
+                    hit_di = filtered_corpus.document_index[vec.astype(bool)]
+                    anforanden = self.prepare_anforande_display(hit_di)
+                    anforanden["node_word"] = word
+                    hits.append(anforanden)
+            
+            if len(hits) == 0:
+                return pd.DataFrame()
+
             all_hits = pd.concat(hits)
             all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
        
@@ -182,6 +185,7 @@ class Corpus:
         anforanden_doc_index = anforanden_doc_index[
             ["who", "year", "document_name", "gender_id", "party_id"]
         ]
+        
         adi = anforanden_doc_index.rename(columns={"who": "person_id"})
         self.person_codecs.decode(adi, drop=False)
         adi["link"] = adi.apply(
@@ -198,6 +202,7 @@ class Corpus:
 
         # to sort unknowns to the end of the results
         sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
+
         return sorted_adi
 
     def get_speech_link(self):
@@ -313,7 +318,10 @@ class Corpus:
         if di_selected is None:
             filtered_corpus = self.filter_corpus(selections, self.vectorized_corpus)
             di_selected = filtered_corpus.document_index
+        
+        
         di_selected = di_selected[di_selected["year"].between(from_year, to_year)]
+
 
         return self.prepare_anforande_display(di_selected)
 
@@ -392,11 +400,11 @@ class Corpus:
         """
         new_col = col
         if " man" in col and "woman" not in col:
-            new_col = col.replace(" man", " Män ")
+            new_col = col.replace(" man", " Män")
         if "woman" in col:
-            new_col = col.replace("woman", "Kvinnor ")
+            new_col = col.replace("woman", "Kvinnor")
         if "unknown" in col:
-            new_col = col.replace("unknown", "Okänt kön")
+            new_col = col.replace("unknown", "Okänt")
         return new_col
 
     def translate_gender_column(self, english_gender: str) -> str:
