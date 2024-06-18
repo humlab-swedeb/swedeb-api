@@ -26,9 +26,7 @@ class Corpus:
 
         self.person_codecs: md.PersonCodecs = md.PersonCodecs().load(
             source=metadata_filename
-        )
-        
-        self.add_multiple_party_abbrevs()
+        ).add_multiple_party_abbrevs()
 
         self.repository: sr.SpeechTextRepository = sr.SpeechTextRepository(
             source=self.tagged_corpus_folder,
@@ -51,17 +49,6 @@ class Corpus:
         data.drop(columns=["n_raw_tokens"], inplace=True)
 
         return data
-
-    def add_multiple_party_abbrevs(self):
-        party_data = self.person_codecs.person_party
-        party_specs_rev = {v: k for k, v in self.get_party_specs().items()}
-        party_data['party_abbrev'] = party_data['party_id'].map(party_specs_rev)
-
-        grouped_party_abbrevs = party_data.groupby('person_id').agg({'party_abbrev': lambda x: ', '.join(set(x)), 'party_id': lambda x: ','.join(set(map(str, x)))}).reset_index()
-        grouped_party_abbrevs.rename(columns={'party_id': 'multi_party_id'}, inplace=True)
-
-        self.person_codecs.persons_of_interest = self.person_codecs.persons_of_interest.merge(grouped_party_abbrevs, on='person_id', how='left')
-        self.person_codecs.persons_of_interest['party_abbrev'].fillna('?', inplace=True)
 
     
     def word_in_vocabulary(self, word):
