@@ -15,12 +15,13 @@ def get_ngrams(
     n_threshold: int = 2,
     search_target: Literal["word", "lemma"] = "word",
     display_target: Literal["word", "lemma"] = "word",
+    mode: Literal["dataframe", "counter"] = "dataframe",
 ) -> schemas.NGramResult:
 
     # attribs: cwb.CorpusAttribs = n_grams.cwb(corpus)
     opts: dict[str, Any] = mappers.query_params_to_CQP_opts(commons, [(search_term, search_target)])
     ngrams: pd.DataFrame = n_grams.compute_n_grams(
-        corpus, opts, n=n_gram_width, p_show=display_target, threshold=n_threshold
+        corpus, opts, n=n_gram_width, p_show=display_target, threshold=n_threshold, mode=mode
     )
 
     return mappers.ngrams_to_ngram_result(ngrams)
