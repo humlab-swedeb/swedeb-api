@@ -1,7 +1,9 @@
+from functools import cached_property
 import os
 from typing import List, Mapping, Union
 
 import pandas as pd
+from penelope.corpus.dtm.interface import IVectorizedCorpus
 import penelope.utility as pu  # type: ignore
 from dotenv import load_dotenv
 from penelope.common.keyness import KeynessMetric  # type: ignore
@@ -12,33 +14,74 @@ from api_swedeb.api.parlaclarin import codecs as md
 from api_swedeb.api.parlaclarin import speech_text as sr
 from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
+from api_swedeb.core.utility import Lazy
 
 
 class Corpus:
     def __init__(self, env_file=None):
         load_dotenv(env_file)
-        tag: str = os.getenv("TAG")
-        folder = os.getenv("FOLDER")
-        metadata_filename = os.getenv("METADATA_FILENAME")
+        self.tag: str = os.getenv("TAG")
+        self.folder = os.getenv("FOLDER")
+        self.metadata_filename = os.getenv("METADATA_FILENAME")
         self.tagged_corpus_folder = os.getenv("TAGGED_CORPUS_FOLDER")
 
-        self.vectorized_corpus = VectorizedCorpus.load(folder=folder, tag=tag)
-        self.metadata: md.Codecs = md.Codecs().load(source=metadata_filename)
-
-        self.person_codecs: md.PersonCodecs = (
-            md.PersonCodecs().load(source=metadata_filename).add_multiple_party_abbrevs()
+        self.__vectorized_corpus: IVectorizedCorpus = Lazy(
+            lambda: VectorizedCorpus.load(folder=self.folder, tag=self.tag)
+        )
+        self.__lazy_person_codecs: md.PersonCodecs = Lazy(
+            lambda: md.PersonCodecs()
+            .load(source=self.metadata_filename)
+            .add_multiple_party_abbrevs(partys_of_interest=set(self.document_index.party_id.unique())),
+        )
+        self.__lazy_repository: sr.SpeechTextRepository = Lazy(
+            lambda: sr.SpeechTextRepository(
+                source=self.tagged_corpus_folder,
+                person_codecs=self.person_codecs,
+                document_index=self.document_index,
+            )
+        )
+        self.__lazy_document_index: pd.DataFrame = Lazy(
+            lambda: VectorizedCorpus.load_metadata(folder=self.folder, tag=self.tag).get("document_index")
         )
 
-        self.repository: sr.SpeechTextRepository = sr.SpeechTextRepository(
-            source=self.tagged_corpus_folder,
-            person_codecs=self.person_codecs,
-            document_index=self.vectorized_corpus.document_index,
+        self.__lazy_decoded_persons = Lazy(
+            lambda: self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
         )
+        self.possible_pivots = None
+        self.words_per_year = None
 
-        self.decoded_persons = self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
+    @property
+    def vectorized_corpus(self) -> pd.DataFrame:
+        return self.__vectorized_corpus.value
 
-        self.possible_pivots = [v["text_name"] for v in self.person_codecs.property_values_specs]
-        self.words_per_year = self._set_words_per_year()
+    @property
+    def document_index(self) -> pd.DataFrame:
+        return self.__lazy_document_index.value
+
+    @property
+    def metadata(self) -> md.PersonCodecs:
+        return self.person_codecs
+
+    @property
+    def repository(self) -> sr.SpeechTextRepository:
+        return self.__lazy_repository.value
+
+    @property
+    def person_codecs(self) -> md.PersonCodecs:
+        return self.__lazy_person_codecs.value
+
+    @cached_property
+    def words_per_year(self) -> pd.DataFrame:
+        data_year_series = self.document_index.groupby("year")["n_raw_tokens"].sum()
+        return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
+
+    @cached_property
+    def decoded_persons(self) -> pd.DataFrame:
+        return self.__lazy_decoded_persons.value
+
+    @cached_property
+    def possible_pivots(self) -> List[str]:
+        return [v["text_name"] for v in self.person_codecs.property_values_specs]
 
     def normalize_word_per_year(self, data: pd.DataFrame) -> pd.DataFrame:
         data = data.merge(self.words_per_year, left_index=True, right_index=True)
@@ -160,15 +203,12 @@ class Corpus:
             )
         return pd.DataFrame()
 
-    def _set_words_per_year(self) -> pd.DataFrame:
-        data_year_series = self.vectorized_corpus.document_index.groupby("year")["n_raw_tokens"].sum()
-        return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
-
     def prepare_anforande_display(self, anforanden_doc_index: pd.DataFrame) -> pd.DataFrame:
         anforanden_doc_index = anforanden_doc_index[["who", "year", "document_name", "gender_id", "party_id"]]
 
         adi = anforanden_doc_index.rename(columns={"who": "person_id"})
         self.person_codecs.decode(adi, drop=False)
+        # FIXME: #13 Very slow, should be optimized
         adi["link"] = adi.apply(lambda x: self.get_link(x["person_id"], x["name"]), axis=1)
         adi["speech_link"] = self.get_speech_link()
         adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
@@ -327,25 +367,11 @@ class Corpus:
 
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""
-        return int(self.vectorized_corpus.document_index["year"].min())
+        return int(self.document_index["year"].min())
 
     def get_years_end(self) -> int:
         """Returns the last year in the corpus"""
-        return int(self.vectorized_corpus.document_index["year"].max())
-
-    def get_party_specs(self) -> Union[str, Mapping[str, int]]:
-        selected = {}
-        for specification in self.metadata.property_values_specs:
-            if specification["text_name"] == "party_abbrev":
-                specs = specification["values"]
-                for k, v in specs.items():
-                    if v in self.get_only_parties_with_data():
-                        selected[k] = v
-        return selected
-
-    def get_only_parties_with_data(self):
-        parties_in_data = self.vectorized_corpus.document_index.party_id.unique()
-        return parties_in_data
+        return int(self.document_index["year"].max())
 
     def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = False) -> list[str]:
         if search_term not in self.vectorized_corpus.vocabulary:
