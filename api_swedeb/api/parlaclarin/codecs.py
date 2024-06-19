@@ -4,7 +4,7 @@ import sqlite3
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Callable, Literal, Mapping
+from typing import Callable, Literal, Mapping, Self, Union
 
 import pandas as pd
 from penelope import utility as pu  # type: ignore
@@ -44,7 +44,7 @@ class Codecs:
         self.extra_codecs: list[Codec] = []
         self.source_filename: str | None = None
 
-    def load(self, source: str | sqlite3.Connection | str) -> Codecs:
+    def load(self, source: str | sqlite3.Connection | str) -> Self:
         self.source_filename = source if isinstance(source, str) else None
         with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
             tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
@@ -182,7 +182,7 @@ class PersonCodecs(Codecs):
         tables["person_party"] = "person_party_id"
         return tables
 
-    def load(self, source: str | sqlite3.Connection | dict) -> Codecs:
+    def load(self, source: str | sqlite3.Connection | dict) -> Self:
         super().load(source)
         if "pid" not in self.persons_of_interest.columns:
             pi: pd.DataFrame = self.persons_of_interest.reset_index()
@@ -234,3 +234,38 @@ class PersonCodecs(Codecs):
                 Codec("encode", "person_id", "pid", self.person_id2pid.get),
             ]
         )
+
+    def add_multiple_party_abbrevs(self, partys_of_interest: set[int]) -> Self:
+        party_data = self.person_party
+        party_specs_rev = {v: k for k, v in self._get_party_specs(partys_of_interest).items()}
+        party_data["party_abbrev"] = party_data["party_id"].map(party_specs_rev)
+        party_data["party_abbrev"].fillna("?", inplace=True)
+        
+        grouped_party_abbrevs = (
+            party_data.groupby("person_id")
+            .agg({"party_abbrev": lambda x: ", ".join(set(x)), "party_id": lambda x: ",".join(set(map(str, x)))})
+            .reset_index()
+        )
+        grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
+
+        self.persons_of_interest = self.persons_of_interest.merge(
+            grouped_party_abbrevs, on="person_id", how="left"
+        )
+        self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
+        return self
+
+
+    def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
+        selected = {}
+        for specification in self.property_values_specs:
+            if specification["text_name"] == "party_abbrev":
+                specs = specification["values"]
+                for k, v in specs.items():
+                    if v in partys_of_interest:
+                        selected[k] = v
+        return selected
+
+
+    # def _get_only_parties_with_data(self):
+    #     parties_in_data = self.document_index.party_id.unique()
+    #     return parties_in_data

@@ -158,9 +158,9 @@ def test_get_kwic_compute_kwic(corpus: ccc.Corpus, decoder: MagicMock):
 
     query: str = to_cqp_exprs(search_opts, within="speech")
     assert query == (
-        'a:[word="debatt"%c]::(a.year_year="196[0-9]"%c)'
-        '&(a.speech_who="Q5781896|Q5584283|Q5746460"%c)&(a.speech_party_id="1"%c)&(a.speech_office_type_id="1"%c)'
-        '&(a.speech_sub_office_type_id="1|2"%c)&(a.speech_gender_id="1"%c) within speech'
+        'a:[word="debatt"%c] :: (a.year_year="196[0-9]")'
+        '&(a.speech_who="Q5781896|Q5584283|Q5746460")&(a.speech_party_id="1")&(a.speech_office_type_id="1")'
+        '&(a.speech_sub_office_type_id="1|2")&(a.speech_gender_id="1") within speech'
     )
 
     kwic_opts: dict[str, Any] = {
