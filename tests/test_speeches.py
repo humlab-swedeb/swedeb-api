@@ -22,7 +22,7 @@ def corpus():
 
 def test_speeches_get(client):
     # assert that the speeches endpoint is reachable
-    response = client.get(f"{version}/tools/speeches/")
+    response = client.get(f"{version}/tools/speeches/prot-1971--1_007")
     assert response.status_code == status.HTTP_200_OK
     print(response.json())
 
