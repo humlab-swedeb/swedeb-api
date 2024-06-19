@@ -91,13 +91,13 @@ def test_to_cqp_patterns_with_correct_opts(opts, expected):
         ),
         (
             [
-                {"key": "a.pos", "values": ["NN", "PM"]},
+                {"key": "a.pos", "values": ["NN", "PM"], "ignore_case": True},
             ],
             '(a.pos="NN|PM"%c)',
         ),
         (
             [
-                {"key": "a.speech_who", "values": ["Q1807154", "Q4973765"]},
+                {"key": "a.speech_who", "values": ["Q1807154", "Q4973765"], "ignore_case": True},
             ],
             '(a.speech_who="Q1807154|Q4973765"%c)',
         ),
@@ -124,7 +124,7 @@ def test_to_cqp_criteria_expr(criterias, expected):
                 "prefix": "a",
                 "target": "word",
                 "value": "propaganda",
-                "criterias": {"key": "a.pos", "values": ["NN", "PM"]},
+                "criterias": {"key": "a.pos", "values": ["NN", "PM"], "ignore_case": True},
             },
             'a:[word="propaganda"%c] :: (a.pos="NN|PM"%c)',
         ),
@@ -134,9 +134,9 @@ def test_to_cqp_criteria_expr(criterias, expected):
                 "target": "word",
                 "value": "propaganda",
                 "criterias": [
-                    {"key": "a.speech_who", "values": ["Q1807154", "Q4973765"]},
-                    {"key": "a.speech_party_id", "values": ["7"]},
-                    {"key": "a.pos", "values": ["NN", "PM"]},
+                    {"key": "a.speech_who", "values": ["Q1807154", "Q4973765"], "ignore_case": True},
+                    {"key": "a.speech_party_id", "values": ["7"], "ignore_case": True},
+                    {"key": "a.pos", "values": ["NN", "PM"], "ignore_case": True},
                 ],
             },
             'a:[word="propaganda"%c] :: (a.speech_who="Q1807154|Q4973765"%c)&(a.speech_party_id="7"%c)&(a.pos="NN|PM"%c)',

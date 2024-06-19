@@ -4,7 +4,7 @@ import sqlite3
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Callable, Literal, Mapping, Self
+from typing import Callable, Literal, Mapping, Self, Union
 
 import pandas as pd
 from penelope import utility as pu  # type: ignore
@@ -235,11 +235,12 @@ class PersonCodecs(Codecs):
             ]
         )
 
-    def add_multiple_party_abbrevs(self) -> Self:
+    def add_multiple_party_abbrevs(self, partys_of_interest: set[int]) -> Self:
         party_data = self.person_party
-        party_specs_rev = {v: k for k, v in self.get_party_specs().items()}
+        party_specs_rev = {v: k for k, v in self._get_party_specs(partys_of_interest).items()}
         party_data["party_abbrev"] = party_data["party_id"].map(party_specs_rev)
-
+        party_data["party_abbrev"].fillna("?", inplace=True)
+        
         grouped_party_abbrevs = (
             party_data.groupby("person_id")
             .agg({"party_abbrev": lambda x: ", ".join(set(x)), "party_id": lambda x: ",".join(set(map(str, x)))})
@@ -252,3 +253,19 @@ class PersonCodecs(Codecs):
         )
         self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
         return self
+
+
+    def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
+        selected = {}
+        for specification in self.property_values_specs:
+            if specification["text_name"] == "party_abbrev":
+                specs = specification["values"]
+                for k, v in specs.items():
+                    if v in partys_of_interest:
+                        selected[k] = v
+        return selected
+
+
+    # def _get_only_parties_with_data(self):
+    #     parties_in_data = self.document_index.party_id.unique()
+    #     return parties_in_data
