@@ -29,7 +29,7 @@ def test_multiple_parties(corpus):
     person_data = corpus.person_codecs.persons_of_interest
     
     multi_party_people = person_data[person_data["has_multiple_parties"]==1]
-    print(multi_party_people.head())
+
     assert all([',' in abbrev for abbrev in multi_party_people['party_abbrev'].to_list()])
     assert all([',' in abbrev for abbrev in multi_party_people['multi_party_id'].to_list()])
 
@@ -39,7 +39,7 @@ def test_get_speaker_with_multiple_parties(corpus):
     speakers_5 = corpus.get_speakers(selections={'party_id':[5]})
     speakers_12 = corpus.get_speakers(selections={'party_id':[12]})
     speakers_1 = corpus.get_speakers(selections={'party_id':[1]})
-    print(speakers_5.head())
+
     assert 'Raoul Hamilton' in speakers_5['name'].to_list()
     assert 'Raoul Hamilton' in speakers_12['name'].to_list()
     assert 'Raoul Hamilton' in speakers_1['name'].to_list()
@@ -47,7 +47,7 @@ def test_get_speaker_with_multiple_parties(corpus):
 
 
 def test_meta_genders(corpus):
-    print()
+
     df = corpus.get_gender_meta()
     data = df.to_dict(orient="records")
     rows = [GenderItem(**row) for row in data]
@@ -72,7 +72,10 @@ def test_meta_sub_office_type(corpus):
     df = corpus.get_sub_office_type_meta()
     data = df.to_dict(orient="records")
     rows = [SubOfficeTypeItem(**row) for row in data]
-    return SubOfficeTypeList(sub_office_type_list=rows)
+
+    assert len(rows) > 0
+    
+    # return SubOfficeTypeList(sub_office_type_list=rows)
 
 
 def test_meta_parties(corpus):

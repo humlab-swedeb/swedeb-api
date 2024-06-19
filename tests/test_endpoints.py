@@ -1,4 +1,3 @@
-
 import pytest
 from fastapi.testclient import TestClient
 from main import app
@@ -9,7 +8,8 @@ from fastapi import status
 
 version = "v1"
 
-@pytest.fixture(scope="module")
+
+@pytest.fixture(scope="session")
 def client():
     client = TestClient(app)
     yield client
@@ -25,18 +25,30 @@ def test_kwic(client):
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    first_result = json['kwic_list'][0]
-    print(first_result)
-    
-    assert 'kwic_list' in json
-    assert 'left_word' in first_result
-    assert 'node_word' in first_result
-    assert 'right_word' in first_result
-    assert 'year' in first_result
-    assert 'name' in first_result
-    assert 'party_abbrev' in first_result
-    assert 'speech_title' in first_result
-    assert 'gender' in first_result
+
+    assert json is not None
+    assert len(json) > 0
+    assert "kwic_list" in json
+
+    first_result = json["kwic_list"][0]
+
+    assert not (
+        {
+            "left_word",
+            "node_word",
+            "right_word",
+            "year",
+            "name",
+            "party_abbrev",
+            "title",
+            "gender",
+            "person_id",
+            "link",
+            "formatted_speech_id",
+            "speech_link",
+        }
+    ) - set(first_result.keys())
+
 
 def test_kwic_with_with_parameters(client):
     search_term = 'debatt'
