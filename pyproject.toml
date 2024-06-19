@@ -15,6 +15,7 @@ python-dotenv = "^1.0.1"
 cwb-ccc = "^0.12.1"
 pandas = "1.5.3"
 pydantic = "^2.6.3"
+numpy = ">=1.20,<2.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -23,6 +24,34 @@ httpx = "^0.26.0"
 pytest = "^7.4.4"
 pylint = "^3.1.0"
 isort = "^5.13.2"
+ruff = "^0.3.3"
+pyinstrument = "^4.6.2"
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+skip-string-normalization = true
+
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+# output-format = "grouped"
+exclude = [ ".eggs", ".git", ".ruff_cache", ".venv", "dist" ]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+
+[tool.pytest.ini_options]
+duration = "0"
+testpaths = ["tests"]
+addopts = "-ra --quiet --tb=short --color=yes --durations=0"
 
 [build-system]
 requires = ["poetry-core"]
