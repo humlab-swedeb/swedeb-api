@@ -37,6 +37,10 @@ async def get_kwic_results(
     decoder: Any = Depends(get_corpus_decoder),
 ) -> KeywordInContextResult:
     """Get keyword in context"""
+
+    if ' ' in search:
+        search = search.split(' ')
+
     return get_kwic_data(
         corpus,
         commons,
