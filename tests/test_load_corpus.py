@@ -11,5 +11,14 @@ def test_load_corpus():
     # with some content
     id_to_person = person_codecs.pid2person_id
     assert id_to_person is not None
-    # just to get some test output 
-    print(id_to_person)
+   
+
+def test_chamber_temp_test():
+    # corpus is loaded
+    c = load_corpus('.env_1920_2020')
+    assert c is not None
+    # corpus has a person_codecs attribute
+    document_index = c.document_index
+    print(type(document_index))
+    print(document_index.document_name[-5:])
+    

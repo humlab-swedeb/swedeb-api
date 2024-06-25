@@ -35,8 +35,11 @@ def test_kwic(client):
     assert 'year' in first_result
     assert 'name' in first_result
     assert 'party_abbrev' in first_result
-    assert 'speech_title' in first_result
+    assert 'title' in first_result
     assert 'gender' in first_result
+    assert 'person_id' in first_result
+    assert 'link' in first_result
+    assert 'speech_link' in first_result
 
 def test_kwic_with_with_parameters(client):
     search_term = 'debatt'

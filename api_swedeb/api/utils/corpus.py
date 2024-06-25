@@ -47,8 +47,19 @@ class Corpus:
         self.__lazy_decoded_persons = Lazy(
             lambda: self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
         )
-        self.possible_pivots = None
-        self.words_per_year = None
+
+        # temp fix to restore behaviour
+        self.possible_pivots = [
+            v["text_name"] for v in self.person_codecs.property_values_specs
+        ]
+        self.words_per_year = self._set_words_per_year()
+
+    def _set_words_per_year(self) -> pd.DataFrame:
+        # temp fix to restore behaviour
+        data_year_series = self.vectorized_corpus.document_index.groupby("year")[
+            "n_raw_tokens"
+        ].sum()
+        return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
 
     @property
     def vectorized_corpus(self) -> pd.DataFrame:
@@ -261,11 +272,15 @@ class Corpus:
         if name == "":
             return "Okänd"
         return f"https://www.wikidata.org/wiki/{person_id}"
+    
+
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
             if selection_key == "party_id":
-                df = df[df["multi_party_id"].astype(str).str.contains(str(selection_value))]
+
+                df = df[df["multi_party_id"].astype(str).str.split(',').apply(lambda x: any(item in x for item in map(str, selection_value)))]                
+      
             else:
                 df = df[df[selection_key].isin(selection_value)]
         return df

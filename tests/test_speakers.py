@@ -24,14 +24,21 @@ def corpus():
 
 
 
+def test_get_speakers_non_X(corpus):
+    speakers = corpus.get_speakers(selections={'party_abbrev': ['S']})
+    assert len(speakers) > 0
+    assert all(['S' in pa for pa in speakers['party_abbrev'].unique()])
 
 
 
+def test_get_speakers_non_X_actual(corpus):
+    speakers = corpus.get_speakers(selections={'party_id': ['2']})
+    
+    assert len(speakers) > 0
+    assert all(['C' in pa for pa in speakers['party_abbrev'].unique()])
     
 
-def test_get_speakers(corpus):
-    speakers = corpus.get_speakers(selections={})
-    assert len(speakers) > 0
+
 
 
 
@@ -69,5 +76,5 @@ def test_get_speakers_api_with_params(client):
     for speaker in json['speaker_list']:
         assert 'S' in speaker['party_abbrev']
         
-        print(speaker)
+ 
         
