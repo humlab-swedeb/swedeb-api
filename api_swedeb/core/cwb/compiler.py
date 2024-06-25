@@ -52,7 +52,7 @@ def _to_interval_expr(low: int, high: int, *_) -> str:
     return f'{"|".join(values)}'
 
 
-def to_cqp_pattern(**opts) -> str:
+def to_cqp_pattern(opts: dict | str) -> str:
     """Compile a CQP query from a list of tokens and a dictionary of criterias.
 
     Args:
@@ -144,21 +144,37 @@ def to_cqp_pattern(**opts) -> str:
     """  # noqa: E501
 
     if isinstance(opts, str):
-        return f'"{opts}"' % opts
+        return opts
 
-    prefix: str | list = opts.get("prefix")
     target: str = opts.get("target")
-    value: str | list[str] = opts.get("value")
-    ignore_case: bool = opts.get("ignore_case", True)
 
     if target is None:
         raise ValueError("Target must be provided")
 
-    caseless: bool = "%c" if ignore_case else ""
-    namespace: str = f"{prefix}:" if prefix else ""
-    pattern: str = f'[{target}="{_to_value_expr(value)}"{caseless}]' if value is not None else f'"{target}"{caseless}'
+    ignore_case: bool = opts.get("ignore_case", True)
 
-    return f"{namespace}{pattern}"
+    value: str | list[str] = opts.get("value")
+
+    if isinstance(value, str):
+
+        if value.endswith("%c"):
+            value = value[:-2].strip()
+            ignore_case: bool = True
+
+        value = value.strip('"')
+
+    prefix: str | list = opts.get("prefix", "")
+    if prefix and not prefix.endswith(":"):
+        prefix = f"{prefix}:"
+
+    postfix: bool = "%c" if ignore_case else ""
+
+    if value is not None:
+        pattern: str = f'[{target}="{_to_value_expr(value)}"{postfix}]'
+    else:
+        pattern = f'"{target}"{postfix}'
+
+    return f"{prefix}{pattern}"
 
 
 def to_cqp_patterns(args: list[dict[str, Any]]) -> str:

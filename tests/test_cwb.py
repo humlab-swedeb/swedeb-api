@@ -41,7 +41,6 @@ def test_to_cqp_pattern_with_faulty_opts():
 @pytest.mark.parametrize(
     "opts, expected",
     [
-        # ('apa', '"apa"%c'),
         ({"target": "word", "value": "bepa"}, '[word="bepa"%c]'),
         ({"target": "apa"}, '"apa"%c'),
         ({"target": "word", "value": "information"}, '[word="information"%c]'),
@@ -52,11 +51,13 @@ def test_to_cqp_pattern_with_faulty_opts():
             {"prefix": "a", "target": "word", "value": ["information", "propaganda"]},
             'a:[word="information|propaganda"%c]',
         ),
+        ("apa", 'apa'),
+        ({"target": "word", "value": "apa%c"}, '[word="apa"%c]'),
     ],
 )
 def test_to_cqp_pattern_with_correct_opts(opts, expected):
 
-    assert to_cqp_pattern(**opts if isinstance(opts,dict) else opts) == expected
+    assert to_cqp_pattern(opts) == expected
 
 
 @pytest.mark.parametrize(
