@@ -49,7 +49,18 @@ build-backend: create-tmpdir
 		&& mv -f $(TMPDIR_BUILD)/swedeb-api/dist dist \
 		&& rm -rf $(TMPDIR_BUILD)
 
-.ONESHELL: build-image
+.ONESHELL: backend
+.PHONY: backend
+backend: create-tmpdir
+	@echo "Building backend API from working directory..." \
+		&& cd .. \
+		&& poetry build \
+		&& rm -rf docker/dist \
+		&& mv -f dist docker/ \
+		&& cd docker
+
+
+.PHONY: build-image
 build-image:
 	@echo "Building image using $(SWEDEB_BACKEND_TAG)..."
 	@docker build \
@@ -57,6 +68,10 @@ build-image:
 		-t $(SWEDEB_IMAGE_NAME):$(SWEDEB_IMAGE_TAG) \
 		-t $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) \
 		-f ./Dockerfile .
+
+.PHONY: image
+image: build-image
+	@echo "Done building $(SWEDEB_BACKEND_TAG)!"
 
 .ONESHELL: build-image
 build: build-frontend build-backend build-image
@@ -75,7 +90,8 @@ bash:
       --volume "${HOST_DTM_FOLDER}:/data/corpus/dtm" \
       --volume "${HOST_TAGGED_CORPUS_FOLDER}:/data/corpus/tagged_frames" \
 	  --env-file .env \
-	  swedeb-api:latest /bin/bash
+	  --entrypoint /bin/bash \
+	  swedeb-api:latest
 
 .PHONY: add-host-user
 add-host-user:
