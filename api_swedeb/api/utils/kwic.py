@@ -76,6 +76,10 @@ class RiksprotKwicConfig:
             "name",
             lambda data: data.apply(lambda x: RiksprotKwicConfig.add_missing_metadata_notice(x["name"]), axis=1),
         ),
+        (
+            "party_abbrev",
+            lambda data: data.apply(lambda x: RiksprotKwicConfig.add_missing_metadata_notice_party(x["party_abbrev"], replacements={"?": "Metadata saknas", "X": "partilös"}), axis=1),
+        )
     ]
 
     
@@ -91,11 +95,19 @@ class RiksprotKwicConfig:
             return 'Man'
     
     @classmethod
-    def add_missing_metadata_notice(cls, name: str) -> str:
-        if not name:
+    def add_missing_metadata_notice(cls, column_name: str) -> str:
+        if not column_name:
             return "Metadata saknas"
-        else:
-            return name
+        return column_name
+        
+    
+    @classmethod
+    def add_missing_metadata_notice_party(cls, column: str, replacements:dict) -> str:
+        for key, value in replacements.items(): 
+            if column == key:
+                return value
+        return column
+
     
 
     @classmethod

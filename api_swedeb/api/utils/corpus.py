@@ -163,7 +163,7 @@ class Corpus:
         self.translate_dataframe(unstacked_trends)
         # remove COLUMNS with only 0s, with serveral filtering options, there
         # are sometimes many such columns
-        unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
+        # unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
         if len(unstacked_trends.columns) > 1:
             unstacked_trends["Totalt"] = unstacked_trends.sum(axis=1)
 
@@ -194,7 +194,9 @@ class Corpus:
             all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
 
             all_hits["name"].replace("", "metadata saknas", inplace=True)
-            all_hits["party_abbrev"].replace("", "metadata saknas", inplace=True)
+            all_hits["party_abbrev"].replace("?", "metadata saknas", inplace=True)
+            all_hits["party_abbrev"].replace("X", "partilös", inplace=True)
+
             # if several words in same speech, merge them
             return (
                 all_hits.groupby(
@@ -417,7 +419,7 @@ class Corpus:
         if english_gender == "woman":
             return "kvinna"
         if english_gender == "unknown":
-            return "okänt"
+            return "Metadata saknas"
         return english_gender
 
 
