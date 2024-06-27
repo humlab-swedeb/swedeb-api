@@ -5,7 +5,8 @@ from api_swedeb.api import metadata_router, tool_router
 
 app = FastAPI()
 
-origins = ['http://localhost:8080'] 
+origins = ['http://localhost:8080',
+           'http://localhost:9002']
 
 
 
@@ -29,5 +30,4 @@ app.include_router(metadata_router.router)
 #    data = {"Det finns inget här": "Inget alls, bara åäö"}
 #    json_data = json.dumps(data, ensure_ascii=False).encode('utf8')  # Encode as UTF-8
 #    return Response(content=json_data, media_type="application/json; charset=utf-8")
-
 

@@ -54,25 +54,20 @@ def get_speech_by_id(id: str, corpus: Corpus) -> SpeechesTextResultItem:
 
 
 def get_speech_zip(ids: List[str], corpus: Corpus):
-
-    speakers = {}
+    file_and_speech = []
     for protocol_id in ids:
         speaker = corpus.get_speaker(protocol_id)
-        if speaker not in speakers:
-            speakers[speaker] = []
-        speakers[speaker].append((f"{speaker}_{protocol_id}.txt", corpus.get_speech_text(protocol_id)))
-    
-
+        file_and_speech.append(
+            (f"{speaker}_{protocol_id}.txt", corpus.get_speech_text(protocol_id))
+        )
 
     # Create an in-memory buffer for the zip file
     zip_buffer = io.BytesIO()
 
     # Create a zip file in memory
     with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-        for speaker, files in speakers.items():
-            speaker_folder = f"{speaker}/"
-            for filename, content in files:
-                zip_file.writestr(speaker_folder + filename, content)
+        for file_name, file_content in file_and_speech:
+            zip_file.writestr(file_name, file_content)
 
     # Move to the beginning of the buffer
     zip_buffer.seek(0)
