@@ -456,7 +456,7 @@ class Corpus:
         if english_gender == "woman":
             return "kvinna"
         if english_gender == "unknown":
-            return "Metadata saknas"
+            return "metadata saknas"
         return english_gender
 
 

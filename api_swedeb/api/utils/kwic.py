@@ -93,7 +93,7 @@ class RiksprotKwicConfig:
             lambda data: data.apply(
                 lambda x: RiksprotKwicConfig.add_missing_metadata_notice_party(
                     x["party_abbrev"],
-                    replacements={"?": "Metadata saknas", "X": "partilös"},
+                    replacements={"?": "metadata saknas", "X": "partilös"},
                 ),
                 axis=1,
             ),
@@ -103,7 +103,7 @@ class RiksprotKwicConfig:
     @classmethod
     def translate_gender(cls, gender: str) -> str:
         if gender == "unknown":
-            return "Metadata saknas"
+            return "metadata saknas"
         elif gender == "woman":
             return "Kvinna"
         else:
@@ -112,7 +112,7 @@ class RiksprotKwicConfig:
     @classmethod
     def add_missing_metadata_notice(cls, column_name: str) -> str:
         if not column_name:
-            return "Metadata saknas"
+            return "metadata saknas"
         return column_name
 
     @classmethod
