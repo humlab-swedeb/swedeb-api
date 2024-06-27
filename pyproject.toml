@@ -13,7 +13,8 @@ uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
 humlab-penelope = "^0.7.47"
 python-dotenv = "^1.0.1"
 cwb-ccc = "^0.12.1"
-pandas = "1.5.3"
+pandas = "^1.5.3"
+numpy = "^1.26.4"
 pydantic = "^2.6.3"
 
 

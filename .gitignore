@@ -262,3 +262,4 @@ $RECYCLE.BIN/
 docker/public
 docker/dist
 docker/swedeb_frontend
+*_backup.*
