@@ -65,7 +65,9 @@ def query_params_to_CQP_opts(
     if isinstance(word_targets, str):
         word_targets = [word_targets]
 
-    word_targets: list[tuple[str, str]] = [(word, "word") if isinstance(word, str) else word for word in word_targets]
+    word_targets: list[tuple[str, str]] = [
+        (word, "word") if isinstance(word, str) else word for word in word_targets
+    ]
 
     criterias: list[dict] = query_params_to_CQP_criterias(params)
 

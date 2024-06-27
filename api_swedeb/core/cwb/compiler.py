@@ -156,7 +156,11 @@ def to_cqp_pattern(**opts) -> str:
 
     caseless: bool = "%c" if ignore_case else ""
     namespace: str = f"{prefix}:" if prefix else ""
-    pattern: str = f'[{target}="{_to_value_expr(value)}"{caseless}]' if value is not None else f'"{target}"{caseless}'
+    pattern: str = (
+        f'[{target}="{_to_value_expr(value)}"{caseless}]'
+        if value is not None
+        else f'"{target}"{caseless}'
+    )
 
     return f"{namespace}{pattern}"
 
@@ -212,7 +216,6 @@ def to_cqp_patterns(args: list[dict[str, Any]]) -> str:
 
 
 def to_cqp_criteria_expr(criterias: list[dict[str, Any]]) -> str:
-
     if criterias is None:
         criterias = []
 
@@ -237,7 +240,9 @@ def to_cqp_criteria_expr(criterias: list[dict[str, Any]]) -> str:
 
 def get_criteria_opts(args: list[dict[str, Any]]) -> list[str]:
     """Get a list of criteria expressions from a list of pattern options."""
-    items: list[Any | None] = [arg.get("criterias") for arg in args if arg.get("criterias")]
+    items: list[Any | None] = [
+        arg.get("criterias") for arg in args if arg.get("criterias")
+    ]
     if len(items) > 0 and isinstance(items[0], list):
         items = [item for row in items for item in row]
     return items

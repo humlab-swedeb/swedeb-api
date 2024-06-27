@@ -6,7 +6,7 @@ from pydantic import BaseModel
 # Define a base Pydantic model to represent a single row with year and counts
 class WordTrendsItem(BaseModel):
     year: int
-    count: Dict[str, int|float]
+    count: Dict[str, int | float]
 
 
 # Define a Pydantic model to represent a list of YearCounts objects

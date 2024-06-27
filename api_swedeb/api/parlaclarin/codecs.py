@@ -46,7 +46,9 @@ class Codecs:
 
     def load(self, source: str | sqlite3.Connection | str) -> Self:
         self.source_filename = source if isinstance(source, str) else None
-        with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
+        with sqlite3.connect(database=source) if isinstance(
+            source, str
+        ) else nullcontext(source) as db:
             tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
             for table_name, table in tables.items():
                 setattr(self, table_name, table)
@@ -96,11 +98,21 @@ class Codecs:
             Codec("decode", "gender_id", "gender", self.gender2name.get),
             Codec("decode", "office_type_id", "office_type", self.office_type2name.get),
             Codec("decode", "party_id", "party_abbrev", self.party_abbrev2name.get),
-            Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name.get),
+            Codec(
+                "decode",
+                "sub_office_type_id",
+                "sub_office_type",
+                self.sub_office_type2name.get,
+            ),
             Codec("encode", "gender", "gender_id", self.gender2id.get),
             Codec("encode", "office_type", "office_type_id", self.office_type2id.get),
             Codec("encode", "party", "party_id", self.party_abbrev2id.get),
-            Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id.get),
+            Codec(
+                "encode",
+                "sub_office_type",
+                "sub_office_type_id",
+                self.sub_office_type2id.get,
+            ),
         ]
 
     @property
@@ -111,7 +123,9 @@ class Codecs:
     def encoders(self) -> list[dict]:
         return [c for c in self.codecs if c.type == "encode"]
 
-    def apply_codec(self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True) -> pd.DataFrame:
+    def apply_codec(
+        self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True
+    ) -> pd.DataFrame:
         for codec in codecs:
             if codec.from_column in df.columns:
                 if codec.to_column not in df:
@@ -151,7 +165,11 @@ class Codecs:
 
     @cached_property
     def key_name_translate_id2text(self) -> dict:
-        return {codec.from_column: codec.to_column for codec in self.codecs if codec.type == "decode"}
+        return {
+            codec.from_column: codec.to_column
+            for codec in self.codecs
+            if codec.type == "decode"
+        }
 
     @cached_property
     def key_name_translate_text2id(self) -> dict:
@@ -206,7 +224,10 @@ class PersonCodecs(Codecs):
     @cached_property
     def person_name2pid(self) -> dict:
         fg = self.person_id2pid.get
-        return {f"{name} ({person_id})": fg(person_id) for person_id, name in self.person_id2name.items()}
+        return {
+            f"{name} ({person_id})": fg(person_id)
+            for person_id, name in self.person_id2name.items()
+        }
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
@@ -237,16 +258,25 @@ class PersonCodecs(Codecs):
 
     def add_multiple_party_abbrevs(self, partys_of_interest: set[int]) -> Self:
         party_data = self.person_party
-        party_specs_rev = {v: k for k, v in self._get_party_specs(partys_of_interest).items()}
+        party_specs_rev = {
+            v: k for k, v in self._get_party_specs(partys_of_interest).items()
+        }
         party_data["party_abbrev"] = party_data["party_id"].map(party_specs_rev)
         party_data["party_abbrev"].fillna("?", inplace=True)
-        
+
         grouped_party_abbrevs = (
             party_data.groupby("person_id")
-            .agg({"party_abbrev": lambda x: ", ".join(set(x)), "party_id": lambda x: ",".join(set(map(str, x)))})
+            .agg(
+                {
+                    "party_abbrev": lambda x: ", ".join(set(x)),
+                    "party_id": lambda x: ",".join(set(map(str, x))),
+                }
+            )
             .reset_index()
         )
-        grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
+        grouped_party_abbrevs.rename(
+            columns={"party_id": "multi_party_id"}, inplace=True
+        )
 
         self.persons_of_interest = self.persons_of_interest.merge(
             grouped_party_abbrevs, on="person_id", how="left"
@@ -254,8 +284,9 @@ class PersonCodecs(Codecs):
         self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
         return self
 
-
-    def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
+    def _get_party_specs(
+        self, partys_of_interest: list[int]
+    ) -> Union[str, Mapping[str, int]]:
         selected = {}
         for specification in self.property_values_specs:
             if specification["text_name"] == "party_abbrev":
@@ -264,7 +295,6 @@ class PersonCodecs(Codecs):
                     if v in partys_of_interest:
                         selected[k] = v
         return selected
-
 
     # def _get_only_parties_with_data(self):
     #     parties_in_data = self.document_index.party_id.unique()

@@ -31,7 +31,9 @@ def get_end_year(commons: CommonQueryParams, corpus: Corpus):
     return corpus.get_years_end()
 
 
-def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus, normalize: bool):
+def get_word_trends(
+    search: str, commons: CommonQueryParams, corpus: Corpus, normalize: bool
+):
     first_year = get_start_year(commons, corpus)
     last_year = get_end_year(commons, corpus)
 

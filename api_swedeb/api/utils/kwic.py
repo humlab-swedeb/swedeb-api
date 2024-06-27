@@ -10,7 +10,6 @@ from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 
 class RiksprotKwicConfig:
-
     S_SHOW: list[str] = [
         "year_year",
         "speech_id",
@@ -58,57 +57,70 @@ class RiksprotKwicConfig:
     COMPUTED_COLUMNS: dict[str, Any] = [
         (
             "link",
-            lambda data: data.apply(lambda x: RiksprotKwicConfig.get_link(x.get("person_id"), x.get("name")), axis=1),
+            lambda data: data.apply(
+                lambda x: RiksprotKwicConfig.get_link(
+                    x.get("person_id"), x.get("name")
+                ),
+                axis=1,
+            ),
         ),
         (
-            "formatted_speech_id", 
+            "formatted_speech_id",
             lambda data: data.apply(lambda x: format_protocol_id(x["title"]), axis=1),
         ),
         (
             "speech_link",
-            lambda data: data.apply(lambda x: "https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot", axis=1),
+            lambda data: data.apply(
+                lambda x: "https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot",
+                axis=1,
+            ),
         ),
         (
             "gender",
-            lambda data: data.apply(lambda x: RiksprotKwicConfig.translate_gender(x["gender"]), axis=1),
+            lambda data: data.apply(
+                lambda x: RiksprotKwicConfig.translate_gender(x["gender"]), axis=1
+            ),
         ),
         (
             "name",
-            lambda data: data.apply(lambda x: RiksprotKwicConfig.add_missing_metadata_notice(x["name"]), axis=1),
+            lambda data: data.apply(
+                lambda x: RiksprotKwicConfig.add_missing_metadata_notice(x["name"]),
+                axis=1,
+            ),
         ),
         (
             "party_abbrev",
-            lambda data: data.apply(lambda x: RiksprotKwicConfig.add_missing_metadata_notice_party(x["party_abbrev"], replacements={"?": "Metadata saknas", "X": "partilös"}), axis=1),
-        )
+            lambda data: data.apply(
+                lambda x: RiksprotKwicConfig.add_missing_metadata_notice_party(
+                    x["party_abbrev"],
+                    replacements={"?": "Metadata saknas", "X": "partilös"},
+                ),
+                axis=1,
+            ),
+        ),
     ]
-
-    
 
     @classmethod
     def translate_gender(cls, gender: str) -> str:
-        if gender == 'unknown':
-            return 'Metadata saknas'
-        elif gender == 'woman':
-
-            return 'Kvinna'
+        if gender == "unknown":
+            return "Metadata saknas"
+        elif gender == "woman":
+            return "Kvinna"
         else:
-            return 'Man'
-    
+            return "Man"
+
     @classmethod
     def add_missing_metadata_notice(cls, column_name: str) -> str:
         if not column_name:
             return "Metadata saknas"
         return column_name
-        
-    
+
     @classmethod
-    def add_missing_metadata_notice_party(cls, column: str, replacements:dict) -> str:
-        for key, value in replacements.items(): 
+    def add_missing_metadata_notice_party(cls, column: str, replacements: dict) -> str:
+        for key, value in replacements.items():
             if column == key:
                 return value
         return column
-
-    
 
     @classmethod
     def get_link(cls, person_id: str, name: str) -> str:
@@ -158,7 +170,11 @@ def get_kwic_data(
         KeywordInContextResult: _description_
     """
     opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
-        commons, [(w, "lemma" if lemmatized else "word") for w in ([search] if isinstance(search, str) else search)]
+        commons,
+        [
+            (w, "lemma" if lemmatized else "word")
+            for w in ([search] if isinstance(search, str) else search)
+        ],
     )
 
     data: pd.DataFrame = compute.kwik(
@@ -170,8 +186,10 @@ def get_kwic_data(
         cut_off=cut_off,
         decoder=decoder,
         strip_s_tags=strip_s_tags,
-        **RiksprotKwicConfig.opts(), # TODO: inject as dependency
+        **RiksprotKwicConfig.opts(),  # TODO: inject as dependency
     )
 
-    rows: list[KeywordInContextItem] = [KeywordInContextItem(**row) for row in data.to_dict(orient="records")]
+    rows: list[KeywordInContextItem] = [
+        KeywordInContextItem(**row) for row in data.to_dict(orient="records")
+    ]
     return KeywordInContextResult(kwic_list=rows)
