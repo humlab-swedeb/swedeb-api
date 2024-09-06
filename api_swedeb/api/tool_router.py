@@ -24,6 +24,7 @@ from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
+
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
 router = fastapi.APIRouter(
@@ -111,6 +112,9 @@ async def get_ngram_results(
     corpus: Any = Depends(get_cwb_corpus),
 ):
     """Get ngrams"""
+
+    if " " in search:
+        search = search.split(" ")
     return get_ngrams(
         search_term=search,
         commons=commons,

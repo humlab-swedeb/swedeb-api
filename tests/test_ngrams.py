@@ -30,7 +30,9 @@ def test_to_n_grams():
 
 
 def test_compute_n_grams():
-    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(corpus_name=CWB_TEST_CORPUS_NAME)
+    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(
+        corpus_name=CWB_TEST_CORPUS_NAME
+    )
     # attribs: CorpusAttribs = CorpusAttribs(corpus)
 
     opts: dict = {
@@ -44,12 +46,16 @@ def test_compute_n_grams():
     }
     n: int = 4
 
-    data: pd.DataFrame = compute_n_grams(corpus, opts, n=n, p_show="word", mode="dataframe")
+    data: pd.DataFrame = compute_n_grams(
+        corpus, opts, n=n, p_show="word", mode="dataframe"
+    )
     assert data is not None
 
 
 def test_n_gram_service():
-    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(corpus_name=CWB_TEST_CORPUS_NAME)
+    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(
+        corpus_name=CWB_TEST_CORPUS_NAME
+    )
     result = ngram_service.get_ngrams(
         corpus=corpus,
         search_term="propaganda",
@@ -71,7 +77,9 @@ def test_n_gram_service():
 
 
 def test_bench():
-    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(corpus_name=CWB_TEST_CORPUS_NAME)
+    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(
+        corpus_name=CWB_TEST_CORPUS_NAME
+    )
     opts = {
         "form": "kwic",
         "p_show": ["word"],
@@ -90,3 +98,41 @@ def test_bench():
     )
 
     assert segments is not None
+
+
+def test_n_gram_service_phrase():
+    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(
+        corpus_name=CWB_TEST_CORPUS_NAME
+    )
+    search_term = "debatt om att"
+    result = ngram_service.get_ngrams(
+        corpus=corpus,
+        search_term=search_term.split(),
+        commons=cp.CommonQueryParams(
+            from_year=1952,
+            to_year=1968,
+            who=None,
+            party_id=None,
+            office_types=None,
+            sub_office_types=None,
+            gender_id=None,
+        ),
+        search_target="lemma",
+        display_target="word",
+        n_gram_width=5,
+    )
+    assert result is not None
+    assert len(result.ngram_list) > 0
+    for res in result.ngram_list:
+        assert search_term in res.ngram
+    """
+    upp en debatt
+    en debatt om
+    debatt om att
+    i denna debatt
+    denna debatt om
+    om att det
+    om att vi
+    att vi inte
+    
+    """

@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, List
 
 import pandas as pd
 
@@ -8,7 +8,7 @@ from api_swedeb.core import n_grams
 
 
 def get_ngrams(
-    search_term: str,
+    search_term: List[str],
     commons: CommonQueryParams,
     corpus: Any,
     n_gram_width: int = 2,
@@ -19,8 +19,10 @@ def get_ngrams(
 ) -> schemas.NGramResult:
     # attribs: cwb.CorpusAttribs = n_grams.cwb(corpus)
     opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
-        commons, [(search_term, search_target)]
+        commons,
+        [(w, "word") for w in search_term],
     )
+
     ngrams: pd.DataFrame = n_grams.compute_n_grams(
         corpus,
         opts,
