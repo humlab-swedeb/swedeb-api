@@ -1,5 +1,5 @@
 from typing import Annotated, Any
-
+from enum import Enum
 import fastapi
 from fastapi import Body, Depends, HTTPException, Query
 
@@ -23,6 +23,9 @@ from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
+
+from api_swedeb.api.path_enums import Position
+
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
@@ -109,6 +112,10 @@ async def get_ngram_results(
         default="word", description="Target for n-gram (word/lemma)"
     ),  # FIXME: Add enum to schema
     corpus: Any = Depends(get_cwb_corpus),
+    position: Position = Query(
+        default=Position.ANY,
+        description="Position of search term withing n-gram (left/right/any)",
+    ),
 ):
     """Get ngrams"""
     return get_ngrams(
@@ -118,6 +125,7 @@ async def get_ngram_results(
         n_gram_width=width,
         search_target=target,
         display_target=target,
+        position=position,
     )
 
 

@@ -6,6 +6,7 @@ import pandas as pd
 from ccc import Corpus, SubCorpus
 
 from api_swedeb.core.cwb import to_cqp_exprs
+from api_swedeb.api.path_enums import Position
 
 
 def to_n_grams(words: list[str], n: int = 2) -> list[str]:
@@ -79,6 +80,7 @@ def n_grams(
     p_show: Literal["word", "lemma"] = "word",
     threshold: int = None,
     mode: Literal["dataframe", "counter"] = "dataframe",
+    position: Position = Position.ANY,
 ) -> pd.DataFrame | Counter[str] | dict[str, int]:
     """Computes n-grams from a corpus segments that contains a keyword specified in opts.
 

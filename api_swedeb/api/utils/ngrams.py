@@ -5,6 +5,7 @@ import pandas as pd
 from api_swedeb import mappers, schemas
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.core import n_grams
+from api_swedeb.api.path_enums import Position
 
 
 def get_ngrams(
@@ -16,6 +17,7 @@ def get_ngrams(
     search_target: Literal["word", "lemma"] = "word",
     display_target: Literal["word", "lemma"] = "word",
     mode: Literal["dataframe", "counter"] = "dataframe",
+    position: Position = Position.ANY,
 ) -> schemas.NGramResult:
     # attribs: cwb.CorpusAttribs = n_grams.cwb(corpus)
     opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
@@ -28,6 +30,7 @@ def get_ngrams(
         p_show=display_target,
         threshold=n_threshold,
         mode=mode,
+        position=position,
     )
 
     return mappers.ngrams_to_ngram_result(ngrams)
