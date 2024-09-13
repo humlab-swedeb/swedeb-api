@@ -291,3 +291,17 @@ def test_word_trends_with_none_values_for_name(client):
         f"{version}/tools/word_trends/debatt?normalize=false&who=Q1606431&from_year=1920&to_year=2021"
     )
     assert response.status_code == status.HTTP_200_OK
+
+def test_unknown_parties(client):
+    # party_id = 1 is displayed as ? 
+    response = client.get("v1/tools/word_trends/debatt?party_id=1&from_year=1920&to_year=2021")
+    # should only return results for debatt X, but returns results also for debatt ?
+    assert response.status_code == status.HTTP_200_OK
+    res = response.json()
+    print(res['wt_list'][0])
+    print('debatt X' in res['wt_list'][0]['count'])
+    for result in res['wt_list']:
+        assert result['count']['debatt X'] == result['count']['Totalt']
+
+
+    assert 'debatt ?' not in res['wt_list'][0]['count'] # should not be included but is, but all counts (at least for debatt are 0)
