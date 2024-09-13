@@ -7,6 +7,8 @@ from fastapi import status
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 import pandas as pd
 import numpy as np
+import os
+from api_swedeb.api.parlaclarin import codecs as md
 
 pd.set_option("display.max_columns", None)
 
@@ -305,3 +307,15 @@ def test_unknown_parties(client):
 
 
     assert 'debatt ?' not in res['wt_list'][0]['count'] # should not be included but is, but all counts (at least for debatt are 0)
+
+
+def test_herr_braconnier(client):
+    response = client.get("v1/tools/word_trend_speeches/voteringsmaskiner?who=Q5584283&from_year=1920&to_year=2021")
+    metadata_filename = os.getenv("METADATA_FILENAME")
+    assert response.status_code == status.HTTP_200_OK
+    person_codecs = md.PersonCodecs().load(source=metadata_filename)
+    print(type(person_codecs))
+    print(person_codecs.tablenames())
+    print(person_codecs.codecs)
+    print(person_codecs.__dict__)
+    
