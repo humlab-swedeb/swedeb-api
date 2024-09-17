@@ -1,5 +1,4 @@
 from typing import Annotated, Any
-from enum import Enum
 import fastapi
 from fastapi import Body, Depends, HTTPException, Query
 

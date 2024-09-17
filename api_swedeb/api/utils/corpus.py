@@ -121,18 +121,6 @@ class Corpus:
             if self.word_in_vocabulary(word)
         ]
 
-    def unstack_data(self, data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
-        """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
-        # tmp from pu.unstack_data
-        if len(pivot_keys) <= 1 or data is None:
-            return data
-        data: pd.DataFrame = data.set_index(pivot_keys)
-
-        while isinstance(data.index, pd.MultiIndex):
-            data = data.unstack(level=1, fill_value=0)
-            if isinstance(data.columns, pd.MultiIndex):
-                data.columns = [" ".join(x) for x in data.columns]
-        return data
 
     def get_word_trend_results(
         self,
@@ -155,7 +143,7 @@ class Corpus:
         pivot_keys = list(filter_opts.keys()) if filter_opts else []
 
         opts: SweDebComputeOpts = SweDebComputeOpts(
-            fill_gaps=True,
+            fill_gaps=False,
             keyness=KeynessMetric.TF,
             normalize=False,
             pivot_keys_id_names=pivot_keys,
@@ -179,9 +167,6 @@ class Corpus:
         trends_data.person_codecs.decode(trends)
         trends["year"] = trends["year"].astype(str)
 
-        if "name" in trends.columns:
-            trends = trends.dropna(subset=["name"])
-
         if not pivot_keys:
             unstacked_trends = trends.set_index(opts.temporal_key)
 
@@ -189,7 +174,7 @@ class Corpus:
             current_pivot_keys = [opts.temporal_key] + [
                 x for x in trends.columns if x in self.possible_pivots
             ]
-            unstacked_trends = self.unstack_data(trends, current_pivot_keys)
+            unstacked_trends = pu.unstack_data(trends, current_pivot_keys)
         self.translate_dataframe(unstacked_trends)
         # remove COLUMNS with only 0s, with serveral filtering options, there
         # are sometimes many such columns

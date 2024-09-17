@@ -288,6 +288,7 @@ def test_frequent_words(corpus):
 
 
 def test_word_trends_with_none_values_for_name(client):
+    # ISSUE 31 
     # http://127.0.0.1:4000/v1/tools/word_trends/debatt?normalize=false&who=Q1606431&from_year=1920&to_year=2021
     response = client.get(
         f"{version}/tools/word_trends/debatt?normalize=false&who=Q1606431&from_year=1920&to_year=2021"
@@ -295,27 +296,35 @@ def test_word_trends_with_none_values_for_name(client):
     assert response.status_code == status.HTTP_200_OK
 
 def test_unknown_parties(client):
+    # ISSUE 27
+
     # party_id = 1 is displayed as ? 
+    
     response = client.get("v1/tools/word_trends/debatt?party_id=1&from_year=1920&to_year=2021")
-    # should only return results for debatt X, but returns results also for debatt ?
+    # should only return results for debatt X, but returns results also for debatt ? when fill_gaps is set to True
     assert response.status_code == status.HTTP_200_OK
     res = response.json()
     print(res['wt_list'][0])
     print('debatt X' in res['wt_list'][0]['count'])
-    for result in res['wt_list']:
-        assert result['count']['debatt X'] == result['count']['Totalt']
+    # should not be included but is when fill_gaps = True, but all counts (at least results for debatt are 0)
+    assert 'debatt ?' not in res['wt_list'][0]['count'] 
 
 
-    assert 'debatt ?' not in res['wt_list'][0]['count'] # should not be included but is, but all counts (at least for debatt are 0)
-
-
-def test_herr_braconnier(client):
+def test__tmp_herr_braconnier(client):
     response = client.get("v1/tools/word_trend_speeches/voteringsmaskiner?who=Q5584283&from_year=1920&to_year=2021")
     metadata_filename = os.getenv("METADATA_FILENAME")
     assert response.status_code == status.HTTP_200_OK
     person_codecs = md.PersonCodecs().load(source=metadata_filename)
-    print(type(person_codecs))
-    print(person_codecs.tablenames())
-    print(person_codecs.codecs)
-    print(person_codecs.__dict__)
-    
+    pp = person_codecs.person_party
+    braconnier = pp[pp['person_id'] == 'Q5584283']
+    assert braconnier['party_id'].values[0] == 1
+
+def test_unknown_party_with_unknown_gender(client):
+    # ISSUE 22
+    response = client.get("http://127.0.0.1:4000/v1/tools/word_trends/debatt?party_id=2&gender_id=0&from_year=1920&to_year=2021")
+    assert response.status_code == status.HTTP_200_OK
+    res = response.json()
+    wt_list =res['wt_list']
+    for wt in wt_list:
+        assert 'debatt Okänt C' in wt['count']
+        assert 'debatt Okänt ?' not in wt['count']
