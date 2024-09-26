@@ -49,9 +49,8 @@ fixable = ["ALL"]
 unfixable = []
 
 [tool.pytest.ini_options]
-duration = "0"
 testpaths = ["tests"]
-addopts = "-ra --quiet --tb=short --color=yes --durations=0"
+addopts = "-ra --quiet --tb=short --color=yes --durations=0 -W ignore::DeprecationWarning"
 
 [build-system]
 requires = ["poetry-core"]
