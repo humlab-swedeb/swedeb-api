@@ -2,40 +2,36 @@ import pandas as pd
 import pytest
 from ccc import Corpus
 
-from api_swedeb.core.cwb.compiler import (
-    to_cqp_exprs,
-    to_cqp_pattern,
-    to_cqp_patterns,
-    to_cqp_criteria_expr,
-    _to_value_expr,
-    _to_interval_expr,
-)
+from api_swedeb.core.cwb import compiler
 from api_swedeb.core.cwb.utility import CorpusAttribs
 
 
 def test_to_value_expr():
-    assert _to_value_expr(1) == "1"
-    assert _to_value_expr("1") == "1"
-    assert _to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
-    assert _to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
-    assert _to_value_expr((1990, 1999)) == "199[0-9]"
-    assert _to_value_expr((1957, 1975)) == "195[7-9]|196[0-9]|197[0-5]"
+    assert compiler._to_value_expr("") == ""
+    assert compiler._to_value_expr([""]) == ""
+    assert compiler._to_value_expr([None]) == ""
+    assert compiler._to_value_expr(1) == "1"
+    assert compiler._to_value_expr("1") == "1"
+    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
+    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
+    assert compiler._to_value_expr((1990, 1999)) == "199[0-9]"
+    assert compiler._to_value_expr((1957, 1975)) == "195[7-9]|196[0-9]|197[0-5]"
 
 
 def test_to_interval_expr():
-    assert _to_interval_expr(1990, 1999) == "199[0-9]"
-    assert _to_interval_expr(1990, 2000) == "199[0-9]|2000"
-    assert _to_interval_expr(2000, 2000) == "2000"
-    assert _to_interval_expr(1957, 1975) == "195[7-9]|196[0-9]|197[0-5]"
-    assert _to_interval_expr(1990, 1999) == "199[0-9]"
-    assert _to_interval_expr(1992, 1997) == "199[2-7]"
+    assert compiler._to_interval_expr(1990, 1999) == "199[0-9]"
+    assert compiler._to_interval_expr(1990, 2000) == "199[0-9]|2000"
+    assert compiler._to_interval_expr(2000, 2000) == "2000"
+    assert compiler._to_interval_expr(1957, 1975) == "195[7-9]|196[0-9]|197[0-5]"
+    assert compiler._to_interval_expr(1990, 1999) == "199[0-9]"
+    assert compiler._to_interval_expr(1992, 1997) == "199[2-7]"
 
 
 def test_to_cqp_pattern_with_faulty_opts():
     with pytest.raises(ValueError):
-        assert to_cqp_pattern(**{"value": "bepa"}) == ""
+        assert compiler.to_cqp_pattern({"value": "bepa"}) == ""
     with pytest.raises(ValueError):
-        assert to_cqp_pattern(**{}) == ""
+        assert compiler.to_cqp_pattern({}) == ""
 
 
 @pytest.mark.parametrize(
@@ -51,34 +47,55 @@ def test_to_cqp_pattern_with_faulty_opts():
             {"prefix": "a", "target": "word", "value": ["information", "propaganda"]},
             'a:[word="information|propaganda"%c]',
         ),
-        ("apa", 'apa'),
+        ("apa", '"apa"%c'),
         ({"target": "word", "value": "apa%c"}, '[word="apa"%c]'),
+        ({"prefix": "a", "target": "word", "value": "bepa"}, 'a:[word="bepa"%c]'),
     ],
 )
 def test_to_cqp_pattern_with_correct_opts(opts, expected):
 
-    assert to_cqp_pattern(opts) == expected
+    assert compiler.to_cqp_pattern(opts) == expected
 
 
 @pytest.mark.parametrize(
     "opts, expected",
     [
+        (None, ''),
+        ("apa", '"apa"%c'),
         ({"target": "apa"}, '"apa"%c'),
-        ([{"target": "word", "value": "bepa"}], '[word="bepa"%c]'),
         ([{"target": "apa"}], '"apa"%c'),
         (
             [
                 {"target": "word", "value": "information", "ignore_case": False},
-                {"target": "och", "value": None, "ignore_case": False},
-                {"target": "word", "value": "propaganda", "ignore_case": False},
             ],
-            '[word="information"] "och" [word="propaganda"]',
+            '[word="information"]',
+        ),
+        (
+            [
+                {"target": "word", "value": "information", "ignore_case": False},
+                {"target": "och", "value": None, "ignore_case": False},
+                {"target": "word", "value": "propaganda", "ignore_case": True},
+            ],
+            '[word="information"] "och" [word="propaganda"%c]',
+        ),
+        (
+            [
+                None,
+            ],
+            '',
+        ),
+        (
+            [
+                None,
+                None,
+            ],
+            '',
         ),
     ],
 )
 def test_to_cqp_patterns_with_correct_opts(opts, expected):
 
-    assert to_cqp_patterns(opts) == expected
+    assert compiler.to_cqp_patterns(opts) == expected
 
 
 @pytest.mark.parametrize(
@@ -106,7 +123,7 @@ def test_to_cqp_patterns_with_correct_opts(opts, expected):
 )
 def test_to_cqp_criteria_expr(criterias, expected):
 
-    assert to_cqp_criteria_expr(criterias) == expected
+    assert compiler.to_cqp_criteria_expr(criterias) == expected
 
 
 @pytest.mark.parametrize(
@@ -169,12 +186,12 @@ def test_to_cqp_criteria_expr(criterias, expected):
     ],
 )
 def test_to_cqp_exprs(opts, expected):
-    assert to_cqp_exprs(opts) == expected
+    assert compiler.to_cqp_exprs(opts) == expected
 
 
 def test_cqp_execute_query(corpus: Corpus):
 
-    query: str = to_cqp_exprs(
+    query: str = compiler.to_cqp_exprs(
         {
             "prefix": "a",
             "target": "lemma",
