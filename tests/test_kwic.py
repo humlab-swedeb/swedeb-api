@@ -43,9 +43,6 @@ def decoder() -> MagicMock:
     return mock
 
 
-
-
-
 @pytest.mark.parametrize(
     "word,target,display_target,expected_words",
     [
@@ -64,7 +61,6 @@ def test_get_kwic_results_for_single_search_term(
     display_target: str,
     expected_words: str | list[str] | None,
 ):
-
     search_opts: dict = {
         "prefix": "a",
         "target": target,
@@ -143,7 +139,6 @@ def test_get_kwic_results_for_multiple_search_term(
 
 
 def test_get_kwic_compute_kwic(corpus: ccc.Corpus, decoder: MagicMock):
-
     commons = Mock(
         lemmatized=False,
         from_year=1960,
@@ -189,6 +184,7 @@ def test_kwic_api(client):
     assert "name" in response.json()["kwic_list"][0]
     assert "party_abbrev" in response.json()["kwic_list"][0]
 
+
 def test_kwic_non_existing_search_term(client):
     # non-existing word
     search_term = 'non_existing_word_'
@@ -200,8 +196,7 @@ def test_kwic_non_existing_search_term(client):
 
 def test_kwic_speech_id_in_search_results(client):
     response = client.get(
-        f"{version}/tools/kwic/hund?words_before=2&words_after=2&cut_off=10&"
-        "&from_year=1960&to_year=1961"
+        f"{version}/tools/kwic/hund?words_before=2&words_after=2&cut_off=10&" "&from_year=1960&to_year=1961"
     )
     assert response.status_code == 200
     print(response.json())
@@ -228,5 +223,3 @@ def test_kwic_speech_id_in_search_results(client):
     assert first_result['formatted_speech_id'] is not None
     assert 'speech_link' in first_result
     assert first_result['speech_link'] is not None
-
-

@@ -57,7 +57,6 @@ def test_to_CQP_criterias_with_year_params():
 
 
 def test_ngrams_to_ngram_result():
-
     ngrams: pd.DataFrame = pd.DataFrame(
         {"ngram": [["a", "b"], ["b", "c"], ["c", "d"]], "count": [1, 2, 3], 'documents': ['D1,D2,D3', 'D1,D4', 'D2']}
     )

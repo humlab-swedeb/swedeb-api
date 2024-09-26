@@ -11,5 +11,5 @@ def test_load_corpus():
     # with some content
     id_to_person = person_codecs.pid2person_id
     assert id_to_person is not None
-    # just to get some test output 
+    # just to get some test output
     print(id_to_person)

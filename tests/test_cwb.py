@@ -53,7 +53,6 @@ def test_to_cqp_pattern_with_faulty_opts():
     ],
 )
 def test_to_cqp_pattern_with_correct_opts(opts, expected):
-
     assert compiler.to_cqp_pattern(opts) == expected
 
 
@@ -94,7 +93,6 @@ def test_to_cqp_pattern_with_correct_opts(opts, expected):
     ],
 )
 def test_to_cqp_patterns_with_correct_opts(opts, expected):
-
     assert compiler.to_cqp_patterns(opts) == expected
 
 
@@ -122,7 +120,6 @@ def test_to_cqp_patterns_with_correct_opts(opts, expected):
     ],
 )
 def test_to_cqp_criteria_expr(criterias, expected):
-
     assert compiler.to_cqp_criteria_expr(criterias) == expected
 
 
@@ -190,7 +187,6 @@ def test_to_cqp_exprs(opts, expected):
 
 
 def test_cqp_execute_query(corpus: Corpus):
-
     query: str = compiler.to_cqp_exprs(
         {
             "prefix": "a",
@@ -202,7 +198,7 @@ def test_cqp_execute_query(corpus: Corpus):
             ],
         }
     )
-    subcorpus  = corpus.query(query, context_left=2, context_right=2)
+    subcorpus = corpus.query(query, context_left=2, context_right=2)
     data: pd.DataFrame = subcorpus.concordance(
         form="kwic",
         p_show=["word"],
@@ -221,7 +217,6 @@ def test_cqp_execute_query(corpus: Corpus):
 
 
 def test_corpus_attribs(corpus: Corpus):
-
     attribs: CorpusAttribs = CorpusAttribs(corpus)
 
     assert attribs is not None

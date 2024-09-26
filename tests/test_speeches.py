@@ -1,4 +1,3 @@
-
 import pytest
 from fastapi.testclient import TestClient
 from main import app
@@ -11,14 +10,17 @@ from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 version = "v1"
 
+
 @pytest.fixture(scope="module")
 def client():
     client = TestClient(app)
     yield client
 
+
 @pytest.fixture(scope="module")
 def corpus():
     return load_corpus('test.env')
+
 
 def test_speeches_get(client):
     # assert that the speeches endpoint is reachable
@@ -28,12 +30,7 @@ def test_speeches_get(client):
 
 
 def test_get_all_protocol_ids(corpus):
-
-    df = corpus.get_anforanden(
-    from_year= 1900,
-    to_year= 2000,
-    selections = {},
-    di_selected= None)
+    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
     all_ids = df['document_name']
     for id in all_ids:
         try:
@@ -51,6 +48,7 @@ def test_get_speaker_name(corpus):
     assert len(speaker) > 0
     # speech with unknown speaker prot-1963-höst-ak--35_090.txt
 
+
 def test_get_speaker_name_for_unknown_speaker(corpus):
     speech_id = "prot-1963-höst-ak--35_090"
     speaker = corpus.get_speaker(speech_id)
@@ -63,13 +61,9 @@ def test_get_speaker_name_for_non_existing_speech(corpus):
     assert speaker == "Okänd"
 
 
-  
-    
-
-
 def test_format_speech_id(corpus):
     prot = 'prot-1966-höst-fk--38_044'
-    assert format_protocol_id(prot) == 'Första kammaren 1966:38 044' 
+    assert format_protocol_id(prot) == 'Första kammaren 1966:38 044'
     prot = 'prot-200405--113_075'
     assert format_protocol_id(prot) == '2004/05:113 075'
     prot = 'prot-1958-a-ak--17-01_001'
@@ -78,10 +72,8 @@ def test_format_speech_id(corpus):
 
 def test_get_formatted_speech_id(corpus):
     df_filtered = corpus.get_anforanden(
-    from_year= 1900,
-    to_year= 2000,
-    selections = {'party_id':[4,5], 'gender_id':[1,2]},
-    di_selected= None)
+        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}, di_selected=None
+    )
     assert 'formatted_speech_id' in df_filtered.columns
 
 
@@ -89,7 +81,7 @@ def test_get_speech_by_id_client(client, corpus):
     speech_id = find_a_speech_id(corpus)
     start_year = corpus.get_years_start()
     print(start_year)
-    
+
     response = client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
     assert 'speech_text' in response.json()
@@ -122,33 +114,20 @@ def test_speeches_zip(client):
 
 def test_get_speeches_corpus(corpus):
     df_filtered = corpus.get_anforanden(
-        from_year= 1900,
-        to_year= 2000,
-        selections = {'party_id':[4,5], 'gender_id':[1,2]},
-        di_selected= None)
-     
+        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}, di_selected=None
+    )
+
     print(df_filtered.head()[['year', 'gender', 'party_abbrev']])
     print(df_filtered.columns)
-    df_unfiltered = corpus.get_anforanden(
-        from_year= 1900,
-        to_year= 2000,
-        selections = {},
-        di_selected= None)
+    df_unfiltered = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
 
 
-
-
-
 def find_a_speech_id(corpus):
-    df = corpus.get_anforanden(
-        from_year= 1900,
-        to_year= 2000,
-        selections = {},
-        di_selected= None)
-    return (df.iloc[0]['document_name'])
-    
+    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
+    return df.iloc[0]['document_name']
+
 
 def test_get_speech_by_id(corpus):
     speech_id = find_a_speech_id(corpus)
@@ -157,14 +136,12 @@ def test_get_speech_by_id(corpus):
     assert len(speech_text) > 1
 
 
-
-
 def test_get_speech_by_id_missing(corpus):
     # non-existing speech (gives empty string as response)
     speech_id = 'prot-1971--1_007_missing'
     speech_text = corpus.get_speech_text(speech_id)
     assert len(speech_text) == 0
-    
+
 
 def test_get_speaker_note(corpus):
     speech_id = find_a_speech_id(corpus)
@@ -180,4 +157,3 @@ def test_get_speech_by_api(client, corpus):
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
     assert len(response.json()['speaker_note']) > 0
-

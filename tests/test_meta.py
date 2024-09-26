@@ -1,10 +1,18 @@
-
 import pytest
 from fastapi.testclient import TestClient
 from main import app
 from fastapi import status
 from api_swedeb.api.utils.corpus import load_corpus
-from api_swedeb.schemas.metadata_schema import  GenderItem, GenderList, ChamberItem, ChamberList, OfficeTypeItem, OfficeTypeList, SubOfficeTypeItem, SubOfficeTypeList 
+from api_swedeb.schemas.metadata_schema import (
+    GenderItem,
+    GenderList,
+    ChamberItem,
+    ChamberList,
+    OfficeTypeItem,
+    OfficeTypeList,
+    SubOfficeTypeItem,
+    SubOfficeTypeList,
+)
 import pandas as pd
 
 
@@ -12,23 +20,22 @@ pd.set_option('display.max_columns', None)
 
 version = "v1"
 
+
 @pytest.fixture(scope="module")
 def client():
     client = TestClient(app)
     yield client
+
 
 @pytest.fixture(scope="module")
 def corpus():
     return load_corpus('test.env')
 
 
-
-
 def test_multiple_parties(corpus):
-
     person_data = corpus.person_codecs.persons_of_interest
-    
-    multi_party_people = person_data[person_data["has_multiple_parties"]==1]
+
+    multi_party_people = person_data[person_data["has_multiple_parties"] == 1]
 
     assert all([',' in abbrev for abbrev in multi_party_people['party_abbrev'].to_list()])
     assert all([',' in abbrev for abbrev in multi_party_people['multi_party_id'].to_list()])
@@ -36,23 +43,22 @@ def test_multiple_parties(corpus):
 
 def test_get_speaker_with_multiple_parties(corpus):
     # Raoul Hamilton should be returned for L, FRIS and X, party_id: 5, 12, 1
-    speakers_5 = corpus.get_speakers(selections={'party_id':[5]})
-    speakers_12 = corpus.get_speakers(selections={'party_id':[12]})
-    speakers_1 = corpus.get_speakers(selections={'party_id':[1]})
+    speakers_5 = corpus.get_speakers(selections={'party_id': [5]})
+    speakers_12 = corpus.get_speakers(selections={'party_id': [12]})
+    speakers_1 = corpus.get_speakers(selections={'party_id': [1]})
 
     assert 'Raoul Hamilton' in speakers_5['name'].to_list()
     assert 'Raoul Hamilton' in speakers_12['name'].to_list()
     assert 'Raoul Hamilton' in speakers_1['name'].to_list()
 
 
-
 def test_meta_genders(corpus):
-
     df = corpus.get_gender_meta()
     data = df.to_dict(orient="records")
     rows = [GenderItem(**row) for row in data]
     gender_list = GenderList(gender_list=rows)
     print(gender_list)
+
 
 def test_meta_office_types(corpus):
     df = corpus.get_office_type_meta()
@@ -61,6 +67,7 @@ def test_meta_office_types(corpus):
     gender_list = OfficeTypeList(office_type_list=rows)
     print(gender_list)
 
+
 def test_meta_chamber(corpus):
     df = corpus.get_chamber_meta()
     data = df.to_dict(orient="records")
@@ -68,13 +75,14 @@ def test_meta_chamber(corpus):
     chamber_list = ChamberList(chamber_list=rows)
     assert chamber_list is not None
 
+
 def test_meta_sub_office_type(corpus):
     df = corpus.get_sub_office_type_meta()
     data = df.to_dict(orient="records")
     rows = [SubOfficeTypeItem(**row) for row in data]
 
     assert len(rows) > 0
-    
+
     # return SubOfficeTypeList(sub_office_type_list=rows)
 
 
@@ -86,7 +94,7 @@ def test_meta_parties(corpus):
     assert 'C' in df.party_abbrev.to_list()
     assert '?' not in df.party_abbrev.to_list()
 
-    assert len(df)>0
+    assert len(df) > 0
 
 
 def test_parties_api(client):
@@ -97,20 +105,16 @@ def test_parties_api(client):
     assert len(json['party_list']) > 0
 
 
-
 def test_start_year(client):
     response = client.get(f"{version}/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK
     assert isinstance(response.json(), int)
 
-    
 
 def test_end_year(client):
     response = client.get(f"{version}/metadata/end_year")
     assert response.status_code == status.HTTP_200_OK
     assert isinstance(response.json(), int)
-
-
 
 
 def test_genders(client):
@@ -121,8 +125,8 @@ def test_genders(client):
     assert 'gender_list' in json
     assert len(json['gender_list']) > 0
 
+
 def test_chambers(client):
-    
     response = client.get(f"{version}/metadata/chambers")
     assert response.status_code == status.HTTP_200_OK
 
@@ -130,8 +134,8 @@ def test_chambers(client):
     assert 'chamber_list' in json
     assert len(json['chamber_list']) > 0
 
+
 def test_office_types(client):
-    
     response = client.get(f"{version}/metadata/office_types")
     assert response.status_code == status.HTTP_200_OK
 
@@ -140,8 +144,8 @@ def test_office_types(client):
     assert 'office_type_list' in json
     assert len(json['office_type_list']) > 0
 
+
 def test_sub_office_types(client):
-    
     response = client.get(f"{version}/metadata/sub_office_types")
     assert response.status_code == status.HTTP_200_OK
 
