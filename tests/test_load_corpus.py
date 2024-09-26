@@ -3,7 +3,7 @@ from api_swedeb.api.utils.corpus import load_corpus
 
 def test_load_corpus():
     # corpus is loaded
-    c = load_corpus('.env_1960')
+    c = load_corpus('test.env')
     assert c is not None
     # corpus has a person_codecs attribute
     person_codecs = c.person_codecs

@@ -18,7 +18,7 @@ def client():
 
 @pytest.fixture(scope="module")
 def corpus():
-    return load_corpus('.env_1920_2020')
+    return load_corpus('test.env')
 
 
 
