@@ -177,7 +177,7 @@ def to_cqp_pattern(opts: dict | str | None) -> str:
     else:
         pattern = f'"{target}"{postfix}'
 
-    return f"{prefix}{pattern}"
+    return f"{prefix or ''}{pattern}"
 
 
 def to_cqp_patterns(args: None | str | list[dict[str, Any]]) -> str:
