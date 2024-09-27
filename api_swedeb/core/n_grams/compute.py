@@ -26,6 +26,10 @@ def _get_n_grams_concordances(
     subcorpus: SubCorpus | str = corpus.query(
         query, context_left=n - 1, context_right=n - 1
     )
+
+    if len(subcorpus.matches()) == 0:
+        return pd.Series([])
+
     segments: pd.Series = (
         subcorpus.concordance(
             form="simple", p_show=[p_show], s_show=[], order="first", cut_off=None

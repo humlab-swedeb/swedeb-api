@@ -91,6 +91,17 @@ def test_ngrams_non_existing_word(client):
     json = response.json()
 
     assert 'ngram_list' in json
+    assert len(json['ngram_list']) == 0
+
+def test_ngrams_existing_word(client):
+    # ngram should handle unknown words
+    search_term = 'hundskatt'
+
+    response = client.get(f"{version}/tools/ngrams/{search_term}")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+
+    assert 'ngram_list' in json
     first_result = json['ngram_list'][0]
     assert 'ngram' in first_result
     assert 'count' in first_result
