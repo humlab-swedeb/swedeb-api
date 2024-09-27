@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from contextlib import nullcontext
 from dataclasses import dataclass
+from os.path import isfile
 from functools import cached_property
 from typing import Callable, Literal, Mapping, Self, Union
 
@@ -12,18 +13,18 @@ from penelope import utility as pu  # type: ignore
 from .utility import load_tables
 
 CODE_TABLENAMES: dict[str, str] = {
-    "chamber": "chamber_id",
-    "gender": "gender_id",
-    "government": "government_id",
-    "office_type": "office_type_id",
-    "party": "party_id",
-    "sub_office_type": "sub_office_type_id",
+    'chamber': 'chamber_id',
+    'gender': 'gender_id',
+    'government': 'government_id',
+    'office_type': 'office_type_id',
+    'party': 'party_id',
+    'sub_office_type': 'sub_office_type_id',
 }
 
 
 @dataclass
 class Codec:
-    type: Literal["encode", "decode"]
+    type: Literal['encode', 'decode']
     from_column: str
     to_column: str
     fx: Callable[[int], str]
@@ -43,9 +44,12 @@ class Codecs:
         self.sub_office_type: pd.DataFrame = null_frame
         self.extra_codecs: list[Codec] = []
         self.source_filename: str | None = None
+        self.code_tables: dict[str, str] = CODE_TABLENAMES
 
     def load(self, source: str | sqlite3.Connection | str) -> Self:
         self.source_filename = source if isinstance(source, str) else None
+        if not isfile(source):
+            raise FileNotFoundError(f"File not found: {source}")
         with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
             tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
             for table_name, table in tables.items():
@@ -58,17 +62,15 @@ class Codecs:
 
     @cached_property
     def gender2name(self) -> dict:
-        """Returns a mapping from gender ID to gender name"""
-        return self.gender["gender"].to_dict()
+        return self.gender['gender'].to_dict()
 
     @cached_property
     def gender2id(self) -> dict:
-        """Returns a mapping from gender name to gender ID"""
         return pu.revdict(self.gender2name)
 
     @cached_property
     def office_type2name(self) -> dict:
-        return self.office_type["office"].to_dict()
+        return self.office_type['office'].to_dict()
 
     @cached_property
     def office_type2id(self) -> dict:
@@ -76,7 +78,7 @@ class Codecs:
 
     @cached_property
     def sub_office_type2name(self) -> dict:
-        return self.sub_office_type["description"].to_dict()
+        return self.sub_office_type['description'].to_dict()
 
     @cached_property
     def sub_office_type2id(self) -> dict:
@@ -84,7 +86,7 @@ class Codecs:
 
     @cached_property
     def party_abbrev2name(self) -> dict:
-        return self.party["party_abbrev"].to_dict()
+        return self.party['party_abbrev'].to_dict()
 
     @cached_property
     def party_abbrev2id(self) -> dict:
@@ -93,23 +95,23 @@ class Codecs:
     @property
     def codecs(self) -> list[Codec]:
         return self.extra_codecs + [
-            Codec("decode", "gender_id", "gender", self.gender2name.get),
-            Codec("decode", "office_type_id", "office_type", self.office_type2name.get),
-            Codec("decode", "party_id", "party_abbrev", self.party_abbrev2name.get),
-            Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name.get),
-            Codec("encode", "gender", "gender_id", self.gender2id.get),
-            Codec("encode", "office_type", "office_type_id", self.office_type2id.get),
-            Codec("encode", "party", "party_id", self.party_abbrev2id.get),
-            Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id.get),
+            Codec('decode', 'gender_id', 'gender', self.gender2name.get),
+            Codec('decode', 'office_type_id', 'office_type', self.office_type2name.get),
+            Codec('decode', 'party_id', 'party_abbrev', self.party_abbrev2name.get),
+            Codec('decode', 'sub_office_type_id', 'sub_office_type', self.sub_office_type2name.get),
+            Codec('encode', 'gender', 'gender_id', self.gender2id.get),
+            Codec('encode', 'office_type', 'office_type_id', self.office_type2id.get),
+            Codec('encode', 'party', 'party_id', self.party_abbrev2id.get),
+            Codec('encode', 'sub_office_type', 'sub_office_type_id', self.sub_office_type2id.get),
         ]
 
     @property
     def decoders(self) -> list[Codec]:
-        return [c for c in self.codecs if c.type == "decode"]
+        return [c for c in self.codecs if c.type == 'decode']
 
     @property
     def encoders(self) -> list[dict]:
-        return [c for c in self.codecs if c.type == "encode"]
+        return [c for c in self.codecs if c.type == 'encode']
 
     def apply_codec(self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True) -> pd.DataFrame:
         for codec in codecs:
@@ -119,7 +121,7 @@ class Codecs:
                 if codec.default is not None:
                     df[codec.to_column] = df[codec.to_column].fillna(codec.default)
             if drop:
-                df.drop(columns=[codec.from_column], inplace=True, errors="ignore")
+                df.drop(columns=[codec.from_column], inplace=True, errors='ignore')
         return df
 
     def decode(self, df: pd.DataFrame, drop: bool = True) -> pd.DataFrame:
@@ -131,22 +133,10 @@ class Codecs:
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
         return [
-            dict(text_name="gender", id_name="gender_id", values=self.gender2id),
-            dict(
-                text_name="office_type",
-                id_name="office_type_id",
-                values=self.office_type2id,
-            ),
-            dict(
-                text_name="party_abbrev",
-                id_name="party_id",
-                values=self.party_abbrev2id,
-            ),
-            dict(
-                text_name="sub_office_type",
-                id_name="sub_office_type_id",
-                values=self.sub_office_type2id,
-            ),
+            dict(text_name='gender', id_name='gender_id', values=self.gender2id),
+            dict(text_name='office_type', id_name='office_type_id', values=self.office_type2id),
+            dict(text_name='party_abbrev', id_name='party_id', values=self.party_abbrev2id),
+            dict(text_name='sub_office_type', id_name='sub_office_type_id', values=self.sub_office_type2id),
         ]
 
     @cached_property
@@ -240,7 +230,7 @@ class PersonCodecs(Codecs):
         party_specs_rev = {v: k for k, v in self._get_party_specs(partys_of_interest).items()}
         party_data["party_abbrev"] = party_data["party_id"].map(party_specs_rev)
         party_data["party_abbrev"].fillna("?", inplace=True)
-        
+
         grouped_party_abbrevs = (
             party_data.groupby("person_id")
             .agg({"party_abbrev": lambda x: ", ".join(set(x)), "party_id": lambda x: ",".join(set(map(str, x)))})
@@ -248,12 +238,9 @@ class PersonCodecs(Codecs):
         )
         grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
 
-        self.persons_of_interest = self.persons_of_interest.merge(
-            grouped_party_abbrevs, on="person_id", how="left"
-        )
+        self.persons_of_interest = self.persons_of_interest.merge(grouped_party_abbrevs, on="person_id", how="left")
         self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
         return self
-
 
     def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
         selected = {}
@@ -264,7 +251,6 @@ class PersonCodecs(Codecs):
                     if v in partys_of_interest:
                         selected[k] = v
         return selected
-
 
     # def _get_only_parties_with_data(self):
     #     parties_in_data = self.document_index.party_id.unique()
