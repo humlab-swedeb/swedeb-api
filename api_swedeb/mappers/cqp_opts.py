@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi.params import Query
 from api_swedeb.api.utils.common_params import CommonQueryParams
@@ -44,7 +44,7 @@ def query_params_to_CQP_criterias(params: CommonQueryParams = None) -> list[dict
 def query_params_to_CQP_opts(
     params: CommonQueryParams,
     word_targets: str | tuple[str, str] | list[str | tuple[str, str]],
-    # attribs: cwb.CorpusAttribs
+    search_target: None | Literal["word", "lemma"] = None,
 ) -> dict:
     """Maps a QueryParams to CQP options
 
@@ -65,7 +65,9 @@ def query_params_to_CQP_opts(
     if isinstance(word_targets, str):
         word_targets = [word_targets]
 
-    word_targets: list[tuple[str, str]] = [(word, "word") if isinstance(word, str) else word for word in word_targets]
+    word_targets: list[tuple[str, str]] = [
+        (word, search_target) if isinstance(word, str) else word for word in word_targets
+    ]
 
     criterias: list[dict] = query_params_to_CQP_criterias(params)
 
@@ -74,11 +76,12 @@ def query_params_to_CQP_opts(
     for word, target in word_targets:
         opts: dict[str, Any] = {
             "prefix": "a" if criterias else None,
-            "target": target,
-            "value": word,
             "criterias": criterias,
+            "target": target if target is not None else word,
+            "value": word if target is not None else None
         }
-        # Only apply criterias on first word if a sequence of words is provided
+
+        """ Only apply criterias on first word """
         criterias = []
 
         sequence.append(opts)
