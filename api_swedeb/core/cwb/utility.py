@@ -4,9 +4,7 @@ import pandas as pd
 
 
 class CorpusAttribs:
-
     def __init__(self, attributes: pd.DataFrame | Corpus | dict) -> None:
-
         self.data: dict[str, dict[str, str | bool]] = {}
 
         if isinstance(attributes, dict):
@@ -30,7 +28,11 @@ class CorpusAttribs:
 
     @cached_property
     def tags(self) -> dict[str, dict[str, str | bool]]:
-        return {k: v for k, v in self.data.items() if v["type"] == "s-Att" and not v["annotation"]}
+        return {
+            k: v
+            for k, v in self.data.items()
+            if v["type"] == "s-Att" and not v["annotation"]
+        }
 
     @cached_property
     def name2id(self) -> dict[str, str]:

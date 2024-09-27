@@ -5,7 +5,8 @@ from api_swedeb.api import metadata_router, tool_router
 
 app = FastAPI()
 
-origins = ['http://localhost:8080']
+origins = ['http://localhost:8080',
+           'http://localhost:9002']
 
 
 
