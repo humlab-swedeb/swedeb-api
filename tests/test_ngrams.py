@@ -143,23 +143,17 @@ def test_compute_n_grams2():
     assert ngram_counter is not None
 
 
-def test_n_gram_service():
-    corpus: Corpus = Corpora(registry_dir=CWB_REGISTRY).corpus(corpus_name=CWB_CORPUS_NAME)
+def test_n_gram_service(corpus: Corpus):
+    common_opts: cp.CommonQueryParams = cp.CommonQueryParams(
+        from_year=1970, to_year=1975, who=None, party_id=None, office_types=None, sub_office_types=None, gender_id=None
+    )
     result: NGramResult = ngram_service.get_ngrams(
         corpus=corpus,
-        search_term='"sverige"%c',
-        commons=cp.CommonQueryParams(
-            from_year=1952,
-            to_year=1968,
-            who=None,
-            party_id=None,
-            office_types=None,
-            sub_office_types=None,
-            gender_id=None,
-        ),
+        search_term=['sverige', 'vara'],
+        commons=common_opts,
         search_target="lemma",
         display_target="word",
-        n_gram_width=3,
+        n_gram_width=5,
     )
     assert result is not None
     assert len(result.ngram_list) > 0

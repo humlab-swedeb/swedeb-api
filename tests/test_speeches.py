@@ -92,8 +92,8 @@ def test_get_speech_by_id_client(client, corpus):
 
 def test_speeches_get_years(client):
     # assert that the returned speeches comes from the correct years
-    start_year = 1960
-    end_year = 1961
+    start_year = 1970
+    end_year = 1971
     response = client.get(f"{version}/tools/speeches?from_year={start_year}&to_year={end_year}")
     assert response.status_code == status.HTTP_200_OK
     speeches = response.json()['speech_list']

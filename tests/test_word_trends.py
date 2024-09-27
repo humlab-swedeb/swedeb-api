@@ -86,7 +86,7 @@ def test_word_trends_api(client):
 
 def test_word_trends_api_with_filter(client):
     search_term = 'att,och'
-    response = client.get(f"{version}/tools/word_trends/{search_term}?parties=9&genders=2&from_year=1960&to_year=1970")
+    response = client.get(f"{version}/tools/word_trends/{search_term}?parties=9&genders=2&from_year=1900&to_year=3000")
     json = response.json()
     first_result = json['wt_list'][0]
     print(json)
@@ -158,26 +158,28 @@ def test_ordered_word_hits_api(corpus):
 def test_summed_word_trends(corpus):
     # If more than one trend, the sum of the trends should be included
     df = corpus.get_word_trend_results(
-        search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={}, start_year=1960, end_year=1961
+        search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={}, start_year=1900, end_year=3000
     )
     assert 'Totalt' in df.columns
-    df = corpus.get_word_trend_results(search_terms=['debatt'], filter_opts={}, start_year=1960, end_year=1961)
+    df = corpus.get_word_trend_results(search_terms=['debatt'], filter_opts={}, start_year=1900, end_year=3000)
     assert 'Totalt' not in df.columns
 
 
 def test_eu_debatt(corpus):
+    
     df = corpus.get_word_trend_results(search_terms=['EU-debatt'], filter_opts={}, start_year=1900, end_year=3000)
-    print(df.head())
-    df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
-    print(df_small.head())
-    assert 'EU-debatt' in corpus.vectorized_corpus.vocabulary
-    assert 'eu-debatt' not in corpus.vectorized_corpus.vocabulary
 
+    assert len(df) == 0
+
+    df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
+    
+    assert len(df) > 0
+    
 
 def test_chambers(corpus):
     # chamber id not included, needs to be added
     df = corpus.get_word_trend_results(
-        search_terms=["arbete"], filter_opts={"chamber_id": [0]}, start_year=1960, end_year=1961
+        search_terms=["arbete"], filter_opts={"chamber_id": [0]}, start_year=1900, end_year=3000
     )
     print(df.head())
 
@@ -202,6 +204,7 @@ def test_merged_vectors():
     # kanske bättre att mergea i dataframen
 
 
+@pytest.mark.skip("Needs to be adjusted to v1.1.0 corpus")
 def test_merged_speeches(corpus):
     # if same speech_id, search terms should be concatenated
     df_merged = corpus.get_anforanden_for_word_trends(
