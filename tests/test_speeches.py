@@ -116,9 +116,6 @@ def test_get_speeches_corpus(corpus):
     df_filtered = corpus.get_anforanden(
         from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}, di_selected=None
     )
-
-    print(df_filtered.head()[['year', 'gender', 'party_abbrev']])
-    print(df_filtered.columns)
     df_unfiltered = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
@@ -148,7 +145,6 @@ def test_get_speaker_note(corpus):
     speaker_note = corpus.get_speaker_note(speech_id)
     assert speaker_note is not None
     assert len(speaker_note) > 0
-    print(speaker_note)
 
 
 def test_get_speech_by_api(client, corpus):

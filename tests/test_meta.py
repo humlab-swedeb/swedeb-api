@@ -42,6 +42,8 @@ def test_multiple_parties(corpus):
 
 
 def test_get_speaker_with_multiple_parties(corpus):
+
+    corpus.person_codecs.person["Q6178909"]
     # Raoul Hamilton should be returned for L, FRIS and X, party_id: 5, 12, 1
     speakers_5 = corpus.get_speakers(selections={'party_id': [5]})
     speakers_12 = corpus.get_speakers(selections={'party_id': [12]})

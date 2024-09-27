@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv('tests/test.env')
+
 TAGGED_CORPUS_FOLDER: str = os.environ.get("TAGGED_CORPUS_FOLDER")
 METADATA_FILENAME: str = os.environ.get("METADATA_FILENAME")
 

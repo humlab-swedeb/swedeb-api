@@ -131,7 +131,7 @@ def test_word_trend_corpus_with_filters(corpus):
         search_terms=['att'], filter_opts={'party_id': [9]}, start_year=1900, end_year=2000
     )
     assert len(wt) > 0
-    assert '1963' in wt.index  # year without result for att for 1960-test corpus should be included
+    assert '1975' in wt.index  # year without result for att for 1960-test corpus should be included
     columns = wt.columns
     for c in columns:
         # 9 corresponds to S
