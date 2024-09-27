@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from api_swedeb.api.parlaclarin.codecs import Codecs
 
 
-def kwik(
+def kwik( # pylint: disable=too-many-arguments
     corpus: Corpus,
     opts: dict[str, Any],
     *,

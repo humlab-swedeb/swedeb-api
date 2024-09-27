@@ -9,6 +9,8 @@ from main import app
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
 
+ # pylint: disable=redefined-outer-name
+
 version = "v1"
 
 
@@ -33,11 +35,11 @@ def test_speeches_get(client):
 def test_get_all_protocol_ids(corpus):
     df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
     all_ids = df['document_name']
-    for id in all_ids:
+    for protocol_id in all_ids:
         try:
-            format_protocol_id(id)
+            format_protocol_id(protocol_id)
         except IndexError:
-            print(id)
+            print(protocol_id)
             assert False
 
 
@@ -62,7 +64,7 @@ def test_get_speaker_name_for_non_existing_speech(corpus):
     assert speaker == "Okänd"
 
 
-def test_format_speech_id(corpus):
+def test_format_speech_id():
     prot = 'prot-1966-höst-fk--38_044'
     assert format_protocol_id(prot) == 'Första kammaren 1966:38 044'
     prot = 'prot-200405--113_075'

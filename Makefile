@@ -5,7 +5,7 @@ PYTEST_ARGS=--durations=0 tests
 
 #--cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html tests
 
-.PHONY: lint tidy isort black test
+.PHONY: lint tidy isort black test pylint
 
 lint: tidy pylint
 
@@ -21,6 +21,9 @@ black:
 test:
 	@echo "Running tests..."
 	@poetry run pytest $(PYTEST_ARGS) tests
+
+pylint:
+	@poetry run pylint $(SOURCE_FOLDERS)
 
 .PHONY: requirements.txt
 requirements.txt: poetry.lock
