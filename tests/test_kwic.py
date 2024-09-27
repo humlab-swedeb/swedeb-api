@@ -1,17 +1,17 @@
 from typing import Any
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
+import ccc
 import pandas as pd
-from api_swedeb.api.utils.kwic import RiksprotKwicConfig
-
 import pytest
-from fastapi.testclient import TestClient
 from fastapi import status
+from fastapi.testclient import TestClient
+
+from api_swedeb.api.utils.kwic import RiksprotKwicConfig
 from api_swedeb.core import kwic
 from api_swedeb.core.cwb.compiler import to_cqp_exprs
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 from main import app
-import ccc
 
 # pylint: disable=redefined-outer-name
 

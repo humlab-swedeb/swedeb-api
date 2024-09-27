@@ -4,31 +4,20 @@ import fastapi
 from fastapi import Body, Depends, HTTPException, Query
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.dependencies import (
-    get_cwb_corpus,
-    shared_corpus,
-    get_corpus_decoder,
-)
+from api_swedeb.api.utils.dependencies import get_corpus_decoder, get_cwb_corpus, shared_corpus
 from api_swedeb.api.utils.kwic import get_kwic_data
 from api_swedeb.api.utils.ngrams import get_ngrams
 from api_swedeb.api.utils.speech import get_speech_by_id, get_speech_zip, get_speeches
-from api_swedeb.api.utils.word_trends import (
-    get_search_hit_results,
-    get_word_trend_speeches,
-    get_word_trends,
-)
+from api_swedeb.api.utils.word_trends import get_search_hit_results, get_word_trend_speeches, get_word_trends
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
-router = fastapi.APIRouter(
-    prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}}
-)
+router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
 
 
 @router.get(
@@ -39,15 +28,9 @@ router = fastapi.APIRouter(
 async def get_kwic_results(
     commons: CommonParams,
     search: str,
-    lemmatized: bool = Query(
-        True, description="Whether to search for lemmatized version of search string"
-    ),
-    words_before: int = Query(
-        2, description="Number of tokens before the search word(s)"
-    ),
-    words_after: int = Query(
-        2, description="Number of tokens after the search word(s)"
-    ),
+    lemmatized: bool = Query(True, description="Whether to search for lemmatized version of search string"),
+    words_before: int = Query(2, description="Number of tokens before the search word(s)"),
+    words_after: int = Query(2, description="Number of tokens after the search word(s)"),
     cut_off: int = Query(200000, description="Maximum number of hits to return"),
     corpus: Any = Depends(get_cwb_corpus),
     decoder: Any = Depends(get_corpus_decoder),
@@ -75,9 +58,7 @@ async def get_kwic_results(
 async def get_word_trends_result(
     search: str,
     commons: CommonParams,
-    normalize: bool = Query(
-        False, description="Normalize counts by total number of tokens per year"
-    ),
+    normalize: bool = Query(False, description="Normalize counts by total number of tokens per year"),
 ):
     """Get word trends"""
     return get_word_trends(search, commons, shared_corpus, normalize=normalize)
@@ -105,9 +86,7 @@ async def get_ngram_results(
     search: str | list[str],
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
-    target: str = Query(
-        default="word", description="Target for n-gram (word/lemma)"
-    ),  # FIXME: Add enum to schema
+    target: str = Query(default="word", description="Target for n-gram (word/lemma)"),  # FIXME: Add enum to schema
     corpus: Any = Depends(get_cwb_corpus),
 ):
     """Get ngrams"""

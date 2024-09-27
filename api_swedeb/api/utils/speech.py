@@ -57,9 +57,7 @@ def get_speech_zip(ids: List[str], corpus: Corpus):
     file_and_speech = []
     for protocol_id in ids:
         speaker = corpus.get_speaker(protocol_id)
-        file_and_speech.append(
-            (f"{speaker}_{protocol_id}.txt", corpus.get_speech_text(protocol_id))
-        )
+        file_and_speech.append((f"{speaker}_{protocol_id}.txt", corpus.get_speech_text(protocol_id)))
 
     # Create an in-memory buffer for the zip file
     zip_buffer = io.BytesIO()
@@ -73,9 +71,7 @@ def get_speech_zip(ids: List[str], corpus: Corpus):
     zip_buffer.seek(0)
 
     # Create a StreamingResponse to send the zip file back to the client
-    response = StreamingResponse(
-        iter([zip_buffer.getvalue()]), media_type="application/zip"
-    )
+    response = StreamingResponse(iter([zip_buffer.getvalue()]), media_type="application/zip")
     response.headers["Content-Disposition"] = "attachment; filename=speeches.zip"
 
     return response

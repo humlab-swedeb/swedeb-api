@@ -6,9 +6,7 @@ from pydantic import BaseModel, Field
 
 class KeywordInContextItem(BaseModel):
     left_word: str = Field(..., description="Left context of search hit")
-    node_word: str = Field(
-        None, description="The hits correpsonding to the search string"
-    )
+    node_word: str = Field(None, description="The hits correpsonding to the search string")
     right_word: Optional[str] = Field(None, description="Right context of search hit")
     year: Optional[int] = Field(None, description="Year of speech")
     name: Optional[str] = Field(None, description="Name of speaker")

@@ -3,8 +3,8 @@ from __future__ import annotations
 import sqlite3
 from contextlib import nullcontext
 from dataclasses import dataclass
-from os.path import isfile
 from functools import cached_property
+from os.path import isfile
 from typing import Callable, Literal, Mapping, Self, Union
 
 import pandas as pd
@@ -113,9 +113,7 @@ class Codecs:
     def encoders(self) -> list[dict]:
         return [c for c in self.codecs if c.type == 'encode']
 
-    def apply_codec(
-        self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True
-    ) -> pd.DataFrame:
+    def apply_codec(self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True) -> pd.DataFrame:
         for codec in codecs:
             if codec.from_column in df.columns:
                 if codec.to_column not in df:
@@ -143,11 +141,7 @@ class Codecs:
 
     @cached_property
     def key_name_translate_id2text(self) -> dict:
-        return {
-            codec.from_column: codec.to_column
-            for codec in self.codecs
-            if codec.type == "decode"
-        }
+        return {codec.from_column: codec.to_column for codec in self.codecs if codec.type == "decode"}
 
     @cached_property
     def key_name_translate_text2id(self) -> dict:
@@ -202,10 +196,7 @@ class PersonCodecs(Codecs):
     @cached_property
     def person_name2pid(self) -> dict:
         fg = self.person_id2pid.get
-        return {
-            f"{name} ({person_id})": fg(person_id)
-            for person_id, name in self.person_id2name.items()
-        }
+        return {f"{name} ({person_id})": fg(person_id) for person_id, name in self.person_id2name.items()}
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
@@ -236,9 +227,7 @@ class PersonCodecs(Codecs):
 
     def add_multiple_party_abbrevs(self, partys_of_interest: set[int]) -> Self:
         party_data = self.person_party
-        party_specs_rev = {
-            v: k for k, v in self._get_party_specs(partys_of_interest).items()
-        }
+        party_specs_rev = {v: k for k, v in self._get_party_specs(partys_of_interest).items()}
         party_data["party_abbrev"] = party_data["party_id"].map(party_specs_rev)
         party_data["party_abbrev"].fillna("?", inplace=True)
 
@@ -252,14 +241,11 @@ class PersonCodecs(Codecs):
             )
             .reset_index()
         )
-        grouped_party_abbrevs.rename(
-            columns={"party_id": "multi_party_id"}, inplace=True
-        )
+        grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
 
         self.persons_of_interest = self.persons_of_interest.merge(grouped_party_abbrevs, on="person_id", how="left")
         self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
         return self
-
 
     def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
         selected = {}

@@ -159,7 +159,6 @@ def to_cqp_pattern(opts: dict | str | None) -> str:
     value: str | list[str] | None = opts.get("value")
 
     if isinstance(value, str):
-
         if value.endswith("%c"):
             value = value[:-2].strip()
             ignore_case: bool = True
@@ -235,7 +234,6 @@ def to_cqp_patterns(args: None | str | list[dict[str, Any]]) -> str:
 
 
 def to_cqp_criteria_expr(criterias: None | str | list[dict[str, Any]]) -> str:
-
     if criterias is None:
         criterias = []
 
@@ -260,9 +258,7 @@ def to_cqp_criteria_expr(criterias: None | str | list[dict[str, Any]]) -> str:
 
 def get_criteria_opts(args: list[dict[str, Any]]) -> list[str]:
     """Get a list of criteria expressions from a list of pattern options."""
-    items: list[Any | None] = [
-        arg.get("criterias") for arg in args if arg.get("criterias")
-    ]
+    items: list[Any | None] = [arg.get("criterias") for arg in args if arg.get("criterias")]
     if len(items) > 0 and isinstance(items[0], list):
         items = [item for row in items for item in row]
     return items

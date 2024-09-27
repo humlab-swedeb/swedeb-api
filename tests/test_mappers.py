@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pandas as pd
+
 from api_swedeb import mappers, schemas
 
 

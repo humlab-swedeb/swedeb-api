@@ -18,8 +18,7 @@ def get_cwb_corpus_opts() -> dict[str, str | None]:
         "registry_dir": os.environ.get("KWIC_DIR"),
         "corpus_name": os.environ.get("KWIC_CORPUS_NAME"),
         "data_dir": (
-            os.getenv("KWIC_TEMP_DIR")
-            or f"/tmp/ccc-{str(ccc.__version__)}-{os.environ.get('USER', 'swedeb')}"
+            os.getenv("KWIC_TEMP_DIR") or f"/tmp/ccc-{str(ccc.__version__)}-{os.environ.get('USER', 'swedeb')}"
         ),
     }
 

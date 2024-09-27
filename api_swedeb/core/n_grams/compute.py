@@ -31,9 +31,12 @@ def compute_n_grams(windows: pd.DataFrame, *, n: int = 2, threshold: int = None)
         pd.DataFrame: DataFrame with n-grams, their counts and documents.
     """
 
-    n_grams: pd.DataFrame = to_ngrams_dataframe(windows, n=n, key="window").merge(
-        windows[['count', 'documents']], left_on="segment", right_index=True
-    ).groupby('ngram').agg(window_count=('count', sum), documents=('documents', ','.join))
+    n_grams: pd.DataFrame = (
+        to_ngrams_dataframe(windows, n=n, key="window")
+        .merge(windows[['count', 'documents']], left_on="segment", right_index=True)
+        .groupby('ngram')
+        .agg(window_count=('count', sum), documents=('documents', ','.join))
+    )
 
     n_grams['documents'] = n_grams.documents.str.split(',').apply(set).apply(sorted).apply(','.join)
 
@@ -44,7 +47,6 @@ def compute_n_grams(windows: pd.DataFrame, *, n: int = 2, threshold: int = None)
 
 
 def compute_n_grams2(windows: pd.DataFrame, *, n: int = 2, threshold: int = None) -> pd.DataFrame:
-
     n_grams: Iterable[tuple[int, str]] = (
         (index, ngram) for index, row in windows.iterrows() for ngram in to_n_grams(row['window'], n)
     )

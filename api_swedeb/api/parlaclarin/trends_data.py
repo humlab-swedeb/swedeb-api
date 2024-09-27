@@ -23,9 +23,7 @@ class SweDebComputeOpts(wt.TrendsComputeOpts):
 
     @property
     def clone(self) -> "SweDebComputeOpts":
-        obj: SweDebComputeOpts = super(
-            SweDebComputeOpts, self
-        ).clone  # pylint: disable=super-with-arguments
+        obj: SweDebComputeOpts = super(SweDebComputeOpts, self).clone  # pylint: disable=super-with-arguments
         obj.source_folder = self.source_folder
         return obj
 
@@ -53,19 +51,13 @@ class SweDebTrendsData(wt.TrendsService):
         corpus.replace_document_index(di)
         return corpus
 
-    def update_document_index(
-        self, opts: SweDebComputeOpts, document_index: pd.DataFrame
-    ) -> pd.DataFrame:
+    def update_document_index(self, opts: SweDebComputeOpts, document_index: pd.DataFrame) -> pd.DataFrame:
         """Decodes ID columns (keeps ID) and updates document index with filename, time_period and document_name."""
         if not opts.pivot_keys_id_names:
             return document_index
         di: pd.DataFrame = self.person_codecs.decode(document_index, drop=False)
-        pivot_keys_text_names = self.person_codecs.translate_key_names(
-            opts.pivot_keys_id_names
-        )
-        di["document_name"] = di[pivot_keys_text_names].apply(
-            lambda x: "_".join(x).lower(), axis=1
-        )
+        pivot_keys_text_names = self.person_codecs.translate_key_names(opts.pivot_keys_id_names)
+        di["document_name"] = di[pivot_keys_text_names].apply(lambda x: "_".join(x).lower(), axis=1)
         di["filename"] = di.document_name
         di["time_period"] = di[opts.temporal_key]
         return di

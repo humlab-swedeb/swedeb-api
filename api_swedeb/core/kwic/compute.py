@@ -48,9 +48,7 @@ def kwik(
     """
     query: str = to_cqp_exprs(opts, within="speech")
 
-    subcorpus: SubCorpus | str = corpus.query(
-        query, context_left=words_before, context_right=words_after
-    )
+    subcorpus: SubCorpus | str = corpus.query(query, context_left=words_before, context_right=words_after)
 
     segments: pd.DataFrame = subcorpus.concordance(
         form="kwic",
@@ -62,13 +60,8 @@ def kwik(
     if segments.empty:
         return segments
     if s_show and strip_s_tags:
-        segments = segments.rename(
-            columns={name: name.split("_", maxsplit=1)[1] for name in s_show}
-        )
-        display_columns = [
-            name.split("_", maxsplit=1)[1] if name in s_show else name
-            for name in display_columns
-        ]
+        segments = segments.rename(columns={name: name.split("_", maxsplit=1)[1] for name in s_show})
+        display_columns = [name.split("_", maxsplit=1)[1] if name in s_show else name for name in display_columns]
 
     if rename_columns:
         segments = segments.rename(columns=rename_columns)
@@ -79,9 +72,7 @@ def kwik(
     if decoder:
         segments = decoder.decode(segments, drop=False)
     else:
-        display_columns = [
-            name for name in display_columns if name not in segments.columns
-        ]
+        display_columns = [name for name in display_columns if name not in segments.columns]
     for name, fx in compute_columns or {}:
         segments[name] = fx(segments)
 
