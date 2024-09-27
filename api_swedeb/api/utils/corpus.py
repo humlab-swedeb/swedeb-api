@@ -47,8 +47,6 @@ class Corpus:
         self.__lazy_decoded_persons = Lazy(
             lambda: self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
         )
-        self.possible_pivots = None
-        self.words_per_year = None
 
     @property
     def vectorized_corpus(self) -> pd.DataFrame:
@@ -332,7 +330,7 @@ class Corpus:
 
         return self.prepare_anforande_display(di_selected)
 
-    def get_speech_text(self, document_name: str):  # type: ignore
+    def get_speech_text(self, document_name: str) -> str:  # type: ignore
         return self.repository.to_text(self.get_speech(document_name))
 
     def get_speech(self, document_name: str):  # type: ignore
