@@ -12,7 +12,7 @@ from penelope.utility import PropertyValueMaskingOpts  # type: ignore
 
 from api_swedeb.api.parlaclarin import codecs as md
 from api_swedeb.api.parlaclarin import speech_text as sr
-from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
+from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 from api_swedeb.core.utility import Lazy
 

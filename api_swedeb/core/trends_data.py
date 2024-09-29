@@ -5,7 +5,7 @@ from penelope import corpus as pc  # type: ignore
 from penelope.common.keyness.metrics import KeynessMetric  # type: ignore
 from penelope.notebook import word_trends as wt  # type: ignore
 
-from . import codecs as md
+from ..api.parlaclarin import codecs as md
 
 # These two class are currently identical to the ones in welfare_state_analytics.notebookd...word_trends.py
 
