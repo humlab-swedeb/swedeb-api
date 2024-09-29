@@ -25,8 +25,9 @@ from . import codecs as md
 try:
     import github as gh
 except ImportError:
+
     def Github(_):
-        return types.SimpleNamespace() 
+        return types.SimpleNamespace()
 
 
 default_template: Template = Template(
