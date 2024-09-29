@@ -40,31 +40,6 @@ COLUMN_DEFAULTS = {
 }
 
 
-PARTY_COLORS = [
-    (0, "S", "#E8112d"),
-    (1, "M", "#52BDEC"),
-    (2, "gov", "#000000"),
-    (3, "C", "#009933"),
-    (4, "L", "#006AB3"),
-    (5, "V", "#DA291C"),
-    (6, "MP", "#83CF39"),
-    (7, "KD", "#000077"),
-    (8, "NYD", "#007700"),
-    (9, "SD", "#DDDD00"),
-]
-
-PARTY_COLOR_BY_ID = {x[0]: x[2] for x in PARTY_COLORS}
-PARTY_COLOR_BY_ABBREV = {x[1]: x[2] for x in PARTY_COLORS}
-
-NAME2IDNAME_MAPPING: Mapping[str, str] = {
-    "gender": "gender_id",
-    "office_type": "office_type_id",
-    "sub_office_type": "sub_office_type_id",
-    "person_id": "pid",
-}
-IDNAME2NAME_MAPPING: Mapping[str, str] = revdict(NAME2IDNAME_MAPPING)
-
-
 def read_sql_table(table_name: str, con: sqlite3.Connection) -> pd.DataFrame:
     return pd.read_sql(f"select * from {table_name}", con)
 
