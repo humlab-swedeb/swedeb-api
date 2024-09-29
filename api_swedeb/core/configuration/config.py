@@ -111,7 +111,7 @@ class Config:
         """Test if the source is a valid path to a configuration file."""
         if not isinstance(source, str):
             return False
-        return source.endswith(".yaml") or source.endswith(".yml") # or pathvalidate.is_valid_filepath(source)
+        return source.endswith(".yaml") or source.endswith(".yml")  # or pathvalidate.is_valid_filepath(source)
 
     def add(self, data: dict) -> None:
         """Recursively add data to the configuration."""
