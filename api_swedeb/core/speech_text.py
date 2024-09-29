@@ -25,7 +25,8 @@ from . import codecs as md
 try:
     import github as gh
 except ImportError:
-    Github = lambda t: types.SimpleNamespace()  # pylint: disable=unnecessary-lambda-assigment
+    def Github(_):
+        return types.SimpleNamespace() 
 
 
 default_template: Template = Template(
@@ -108,7 +109,8 @@ class SpeechTextService:
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]: ...
+    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
+        ...
 
 
 def zero_fill_filename_sequence(name: str) -> str:
