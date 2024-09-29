@@ -9,7 +9,8 @@ from api_swedeb.core.cwb import compiler
 from api_swedeb.core.cwb.utility import CorpusAttribs
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 
- # pylint: disable=redefined-outer-name, protected-access
+# pylint: disable=redefined-outer-name, protected-access
+
 
 def test_to_value_expr():
     assert compiler._to_value_expr("") == ""

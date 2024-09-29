@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from api_swedeb.api.utils.corpus import load_corpus
 from main import app
 
- # pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name
 
 pd.set_option('display.max_columns', None)
 

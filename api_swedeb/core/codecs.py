@@ -10,7 +10,7 @@ from typing import Callable, Literal, Mapping, Self, Union
 import pandas as pd
 from penelope import utility as pu  # type: ignore
 
-from .utility import load_tables
+from api_swedeb.core.utility import load_tables
 
 CODE_TABLENAMES: dict[str, str] = {
     'chamber': 'chamber_id',

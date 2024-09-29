@@ -8,7 +8,7 @@ from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 from main import app
 
- # pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name
 
 pd.set_option('display.max_columns', None)
 

@@ -9,7 +9,7 @@ from main import app
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
 
- # pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name
 
 version = "v1"
 

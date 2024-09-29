@@ -1,4 +1,4 @@
-from api_swedeb.api.parlaclarin.codecs import PersonCodecs
+from api_swedeb.core.codecs import PersonCodecs
 
 from .config import METADATA_FILENAME
 

@@ -18,13 +18,14 @@ from jinja2 import Template
 from loguru import logger
 from penelope import utility as pu
 
+from api_swedeb.core.utility import read_sql_table
+
 from . import codecs as md
-from .utility import read_sql_table
 
 try:
     import github as gh
 except ImportError:
-    Github = lambda t: types.SimpleNamespace()
+    Github = lambda t: types.SimpleNamespace()  # pylint: disable=unnecessary-lambda-assigment
 
 
 default_template: Template = Template(
@@ -107,8 +108,7 @@ class SpeechTextService:
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
-        ...
+    def load(self, protocol_name: str) -> tuple[dict, list[dict]]: ...
 
 
 def zero_fill_filename_sequence(name: str) -> str:

@@ -9,8 +9,9 @@ from main import app
 
 version = "v1"
 
- # pylint: disable=redefined-outer-name
- 
+# pylint: disable=redefined-outer-name
+
+
 @pytest.fixture(scope="session")
 def client():
     client = TestClient(app)
