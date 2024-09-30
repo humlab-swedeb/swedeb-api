@@ -2,9 +2,10 @@ from typing import Annotated, Any
 
 import fastapi
 from fastapi import Body, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.dependencies import get_corpus_decoder, get_cwb_corpus, shared_corpus
+from api_swedeb.api.utils.dependencies import get_corpus_decoder, get_cwb_corpus, get_shared_corpus
 from api_swedeb.api.utils.kwic import get_kwic_data
 from api_swedeb.api.utils.ngrams import get_ngrams
 from api_swedeb.api.utils.speech import get_speech_by_id, get_speech_zip, get_speeches
@@ -59,36 +60,36 @@ async def get_word_trends_result(
     search: str,
     commons: CommonParams,
     normalize: bool = Query(False, description="Normalize counts by total number of tokens per year"),
-):
+) -> WordTrendsResult:
     """Get word trends"""
-    return get_word_trends(search, commons, shared_corpus, normalize=normalize)
+    return get_word_trends(search, commons, get_shared_corpus(), normalize=normalize)
 
 
 @router.get("/word_trend_speeches/{search}", response_model=SpeechesResultWT)
 async def get_word_trend_speeches_result(
     search: str,
     commons: CommonParams,
-):
+) -> SpeechesResultWT:
     """Get word trends"""
-    return get_word_trend_speeches(search, commons, shared_corpus)
+    return get_word_trend_speeches(search, commons, get_shared_corpus())
 
 
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
 async def get_word_hits(
     search: str,
     n_hits: int = Query(5, description="Number of hits to return"),
-):
-    return get_search_hit_results(search=search, n_hits=n_hits, corpus=shared_corpus)
+) -> SearchHits:
+    return get_search_hit_results(search=search, n_hits=n_hits, corpus=get_shared_corpus())
 
 
 @router.get("/ngrams/{search}", response_model=NGramResult)
 async def get_ngram_results(
-    search: str | list[str],
+    search: str,
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
-    target: str = Query(default="word", description="Target for n-gram (word/lemma)"),  # FIXME: Add enum to schema
+    target: str = Query(default="word", description="Target for n-gram (word/lemma)"),
     corpus: Any = Depends(get_cwb_corpus),
-):
+) -> NGramResult:
     """Get ngrams"""
     if isinstance(search, str):
         search = search.split()
@@ -101,27 +102,26 @@ async def get_ngram_results(
         display_target=target,
     )
 
-
 @router.get("/speeches", response_model=SpeechesResult)
 async def get_speeches_result(
     commons: CommonParams,
-):
-    return get_speeches(commons, shared_corpus)
+) -> SpeechesResult:
+    return get_speeches(commons, get_shared_corpus())
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
-async def get_speech_by_id_result(id: str):
+async def get_speech_by_id_result(id: str) -> SpeechesTextResultItem:
     """eg. prot-1971--1_007"""
-    return get_speech_by_id(id, shared_corpus)
+    return get_speech_by_id(id, get_shared_corpus())
 
 
 @router.post("/speech_download/")
-async def get_zip(ids: list = Body(..., min_length=1, max_length=100)):
+async def get_zip(ids: list = Body(..., min_length=1, max_length=100)) -> StreamingResponse:
     if not ids:
         raise HTTPException(status_code=400, detail="Speech ids are required")
-    return get_speech_zip(ids, shared_corpus)
+    return get_speech_zip(ids, get_shared_corpus())
 
 
 @router.get("/topics")
-async def get_topics():
+async def get_topics() -> dict[str, str]:
     return {"message": "Not implemented yet"}
