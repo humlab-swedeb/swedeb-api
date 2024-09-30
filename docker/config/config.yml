@@ -1,0 +1,20 @@
+metadata:
+  version: v1.1.0
+  filename: /data/swedeb/riksprot_metadata.db
+
+cwb:
+  registry_dir: /usr/local/share/cwb/registry
+  corpus_name: RIKSPROT_V110_TEST
+
+dtm:
+  folder: /data/swedeb/v1.1.0/dtm/text
+  tag: text
+
+vrt:
+  folder: /data/swedeb/v1.1.0/tagged_frames
+  tag: text
+
+fastapi:
+  origins:
+    - http://localhost:8080
+    - http://localhost:9002
