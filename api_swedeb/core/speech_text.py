@@ -23,7 +23,7 @@ from api_swedeb.core.utility import read_sql_table
 from . import codecs as md
 
 try:
-    import github as gh
+    import github as gh # type: ignore
 except ImportError:
 
     def Github(_):
@@ -146,6 +146,7 @@ class ZipLoader(Loader):
 
 
 class SpeechTextRepository:
+    # FIXME: Adjust links to new v1.1.0 repository
     GITHUB_REPOSITORY_URL: str = "https://github.com/welfare-state-analytics/riksdagen-corpus"
     GITHUB_REPOSITORY_RAW_URL = "https://raw.githubusercontent.com/welfare-state-analytics/riksdagen-corpus"
 
@@ -287,6 +288,7 @@ class SpeechTextRepository:
 
         return f'<a href="{url}" target="_blank" style="font-weight: bold;color: blue;">KB</a>&nbsp;'
 
+    # FIXME: #46 Adjust links to new v1.1.0 repository
     def get_github_tags(self, github_access_token: str = None) -> list[str]:
         release_tags: list[str] = ["main", "dev"]
         try:
