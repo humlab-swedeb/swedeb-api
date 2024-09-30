@@ -20,7 +20,7 @@ services:
       # - HOST_DTM_TAG=dtm_vrt_text_5000000_TF10
       # Don't touch these
       # - METADATA_FILENAME=/data/metadata/${HOST_METADATA_FILENAME}
-      - METADATA_FILENAME=/data/metadata/riksprot_metadata.v0.10.0.db
+      - METADATA_FILENAME=/data/metadata/riksprot_metadata.v1.1.0.db
       - TAGGED_CORPUS_FOLDER=/data/corpus/tagged_frames
       - DTM_FOLDER=/data/corpus/dtm/${HOST_DTM_TAG}
       - DTM_TAG=${HOST_DTM_TAG}

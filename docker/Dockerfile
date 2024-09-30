@@ -118,6 +118,7 @@ COPY cwb/registry /data/cwb/registry
 COPY public /app/public
 COPY main.py /app/main.py
 COPY entrypoint.sh entrypoint.sh
+COPY config /app/config
 
 RUN ln -s /data/cwb/registry /usr/local/share/cwb/registry \
     && chmod +x entrypoint.sh
