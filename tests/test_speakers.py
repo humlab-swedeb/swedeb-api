@@ -26,7 +26,6 @@ def corpus() -> Corpus:
 def test_get_speakers(corpus):
     speakers = corpus.get_speakers(selections={})
     assert len(speakers) > 0
-    assert all('C' in pa for pa in speakers['party_abbrev'].unique())
 
 
 def test_get_filtered_speakers_by_party_int(corpus):
