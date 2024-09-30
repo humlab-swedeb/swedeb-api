@@ -128,10 +128,8 @@ def test_word_trend_corpus_with_filters(corpus):
     )
     assert len(wt) > 0
     assert '1975' in wt.index  # year without result for att for 1960-test corpus should be included
-    columns = wt.columns
-    for c in columns:
-        # 9 corresponds to S
-        assert 'att S' in c
+    assert 'att S' in wt.columns
+    assert 'att ?' in wt.columns
 
 
 def test_word_hits_api(fastapi_client):
