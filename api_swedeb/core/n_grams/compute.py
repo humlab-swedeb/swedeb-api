@@ -31,6 +31,9 @@ def compute_n_grams(windows: pd.DataFrame, *, n: int = 2, threshold: int = None)
         pd.DataFrame: DataFrame with n-grams, their counts and documents.
     """
 
+    if len(windows) == 0:
+        return pd.DataFrame(columns=['ngram', 'window_count', 'documents']).set_index('ngram')
+
     n_grams: pd.DataFrame = (
         to_ngrams_dataframe(windows, n=n, key="window")
         .merge(windows[['count', 'documents']], left_on="segment", right_index=True)
