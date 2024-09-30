@@ -3,8 +3,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from api_swedeb.api.utils.corpus import load_corpus
-from main import app
+from api_swedeb.api.utils.corpus import Corpus, load_corpus
 
 # pylint: disable=redefined-outer-name
 
@@ -14,14 +13,14 @@ version = "v1"
 
 
 @pytest.fixture(scope="module")
-def client():
-    client = TestClient(app)
+def client(fastapi_app):
+    client = TestClient(fastapi_app)
     yield client
 
 
 @pytest.fixture(scope="module")
-def corpus():
-    return load_corpus('test.env')
+def corpus() -> Corpus:
+    return load_corpus()
 
 
 def test_get_speakers(corpus):

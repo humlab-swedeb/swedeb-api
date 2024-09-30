@@ -1,4 +1,5 @@
 import io
+import uuid
 from collections import Counter, defaultdict
 from typing import Iterable
 from unittest.mock import MagicMock, patch
@@ -8,10 +9,9 @@ from ccc import Corpora, Corpus, SubCorpus
 
 from api_swedeb.api.utils import common_params as cp
 from api_swedeb.api.utils import ngrams as ngram_service
+from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.n_grams.compute import compute_n_grams, query_keyword_windows, to_n_grams
 from api_swedeb.schemas.ngrams_schema import NGramResult
-
-from .config import CWB_CORPUS_NAME, CWB_REGISTRY
 
 version = "v1"
 
@@ -118,12 +118,12 @@ def test_compute_n_grams():
 
 
 def test_compute_n_grams2():
-    corpus_name: str = "RIKSPROT_V0100_TEST"
-    registry_folder: str = "/usr/local/share/cwb/registry"
     n: int = 2
     keyword: str = '"sverige"%c'
 
-    corpus: Corpus = Corpora(registry_dir=registry_folder).corpus(corpus_name=corpus_name)
+    corpus: Corpus = Corpora(registry_dir=ConfigValue("cwb.registry_dir").resolve()).corpus(
+        corpus_name=ConfigValue("cwb.corpus_name").resolve(), data_dir=f"/tmp/ccc-{str(uuid.uuid4())[:6]}"
+    )
 
     windows: pd.DataFrame = query_keyword_windows(corpus, query_or_opts=keyword, n=n, p_show="word")
 
@@ -160,7 +160,9 @@ def test_n_gram_service(corpus: Corpus):
 
 
 def test_cqp_query_that_returns_speech_id():
-    corpus: Corpus = Corpora(registry_dir=CWB_REGISTRY).corpus(corpus_name=CWB_CORPUS_NAME)
+    corpus: Corpus = Corpora(registry_dir=ConfigValue("cwb.registry_dir").resolve()).corpus(
+        corpus_name=ConfigValue("cwb.corpus_name").resolve(), data_dir=f"/tmp/ccc-{str(uuid.uuid4())[:6]}"
+    )
     opts = {
         "form": "kwic",
         "p_show": ["word"],
@@ -170,7 +172,7 @@ def test_cqp_query_that_returns_speech_id():
     }
     segments: pd.DataFrame = (
         corpus.query(
-            'a:[word="information"] :: (a.year_year="1939")',
+            'a:[word="information"] :: (a.year_year="1975")',
             context_left=2,
             context_right=2,
         )

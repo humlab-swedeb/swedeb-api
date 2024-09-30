@@ -5,23 +5,15 @@ import ccc
 import pandas as pd
 import pytest
 from fastapi import status
-from fastapi.testclient import TestClient
 
 from api_swedeb.api.utils.kwic import RiksprotKwicConfig
 from api_swedeb.core import kwic
 from api_swedeb.core.cwb.compiler import to_cqp_exprs
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
-from main import app
 
 # pylint: disable=redefined-outer-name
 
 version = "v1"
-
-
-@pytest.fixture(scope="module")
-def client():
-    client = TestClient(app)
-    yield client
 
 
 @pytest.fixture(scope="module")
@@ -206,8 +198,8 @@ def test_get_kwic_compute_kwic(decoder: MagicMock):
     assert len(kwic_results) == len(fake_data)
 
 
-def test_kwic_api(client):
-    response = client.get(
+def test_kwic_api(fastapi_client):
+    response = fastapi_client.get(
         f"{version}/tools/kwic/debatt?words_before=2&words_after=2&cut_off=200&lemmatized=false"
         "&from_year=1970&to_year=1975&gender_id=1"
     )
@@ -218,17 +210,17 @@ def test_kwic_api(client):
     assert "party_abbrev" in data["kwic_list"][0]
 
 
-def test_kwic_non_existing_search_term(client):
+def test_kwic_non_existing_search_term(fastapi_client):
     # non-existing word
     search_term = 'non_existing_word_'
-    response = client.get(f"{version}/tools/kwic/{search_term}")
+    response = fastapi_client.get(f"{version}/tools/kwic/{search_term}")
     assert response.status_code == status.HTTP_200_OK
     assert 'kwic_list' in response.json()
     assert len(response.json()['kwic_list']) == 0
 
 
-def test_kwic_speech_id_in_search_results(client):
-    response = client.get(f"{version}/tools/kwic/kärnkraft?words_before=2&words_after=2&cut_off=10")
+def test_kwic_speech_id_in_search_results(fastapi_client):
+    response = fastapi_client.get(f"{version}/tools/kwic/kärnkraft?words_before=2&words_after=2&cut_off=10")
     assert response.status_code == 200
     print(response.json())
     data: dict = response.json()
