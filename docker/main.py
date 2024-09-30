@@ -1,10 +1,11 @@
-import os
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from api_swedeb.api import metadata_router, tool_router
 
+from api_swedeb.api import metadata_router, tool_router
+from api_swedeb.core.configuration import ConfigStore
+
+ConfigStore.configure_context(source="config/config.yml")
 
 app = FastAPI()
 
