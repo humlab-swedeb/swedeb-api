@@ -653,13 +653,13 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "humlab-penelope"
-version = "0.7.69"
+version = "0.8.2"
 description = "Utilities that simplify enelpeing in Jupyter Lab"
 optional = false
 python-versions = "==3.11.*"
 files = [
-    {file = "humlab_penelope-0.7.69-py3-none-any.whl", hash = "sha256:e4b99d173f1d250700da41dfb505050f7ed53e912e93b8e881617b7b50d87c82"},
-    {file = "humlab_penelope-0.7.69.tar.gz", hash = "sha256:24fedc74126049fab852de94de6a990f8f3e869e2c6b3a6dc02b9e0b87315940"},
+    {file = "humlab_penelope-0.8.2-py3-none-any.whl", hash = "sha256:78d51576c86ed8495ee33de35ea9476dca15bc1885e3f4d81ecf4bd044dc48e1"},
+    {file = "humlab_penelope-0.8.2.tar.gz", hash = "sha256:60a530aecb7dc69be76502749902f89f7771efcf030cf785416f09cbb616ea8b"},
 ]
 
 [package.dependencies]
@@ -2817,4 +2817,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "57187bf74af3856151f9fcbee2d0896d643ecb45fd9cda1d1c7363b14bd513a9"
+content-hash = "ab50169d8d3ccec933eab199c39c3099d8b509fc6c31de2cf5a140f4c99009cc"

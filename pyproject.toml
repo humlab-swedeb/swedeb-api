@@ -10,7 +10,7 @@ packages = [{include = "api_swedeb"}]
 python = "3.11.*"
 fastapi = "^0.105.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
-humlab-penelope = "^0.7.47"
+humlab-penelope = "0.8.2"
 python-dotenv = "^1.0.1"
 cwb-ccc = "^0.12.1"
 pandas = "1.5.3"
