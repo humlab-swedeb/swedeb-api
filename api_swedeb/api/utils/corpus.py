@@ -335,9 +335,12 @@ class Corpus:
             DatFrame: DataFrame with speeches for selected years and filter.
         """
         if di_selected is None:
+            di_selected = PropertyValueMaskingOpts(**selections).apply(self.document_index)
+
             filtered_corpus = self.filter_corpus(selections, self.vectorized_corpus)
             di_selected = filtered_corpus.document_index
 
+        # FIXME: add filtering on year to PropertyValueMaskingOpts instead
         di_selected = di_selected[di_selected["year"].between(from_year, to_year)]
 
         return self.prepare_anforande_display(di_selected)
@@ -371,9 +374,8 @@ class Corpus:
 
     def filter_corpus(self, filter_dict: dict, corpus: VectorizedCorpus) -> VectorizedCorpus:
         if filter_dict is not None:
-            for key in filter_dict:
-                corpus = corpus.filter(lambda row: row[key] in filter_dict[key])
-        return corpus
+            corpus = corpus.filter(filter_dict)
+        return corpus 
 
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""
@@ -383,11 +385,12 @@ class Corpus:
         """Returns the last year in the corpus"""
         return int(self.document_index["year"].max())
 
-    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = False) -> list[str]:
+    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = True) -> list[str]:
         if search_term not in self.vectorized_corpus.vocabulary:
             search_term = search_term.lower()
         result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=descending)
-        return result[::-1]
+        # FIXME: remove sort amd use descending instead??
+        return result
 
     def translate_gender_col_header(self, col: str) -> str:
         """Translates gender column names to Swedish
