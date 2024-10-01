@@ -1,11 +1,7 @@
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.schemas.speeches_schema import SpeechesResultItemWT, SpeechesResultWT
-from api_swedeb.schemas.word_trends_schema import (
-    SearchHits,
-    WordTrendsItem,
-    WordTrendsResult,
-)
+from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsItem, WordTrendsResult
 
 
 def get_search_hit_results(search: str, corpus: Corpus, n_hits: int):
@@ -31,9 +27,7 @@ def get_end_year(commons: CommonQueryParams, corpus: Corpus):
     return corpus.get_years_end()
 
 
-def get_word_trends(
-    search: str, commons: CommonQueryParams, corpus: Corpus, normalize: bool
-):
+def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus, normalize: bool):
     first_year = get_start_year(commons, corpus)
     last_year = get_end_year(commons, corpus)
 

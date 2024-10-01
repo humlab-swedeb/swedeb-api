@@ -20,7 +20,9 @@ def get_ngrams(
         search_term = [search_term]
     if len(search_term) == 0:
         raise ValueError("search_term must contain at least one term")
-    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(commons, word_targets=search_term, search_target=search_target)
+    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
+        commons, word_targets=search_term, search_target=search_target
+    )
     ngrams: pd.DataFrame = n_grams.compute_n_grams(
         corpus, opts, n=n_gram_width, p_show=display_target, threshold=n_threshold
     )

@@ -69,14 +69,8 @@ def read_sql_table(table_name: str, con: sqlite3.Connection) -> pd.DataFrame:
     return pd.read_sql(f"select * from {table_name}", con)
 
 
-def read_sql_tables(
-    tables: list[str] | dict, db: sqlite3.Connection
-) -> dict[str, pd.DataFrame]:
-    return (
-        tables
-        if isinstance(tables, dict)
-        else {table_name: read_sql_table(table_name, db) for table_name in tables}
-    )
+def read_sql_tables(tables: list[str] | dict, db: sqlite3.Connection) -> dict[str, pd.DataFrame]:
+    return tables if isinstance(tables, dict) else {table_name: read_sql_table(table_name, db) for table_name in tables}
 
 
 def load_tables(
@@ -119,14 +113,9 @@ def slim_table_types(
                     table[column_name] = table[column_name].astype(dt)
 
 
-def group_to_list_of_records2(
-    df: pd.DataFrame, key: str
-) -> dict[str | int, list[dict]]:
+def group_to_list_of_records2(df: pd.DataFrame, key: str) -> dict[str | int, list[dict]]:
     """Groups `df` by `key` and aggregates each group to list of row records (dicts)"""
-    return {
-        q: df.loc[ds].to_dict(orient="records")
-        for q, ds in df.groupby(key).groups.items()
-    }
+    return {q: df.loc[ds].to_dict(orient="records") for q, ds in df.groupby(key).groups.items()}
 
 
 def group_to_list_of_records(
@@ -160,10 +149,7 @@ def download_url_to_file(url: str, target_name: str, force: bool = False) -> Non
 
 def probe_filename(filename: list[str], exts: list[str] = None) -> str | None:
     """Probes existence of filename with any of given extensions in folder"""
-    for probe_name in set(
-        [filename]
-        + ([replace_extension(filename, ext) for ext in exts] if exts else [])
-    ):
+    for probe_name in set([filename] + ([replace_extension(filename, ext) for ext in exts] if exts else [])):
         if os.path.isfile(probe_name):
             return probe_name
     raise FileNotFoundError(filename)

@@ -8,12 +8,8 @@ year_regex = r"^\d{4}$"
 class SpeakerQueryParams:
     def __init__(
         self,
-        office_types: List[str] = Query(
-            None, description="List of selected office types"
-        ),
-        sub_office_types: List[str] = Query(
-            None, description="List of selected suboffice types"
-        ),
+        office_types: List[str] = Query(None, description="List of selected office types"),
+        sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
         party_id: List[int] = Query(None, description="List of selected parties"),
         gender_id: List[int] = Query(None, description="List of selected genders"),
         chambers: List[str] = Query(None, description="List of selected chambers"),
@@ -47,12 +43,8 @@ class CommonQueryParams(SpeakerQueryParams):
             None,
             description="The last year to be included",
         ),
-        office_types: List[str] = Query(
-            None, description="List of selected office types"
-        ),
-        sub_office_types: List[str] = Query(
-            None, description="List of selected suboffice types"
-        ),
+        office_types: List[str] = Query(None, description="List of selected office types"),
+        sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
         who: List[str] = Query(
             None,
             description="List of selected speaker ids. With this parameter, other metadata filters are unnecessary",

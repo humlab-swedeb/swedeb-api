@@ -1,8 +1,9 @@
 from unittest.mock import Mock
-from ccc.cwb import SubCorpus
+
 import pandas as pd
 import pytest
 from ccc import Corpus
+from ccc.cwb import SubCorpus
 
 from api_swedeb.core.cwb import compiler
 from api_swedeb.core.cwb.utility import CorpusAttribs
@@ -229,7 +230,7 @@ def test_cqp_execute_query(corpus: Corpus):
     assert len(data) > 0
     assert 'speech_who' in data.columns and 'speech_party_id' in data.columns
     assert (data.speech_party_id.astype(int) == 7).all()
-    
+
 
 def test_corpus_attribs(corpus: Corpus):
     attribs: CorpusAttribs = CorpusAttribs(corpus)

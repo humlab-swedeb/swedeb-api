@@ -1,12 +1,12 @@
-from api_swedeb.api.utils.corpus import Corpus
-
-import pytest
-from fastapi.testclient import TestClient
-from main import app
-from fastapi import status
-from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
+
+from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
+from main import app
 
 pd.set_option('display.max_columns', None)
 
@@ -166,15 +166,14 @@ def test_summed_word_trends(corpus):
 
 
 def test_eu_debatt(corpus):
-    
     df = corpus.get_word_trend_results(search_terms=['EU-debatt'], filter_opts={}, start_year=1900, end_year=3000)
 
     assert len(df) == 0
 
     df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
-    
+
     assert len(df) > 0
-    
+
 
 def test_chambers(corpus):
     # chamber id not included, needs to be added

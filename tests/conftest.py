@@ -6,6 +6,7 @@ import pytest
 
 from . import config
 
+
 @pytest.fixture(scope="session")
 def corpus() -> ccc.Corpus:
     data_dir: str = f'/tmp/{str(uuid.uuid4())[:8]}'

@@ -1,9 +1,10 @@
 import pytest
-from fastapi.testclient import TestClient
-from main import app
 from fastapi import status
+from fastapi.testclient import TestClient
+
 from api_swedeb.api.utils.corpus import load_corpus
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
+from main import app
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked

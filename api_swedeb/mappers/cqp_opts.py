@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from fastapi.params import Query
+
 from api_swedeb.api.utils.common_params import CommonQueryParams
 
 YEAR_EPOCH: int = 1850
@@ -78,7 +79,7 @@ def query_params_to_CQP_opts(
             "prefix": "a" if criterias else None,
             "criterias": criterias,
             "target": target if target is not None else word,
-            "value": word if target is not None else None
+            "value": word if target is not None else None,
         }
 
         """ Only apply criterias on first word """

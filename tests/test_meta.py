@@ -1,20 +1,20 @@
+import pandas as pd
 import pytest
-from fastapi.testclient import TestClient
-from main import app
 from fastapi import status
+from fastapi.testclient import TestClient
+
 from api_swedeb.api.utils.corpus import load_corpus
 from api_swedeb.schemas.metadata_schema import (
-    GenderItem,
-    GenderList,
     ChamberItem,
     ChamberList,
+    GenderItem,
+    GenderList,
     OfficeTypeItem,
     OfficeTypeList,
     SubOfficeTypeItem,
     SubOfficeTypeList,
 )
-import pandas as pd
-
+from main import app
 
 pd.set_option('display.max_columns', None)
 
@@ -42,7 +42,6 @@ def test_multiple_parties(corpus):
 
 
 def test_get_speaker_with_multiple_parties(corpus):
-
     corpus.person_codecs.person["Q6178909"]
     # Raoul Hamilton should be returned for L, FRIS and X, party_id: 5, 12, 1
     speakers_5 = corpus.get_speakers(selections={'party_id': [5]})

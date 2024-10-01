@@ -1,9 +1,10 @@
-import pytest
-from fastapi.testclient import TestClient
-from main import app
-from fastapi import status
-from api_swedeb.api.utils.corpus import load_corpus
 import pandas as pd
+import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
+
+from api_swedeb.api.utils.corpus import load_corpus
+from main import app
 
 pd.set_option('display.max_columns', None)
 
@@ -25,9 +26,6 @@ def test_get_speakers(corpus):
     speakers = corpus.get_speakers(selections={})
     assert len(speakers) > 0
     assert all(['C' in pa for pa in speakers['party_abbrev'].unique()])
-    
-
-
 
 
 def test_get_filtered_speakers_by_party_int(corpus):

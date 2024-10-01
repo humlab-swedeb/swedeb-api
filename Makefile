@@ -1,9 +1,30 @@
 
-.PHONY: test
+SHELL := /bin/bash
+SOURCE_FOLDERS=api_swedeb tests
+PYTEST_ARGS=--durations=0 tests 
+
+#--cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html tests
+
+.PHONY: lint tidy isort black test
+
+lint: tidy pylint
+
+tidy: black isort
+
+isort:
+	@poetry run isort --profile black --float-to-top --line-length 120 --py 38 $(SOURCE_FOLDERS)
+
+black: 
+	@poetry run black --version
+	@poetry run black --line-length 120 --target-version py38 --skip-string-normalization $(SOURCE_FOLDERS)
 
 test:
 	@echo "Running tests..."
-	@poetry run pytest tests
+	@poetry run pytest $(PYTEST_ARGS) tests
+
+.PHONY: requirements.txt
+requirements.txt: poetry.lock
+	@poetry export --without-hashes -f requirements.txt --output requirements.txt
 
 .PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument
 

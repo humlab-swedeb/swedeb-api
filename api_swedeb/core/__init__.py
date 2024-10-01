@@ -1,3 +1,3 @@
 # type: ignore
 
-from .cwb import to_cqp_pattern, to_cqp_exprs
+from .cwb import to_cqp_exprs, to_cqp_pattern

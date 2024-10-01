@@ -1,12 +1,13 @@
 from typing import Any
 
 import pandas as pd
+
 from api_swedeb import mappers
 from api_swedeb.api.parlaclarin import Codecs
 from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 from api_swedeb.core.kwic import compute
 from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
-from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 
 class RiksprotKwicConfig:
@@ -58,9 +59,7 @@ class RiksprotKwicConfig:
         (
             "link",
             lambda data: data.apply(
-                lambda x: RiksprotKwicConfig.get_link(
-                    x.get("person_id"), x.get("name")
-                ),
+                lambda x: RiksprotKwicConfig.get_link(x.get("person_id"), x.get("name")),
                 axis=1,
             ),
         ),
@@ -77,9 +76,7 @@ class RiksprotKwicConfig:
         ),
         (
             "gender",
-            lambda data: data.apply(
-                lambda x: RiksprotKwicConfig.translate_gender(x["gender"]), axis=1
-            ),
+            lambda data: data.apply(lambda x: RiksprotKwicConfig.translate_gender(x["gender"]), axis=1),
         ),
         (
             "name",
@@ -171,10 +168,7 @@ def get_kwic_data(
     """
     opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
         commons,
-        [
-            (w, "lemma" if lemmatized else "word")
-            for w in ([search] if isinstance(search, str) else search)
-        ],
+        [(w, "lemma" if lemmatized else "word") for w in ([search] if isinstance(search, str) else search)],
     )
 
     data: pd.DataFrame = compute.kwik(
@@ -189,7 +183,5 @@ def get_kwic_data(
         **RiksprotKwicConfig.opts(),  # TODO: inject as dependency
     )
 
-    rows: list[KeywordInContextItem] = [
-        KeywordInContextItem(**row) for row in data.to_dict(orient="records")
-    ]
+    rows: list[KeywordInContextItem] = [KeywordInContextItem(**row) for row in data.to_dict(orient="records")]
     return KeywordInContextResult(kwic_list=rows)
