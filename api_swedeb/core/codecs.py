@@ -10,7 +10,9 @@ from typing import Callable, Literal, Mapping, Self, Union
 import pandas as pd
 from penelope import utility as pu  # type: ignore
 
-from .utility import load_tables
+from api_swedeb.core.utility import load_tables
+
+# pylint: disable=too-many-public-methods
 
 CODE_TABLENAMES: dict[str, str] = {
     'chamber': 'chamber_id',
@@ -226,12 +228,12 @@ class PersonCodecs(Codecs):
         )
 
     def add_multiple_party_abbrevs(self, partys_of_interest: set[int]) -> Self:
-        party_data = self.person_party
+        party_data: pd.DataFrame = self.person_party  # pylint: disable=no-member
         party_specs_rev = {v: k for k, v in self._get_party_specs(partys_of_interest).items()}
         party_data["party_abbrev"] = party_data["party_id"].map(party_specs_rev)
         party_data["party_abbrev"].fillna("?", inplace=True)
 
-        grouped_party_abbrevs = (
+        grouped_party_abbrevs: pd.DataFrame = (
             party_data.groupby("person_id")
             .agg(
                 {
@@ -251,7 +253,7 @@ class PersonCodecs(Codecs):
         selected = {}
         for specification in self.property_values_specs:
             if specification["text_name"] == "party_abbrev":
-                specs = specification["values"]
+                specs: str | Mapping[str, int] = specification["values"]
                 for k, v in specs.items():
                     if v in partys_of_interest:
                         selected[k] = v

@@ -1,32 +1,30 @@
-import os
 from functools import cached_property
-from typing import List, Mapping, Union
+from typing import List
 
 import pandas as pd
 import penelope.utility as pu  # type: ignore
-from dotenv import load_dotenv
 from penelope.common.keyness import KeynessMetric  # type: ignore
 from penelope.corpus import VectorizedCorpus
 from penelope.corpus.dtm.interface import IVectorizedCorpus
 from penelope.utility import PropertyValueMaskingOpts  # type: ignore
 
-from api_swedeb.api.parlaclarin import codecs as md
-from api_swedeb.api.parlaclarin import speech_text as sr
-from api_swedeb.api.parlaclarin.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
+from api_swedeb.core import codecs as md
+from api_swedeb.core import speech_text as sr
+from api_swedeb.core.configuration import ConfigValue
+from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.core.utility import Lazy
 
 
 class Corpus:
-    def __init__(self, env_file=None):
-        load_dotenv(env_file)
-        self.tag: str = os.getenv("TAG")
-        self.folder = os.getenv("FOLDER")
-        self.metadata_filename = os.getenv("METADATA_FILENAME")
-        self.tagged_corpus_folder = os.getenv("TAGGED_CORPUS_FOLDER")
+    def __init__(self, **opts):
+        self.dtm_tag: str = opts.get('dtm_tag') or ConfigValue("dtm.tag").resolve()
+        self.dtm_folder: str = opts.get('dtm_folder') or ConfigValue("dtm.folder").resolve()
+        self.metadata_filename: str = opts.get('metadata_filename') or ConfigValue("metadata.filename").resolve()
+        self.tagged_corpus_folder: str = opts.get('tagged_corpus_folder') or ConfigValue("vrt.folder").resolve()
 
         self.__vectorized_corpus: IVectorizedCorpus = Lazy(
-            lambda: VectorizedCorpus.load(folder=self.folder, tag=self.tag)
+            lambda: VectorizedCorpus.load(folder=self.dtm_folder, tag=self.dtm_tag)
         )
         self.__lazy_person_codecs: md.PersonCodecs = Lazy(
             lambda: md.PersonCodecs()
@@ -41,7 +39,7 @@ class Corpus:
             )
         )
         self.__lazy_document_index: pd.DataFrame = Lazy(
-            lambda: VectorizedCorpus.load_metadata(folder=self.folder, tag=self.tag).get("document_index")
+            lambda: VectorizedCorpus.load_metadata(folder=self.dtm_folder, tag=self.dtm_tag).get("document_index")
         )
 
         self.__lazy_decoded_persons = Lazy(
@@ -418,6 +416,6 @@ class Corpus:
         return english_gender
 
 
-def load_corpus(env_file: str):
-    c = Corpus(env_file=env_file)
+def load_corpus(**opts) -> Corpus:
+    c = Corpus(**opts)
     return c

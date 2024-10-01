@@ -1,33 +1,25 @@
 import pytest
 from fastapi import status
-from fastapi.testclient import TestClient
 
 from api_swedeb.api.utils.corpus import load_corpus
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
-from main import app
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
 
- # pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name
 
 version = "v1"
 
 
 @pytest.fixture(scope="module")
-def client():
-    client = TestClient(app)
-    yield client
-
-
-@pytest.fixture(scope="module")
 def corpus():
-    return load_corpus('test.env')
+    return load_corpus()
 
 
-def test_speeches_get(client):
+def test_speeches_get(fastapi_client):
     # assert that the speeches endpoint is reachable
-    response = client.get(f"{version}/tools/speeches/prot-1971--1_007")
+    response = fastapi_client.get(f"{version}/tools/speeches/prot-1971--1_007")
     assert response.status_code == status.HTTP_200_OK
     print(response.json())
 
@@ -80,12 +72,12 @@ def test_get_formatted_speech_id(corpus):
     assert 'formatted_speech_id' in df_filtered.columns
 
 
-def test_get_speech_by_id_client(client, corpus):
+def test_get_speech_by_id_client(fastapi_client, corpus):
     speech_id = find_a_speech_id(corpus)
     start_year = corpus.get_years_start()
     print(start_year)
 
-    response = client.get(f"v1/tools/speeches/{speech_id}")
+    response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
     assert 'speech_text' in response.json()
     assert len(response.json()['speech_text']) > 1
@@ -93,11 +85,11 @@ def test_get_speech_by_id_client(client, corpus):
     print(response.json()['speaker_note'])
 
 
-def test_speeches_get_years(client):
+def test_speeches_get_years(fastapi_client):
     # assert that the returned speeches comes from the correct years
     start_year = 1970
     end_year = 1971
-    response = client.get(f"{version}/tools/speeches?from_year={start_year}&to_year={end_year}")
+    response = fastapi_client.get(f"{version}/tools/speeches?from_year={start_year}&to_year={end_year}")
     assert response.status_code == status.HTTP_200_OK
     speeches = response.json()['speech_list']
     for speech in speeches:
@@ -106,9 +98,9 @@ def test_speeches_get_years(client):
         assert speech['year'] <= end_year, 'year is greater than end_year'
 
 
-def test_speeches_zip(client):
+def test_speeches_zip(fastapi_client):
     payload = ['prot-1966-höst-fk--38_044', 'prot-1966-höst-fk--38_043']
-    response = client.post(f"{version}/tools/speech_download/", json=payload)
+    response = fastapi_client.post(f"{version}/tools/speech_download/", json=payload)
     assert response.status_code == status.HTTP_200_OK
     assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
     assert response.headers['Content-Type'] == 'application/zip'
@@ -150,9 +142,9 @@ def test_get_speaker_note(corpus):
     assert len(speaker_note) > 0
 
 
-def test_get_speech_by_api(client, corpus):
+def test_get_speech_by_api(fastapi_client, corpus):
     speech_id = find_a_speech_id(corpus)
-    response = client.get(f"{version}/tools/speeches/{speech_id}")
+    response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
     assert len(response.json()['speaker_note']) > 0

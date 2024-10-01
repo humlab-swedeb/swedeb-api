@@ -1,0 +1,30 @@
+metadata:
+  version: v1.1.0
+  filename: /data/swedeb/riksprot_metadata.db
+
+cwb:
+  registry_dir: /usr/local/share/cwb/registry
+  corpus_name: RIKSPROT_V110_TEST
+
+dtm:
+  folder: /data/swedeb/v1.1.0/dtm/text
+  tag: text
+
+vrt:
+  folder: /data/swedeb/v1.1.0/tagged_frames
+  tag: text
+
+fastapi:
+  origins:
+    - http://localhost:8080
+    - http://localhost:9002
+
+github:
+  access_token:
+
+# METADATA_FILENAME=/data/westac/riksdagen_corpus_data/metadata/riksprot_metadata.v0.10.0.db
+# TAGGED_CORPUS_FOLDER=/data/westac/riksdagen_corpus_data/corpus/v0.10.0/tagged_frames/
+# FOLDER=/data/westac/riksdagen_corpus_data/v0.10.0/dtm/dtm_vrt_text_5000000_TF10
+# TAG=dtm_vrt_text_5000000_TF10
+# KWIC_CORPUS_NAME=RIKSPROT_V0100_TEST
+# KWIC_DIR=/usr/local/share/cwb/registry

@@ -5,7 +5,8 @@ from ccc import Corpus, SubCorpus
 
 from api_swedeb.core.cwb import to_cqp_exprs
 
- # pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name
+
 
 def to_n_grams(phrase: str, n: int) -> Iterable[str]:
     """Generate n-grams from a given phrase."""
@@ -29,6 +30,9 @@ def compute_n_grams(windows: pd.DataFrame, *, n: int = 2, threshold: int = None)
     Returns:
         pd.DataFrame: DataFrame with n-grams, their counts and documents.
     """
+
+    if len(windows) == 0:
+        return pd.DataFrame(columns=['ngram', 'window_count', 'documents']).set_index('ngram')
 
     n_grams: pd.DataFrame = (
         to_ngrams_dataframe(windows, n=n, key="window")

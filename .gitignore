@@ -267,3 +267,4 @@ docker/swedeb_frontend
 output
 test_data
 profiling
+*.code-workspace

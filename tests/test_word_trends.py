@@ -2,13 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from fastapi import status
-from fastapi.testclient import TestClient
 
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
-from main import app
 
- # pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name
 
 pd.set_option('display.max_columns', None)
 
@@ -20,12 +18,6 @@ def corpus():
     env_file = '.env_1960'
     corpus = Corpus(env_file=env_file)
     return corpus
-
-
-@pytest.fixture(scope="module")
-def client():
-    client = TestClient(app)
-    yield client
 
 
 def test_dynamic_base_model():
@@ -75,9 +67,9 @@ def test_word_trends_with_base_model(corpus):
     print(year_counts_list)
 
 
-def test_word_trends_api(client):
+def test_word_trends_api(fastapi_client):
     search_term = 'att,och'
-    response = client.get(f"{version}/tools/word_trends/{search_term}")
+    response = fastapi_client.get(f"{version}/tools/word_trends/{search_term}")
     json = response.json()
     first_result = json['wt_list'][0]
 
@@ -86,9 +78,11 @@ def test_word_trends_api(client):
         assert word in count
 
 
-def test_word_trends_api_with_filter(client):
+def test_word_trends_api_with_filter(fastapi_client):
     search_term = 'att,och'
-    response = client.get(f"{version}/tools/word_trends/{search_term}?parties=9&genders=2&from_year=1900&to_year=3000")
+    response = fastapi_client.get(
+        f"{version}/tools/word_trends/{search_term}?parties=9&genders=2&from_year=1900&to_year=3000"
+    )
     json = response.json()
     first_result = json['wt_list'][0]
     print(json)
@@ -98,10 +92,10 @@ def test_word_trends_api_with_filter(client):
         assert word in count
 
 
-def test_word_trends_speeches(client):
+def test_word_trends_speeches(fastapi_client):
     search_term = 'debatt'
 
-    response = client.get(f"{version}/tools/word_trend_speeches/{search_term}")
+    response = fastapi_client.get(f"{version}/tools/word_trend_speeches/{search_term}")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
@@ -134,14 +128,12 @@ def test_word_trend_corpus_with_filters(corpus):
     )
     assert len(wt) > 0
     assert '1975' in wt.index  # year without result for att for 1960-test corpus should be included
-    columns = wt.columns
-    for c in columns:
-        # 9 corresponds to S
-        assert 'S' in c
+    assert 'att S' in wt.columns
+    assert 'att ?' in wt.columns
 
 
-def test_word_hits_api(client):
-    response = client.get(f"{version}/tools/word_trend_hits/debatt*")
+def test_word_hits_api(fastapi_client):
+    response = fastapi_client.get(f"{version}/tools/word_trend_hits/debatt*")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
     assert 'hit_list' in json
@@ -167,14 +159,11 @@ def test_summed_word_trends(corpus):
     assert 'Totalt' not in df.columns
 
 
-def test_eu_debatt(corpus):
-    df = corpus.get_word_trend_results(search_terms=['EU-debatt'], filter_opts={}, start_year=1900, end_year=3000)
+def test_search_with_different_case(corpus):
+    df_anycase = corpus.get_word_trend_results(search_terms=['Sverige'], filter_opts={}, start_year=1900, end_year=3000)
+    df_lowercase = corpus.get_word_trend_results(search_terms=['sverige'], filter_opts={}, start_year=1900, end_year=3000)
 
-    assert len(df) == 0
-
-    df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
-
-    assert len(df_small) > 0
+    assert pd.testing.assert_frame_equal(df_anycase, df_lowercase) is None
 
 
 def test_chambers(corpus):
@@ -183,6 +172,13 @@ def test_chambers(corpus):
         search_terms=["arbete"], filter_opts={"chamber_id": [0]}, start_year=1900, end_year=3000
     )
     print(df.head())
+
+def test_filter_by_gender(corpus):
+    # chamber id not included, needs to be added
+    df = corpus.get_word_trend_results(
+        search_terms=["sverige"], filter_opts={"gender_id": [1]}, start_year=1900, end_year=3000
+    )
+    assert len(df) > 0
 
 
 def test_chambers_di(corpus):

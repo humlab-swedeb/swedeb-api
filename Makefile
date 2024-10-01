@@ -12,11 +12,11 @@ lint: tidy pylint
 tidy: black isort
 
 isort:
-	@poetry run isort --profile black --float-to-top --line-length 120 --py 38 $(SOURCE_FOLDERS)
+	@poetry run isort --profile black --float-to-top --line-length 120 --py 311 $(SOURCE_FOLDERS)
 
 black: 
 	@poetry run black --version
-	@poetry run black --line-length 120 --target-version py38 --skip-string-normalization $(SOURCE_FOLDERS)
+	@poetry run black --line-length 120 --target-version py311 --skip-string-normalization $(SOURCE_FOLDERS)
 
 test:
 	@echo "Running tests..."

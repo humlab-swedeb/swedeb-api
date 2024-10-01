@@ -1,9 +1,8 @@
 import pandas as pd
 import pytest
 from fastapi import status
-from fastapi.testclient import TestClient
 
-from api_swedeb.api.utils.corpus import load_corpus
+from api_swedeb.api.utils.corpus import Corpus, load_corpus
 from api_swedeb.schemas.metadata_schema import (
     ChamberItem,
     ChamberList,
@@ -13,7 +12,6 @@ from api_swedeb.schemas.metadata_schema import (
     OfficeTypeList,
     SubOfficeTypeItem,
 )
-from main import app
 
 # pylint: disable=redefined-outer-name
 
@@ -23,14 +21,8 @@ version = "v1"
 
 
 @pytest.fixture(scope="module")
-def client():
-    client = TestClient(app)
-    yield client
-
-
-@pytest.fixture(scope="module")
-def corpus():
-    return load_corpus('test.env')
+def corpus() -> Corpus:
+    return load_corpus()
 
 
 def test_multiple_parties(corpus):
@@ -100,28 +92,28 @@ def test_meta_parties(corpus):
     assert len(df) > 0
 
 
-def test_parties_api(client):
-    response = client.get(f"{version}/metadata/parties")
+def test_parties_api(fastapi_client):
+    response = fastapi_client.get(f"{version}/metadata/parties")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
     assert 'party_list' in json
     assert len(json['party_list']) > 0
 
 
-def test_start_year(client):
-    response = client.get(f"{version}/metadata/start_year")
+def test_start_year(fastapi_client):
+    response = fastapi_client.get(f"{version}/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK
     assert isinstance(response.json(), int)
 
 
-def test_end_year(client):
-    response = client.get(f"{version}/metadata/end_year")
+def test_end_year(fastapi_client):
+    response = fastapi_client.get(f"{version}/metadata/end_year")
     assert response.status_code == status.HTTP_200_OK
     assert isinstance(response.json(), int)
 
 
-def test_genders(client):
-    response = client.get(f"{version}/metadata/genders")
+def test_genders(fastapi_client):
+    response = fastapi_client.get(f"{version}/metadata/genders")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
@@ -129,8 +121,8 @@ def test_genders(client):
     assert len(json['gender_list']) > 0
 
 
-def test_chambers(client):
-    response = client.get(f"{version}/metadata/chambers")
+def test_chambers(fastapi_client):
+    response = fastapi_client.get(f"{version}/metadata/chambers")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
@@ -138,8 +130,8 @@ def test_chambers(client):
     assert len(json['chamber_list']) > 0
 
 
-def test_office_types(client):
-    response = client.get(f"{version}/metadata/office_types")
+def test_office_types(fastapi_client):
+    response = fastapi_client.get(f"{version}/metadata/office_types")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
@@ -148,8 +140,8 @@ def test_office_types(client):
     assert len(json['office_type_list']) > 0
 
 
-def test_sub_office_types(client):
-    response = client.get(f"{version}/metadata/sub_office_types")
+def test_sub_office_types(fastapi_client):
+    response = fastapi_client.get(f"{version}/metadata/sub_office_types")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()

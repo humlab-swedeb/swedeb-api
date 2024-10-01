@@ -18,13 +18,16 @@ from jinja2 import Template
 from loguru import logger
 from penelope import utility as pu
 
+from api_swedeb.core.utility import read_sql_table
+
 from . import codecs as md
-from .utility import read_sql_table
 
 try:
-    import github as gh
+    import github as gh # type: ignore
 except ImportError:
-    Github = lambda t: types.SimpleNamespace()
+
+    def Github(_):
+        return types.SimpleNamespace()
 
 
 default_template: Template = Template(
@@ -143,6 +146,7 @@ class ZipLoader(Loader):
 
 
 class SpeechTextRepository:
+    # FIXME: Adjust links to new v1.1.0 repository
     GITHUB_REPOSITORY_URL: str = "https://github.com/welfare-state-analytics/riksdagen-corpus"
     GITHUB_REPOSITORY_RAW_URL = "https://raw.githubusercontent.com/welfare-state-analytics/riksdagen-corpus"
 
@@ -284,6 +288,7 @@ class SpeechTextRepository:
 
         return f'<a href="{url}" target="_blank" style="font-weight: bold;color: blue;">KB</a>&nbsp;'
 
+    # FIXME: #46 Adjust links to new v1.1.0 repository
     def get_github_tags(self, github_access_token: str = None) -> list[str]:
         release_tags: list[str] = ["main", "dev"]
         try:

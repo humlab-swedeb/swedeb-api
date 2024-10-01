@@ -8,10 +8,10 @@ from ccc import Corpus, SubCorpus
 from api_swedeb.core.cwb import to_cqp_exprs
 
 if TYPE_CHECKING:
-    from api_swedeb.api.parlaclarin.codecs import Codecs
+    from api_swedeb.core.codecs import Codecs
 
 
-def kwik( # pylint: disable=too-many-arguments
+def kwik(  # pylint: disable=too-many-arguments
     corpus: Corpus,
     opts: dict[str, Any],
     *,
