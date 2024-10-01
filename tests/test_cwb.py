@@ -1,47 +1,45 @@
+from unittest.mock import Mock
+from ccc.cwb import SubCorpus
 import pandas as pd
 import pytest
 from ccc import Corpus
 
-from api_swedeb.core.cwb.compiler import (
-    to_cqp_exprs,
-    to_cqp_pattern,
-    to_cqp_patterns,
-    to_cqp_criteria_expr,
-    _to_value_expr,
-    _to_interval_expr,
-)
+from api_swedeb.core.cwb import compiler
 from api_swedeb.core.cwb.utility import CorpusAttribs
+from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 
 
 def test_to_value_expr():
-    assert _to_value_expr(1) == "1"
-    assert _to_value_expr("1") == "1"
-    assert _to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
-    assert _to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
-    assert _to_value_expr((1990, 1999)) == "199[0-9]"
-    assert _to_value_expr((1957, 1975)) == "195[7-9]|196[0-9]|197[0-5]"
+    assert compiler._to_value_expr("") == ""
+    assert compiler._to_value_expr([""]) == ""
+    assert compiler._to_value_expr([None]) == ""
+    assert compiler._to_value_expr(1) == "1"
+    assert compiler._to_value_expr("1") == "1"
+    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
+    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
+    assert compiler._to_value_expr((1990, 1999)) == "199[0-9]"
+    assert compiler._to_value_expr((1957, 1975)) == "195[7-9]|196[0-9]|197[0-5]"
 
 
 def test_to_interval_expr():
-    assert _to_interval_expr(1990, 1999) == "199[0-9]"
-    assert _to_interval_expr(1990, 2000) == "199[0-9]|2000"
-    assert _to_interval_expr(2000, 2000) == "2000"
-    assert _to_interval_expr(1957, 1975) == "195[7-9]|196[0-9]|197[0-5]"
-    assert _to_interval_expr(1990, 1999) == "199[0-9]"
-    assert _to_interval_expr(1992, 1997) == "199[2-7]"
+    assert compiler._to_interval_expr(1990, 1999) == "199[0-9]"
+    assert compiler._to_interval_expr(1990, 2000) == "199[0-9]|2000"
+    assert compiler._to_interval_expr(2000, 2000) == "2000"
+    assert compiler._to_interval_expr(1957, 1975) == "195[7-9]|196[0-9]|197[0-5]"
+    assert compiler._to_interval_expr(1990, 1999) == "199[0-9]"
+    assert compiler._to_interval_expr(1992, 1997) == "199[2-7]"
 
 
 def test_to_cqp_pattern_with_faulty_opts():
     with pytest.raises(ValueError):
-        assert to_cqp_pattern(**{"value": "bepa"}) == ""
+        assert compiler.to_cqp_pattern({"value": "bepa"}) == ""
     with pytest.raises(ValueError):
-        assert to_cqp_pattern(**{}) == ""
+        assert compiler.to_cqp_pattern({}) == ""
 
 
 @pytest.mark.parametrize(
     "opts, expected",
     [
-        # ('apa', '"apa"%c'),
         ({"target": "word", "value": "bepa"}, '[word="bepa"%c]'),
         ({"target": "apa"}, '"apa"%c'),
         ({"target": "word", "value": "information"}, '[word="information"%c]'),
@@ -52,32 +50,53 @@ def test_to_cqp_pattern_with_faulty_opts():
             {"prefix": "a", "target": "word", "value": ["information", "propaganda"]},
             'a:[word="information|propaganda"%c]',
         ),
+        ("apa", '"apa"%c'),
+        ({"target": "word", "value": "apa%c"}, '[word="apa"%c]'),
+        ({"prefix": "a", "target": "word", "value": "bepa"}, 'a:[word="bepa"%c]'),
     ],
 )
 def test_to_cqp_pattern_with_correct_opts(opts, expected):
-
-    assert to_cqp_pattern(**opts if isinstance(opts,dict) else opts) == expected
+    assert compiler.to_cqp_pattern(opts) == expected
 
 
 @pytest.mark.parametrize(
     "opts, expected",
     [
+        (None, ''),
+        ("apa", '"apa"%c'),
         ({"target": "apa"}, '"apa"%c'),
-        ([{"target": "word", "value": "bepa"}], '[word="bepa"%c]'),
         ([{"target": "apa"}], '"apa"%c'),
         (
             [
                 {"target": "word", "value": "information", "ignore_case": False},
-                {"target": "och", "value": None, "ignore_case": False},
-                {"target": "word", "value": "propaganda", "ignore_case": False},
             ],
-            '[word="information"] "och" [word="propaganda"]',
+            '[word="information"]',
+        ),
+        (
+            [
+                {"target": "word", "value": "information", "ignore_case": False},
+                {"target": "och", "value": None, "ignore_case": False},
+                {"target": "word", "value": "propaganda", "ignore_case": True},
+            ],
+            '[word="information"] "och" [word="propaganda"%c]',
+        ),
+        (
+            [
+                None,
+            ],
+            '',
+        ),
+        (
+            [
+                None,
+                None,
+            ],
+            '',
         ),
     ],
 )
 def test_to_cqp_patterns_with_correct_opts(opts, expected):
-
-    assert to_cqp_patterns(opts) == expected
+    assert compiler.to_cqp_patterns(opts) == expected
 
 
 @pytest.mark.parametrize(
@@ -104,8 +123,7 @@ def test_to_cqp_patterns_with_correct_opts(opts, expected):
     ],
 )
 def test_to_cqp_criteria_expr(criterias, expected):
-
-    assert to_cqp_criteria_expr(criterias) == expected
+    assert compiler.to_cqp_criteria_expr(criterias) == expected
 
 
 @pytest.mark.parametrize(
@@ -168,42 +186,52 @@ def test_to_cqp_criteria_expr(criterias, expected):
     ],
 )
 def test_to_cqp_exprs(opts, expected):
-    assert to_cqp_exprs(opts) == expected
+    assert compiler.to_cqp_exprs(opts) == expected
+
+
+def test_compile_complex():
+    commons = Mock(
+        lemmatized=False,
+        from_year=1970,
+        to_year=1980,
+        who=["u-1", "u-2", "u-3"],
+        party_id=1,
+        office_types=[1],
+        sub_office_types=[1, 2],
+        gender_id=[1],
+    )
+    search_opts = query_params_to_CQP_opts(commons, [("debatt", "word")])
+
+    query: str = compiler.to_cqp_exprs(search_opts, within="speech")
+    assert query == (
+        'a:[word="debatt"%c] :: (a.year_year="197[0-9]|1980")'
+        '&(a.speech_who="u-1|u-2|u-3")&(a.speech_party_id="1")&(a.speech_office_type_id="1")'
+        '&(a.speech_sub_office_type_id="1|2")&(a.speech_gender_id="1") within speech'
+    )
 
 
 def test_cqp_execute_query(corpus: Corpus):
-
-    query: str = to_cqp_exprs(
+    query: str = compiler.to_cqp_exprs(
         {
             "prefix": "a",
             "target": "lemma",
             "value": "information",
             "criterias": [
-                {"key": "a.speech_who", "values": ["Q1807154", "Q4973765"]},
+                {"key": "a.speech_who", "values": ['i-AUocZy5YDqXmCwrRq6eGaW', 'i-5hWJKAnAs7X9iuugADpXr7']},
                 {"key": "a.speech_party_id", "values": "7"},
             ],
         }
     )
-    subcorpus  = corpus.query(query, context_left=2, context_right=2)
-    data: pd.DataFrame = subcorpus.concordance(
-        form="kwic",
-        p_show=["word"],
-        s_show=[
-            "speech_who",
-            "speech_party_id",
-        ],
-        order="first",
-        cut_off=2000000,
-        matches=None,
-        slots=None,
-        cwb_ids=False,
-    )
+    subcorpus: SubCorpus | str | str = corpus.query(query, context_left=2, context_right=2)
+    data: pd.DataFrame = subcorpus.concordance(form="kwic", p_show=["word"], s_show=["speech_who", "speech_party_id"])
 
     assert data is not None
-
+    assert len(data) > 0
+    assert 'speech_who' in data.columns and 'speech_party_id' in data.columns
+    assert (data.speech_party_id.astype(int) == 7).all()
+    
 
 def test_corpus_attribs(corpus: Corpus):
-
     attribs: CorpusAttribs = CorpusAttribs(corpus)
 
     assert attribs is not None

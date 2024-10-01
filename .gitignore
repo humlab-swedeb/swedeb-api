@@ -262,3 +262,8 @@ $RECYCLE.BIN/
 docker/public
 docker/dist
 docker/swedeb_frontend
+
+.vscode
+output
+test_data
+profiling

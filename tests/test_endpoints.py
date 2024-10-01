@@ -1,45 +1,58 @@
-
 import pytest
-from fastapi.testclient import TestClient
-from main import app
 from fastapi import status
+from fastapi.testclient import TestClient
+
+from main import app
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
 
 version = "v1"
 
-@pytest.fixture(scope="module")
+
+@pytest.fixture(scope="session")
 def client():
     client = TestClient(app)
     yield client
+
 
 def test_read_nonexisting(client):
     response = client.get(f"{version}/kwic/ost/")
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
+
 ############## TOOLS #####################
+
 
 def test_kwic(client):
     response = client.get(f"{version}/tools/kwic/debatt")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    first_result = json['kwic_list'][0]
-    print(first_result)
-    
-    assert 'kwic_list' in json
-    assert 'left_word' in first_result
-    assert 'node_word' in first_result
-    assert 'right_word' in first_result
-    assert 'year' in first_result
-    assert 'name' in first_result
-    assert 'party_abbrev' in first_result
-    assert 'title' in first_result
-    assert 'gender' in first_result
-    assert 'person_id' in first_result
-    assert 'link' in first_result
-    assert 'speech_link' in first_result
+
+    assert json is not None
+    assert len(json) > 0
+    assert "kwic_list" in json
+
+    first_result = json["kwic_list"][0]
+
+    assert not (
+        {
+            "left_word",
+            "node_word",
+            "right_word",
+            "year",
+            "name",
+            "party_abbrev",
+            "title",
+            "gender",
+            "person_id",
+            "link",
+            "formatted_speech_id",
+            "speech_link",
+        }
+    ) - set(first_result.keys())
+
 
 def test_kwic_with_with_parameters(client):
     search_term = 'debatt'
@@ -51,9 +64,11 @@ def test_kwic_with_with_parameters(client):
     json = response.json()
     assert 'kwic_list' in json
 
+
 def test_kwic_without_search_term(client):
     response = client.get(f"{version}/tools/kwic")
-    assert response.status_code == status.HTTP_404_NOT_FOUND # search term is missing
+    assert response.status_code == status.HTTP_404_NOT_FOUND  # search term is missing
+
 
 def test_kwic_bad_param(client):
     search_term = 'debatt'
@@ -61,14 +76,13 @@ def test_kwic_bad_param(client):
     assert response.status_code == status.HTTP_200_OK
 
 
-
 def test_word_trends(client):
-
     response = client.get(f"{version}/tools/word_trends/debatt")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
     assert len(json) > 0
+
 
 def test_ngrams(client):
     search_term = 'debatt'
@@ -81,6 +95,7 @@ def test_ngrams(client):
     first_result = json['ngram_list'][0]
     assert 'ngram' in first_result
     assert 'count' in first_result
+
 
 def test_ngrams_non_existing_word(client):
     # ngram should handle unknown words
@@ -96,20 +111,19 @@ def test_ngrams_non_existing_word(client):
     assert 'count' in first_result
 
 
-
-
 def test_speech_by_id(client):
     response = client.get(f"{version}/tools/speeches/1")
     assert response.status_code == status.HTTP_200_OK
-    
+
     json = response.json()
     assert 'speaker_note' in json
     assert 'speech_text' in json
 
+
 def test_topics(client):
     response = client.get(f"{version}/tools/topics")
     assert response.status_code == status.HTTP_200_OK
-    
+
     json = response.json()
     assert 'message' in json
     assert json['message'] == 'Not implemented yet'
@@ -117,21 +131,17 @@ def test_topics(client):
 
 ############## METADATA #####################
 
+
 def test_start_year(client):
     response = client.get(f"{version}/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK
 
-    
 
 def test_end_year(client):
     response = client.get(f"{version}/metadata/end_year")
     assert response.status_code == status.HTTP_200_OK
 
 
-    
-
 def test_speakers(client):
-    
     response = client.get(f"{version}/metadata/speakers")
     assert response.status_code == status.HTTP_200_OK
-

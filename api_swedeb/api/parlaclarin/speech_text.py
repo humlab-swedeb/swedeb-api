@@ -126,6 +126,12 @@ class Loader(abc.ABC):
         ...
 
 
+def zero_fill_filename_sequence(name: str) -> str:
+    parts: list[str] = name.split('-')
+    if parts[-1].isdigit():
+        parts[-1] = parts[-1].zfill(3)
+    return '-'.join(parts)
+
 class ZipLoader(Loader):
     def __init__(self, folder: str):
         self.folder: str = folder
@@ -143,6 +149,8 @@ class ZipLoader(Loader):
                 json_str: str = fp.read(f"{protocol_name}.json")
                 metadata_str: str = fp.read("metadata.json")
             metadata: dict = json.loads(metadata_str)
+            # FIXME: This is a hack to fix the filename sequence number bug, later versions of the corpus should have this fixed
+            metadata['name'] = zero_fill_filename_sequence(metadata.get("name"))
             utterances: list[dict] = json.loads(json_str)
             return metadata, utterances
         raise FileNotFoundError(protocol_name)

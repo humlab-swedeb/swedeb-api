@@ -8,26 +8,24 @@ from api_swedeb.core import n_grams
 
 
 def get_ngrams(
-    search_term: str,
-    commons: CommonQueryParams,
     corpus: Any,
+    search_term: str | list[str],
+    commons: CommonQueryParams,
     n_gram_width: int = 2,
     n_threshold: int = 2,
-    search_target: Literal["word", "lemma"] = "word",
+    search_target: None | Literal["word", "lemma"] = "word",
     display_target: Literal["word", "lemma"] = "word",
-    mode: Literal["dataframe", "counter"] = "dataframe",
 ) -> schemas.NGramResult:
-    # attribs: cwb.CorpusAttribs = n_grams.cwb(corpus)
-    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
-        commons, [(search_term, search_target)]
-    )
+    if isinstance(search_term, str):
+        search_term = [search_term]
+    if len(search_term) == 0:
+        raise ValueError("search_term must contain at least one term")
+    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(commons, word_targets=search_term, search_target=search_target)
     ngrams: pd.DataFrame = n_grams.compute_n_grams(
-        corpus,
-        opts,
-        n=n_gram_width,
-        p_show=display_target,
-        threshold=n_threshold,
-        mode=mode,
+        corpus, opts, n=n_gram_width, p_show=display_target, threshold=n_threshold
     )
+
+    if len(opts) == 0:
+        return schemas.NGramResult(ngram_list=[])
 
     return mappers.ngrams_to_ngram_result(ngrams)

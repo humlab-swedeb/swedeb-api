@@ -102,7 +102,7 @@ async def get_word_hits(
 
 @router.get("/ngrams/{search}", response_model=NGramResult)
 async def get_ngram_results(
-    search: str,
+    search: str | list[str],
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
     target: str = Query(
@@ -111,6 +111,8 @@ async def get_ngram_results(
     corpus: Any = Depends(get_cwb_corpus),
 ):
     """Get ngrams"""
+    if isinstance(search, str):
+        search = search.split()
     return get_ngrams(
         search_term=search,
         commons=commons,

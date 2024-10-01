@@ -43,16 +43,18 @@ def decoder() -> MagicMock:
     return mock
 
 
-
-
-
 @pytest.mark.parametrize(
     "word,target,display_target,expected_words",
     [
-        ("att", "word", "word", ["att"]),
+        ("att", "word", "word", ["att", "Att"]),
         ("information|kunskap", "word", "word", ["information", "kunskap"]),
         ("information", "lemma", "lemma", ["information"]),
-        ("information", "lemma", "word", ["information", "informationer"]),
+        (
+            "information",
+            "lemma",
+            "word",
+            ["information", "informationen", "Informationen", "informationer", 'informations-'],
+        ),
         ("landet", "word", "lemma", ["land"]),
     ],
 )
@@ -64,14 +66,12 @@ def test_get_kwic_results_for_single_search_term(
     display_target: str,
     expected_words: str | list[str] | None,
 ):
-
     search_opts: dict = {
         "prefix": "a",
         "target": target,
         "value": word,
         "criterias": [
-            {"key": "a.year_year", "values": (1960, 1965)},
-            {"key": "a.speech_who", "values": ["Q5715273", "Q5980083", "Q5980083"]},
+            {"key": "a.year_year", "values": (1970, 1980)},
             {"key": "a.speech_party_id", "values": [1, 5, 9]},
         ],
     }
@@ -96,10 +96,10 @@ def test_get_kwic_results_for_single_search_term(
     "word,target,display_target,expected_words",
     [
         (
-            ["kärnkraft|atomkraft", "och"],
+            ["kärnkraft|kärnvapen", "och"],
             "word",
             "word",
-            ["Atomkraft och", "atomkraft och", "kärnkraft och", "Kärnkraft och"],
+            ["kärnkraft och", "kärnvapen och"],
         ),
     ],
 )
@@ -116,9 +116,7 @@ def test_get_kwic_results_for_multiple_search_term(
             "prefix": None,
             "target": target,
             "value": word,
-            "criterias": [
-                # {"key": "a.year_year", "values": (1960, 1965)},
-            ],
+            "criterias": [],
         }
         for word in word
     ]
@@ -132,7 +130,7 @@ def test_get_kwic_results_for_multiple_search_term(
     } | RiksprotKwicConfig.opts()
 
     query: str = to_cqp_exprs(search_opts, within="speech")
-    assert query == '[word="kärnkraft|atomkraft"%c] [word="och"%c] within speech'
+    assert query == '[word="kärnkraft|kärnvapen"%c] [word="och"%c] within speech'
 
     kwic_results: pd.DataFrame = kwic.compute_kwic(corpus, opts=search_opts, **kwic_opts)
 
@@ -142,12 +140,11 @@ def test_get_kwic_results_for_multiple_search_term(
     assert set(kwic_results[f"node_{display_target}"].unique()) == set(expected_words)
 
 
-def test_get_kwic_compute_kwic(corpus: ccc.Corpus, decoder: MagicMock):
-
+def test_get_kwic_compute_kwic(decoder: MagicMock):
     commons = Mock(
         lemmatized=False,
-        from_year=1960,
-        to_year=1969,
+        from_year=1970,
+        to_year=1980,
         who=["Q5781896", "Q5584283", "Q5746460"],
         party_id=1,
         office_types=[1],
@@ -155,12 +152,39 @@ def test_get_kwic_compute_kwic(corpus: ccc.Corpus, decoder: MagicMock):
         gender_id=[1],
     )
     search_opts = query_params_to_CQP_opts(commons, [("debatt", "word")])
-
-    query: str = to_cqp_exprs(search_opts, within="speech")
-    assert query == (
-        'a:[word="debatt"%c] :: (a.year_year="196[0-9]")'
-        '&(a.speech_who="Q5781896|Q5584283|Q5746460")&(a.speech_party_id="1")&(a.speech_office_type_id="1")'
-        '&(a.speech_sub_office_type_id="1|2")&(a.speech_gender_id="1") within speech'
+    fake_data: pd.DataFrame = pd.DataFrame(
+        {
+            'left_word': [
+                'jag påpekade i en tidigare',
+                'inte dra upp någon stor',
+                'en så lång och ingående',
+                'mig att dra upp en',
+                'skatteexperter var uppe i denna',
+            ],
+            'node_word': ['debatt', 'debatt', 'debatt', 'debatt', 'debatt'],
+            'right_word': [
+                'här i kammaren — att',
+                'i detta ämne , jag',
+                'som det nu föreliggande .',
+                'ytterligare en gång . Vi',
+                ', och vederbörande hann inte',
+            ],
+            'year_year': ['1970', '1970', '1970', '1970', '1970'],
+            'speech_id': ['i-xyz-3', 'i-xyz-9', 'i-xyz-3', 'i-xyz-0', 'i-xyz-21'],
+            'speech_who': ['u-AX', 'u-ox', 'u-GJ', 'u-jH', 'u-QL'],
+            'speech_party_id': ['9', '9', '2', '9', '9'],
+            'speech_gender_id': ['1', '1', '1', '1', '1'],
+            'speech_date': ['1970-05-27', '1970-05-27', '1970-05-27', '1970-05-27', '1970-05-27'],
+            'speech_title': [
+                'prot-1970--ak--029_013',
+                'prot-1970--ak--029_029',
+                'prot-1970--ak--029_043',
+                'prot-1970--ak--029_064',
+                'prot-1970--ak--029_066',
+            ],
+            'speech_office_type_id': ['1', '2', '1', '1', '1'],
+            'speech_sub_office_type_id': ['1', '27', '2', '2', '2'],
+        }
     )
 
     kwic_opts: dict[str, Any] = {
@@ -172,22 +196,27 @@ def test_get_kwic_compute_kwic(corpus: ccc.Corpus, decoder: MagicMock):
         "decoder": decoder,
     } | RiksprotKwicConfig.opts()
 
-    kwic_results: pd.DataFrame = kwic.compute_kwic(corpus, opts=search_opts, **kwic_opts)
+    corpus_mock = Mock(
+        spec=ccc.Corpus, query=lambda *_, **__: Mock(ccc.SubCorpus, concordance=lambda *_, **__: fake_data)
+    )
+
+    kwic_results: pd.DataFrame = kwic.compute_kwic(corpus_mock, opts=search_opts, **kwic_opts)
 
     assert kwic_results is not None
-    assert len(kwic_results) > 0
+    assert len(kwic_results) == len(fake_data)
 
 
 def test_kwic_api(client):
     response = client.get(
         f"{version}/tools/kwic/debatt?words_before=2&words_after=2&cut_off=200&lemmatized=false"
-        "&from_year=1960&to_year=1961&who=Q5781896&who=Q5584283&who=Q5746460&party_id=1&office_types=1&sub_office_types=1&sub_office_types=2&gender_id=1"
+        "&from_year=1970&to_year=1975&gender_id=1"
     )
+    data: dict = response.json()
     assert response.status_code == 200
-    print(response.json())
-    assert len(response.json()["kwic_list"]) > 0
-    assert "name" in response.json()["kwic_list"][0]
-    assert "party_abbrev" in response.json()["kwic_list"][0]
+    assert len(data["kwic_list"]) > 0
+    assert "name" in data["kwic_list"][0]
+    assert "party_abbrev" in data["kwic_list"][0]
+
 
 def test_kwic_non_existing_search_term(client):
     # non-existing word
@@ -199,34 +228,27 @@ def test_kwic_non_existing_search_term(client):
 
 
 def test_kwic_speech_id_in_search_results(client):
-    response = client.get(
-        f"{version}/tools/kwic/hund?words_before=2&words_after=2&cut_off=10&"
-        "&from_year=1960&to_year=1961"
-    )
+    response = client.get(f"{version}/tools/kwic/kärnkraft?words_before=2&words_after=2&cut_off=10")
     assert response.status_code == 200
     print(response.json())
-    first_result = response.json()["kwic_list"][0]
-    assert 'left_word' in first_result
-    assert first_result['left_word'] is not None
-    assert 'right_word' in first_result
-    assert first_result['right_word'] is not None
-    assert 'node_word' in first_result
-    assert first_result['node_word'] is not None
-    assert 'name' in first_result
-    assert first_result['name'] is not None
-    assert 'party_abbrev' in first_result
-    assert first_result['party_abbrev'] is not None
-    assert 'title' in first_result
-    assert first_result['title'] is not None
-    assert 'gender' in first_result
-    assert first_result['gender'] is not None
-    assert 'person_id' in first_result
-    assert first_result['person_id'] is not None
-    assert 'link' in first_result
-    assert first_result['link'] is not None
-    assert 'formatted_speech_id' in first_result
-    assert first_result['formatted_speech_id'] is not None
-    assert 'speech_link' in first_result
-    assert first_result['speech_link'] is not None
+    data: dict = response.json()
+    assert 'kwic_list' in data
+    assert len(data['kwic_list']) > 0
 
+    first_result = data["kwic_list"][0]
 
+    assert set(first_result.keys()) == {
+        'link',
+        'speech_link',
+        'name',
+        'left_word',
+        'person_id',
+        'title',
+        'formatted_speech_id',
+        'gender',
+        'node_word',
+        'right_word',
+        'year',
+        'party_abbrev',
+    }
+    assert all(x is not None for x in first_result.values())

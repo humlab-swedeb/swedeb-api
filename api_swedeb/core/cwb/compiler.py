@@ -6,7 +6,7 @@ def _to_value_expr(value: str | list[str] | tuple[int, int]) -> str:
     if isinstance(value, tuple):
         return _to_interval_expr(*value)
     if isinstance(value, list):
-        return "|".join(map(str, value))
+        return "|".join([str(v or "") for v in value])
     return str(value)
 
 
@@ -52,7 +52,7 @@ def _to_interval_expr(low: int, high: int, *_) -> str:
     return f'{"|".join(values)}'
 
 
-def to_cqp_pattern(**opts) -> str:
+def to_cqp_pattern(opts: dict | str | None) -> str:
     """Compile a CQP query from a list of tokens and a dictionary of criterias.
 
     Args:
@@ -143,29 +143,44 @@ def to_cqp_pattern(**opts) -> str:
 
     """  # noqa: E501
 
-    if isinstance(opts, str):
-        return f'"{opts}"' % opts
+    if opts is None:
+        return ""
 
-    prefix: str | list = opts.get("prefix")
-    target: str = opts.get("target")
-    value: str | list[str] = opts.get("value")
-    ignore_case: bool = opts.get("ignore_case", True)
+    if isinstance(opts, str):
+        opts = {"target": opts}
+
+    target: str | None = opts.get("target")
 
     if target is None:
         raise ValueError("Target must be provided")
 
-    caseless: bool = "%c" if ignore_case else ""
-    namespace: str = f"{prefix}:" if prefix else ""
-    pattern: str = (
-        f'[{target}="{_to_value_expr(value)}"{caseless}]'
-        if value is not None
-        else f'"{target}"{caseless}'
-    )
+    ignore_case: bool = opts.get("ignore_case", True)
 
-    return f"{namespace}{pattern}"
+    value: str | list[str] | None = opts.get("value")
+
+    if isinstance(value, str):
+
+        if value.endswith("%c"):
+            value = value[:-2].strip()
+            ignore_case: bool = True
+
+        value = value.strip('"')
+
+    prefix: str | list = opts.get("prefix", "")
+    if prefix and not prefix.endswith(":"):
+        prefix = f"{prefix}:"
+
+    postfix: bool = "%c" if ignore_case else ""
+
+    if value is not None:
+        pattern: str = f'[{target}="{_to_value_expr(value)}"{postfix}]'
+    else:
+        pattern = f'"{target}"{postfix}'
+
+    return f"{prefix or ''}{pattern}"
 
 
-def to_cqp_patterns(args: list[dict[str, Any]]) -> str:
+def to_cqp_patterns(args: None | str | list[dict[str, Any]]) -> str:
     """Compile a CQP query from a list of tokens and a dictionary of criterias.
 
     Args:
@@ -210,12 +225,17 @@ def to_cqp_patterns(args: list[dict[str, Any]]) -> str:
             'a:[word="information"] "och" [word="propaganda"] :: (a.speech_who="Q1807154|Q4973765")'
 
     """  # noqa: E501
+    if args is None:
+        return ""
+    if isinstance(args, str):
+        args = {"target": args}
     if isinstance(args, dict):
         args = [args]
-    return " ".join(to_cqp_pattern(**arg) for arg in args)
+    return " ".join(to_cqp_pattern(arg) for arg in args).strip()
 
 
-def to_cqp_criteria_expr(criterias: list[dict[str, Any]]) -> str:
+def to_cqp_criteria_expr(criterias: None | str | list[dict[str, Any]]) -> str:
+
     if criterias is None:
         criterias = []
 
@@ -227,12 +247,12 @@ def to_cqp_criteria_expr(criterias: list[dict[str, Any]]) -> str:
 
     expr: str = "&".join(
         [
-            f"({expr})"
-            for expr in [
+            f"({x})"
+            for x in [
                 f'{criteria.get("key")}="{_to_value_expr(criteria.get("values"))}"{fx_case(criteria)}'
                 for criteria in criterias
             ]
-            if expr
+            if x
         ]
     )
     return expr
