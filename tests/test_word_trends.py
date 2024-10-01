@@ -8,6 +8,8 @@ from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 from main import app
 
+ # pylint: disable=redefined-outer-name
+
 pd.set_option('display.max_columns', None)
 
 version = 'v1'
@@ -172,7 +174,7 @@ def test_eu_debatt(corpus):
 
     df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
 
-    assert len(df) > 0
+    assert len(df_small) > 0
 
 
 def test_chambers(corpus):

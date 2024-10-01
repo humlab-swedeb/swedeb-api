@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from api_swedeb.api.utils.corpus import load_corpus
 from main import app
 
+ # pylint: disable=redefined-outer-name
+
 pd.set_option('display.max_columns', None)
 
 version = "v1"
@@ -25,7 +27,7 @@ def corpus():
 def test_get_speakers(corpus):
     speakers = corpus.get_speakers(selections={})
     assert len(speakers) > 0
-    assert all(['C' in pa for pa in speakers['party_abbrev'].unique()])
+    assert all('C' in pa for pa in speakers['party_abbrev'].unique())
 
 
 def test_get_filtered_speakers_by_party_int(corpus):
@@ -33,7 +35,7 @@ def test_get_filtered_speakers_by_party_int(corpus):
     speakers = corpus.get_speakers(selections={'party_id': [9]})
     assert len(speakers) > 0
     assert 'S' in speakers['party_abbrev'].unique()
-    assert all(['S' in pa for pa in speakers['party_abbrev'].unique()])
+    assert all('S' in pa for pa in speakers['party_abbrev'].unique())
 
 
 def test_get_speakers_api(client):

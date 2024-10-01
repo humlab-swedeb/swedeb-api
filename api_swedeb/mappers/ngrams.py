@@ -3,7 +3,7 @@ import pandas as pd
 from api_swedeb import schemas
 
 
-def ngrams_to_ngram_result(ngrams: pd.DataFrame, sep=" ") -> schemas.NGramResult:
+def ngrams_to_ngram_result(ngrams: pd.DataFrame) -> schemas.NGramResult:
     """Convert ngrams dataframe with column `ngram` and `window_count` into sequence of NGramResultItems"""
     return schemas.NGramResult(
         ngram_list=[

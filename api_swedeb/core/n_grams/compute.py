@@ -1,5 +1,3 @@
-from collections import Counter
-from itertools import chain
 from typing import Any, Iterable, Literal
 
 import pandas as pd
@@ -7,6 +5,7 @@ from ccc import Corpus, SubCorpus
 
 from api_swedeb.core.cwb import to_cqp_exprs
 
+ # pylint: disable=redefined-outer-name
 
 def to_n_grams(phrase: str, n: int) -> Iterable[str]:
     """Generate n-grams from a given phrase."""
