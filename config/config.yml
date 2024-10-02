@@ -1,6 +1,6 @@
 metadata:
   version: v1.1.0
-  filename: /data/swedeb/riksprot_metadata.db
+  filename: /data/swedeb/v1.1.0/riksprot_metadata.db
 
 cwb:
   registry_dir: /usr/local/share/cwb/registry

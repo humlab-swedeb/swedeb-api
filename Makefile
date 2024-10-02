@@ -7,6 +7,9 @@ PYTEST_ARGS=--durations=0 tests
 
 .PHONY: lint tidy isort black test pylint
 
+run:       
+	@poetry run uvicorn main:app --reload
+
 lint: tidy pylint
 
 tidy: black isort
