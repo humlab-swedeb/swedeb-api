@@ -297,13 +297,7 @@ class Corpus:
         return df.reset_index()
 
     def get_gender_meta(self):
-        df = self.metadata.gender
-        gender_df = df.reset_index()
-        swe_mapping = {"unknown": "Okänt", "man": "Man", "woman": "Kvinna"}
-        abbrev_mapping = {"unknown": "?", "man": "M", "woman": "K"}
-        gender_df["swedish_gender"] = gender_df["gender"].map(swe_mapping)
-        gender_df["gender_abbrev"] = gender_df["gender"].map(abbrev_mapping)
-        return gender_df
+        return self.metadata.gender.assign(gender_id=self.metadata.gender.index)
 
     def get_chamber_meta(self):
         df = self.metadata.chamber

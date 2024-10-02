@@ -29,10 +29,21 @@ class Codec:
     type: Literal['encode', 'decode']
     from_column: str
     to_column: str
-    fx: Callable[[int], str]
+    fx: Callable[[int], str] | dict
     default: str = None
 
-
+    def apply(self, df: pd.DataFrame) -> pd.DataFrame:
+        if self.from_column in df.columns:
+            if self.to_column not in df:
+                if isinstance(self.fx, dict):
+                    df[self.to_column] = df[self.from_column].map(self.fx)
+                else:
+                    df[self.to_column] = df[self.from_column].apply(self.fx)
+            if self.default is not None:
+                df[self.to_column] = df[self.to_column].fillna(self.default)
+        return df
+    
+        
 null_frame: pd.DataFrame = pd.DataFrame()
 
 
@@ -67,6 +78,10 @@ class Codecs:
         return self.gender['gender'].to_dict()
 
     @cached_property
+    def gender2abbrev(self) -> dict:
+        return self.gender['gender_abbrev'].to_dict()
+    
+    @cached_property
     def gender2id(self) -> dict:
         return pu.revdict(self.gender2name)
 
@@ -97,14 +112,14 @@ class Codecs:
     @property
     def codecs(self) -> list[Codec]:
         return self.extra_codecs + [
-            Codec("decode", "gender_id", "gender", self.gender2name.get),
-            Codec("decode", "office_type_id", "office_type", self.office_type2name.get),
-            Codec("decode", "party_id", "party_abbrev", self.party_abbrev2name.get),
-            Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name.get),
-            Codec("encode", "gender", "gender_id", self.gender2id.get),
-            Codec("encode", "office_type", "office_type_id", self.office_type2id.get),
-            Codec("encode", "party", "party_id", self.party_abbrev2id.get),
-            Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id.get),
+            Codec("decode", "gender_id", "gender", self.gender2name),
+            Codec("decode", "office_type_id", "office_type", self.office_type2name),
+            Codec("decode", "party_id", "party_abbrev", self.party_abbrev2name),
+            Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name),
+            Codec("encode", "gender", "gender_id", self.gender2id),
+            Codec("encode", "office_type", "office_type_id", self.office_type2id),
+            Codec("encode", "party", "party_id", self.party_abbrev2id),
+            Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id),
         ]
 
     @property
@@ -116,12 +131,9 @@ class Codecs:
         return [c for c in self.codecs if c.type == 'encode']
 
     def apply_codec(self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True) -> pd.DataFrame:
+        # FIXME: #53 Use Pandas map instead of apply when decoding category data
         for codec in codecs:
-            if codec.from_column in df.columns:
-                if codec.to_column not in df:
-                    df[codec.to_column] = df[codec.from_column].apply(codec.fx)
-                if codec.default is not None:
-                    df[codec.to_column] = df[codec.to_column].fillna(codec.default)
+            df = codec.apply(df)
             if drop:
                 df.drop(columns=[codec.from_column], inplace=True, errors='ignore')
         return df
