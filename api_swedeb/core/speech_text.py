@@ -23,7 +23,7 @@ from api_swedeb.core.utility import read_sql_table
 from . import codecs as md
 
 try:
-    import github as gh # type: ignore
+    import github as gh  # type: ignore
 except ImportError:
 
     def Github(_):

@@ -52,8 +52,8 @@ def test_meta_genders(corpus):
     genders = df.to_dict(orient="records")
 
     assert len(genders) == 3
-    genders[1].get("gender_id") == 1
-    genders[1].get("gender_abbrev") == 'M'
+    assert genders[1].get("gender_id") == 1
+    assert genders[1].get("gender_abbrev") == 'M'
 
     rows: list[GenderItem] = [GenderItem(**row) for row in genders]
     gender_list = GenderList(gender_list=rows)

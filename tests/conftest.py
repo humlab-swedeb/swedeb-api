@@ -41,6 +41,6 @@ def fastapi_app() -> FastAPI:
 
 
 @pytest.fixture(scope='session')
-def fastapi_client(fastapi_app: FastAPI) -> TestClient:
+def fastapi_client(fastapi_app: FastAPI) -> TestClient:  # pylint: disable=redefined-outer-name
     client = TestClient(fastapi_app)
     return client
