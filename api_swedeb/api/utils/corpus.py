@@ -12,7 +12,7 @@ from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
-from api_swedeb.core.speech_index import get_speeches_by_words
+from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
 from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.core.utility import Lazy
 
@@ -181,6 +181,23 @@ class Corpus:
         )
         return speeches
 
+    def get_anforanden(self, from_year: int, to_year: int, selections: dict) -> pd.DataFrame:
+        """For getting a list of - and info about - the full 'Anföranden' (speeches)
+
+        Args:
+            from_year int: start year
+            to_year int: end year
+            selections dict: selected filters, i.e. genders, parties, and, speakers
+
+        Returns:
+            DataFrame: DataFrame with speeches for selected years and filter.
+        """
+        speeches: pd.DataFrame = get_speeches_by_opts(self.document_index, selections | {'year': (from_year, to_year)})
+        self.person_codecs.decode_speech_index(
+            speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
+        )
+        return speeches
+
     def prepare_anforande_display(self, anforanden_doc_index: pd.DataFrame) -> pd.DataFrame:
         adi: pd.DataFrame = anforanden_doc_index[["person_id", "year", "document_name", "gender_id", "party_id"]]
 
@@ -284,24 +301,6 @@ class Corpus:
     def get_sub_office_type_meta(self):
         df = self.metadata.sub_office_type
         return df.reset_index()
-
-    def get_anforanden(self, from_year: int, to_year: int, selections: dict) -> pd.DataFrame:
-        """For getting a list of - and info about - the full 'Anföranden' (speeches)
-
-        Args:
-            from_year int: start year
-            to_year int: end year
-            selections dict: selected filters, i.e. genders, parties, and, speakers
-
-        Returns:
-            DataFrame: DataFrame with speeches for selected years and filter.
-        """
-        di_selected = PropertyValueMaskingOpts(**selections | {'year': (from_year, to_year)}).apply(self.document_index)
-
-        # FIXME: add filtering on year to PropertyValueMaskingOpts instead
-        di_selected = di_selected[di_selected["year"].between(from_year, to_year)]
-
-        return self.prepare_anforande_display(di_selected)
 
     def get_speech_text(self, document_name: str) -> str:  # type: ignore
         return self.repository.to_text(self.get_speech(document_name))
