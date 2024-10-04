@@ -102,6 +102,7 @@ async def get_ngram_results(
         display_target=target,
     )
 
+
 @router.get("/speeches", response_model=SpeechesResult)
 async def get_speeches_result(
     commons: CommonParams,

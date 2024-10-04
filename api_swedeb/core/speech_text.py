@@ -59,7 +59,7 @@ class SpeechTextService:
         self.speech_index.rename(columns={"speach_index": "speech_index"}, inplace=True, errors="ignore")
 
         """Name of speaker note reference was changed from v0.4.3 (speaker_hash => speaker_note_id)"""
-        self.id_name = "speaker_note_id" if "speaker_note_id" in self.speech_index.columns else "speaker_hash"
+        self.id_name: str = "speaker_note_id" if "speaker_note_id" in self.speech_index.columns else "speaker_hash"
 
     @cached_property
     def name2info(self) -> dict[str, dict]:
@@ -110,8 +110,7 @@ class SpeechTextService:
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
-        ...
+    def load(self, protocol_name: str) -> tuple[dict, list[dict]]: ...
 
 
 def zero_fill_filename_sequence(name: str) -> str:
