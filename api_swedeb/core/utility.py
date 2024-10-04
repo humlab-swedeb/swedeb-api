@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from os.path import basename, dirname, splitext
 from typing import Any, Callable, Type
 
 import numpy as np
 import pandas as pd
 import requests
+from penelope.utility import PropertyValueMaskingOpts
 
 # pylint: disable=missing-timeout
 
@@ -176,12 +178,17 @@ def probe_filename(filename: list[str], exts: list[str] = None) -> str | None:
 def replace_extension(filename: str, extension: str) -> str:
     if filename.endswith(extension):
         return filename
-    base, _ = os.path.splitext(filename)
+    base, _ = splitext(filename)
     return f"{base}{'' if extension.startswith('.') else '.'}{extension}"
 
 
+def path_add_suffix(path: str, suffix: str, new_extension: str = None) -> str:
+    base, ext = splitext(path)
+    return f'{base}{suffix}{ext if new_extension is None else new_extension}'
+
+
 def ensure_path(f: str) -> None:
-    os.makedirs(os.path.dirname(f), exist_ok=True)
+    os.makedirs(dirname(f), exist_ok=True)
 
 
 class dotdict(dict):
@@ -273,3 +280,17 @@ def env2dict(prefix: str, data: dict[str, str] | None = None, lower_key: bool = 
         if key.startswith(prefix.lower()):
             dotset(data, key[len(prefix) + 1 :], value)
     return data
+
+
+def strip_paths(filenames: str | list[str]) -> str | list[str]:
+    if isinstance(filenames, str):
+        return basename(filenames)
+    return [basename(filename) for filename in filenames]
+
+
+def filter_by_opts(df: pd.DataFrame, px: Callable[[Any], bool] | PropertyValueMaskingOpts | dict) -> pd.DataFrame:
+    if isinstance(px, dict):
+        px = PropertyValueMaskingOpts(**px)
+
+    mask: np.ndarray | pd.Series[bool] = df.apply(px, axis=1) if callable(px) else px.mask(df)
+    return df[mask]
