@@ -305,9 +305,6 @@ class Corpus:
         if di_selected is None:
             di_selected = PropertyValueMaskingOpts(**selections).apply(self.document_index)
 
-            filtered_corpus = self.filter_corpus(selections, self.vectorized_corpus)
-            di_selected = filtered_corpus.document_index
-
         # FIXME: add filtering on year to PropertyValueMaskingOpts instead
         di_selected = di_selected[di_selected["year"].between(from_year, to_year)]
 
