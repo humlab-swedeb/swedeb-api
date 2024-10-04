@@ -168,6 +168,7 @@ class Corpus:
             unstacked_trends = self.normalize_word_per_year(unstacked_trends)
         return unstacked_trends
 
+    # FIXME: refactor get_anforanden_for_word_trends & get_anforanden to a single method
     def get_anforanden_for_word_trends(
         self, selected_terms: list[str], filter_opts: dict, start_year: int, end_year: int
     ) -> pd.DataFrame:
@@ -198,48 +199,6 @@ class Corpus:
         )
         return speeches
 
-    def prepare_anforande_display(self, anforanden_doc_index: pd.DataFrame) -> pd.DataFrame:
-        adi: pd.DataFrame = anforanden_doc_index[["person_id", "year", "document_name", "gender_id", "party_id"]]
-
-        self.person_codecs.decoder(from_name="person_id", to_name="wiki_id").apply(adi)
-        self.person_codecs.decode(adi, drop=False)
-        # FIXME: #13 Very slow, should be optimized
-        adi["link"] = adi.apply(lambda x: self.get_link(x["person_id"], x["name"]), axis=1)
-        adi["speech_link"] = self.get_speech_link()
-        adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
-        adi["formatted_speech_id"] = adi.apply(lambda x: format_protocol_id(x["document_name"]), axis=1)
-        adi["gender"] = adi.apply(lambda x: self.translate_gender_column(x["gender"]), axis=1)
-
-        # to sort unknowns to the end of the results
-        sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
-
-        return sorted_adi
-
-    def get_speech_link(self):
-        # temporary. Should be link to pdf/speech/something interesting
-        return "https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot"
-
-    def get_word_vectors(self, words: list[str], corpus: VectorizedCorpus = None) -> dict:
-        """Returns individual corpus column vectors for each search term
-
-        Args:
-            words: list of strings (search terms)
-            corpus (VectorizedCorpus, optional): current corpus in None.
-            Defaults to None.
-
-        Returns:
-            dict: key: search term, value: corpus column vector
-        """
-
-        vectors = {}
-        if corpus is None:
-            corpus = self.vectorized_corpus
-
-        for word in words:
-            vectors[word] = corpus.get_word_vector(word)
-
-        return vectors
-
     def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Translates the (gender) columns of a data frame to Swedish
 
@@ -251,11 +210,6 @@ class Corpus:
         for col in cols:
             translations[col] = self.translate_gender_col_header(col)
         df.rename(columns=translations, inplace=True)
-
-    def get_link(self, person_id, name):
-        if name == "":
-            return "Okänd"
-        return f"https://www.wikidata.org/wiki/{person_id}"
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
