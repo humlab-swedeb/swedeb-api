@@ -320,7 +320,9 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
-        return "https://www.wikidata.org/wiki/" + wiki_id
+        data: pd.Series = "https://www.wikidata.org/wiki/" + wiki_id
+        data.replace("https://www.wikidata.org/wiki/unknown", "Okänd", inplace=True)
+        return data
 
     @staticmethod
     def speech_link(speech_id: str | pd.Series[str]) -> str | pd.Series[str]:
