@@ -285,13 +285,7 @@ class Corpus:
         df = self.metadata.sub_office_type
         return df.reset_index()
 
-    def get_anforanden(
-        self,
-        from_year: int,
-        to_year: int,
-        selections: dict,
-        di_selected: pd.DataFrame = None,
-    ) -> pd.DataFrame:
+    def get_anforanden(self, from_year: int, to_year: int, selections: dict) -> pd.DataFrame:
         """For getting a list of - and info about - the full 'Anföranden' (speeches)
 
         Args:
@@ -302,8 +296,7 @@ class Corpus:
         Returns:
             DataFrame: DataFrame with speeches for selected years and filter.
         """
-        if di_selected is None:
-            di_selected = PropertyValueMaskingOpts(**selections).apply(self.document_index)
+        di_selected = PropertyValueMaskingOpts(**selections | {'year': (from_year, to_year)}).apply(self.document_index)
 
         # FIXME: add filtering on year to PropertyValueMaskingOpts instead
         di_selected = di_selected[di_selected["year"].between(from_year, to_year)]

@@ -28,7 +28,6 @@ def get_speeches(commons: CommonQueryParams, corpus) -> SpeechesResult:
         from_year=from_year,
         to_year=to_year,
         selections=commons.get_selection_dict(),
-        di_selected=None,
     )
 
     # Convert DataFrame rows to list of dictionaries

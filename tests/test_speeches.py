@@ -25,7 +25,7 @@ def test_speeches_get(fastapi_client):
 
 
 def test_get_all_protocol_ids(corpus):
-    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
+    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={})
     all_ids = df['document_name']
     for protocol_id in all_ids:
         try:
@@ -67,7 +67,7 @@ def test_format_speech_id():
 
 def test_get_formatted_speech_id(corpus):
     df_filtered = corpus.get_anforanden(
-        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}, di_selected=None
+        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}
     )
     assert 'formatted_speech_id' in df_filtered.columns
 
@@ -109,15 +109,15 @@ def test_speeches_zip(fastapi_client):
 
 def test_get_speeches_corpus(corpus):
     df_filtered = corpus.get_anforanden(
-        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}, di_selected=None
+        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}
     )
-    df_unfiltered = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
+    df_unfiltered = corpus.get_anforanden(from_year=1900, to_year=2000, selections={})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
 
 
 def find_a_speech_id(corpus):
-    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
+    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={})
     return df.iloc[0]['document_name']
 
 
