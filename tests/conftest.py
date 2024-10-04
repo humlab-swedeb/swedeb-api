@@ -1,12 +1,15 @@
 import uuid
 
 import ccc
+import pandas as pd
 import pytest
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 
 from api_swedeb.api import metadata_router, tool_router
+from api_swedeb.api.utils import corpus as api_swedeb
+from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 
 ConfigStore.configure_context(source='tests/config.yml')
@@ -18,6 +21,22 @@ def corpus() -> ccc.Corpus:
     corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
     registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
     return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)
+
+
+@pytest.fixture(scope="session")
+def api_corpus() -> api_swedeb.Corpus:
+    corpus = api_swedeb.Corpus()
+    return corpus
+
+
+@pytest.fixture(scope="session")
+def speech_index(api_corpus: api_swedeb.Corpus) -> pd.DataFrame:
+    return api_corpus.vectorized_corpus.document_index
+
+
+@pytest.fixture(scope="session")
+def person_codecs(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
+    return api_corpus.person_codecs
 
 
 @pytest.fixture(scope='session')
