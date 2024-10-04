@@ -154,7 +154,6 @@ class Codecs:
     def apply_codec(
         self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True, keeps: list[str] = None
     ) -> pd.DataFrame:
-
         for codec in codecs:
             df = codec.apply(df)
 
@@ -325,5 +324,23 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def speech_link(speech_id: str | pd.Series[str]) -> str | pd.Series[str]:
-        """FiXME: this should be a linkt to the actual speech in Humlabs Swedeb PDF store"""
+        """FiXME: this should be a link to the actual speech in Humlabs Swedeb PDF store"""
         return "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/" + speech_id
+
+    def decode_speech_index(
+        self, speech_index: pd.DataFrame, value_updates: dict = None, sort_values: bool = True
+    ) -> pd.DataFrame | Any:
+        """Setup speech index with decoded columns and standarized column values"""
+
+        self.decode(speech_index, drop=True, keeps=['wiki_id'])
+
+        speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
+        speech_index["speech_link"] = self.speech_link(speech_id=speech_index.speech_id)
+
+        if sort_values:
+            speech_index = speech_index.sort_values(by="name", key=lambda x: x == "")
+
+        if value_updates:
+            speech_index.replace(value_updates, inplace=True)
+
+        return speech_index
