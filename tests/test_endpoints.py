@@ -98,9 +98,7 @@ def test_ngrams_non_existing_word(fastapi_client):
     json = response.json()
 
     assert 'ngram_list' in json
-    first_result = json['ngram_list'][0]
-    assert 'ngram' in first_result
-    assert 'count' in first_result
+    assert  json['ngram_list'] == []
 
 
 def test_speech_by_id(fastapi_client):
