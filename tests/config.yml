@@ -18,3 +18,9 @@ fastapi:
   origins:
     - http://localhost:8080
     - http://localhost:9002
+
+display:
+  speech_index:
+    updates:
+      party_abbrev: { "?": "metadata saknas", "X": "partilös" }
+      name: { "": "metadata saknas" }
