@@ -1,5 +1,4 @@
 from functools import cached_property
-from typing import Any, List
 
 import pandas as pd
 import penelope.utility as pu  # type: ignore
@@ -13,6 +12,7 @@ from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
+from api_swedeb.core.speech_index import get_speeches_by_words
 from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.core.utility import Lazy
 
@@ -88,7 +88,7 @@ class Corpus:
         return self.__lazy_decoded_persons.value
 
     @cached_property
-    def possible_pivots(self) -> List[str]:
+    def possible_pivots(self) -> list[str]:
         return [v["text_name"] for v in self.person_codecs.property_values_specs]
 
     def normalize_word_per_year(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -110,7 +110,7 @@ class Corpus:
 
     def get_word_trend_results(
         self,
-        search_terms: List[str],
+        search_terms: list[str],
         filter_opts: dict,
         start_year: int,
         end_year: int,
@@ -168,60 +168,18 @@ class Corpus:
             unstacked_trends = self.normalize_word_per_year(unstacked_trends)
         return unstacked_trends
 
-    def get_anforanden_for_word_trends(self, selected_terms, filter_opts, start_year, end_year):
+    def get_anforanden_for_word_trends(
+        self, selected_terms: list[str], filter_opts: dict, start_year: int, end_year: int
+    ) -> pd.DataFrame:
         # BREAKING CHANGE:
         #  old columns: ['year', 'document_name', 'gender', 'party_abbrev', 'name', 'link', 'speech_link', 'formatted_speech_id', 'node_word']
-
-        selected_terms = self.filter_search_terms(selected_terms)
-        if selected_terms:
-            filtered_corpus = self.filter_corpus(filter_opts, self.vectorized_corpus)
-            vectors = self.get_word_vectors(selected_terms, filtered_corpus)
-            hits = []
-            for word, vec in vectors.items():
-                if sum(vec) > 0:
-                    hit_di = filtered_corpus.document_index[vec.astype(bool)]
-                    anforanden = self.prepare_anforande_display(hit_di)
-                    anforanden["node_word"] = word
-                    hits.append(anforanden)
-
-            if len(hits) == 0:
-                return pd.DataFrame()
-
-            all_hits = pd.concat(hits)
-            all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
-
-            # all_hits["name"].replace("", "metadata saknas", inplace=True)
-            # all_hits["party_abbrev"].replace("?", "metadata saknas", inplace=True)
-            # all_hits["party_abbrev"].replace("X", "partilös", inplace=True)
-
-            all_hits.replace(
-                {
-                    "party_abbrev": {
-                        "?": "metadata saknas",
-                        "X": "partilös",
-                    },
-                    "name": {"": "metadata saknas"},
-                },
-                inplace=True,
-            )
-            # if several words in same speech, merge them
-            return (
-                all_hits.groupby(
-                    [
-                        "year",
-                        "document_name",
-                        "gender",
-                        "party_abbrev",
-                        "name",
-                        "link",
-                        "speech_link",
-                        "formatted_speech_id",
-                    ]
-                )
-                .agg({"node_word": ",".join})
-                .reset_index()
-            )
-        return pd.DataFrame()
+        speeches: pd.DataFrame = get_speeches_by_words(
+            self.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts | {"year": (start_year, end_year)}
+        )
+        self.person_codecs.decode_speech_index(
+            speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
+        )
+        return speeches
 
     def prepare_anforande_display(self, anforanden_doc_index: pd.DataFrame) -> pd.DataFrame:
         adi: pd.DataFrame = anforanden_doc_index[["person_id", "year", "document_name", "gender_id", "party_id"]]
