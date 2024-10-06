@@ -1,14 +1,17 @@
 from typing import Any
+
 import pandas as pd
 import pytest
-from penelope.corpus import VectorizedCorpus
 import scipy
 import scipy.sparse
+from penelope.corpus import VectorizedCorpus
 
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
-from api_swedeb.core.speech_index import COLUMNS_OF_INTEREST, find_documents_with_words, get_speeches_by_words
+from api_swedeb.core.speech_index import COLUMNS_OF_INTEREST, _find_documents_with_words, get_speeches_by_words
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -59,7 +62,7 @@ def mock_corpus() -> VectorizedCorpus:
 def test_find_documents_with_words(
     mock_corpus: VectorizedCorpus, terms: list[str], expected_ids: list[int], expected_words: list[str], opts: dict
 ):
-    result: pd.DataFrame = find_documents_with_words(mock_corpus, terms, opts=opts)
+    result: pd.DataFrame = _find_documents_with_words(mock_corpus, terms, opts=opts)
     expected = pd.DataFrame({'words': expected_words}, index=expected_ids)
     assert pd.testing.assert_frame_equal(result, expected, check_names=False) is None
 
