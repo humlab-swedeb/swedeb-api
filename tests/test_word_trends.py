@@ -51,8 +51,6 @@ def test_word_trends_with_base_model(api_corpus):
         search_terms=['debatt', 'riksdagsdebatt'], filter_opts={'year': (1900, 2000)}
     )
     assert len(df) > 0
-    print(df.head())
-    print(df.info())
     counts_list = []
     for year, row in df.iterrows():
         counts_dict = row.to_dict()
@@ -84,7 +82,6 @@ def test_word_trends_api_with_filter(fastapi_client):
     )
     json = response.json()
     first_result = json['wt_list'][0]
-    print(json)
 
     count = first_result['count']
     for word in search_term.split(','):
@@ -98,7 +95,6 @@ def test_word_trends_speeches(fastapi_client):
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    print(json)
 
 
 def test_word_trends_speeches_corpus(api_corpus):
@@ -150,8 +146,6 @@ def test_ordered_word_hits_api(api_corpus):
     search_term = 'debatt*'
     descending_true = api_corpus.get_word_hits(search_term, descending=True, n_hits=10)
     descending_false = api_corpus.get_word_hits(search_term, descending=False, n_hits=10)
-    print('TRUE', descending_true)
-    print('FALSE', descending_false)
     # 'debatterar', 'debattera', 'debatter', 'debatt', 'debatten'
 
 
@@ -177,7 +171,6 @@ def test_chambers(api_corpus):
     df = api_corpus.get_word_trend_results(
         search_terms=["arbete"], filter_opts={"chamber_abbrev": ['fk'], 'year': (1900, 3000)}
     )
-    print(df.head())
 
 
 def test_filter_by_gender(api_corpus):
@@ -196,7 +189,6 @@ def test_merged_vectors():
     }
     for position in range(len(input_dict['debatt'])):
         keys = [key for key, value in input_dict.items() if value[position] == 1]
-        print(keys)
 
     # sen ska de ju också inte vara med i riksdagsdebatt om de är med i debatt,riksdagsdebatt
     # kanske bättre att mergea i dataframen
@@ -222,26 +214,16 @@ def test_frequent_words(api_corpus):
     word_hits_non_descending = api_corpus.get_word_hits('katt*', n_hits=10, descending=False)
     word_hits_descending = api_corpus.get_word_hits('katt*', n_hits=10, descending=True)
 
-    print('word sums TOP WORDS DESCENDING')
-    print(word_hits_descending)
     df = api_corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
     df_sum_sorted = df_sum.sort_values(ascending=False)
-    print(df_sum_sorted)
 
-    print('word sums TOP WORDS non DESCENDING')
-    print(word_hits_non_descending)
     df = api_corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
     df_sum_sorted = df_sum.sort_values(ascending=False)
-    print(df_sum_sorted)
     word_order_word_trends = df_sum_sorted.index.to_list()
     word_order_word_trends.remove('Totalt')
-    print('WT ORDER', word_order_word_trends)
 
     # assert word_order_word_trends == word_hits_non_descending
     # word-trend counting and word-hits counting does not give the exact same results
     # setting descening to true gives words in alphabetical order
-
-    for wt, hit in zip(word_order_word_trends, word_hits_non_descending):
-        print(wt, hit, wt == hit)
