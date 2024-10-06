@@ -3,9 +3,7 @@ import pandas as pd
 import pytest
 from fastapi import status
 
-import api_swedeb.core.speech_index as wt
 from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 
 # pylint: disable=redefined-outer-name
@@ -121,6 +119,7 @@ def test_word_trends_speeches_corpus(api_corpus):
         'node_word',
     ]
 
+
 def test_word_trend_corpus(api_corpus):
     vocabulary = api_corpus.vectorized_corpus.vocabulary
     assert 'debatt' in vocabulary
@@ -193,6 +192,7 @@ def test_filter_by_gender(api_corpus):
         search_terms=["sverige"], filter_opts={"gender_id": [1]}, start_year=1900, end_year=3000
     )
     assert len(df) > 0
+
 
 def test_merged_vectors():
     input_dict = {
