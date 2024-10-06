@@ -14,6 +14,8 @@ from api_swedeb.core.configuration import ConfigStore, ConfigValue
 
 ConfigStore.configure_context(source='tests/config.yml')
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture(scope='session')
 def corpus() -> ccc.Corpus:
@@ -25,8 +27,7 @@ def corpus() -> ccc.Corpus:
 
 @pytest.fixture(scope="session")
 def api_corpus() -> api_swedeb.Corpus:
-    corpus = api_swedeb.Corpus()
-    return corpus
+    return api_swedeb.Corpus()
 
 
 @pytest.fixture(scope="session")
