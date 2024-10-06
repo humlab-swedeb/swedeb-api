@@ -112,14 +112,14 @@ class Corpus:
         self,
         search_terms: list[str],
         filter_opts: dict,
-        start_year: int,
-        end_year: int,
         normalize: bool = False,
     ) -> pd.DataFrame:
         search_terms = self.filter_search_terms(search_terms)
 
         if not search_terms:
             return pd.DataFrame()
+
+        start_year, end_year = filter_opts.pop('year')
 
         trends_data: SweDebTrendsData = SweDebTrendsData(
             corpus=self.vectorized_corpus, person_codecs=self.person_codecs, n_top=1000000

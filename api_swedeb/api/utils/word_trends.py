@@ -12,19 +12,10 @@ def get_search_hit_results(search: str, corpus: Corpus, n_hits: int):
     return SearchHits(hit_list=corpus.get_word_hits(search, n_hits))
 
 
-def _compile_filter_opts(commons: CommonQueryParams, corpus: Corpus) -> dict[str, Any]:
-    opts: dict = commons.get_selection_dict() | {
-        'year': (
-            commons.from_year or corpus.get_years_start(),
-            commons.to_year or corpus.get_years_end(),
-        )
-    }
-    return opts
-
-
 def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus, normalize: bool) -> WordTrendsResult:
-    opts: dict = _compile_filter_opts(commons, corpus)
-    df: DataFrame = corpus.get_word_trend_results(search_terms=search.split(","), filter_opts=opts, normalize=normalize)
+    df: DataFrame = corpus.get_word_trend_results(
+        search_terms=search.split(","), filter_opts=commons.get_filter_opts(include_year=True), normalize=normalize
+    )
 
     counts_list = []
     for year, row in df.iterrows():
@@ -36,9 +27,7 @@ def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus, nor
 
 
 def get_word_trend_speeches(search: str, commons: CommonQueryParams, corpus: Corpus) -> SpeechesResultWT:
-    opts: dict = _compile_filter_opts(commons, corpus)
-
-    df: DataFrame = corpus.get_anforanden_for_word_trends(search.split(','), opts)
+    df: DataFrame = corpus.get_anforanden_for_word_trends(search.split(','), commons.get_filter_opts(include_year=True))
 
     data: list[dict[Hashable, Any]] = df.to_dict(orient="records")
     rows: list[SpeechesResultItemWT] = [SpeechesResultItemWT(**row) for row in data]

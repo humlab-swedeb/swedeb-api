@@ -66,16 +66,12 @@ def test_format_speech_id():
 
 
 def test_get_formatted_speech_id(corpus):
-    df_filtered = corpus.get_anforanden(
-        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}
-    )
-    assert 'formatted_speech_id' in df_filtered.columns
+    df_filtered = corpus.get_anforanden(selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)})
+    assert 'speech_name' in df_filtered.columns
 
 
 def test_get_speech_by_id_client(fastapi_client, corpus):
     speech_id = find_a_speech_id(corpus)
-    start_year = corpus.get_years_start()
-    print(start_year)
 
     response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
