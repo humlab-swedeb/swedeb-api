@@ -122,9 +122,7 @@ class Corpus:
             return pd.DataFrame()
 
         trends_data: SweDebTrendsData = SweDebTrendsData(
-            corpus=self.vectorized_corpus,
-            person_codecs=self.person_codecs,
-            n_top=1000000,
+            corpus=self.vectorized_corpus, person_codecs=self.person_codecs, n_top=1000000
         )
         pivot_keys = list(filter_opts.keys()) if filter_opts else []
 
@@ -169,13 +167,11 @@ class Corpus:
         return unstacked_trends
 
     # FIXME: refactor get_anforanden_for_word_trends & get_anforanden to a single method
-    def get_anforanden_for_word_trends(
-        self, selected_terms: list[str], filter_opts: dict, start_year: int, end_year: int
-    ) -> pd.DataFrame:
+    def get_anforanden_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
         # BREAKING CHANGE:
         #  old columns: ['year', 'document_name', 'gender', 'party_abbrev', 'name', 'link', 'speech_link', 'formatted_speech_id', 'node_word']
         speeches: pd.DataFrame = get_speeches_by_words(
-            self.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts | {"year": (start_year, end_year)}
+            self.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts
         )
         self.person_codecs.decode_speech_index(
             speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
