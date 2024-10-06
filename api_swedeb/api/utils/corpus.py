@@ -178,7 +178,7 @@ class Corpus:
         )
         return speeches
 
-    def get_anforanden(self, from_year: int, to_year: int, selections: dict) -> pd.DataFrame:
+    def get_anforanden(self, selections: dict) -> pd.DataFrame:
         """For getting a list of - and info about - the full 'Anföranden' (speeches)
 
         Args:
@@ -189,7 +189,7 @@ class Corpus:
         Returns:
             DataFrame: DataFrame with speeches for selected years and filter.
         """
-        speeches: pd.DataFrame = get_speeches_by_opts(self.document_index, selections | {'year': (from_year, to_year)})
+        speeches: pd.DataFrame = get_speeches_by_opts(self.document_index, selections)
         self.person_codecs.decode_speech_index(
             speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
         )
