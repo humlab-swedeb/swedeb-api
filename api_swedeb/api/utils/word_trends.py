@@ -1,5 +1,7 @@
 from typing import Any, Hashable
+
 from pandas import DataFrame
+
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.schemas.speeches_schema import SpeechesResultItemWT, SpeechesResultWT
