@@ -139,7 +139,7 @@ def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus: Corpus):
 
 
 def find_a_speech_id(corpus):
-    df = corpus.get_anforanden(selections={'year': (1970, 1980)})
+    df = corpus.document_index.sample(1)
     return df.iloc[0]['document_name']
 
 
