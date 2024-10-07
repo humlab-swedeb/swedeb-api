@@ -99,21 +99,25 @@ def test_word_trends_speeches(fastapi_client):
 
 def test_word_trends_speeches_corpus(api_corpus):
     search_term = 'debatt'
-    df = api_corpus.get_anforanden_for_word_trends(
-        selected_terms=[search_term], filter_opts={}, start_year=1900, end_year=2000
-    )
+    df = api_corpus.get_anforanden_for_word_trends(selected_terms=[search_term], filter_opts={'year': (1900, 2000)})
     assert len(df) > 0
-    assert df.columns.to_list() == [
-        'year',
+    expected_columns: set[str] = {
+        'document_id',      # NEW
         'document_name',
+        'chamber_abbrev',   # NEW
+        'year',
+        'speech_id',        # NEW
+        'speech_name',      # RENAMED (formatted_speech_id)
         'gender',
+        'gender_abbrev',    # NEW
         'party_abbrev',
         'name',
+        'wiki_id',          # NEW
         'link',
         'speech_link',
-        'formatted_speech_id',
         'node_word',
-    ]
+    }
+    assert set(df.columns) == expected_columns
 
 
 def test_word_trend_corpus(api_corpus):

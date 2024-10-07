@@ -1,7 +1,8 @@
+import pandas as pd
 import pytest
 from fastapi import status
 
-from api_swedeb.api.utils.corpus import load_corpus
+from api_swedeb.api.utils.corpus import Corpus, load_corpus
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 # these tests mainly check that the endpoints are reachable and returns something
@@ -25,7 +26,7 @@ def test_speeches_get(fastapi_client):
 
 
 def test_get_all_protocol_ids(corpus):
-    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={})
+    df = corpus.get_anforanden(selections={'year': (1900, 2000)})
     all_ids = df['document_name']
     for protocol_id in all_ids:
         try:
@@ -44,7 +45,7 @@ def test_get_speaker_name(corpus):
     # speech with unknown speaker prot-1963-höst-ak--35_090.txt
 
 
-def test_get_speaker_name_for_unknown_speaker(corpus):
+def test_get_speaker_name_for_unknown_speaker(corpus: Corpus):
     speech_id = "prot-1963-höst-ak--35_090"
     speaker = corpus.get_speaker(speech_id)
     assert speaker == "Okänd"
@@ -104,16 +105,16 @@ def test_speeches_zip(fastapi_client):
 
 
 def test_get_speeches_corpus(corpus):
-    df_filtered = corpus.get_anforanden(
-        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}
+    df_filtered: pd.DataFrame = corpus.get_anforanden(
+        selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
     )
-    df_unfiltered = corpus.get_anforanden(from_year=1900, to_year=2000, selections={})
+    df_unfiltered = corpus.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
 
 
 def find_a_speech_id(corpus):
-    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={})
+    df = corpus.get_anforanden(selections={'year': (1970, 1980)})
     return df.iloc[0]['document_name']
 
 
