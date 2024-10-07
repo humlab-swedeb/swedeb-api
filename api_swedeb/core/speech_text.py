@@ -3,11 +3,8 @@ from __future__ import annotations
 import abc
 import json
 import os
-import re
 import sqlite3
-import types
 import zipfile
-from collections import namedtuple
 from functools import cached_property
 from os.path import join as jj
 from typing import Iterable, Literal
@@ -16,36 +13,11 @@ import numpy as np
 import pandas as pd
 from jinja2 import Template
 from loguru import logger
-from penelope import utility as pu
 
 from api_swedeb.core.utility import read_sql_table
+from api_swedeb.core.utility.utility import fix_whitespace
 
 from . import codecs as md
-
-try:
-    import github as gh  # type: ignore
-except ImportError:
-
-    def Github(_):
-        return types.SimpleNamespace()
-
-
-default_template: Template = Template(
-    """
-<b>Protokoll:</b> {{protocol_name}} sidan {{ page_number }}, {{ chamber }}, {{ date }} <br/>
-<b>Källor:</b> {{parlaclarin_links}} {{ wikidata_link }} {{ kb_labb_link }} <br/>
-<b>Talare:</b> {{name}}, {{ party_abbrev }}, {{ office_type }}, {{ sub_office_type }}, {{ district }}, {{ gender}}<br/>
-<b>Antal tokens:</b> {{ num_tokens }} ({{ num_words }}), uid: {{speech_id}}, who: {{who}} <br/>
-<h3> {{ speaker_note }} </h3>
-<span style="color: blue;line-height:50%;">
-{% for n in paragraphs %}
-{{n}}
-{% endfor %}
-</span>
-"""
-)
-
-GithubUrl = namedtuple("GithubUrl", "name url")
 
 # pylint: disable=unused-argument
 
@@ -110,8 +82,7 @@ class SpeechTextService:
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
-        ...
+    def load(self, protocol_name: str) -> tuple[dict, list[dict]]: ...
 
 
 def zero_fill_filename_sequence(name: str) -> str:
@@ -146,25 +117,17 @@ class ZipLoader(Loader):
 
 
 class SpeechTextRepository:
-    # FIXME: Adjust links to new v1.1.0 repository
-    GITHUB_REPOSITORY_URL: str = "https://github.com/welfare-state-analytics/riksdagen-corpus"
-    GITHUB_REPOSITORY_RAW_URL = "https://raw.githubusercontent.com/welfare-state-analytics/riksdagen-corpus"
-
     def __init__(
         self,
         *,
         source: str | Loader,
         person_codecs: md.PersonCodecs,
         document_index: pd.DataFrame,
-        template: Template = None,
         service: SpeechTextService = None,
     ):
-        self.template: Template = template or default_template
         self.source: Loader = source if isinstance(source, Loader) else ZipLoader(source)
         self.person_codecs: md.PersonCodecs = person_codecs
         self.document_index: pd.DataFrame = document_index
-        self.subst_puncts = re.compile(r'\s([,?.!"%\';:`](?:\s|$))')
-        self.release_tags: list[str] = self.get_github_tags()
         self.service: SpeechTextService = service or SpeechTextService(self.document_index)
 
     @cached_property
@@ -253,9 +216,6 @@ class SpeechTextRepository:
         except Exception as ex:  # pylint: disable=bare-except
             speech = {"name": "speech not found", "error": str(ex)}
 
-        if mode == "html":
-            return self.to_html(speech)
-
         if mode == "text":
             return self.to_text(speech)
 
@@ -263,74 +223,5 @@ class SpeechTextRepository:
 
     def to_text(self, speech: dict) -> str:
         paragraphs: list[str] = speech.get("paragraphs", [])
-        text: str = self.fix_whitespace("\n".join(paragraphs))
+        text: str = fix_whitespace("\n".join(paragraphs))
         return text
-
-    def fix_whitespace(self, text: str) -> str:
-        return self.subst_puncts.sub(r"\1", text)
-
-    def to_html(self, speech: dict) -> str:
-        try:
-            speech["parlaclarin_links"] = self.to_parla_clarin_urls(speech["protocol_name"])
-            speech["wikidata_link"] = self.to_wikidata_link(speech["who"])
-            speech["kb_labb_link"] = self.to_kb_labb_link(speech["protocol_name"], speech["page_number"])
-            return self.template.render(speech)
-        except Exception as ex:
-            return f"render failed: {ex}"
-
-    def to_parla_clarin_urls(self, protocol_name: str, ignores: str = "alpha") -> str:
-        return " ".join(
-            map(
-                lambda x: f'<a href="{x.url}" target="_blank" style="font-weight: bold;color: blue;">{x.name}</a>&nbsp;',
-                self.get_github_xml_urls(protocol_name, ignores=ignores),
-            )
-        )
-
-    def to_wikidata_link(self, who: str) -> str:
-        if not bool(who) or who == "unknown":
-            return ""
-        height, width = 20, int(20 * 1.41)
-        img_src = f'<img width={width} heigh={height} src="https://upload.wikimedia.org/wikipedia/commons/f/ff/Wikidata-logo.svg"/>'
-        return f'<a href="https://www.wikidata.org/wiki/{who}" target="_blank" style="font-weight: bold;color: blue;">{img_src}</a>&nbsp;'
-
-    def to_kb_labb_link(self, protocol_name: str, page_number: str) -> str:
-        if not bool(protocol_name):
-            return ""
-
-        page_url: str = (
-            f"{protocol_name.replace('-', '_')}-{str(page_number).zfill(3)}.jp2/" if page_number.isnumeric() else ""
-        )
-
-        url: str = f"https://betalab.kb.se/{protocol_name}/{page_url}_view"
-
-        return f'<a href="{url}" target="_blank" style="font-weight: bold;color: blue;">KB</a>&nbsp;'
-
-    # FIXME: #46 Adjust links to new v1.1.0 repository
-    def get_github_tags(self, github_access_token: str = None) -> list[str]:
-        release_tags: list[str] = ["main", "dev"]
-        try:
-            access_token: str = github_access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
-
-            # if access_token is None:
-            #    logger.info("GITHUB_ACCESS_TOKEN not set")
-
-            github: gh.Github = gh.Github(access_token)
-
-            riksdagen_corpus = github.get_repo("welfare-state-analytics/riksdagen-corpus")
-            release_tags = release_tags + [x.title for x in riksdagen_corpus.get_releases()]
-
-        except:  # pylint: disable=bare-except
-            ...
-        return release_tags
-
-    def get_github_xml_urls(self, protocol_name: str, ignores: str = None, n: int = 2) -> list[GithubUrl]:
-        protocol_name: str = pu.strip_extensions(protocol_name)
-        sub_folder: str = protocol_name.split("-")[1]
-        xml_urls: list[GithubUrl] = []
-        tags: list[str] = [t for t in self.release_tags if ignores not in t] if ignores else self.release_tags
-        for tag in tags[:n]:
-            url: str = f"{self.GITHUB_REPOSITORY_URL}/blob/{tag}/corpus/protocols/{sub_folder}/{protocol_name}.xml"
-            raw_url: str = f"{self.GITHUB_REPOSITORY_RAW_URL}/{tag}/corpus/protocols/{sub_folder}/{protocol_name}.xml"
-            xml_urls.append(GithubUrl(name=tag, url=url))
-            xml_urls.append(GithubUrl(name=f"({tag})", url=raw_url))
-        return xml_urls
