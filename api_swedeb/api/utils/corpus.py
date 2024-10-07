@@ -1,18 +1,16 @@
 from functools import cached_property
 
 import pandas as pd
-import penelope.utility as pu  # type: ignore
-from penelope.common.keyness import KeynessMetric  # type: ignore
-from penelope.corpus import VectorizedCorpus
-from penelope.corpus.dtm.interface import IVectorizedCorpus
-from penelope.utility import PropertyValueMaskingOpts  # type: ignore
+import penelope.utility as pu
+from penelope.common.keyness import KeynessMetric
+from penelope.corpus import VectorizedCorpus, IVectorizedCorpus
 
-from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
-from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
+from api_swedeb.core.speech_index import (get_speeches_by_opts,
+                                          get_speeches_by_words)
 from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.core.utility import Lazy
 
@@ -57,7 +55,7 @@ class Corpus:
         return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
 
     @property
-    def vectorized_corpus(self) -> pd.DataFrame:
+    def vectorized_corpus(self) -> VectorizedCorpus:
         return self.__vectorized_corpus.value
 
     @property
@@ -99,9 +97,9 @@ class Corpus:
         return data
 
     def word_in_vocabulary(self, word):
-        if word in self.vectorized_corpus.vocabulary:
+        if word in self.vectorized_corpus.token2id:
             return word
-        if word.lower() in self.vectorized_corpus.vocabulary:
+        if word.lower() in self.vectorized_corpus.token2id:
             return word.lower()
         return None
 
@@ -112,14 +110,14 @@ class Corpus:
         self,
         search_terms: list[str],
         filter_opts: dict,
-        normalize: bool = False,
+        normalize: bool = False
     ) -> pd.DataFrame:
         search_terms = self.filter_search_terms(search_terms)
 
         if not search_terms:
             return pd.DataFrame()
 
-        start_year, end_year = filter_opts.pop('year')
+        start_year, end_year = filter_opts.pop('year') if 'year' in filter_opts else (None, None)
 
         trends_data: SweDebTrendsData = SweDebTrendsData(
             corpus=self.vectorized_corpus, person_codecs=self.person_codecs, n_top=1000000
@@ -127,11 +125,11 @@ class Corpus:
         pivot_keys = list(filter_opts.keys()) if filter_opts else []
 
         opts: SweDebComputeOpts = SweDebComputeOpts(
-            fill_gaps=True,
+            fill_gaps=False,
             keyness=KeynessMetric.TF,
             normalize=False,
             pivot_keys_id_names=pivot_keys,
-            filter_opts=PropertyValueMaskingOpts(**filter_opts),
+            filter_opts=pu.PropertyValueMaskingOpts(**filter_opts),
             smooth=False,
             temporal_key="year",
             top_count=100000,
@@ -143,7 +141,8 @@ class Corpus:
 
         trends: pd.DataFrame = trends_data.extract(indices=trends_data.find_word_indices(opts))
 
-        trends = trends[trends["year"].between(start_year, end_year)]
+        if start_year or end_year:
+            trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]
 
         trends.rename(columns={"who": "person_id"}, inplace=True)
         trends_data.person_codecs.decode(trends)
@@ -260,18 +259,12 @@ class Corpus:
         return res
 
     def get_speaker(self, document_name: str) -> str:
-        speech = self.repository.speech(speech_name=document_name, mode="dict")
-        # print(speech)
-
-        if "error" in speech:
-            return "Okänd"
-        if "name" in speech and speech["name"] == "unknown":
-            return "Okänd"
-        # FIXME: This can't be right, should use
-        return self.decoded_persons.loc[self.decoded_persons["person_id"] == speech["name"]]["name"].values[0]
-
-        # return speech['name']
-
+        document_item: dict = self.document_index[self.document_index["document_name"] == document_name].iloc[0]
+        if document_item["person_id"] == "unknown":
+            return "Okänt"
+        person: dict = self.person_codecs[document_item["person_id"]]
+        return person['name']
+    
     def get_speaker_note(self, document_name: str) -> str:
         speech = self.get_speech(document_name)
         if "speaker_note_id" not in speech:
