@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
+import types
 from os.path import basename, dirname, splitext
 from typing import Any, Callable, Type
 
@@ -9,6 +11,14 @@ import numpy as np
 import pandas as pd
 import requests
 from penelope.utility import PropertyValueMaskingOpts
+
+try:
+    import github as gh  # type: ignore
+except ImportError:
+
+    def Github(_) -> types.SimpleNamespace:
+        return types.SimpleNamespace()
+
 
 # pylint: disable=missing-timeout
 
@@ -288,9 +298,33 @@ def strip_paths(filenames: str | list[str]) -> str | list[str]:
     return [basename(filename) for filename in filenames]
 
 
+def strip_extensions(filename: str | list[str]) -> list[str]:
+    if isinstance(filename, str):
+        return splitext(filename)[0]
+    return [splitext(x)[0] for x in filename]
+
+
 def filter_by_opts(df: pd.DataFrame, px: Callable[[Any], bool] | PropertyValueMaskingOpts | dict) -> pd.DataFrame:
     if isinstance(px, dict):
         px = PropertyValueMaskingOpts(**px)
 
     mask: np.ndarray | pd.Series[bool] = df.apply(px, axis=1) if callable(px) else px.mask(df)
     return df[mask]
+
+
+SUBST_PUNCTS = re.compile(r'\s([,?.!"%\';:`](?:\s|$))')
+
+
+def fix_whitespace(text: str) -> str:
+    return SUBST_PUNCTS.sub(r"\1", text)
+
+def get_release_tags(user: str, repository: str, github_access_token: str = None) -> list[str]:
+    release_tags: list[str] = ["main", "dev"]
+    try:
+        access_token: str = github_access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
+        github: gh.Github = gh.Github(access_token)
+        riksdagen_corpus = github.get_repo(f"{user}/{repository}")
+        release_tags = release_tags + [x.title for x in riksdagen_corpus.get_releases()]
+    except:  # pylint: disable=bare-except
+        ...
+    return release_tags
