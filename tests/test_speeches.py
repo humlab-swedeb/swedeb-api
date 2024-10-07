@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
 from fastapi import status
+from fastapi.testclient import TestClient
+from httpx import Response
 
 from api_swedeb.api.utils.corpus import Corpus, load_corpus
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
@@ -110,6 +112,30 @@ def test_get_speeches_corpus(corpus):
     df_unfiltered = corpus.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
+
+
+def test_get_speeches_by_ids(corpus):
+    speech_ids: list[str] = corpus.document_index.speech_id.sample(3).to_list()
+    speeches: pd.DataFrame = corpus.get_anforanden(selections={'speech_id': speech_ids})
+    assert len(speeches) == len(speech_ids)
+    assert set(speeches.speech_id) == set(speech_ids)
+
+
+def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus: Corpus):
+    speech_ids: list[str] = corpus.document_index.speech_id.sample(3).to_list()
+    args: str = '&'.join([f"speech_id={speech_id}" for speech_id in speech_ids])
+    url: str = f"{version}/tools/speeches/?{args}"
+    response: Response = fastapi_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert 'speech_list' in response.json()
+    speeches: list[dict] = response.json()['speech_list']
+
+    assert len(speeches) == len(speech_ids)
+
+    url: str = f"{version}/tools/speeches"
+    json: dict = {'speech_id': speech_ids}
+    response: Response = fastapi_client.post(url, json=json)
+    assert response.status_code == status.HTTP_200_OK
 
 
 def find_a_speech_id(corpus):

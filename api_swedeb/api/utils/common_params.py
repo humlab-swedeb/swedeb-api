@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import Query
 
 year_regex = r"^\d{4}$"
@@ -6,17 +8,17 @@ year_regex = r"^\d{4}$"
 class SpeakerQueryParams:
     def __init__(
         self,
-        office_types: list[str] = Query(None, description="List of selected office types"),
-        sub_office_types: list[str] = Query(None, description="List of selected suboffice types"),
-        party_id: list[int] = Query(None, description="List of selected parties"),
-        gender_id: list[int] = Query(None, description="List of selected genders"),
-        chambers: list[str] = Query(None, description="List of selected chambers"),
+        office_types: List[str] = Query(None, description="List of selected office types"),
+        sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
+        party_id: List[int] = Query(None, description="List of selected parties"),
+        gender_id: List[int] = Query(None, description="List of selected genders"),
+        chambers: List[str] = Query(None, description="List of selected chambers"),
     ):
-        self.office_types: list[str] = office_types
-        self.sub_office_types: list[str] = sub_office_types
-        self.party_id: list[int] = party_id
-        self.gender_id: list[int] = gender_id
-        self.chambers: list[str] = chambers
+        self.office_types: List[str] = office_types
+        self.sub_office_types: List[str] = sub_office_types
+        self.party_id: List[int] = party_id
+        self.gender_id: List[int] = gender_id
+        self.chambers: List[str] = chambers
 
     def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:
         opts: dict[str, list[int]] = {
@@ -33,20 +35,18 @@ class CommonQueryParams(SpeakerQueryParams):
     def __init__(
         self,
         from_year: int = Query(None, description="The first year to be included"),
-        to_year: int = Query(
-            None,
-            description="The last year to be included",
-        ),
-        office_types: list[str] = Query(None, description="List of selected office types"),
-        sub_office_types: list[str] = Query(None, description="List of selected suboffice types"),
-        who: list[str] = Query(
+        to_year: int = Query(None, description="The last year to be included"),
+        office_types: List[str] = Query(None, description="List of selected office types"),
+        sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
+        who: List[str] = Query(
             None,
             description="List of selected speaker ids. With this parameter, other metadata filters are unnecessary",
         ),
         sort_by: str = Query("year_title", description="Column to sort by"),
-        party_id: list[int] = Query(None, description="List of selected parties"),
-        gender_id: list[int] = Query(None, description="List of selected genders"),
-        chambers: list[str] = Query(None, description="List of selected chambers"),
+        party_id: List[int] = Query(None, description="List of selected parties"),
+        gender_id: List[int] = Query(None, description="List of selected genders"),
+        chambers: List[str] = Query(None, description="List of selected chambers"),
+        speech_id: List[str] = Query(None, description="List of speech ids to filter by"),
         limit: int = Query(None, description="The number of results per page"),
         offset: int = Query(None, description="Result offset"),
         sort_order: str = Query("asc", description="Sort order. Default is asc"),
@@ -54,7 +54,8 @@ class CommonQueryParams(SpeakerQueryParams):
         super().__init__(office_types, sub_office_types, party_id, gender_id, chambers)
         self.from_year: int = from_year
         self.to_year: int = to_year
-        self.who: list[str] = who
+        self.speech_id: List[str] = speech_id
+        self.who: List[str] = who
         self.sort_by: str = sort_by
         self.limit: int = limit
         self.offset: int = offset
@@ -67,6 +68,7 @@ class CommonQueryParams(SpeakerQueryParams):
         opts: dict[str, list[int]] = {
             **super().get_filter_opts(include_year),
             **({"person_id": self.who} if self.who else {}),
+            **({"speech_id": self.speech_id} if self.speech_id else {}),
             **year_opts,
         }
         return opts
