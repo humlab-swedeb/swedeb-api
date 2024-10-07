@@ -272,11 +272,6 @@ class Corpus:
             return "Talet saknar notering"
         return speech["speaker_note"]
 
-    def filter_corpus(self, filter_dict: dict, corpus: VectorizedCorpus) -> VectorizedCorpus:
-        if filter_dict is not None:
-            corpus = corpus.filter(filter_dict)
-        return corpus
-
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""
         return int(self.document_index["year"].min())
