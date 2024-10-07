@@ -108,11 +108,11 @@ def load_tables(
     *,
     db: sqlite3.Connection,
     defaults: dict[str, Any] = None,
-    types: dict[str, Any] = None,
+    dtypes: dict[str, Any] = None,
 ) -> dict[str, pd.DataFrame]:
     """Loads tables as pandas dataframes, slims types, fills NaN, sets pandas index"""
     data: dict[str, pd.DataFrame] = read_sql_tables(list(tables.keys()), db)
-    slim_table_types(data.values(), defaults=defaults, types=types)
+    slim_table_types(data.values(), defaults=defaults, dtypes=dtypes)
     for table_name, table in data.items():
         if tables.get(table_name):
             table.set_index(tables.get(table_name), drop=True, inplace=True)
@@ -122,7 +122,7 @@ def load_tables(
 def slim_table_types(
     tables: list[pd.DataFrame] | pd.DataFrame,
     defaults: dict[str, Any] = None,
-    types: dict[str, Any] = None,
+    dtypes: dict[str, Any] = None,
 ) -> None:
     """Slims types and sets default value for NaN entries"""
 
@@ -130,14 +130,14 @@ def slim_table_types(
         tables = [tables]
 
     defaults: dict[str, Any] = COLUMN_DEFAULTS if defaults is None else defaults
-    types: dict[str, Any] = COLUMN_TYPES if types is None else types
+    dtypes: dict[str, Any] = COLUMN_TYPES if dtypes is None else dtypes
 
     for table in tables:
         for column_name, value in defaults.items():
             if column_name in table.columns:
                 table[column_name].fillna(value, inplace=True)
 
-        for column_name, dt in types.items():
+        for column_name, dt in dtypes.items():
             if column_name in table.columns:
                 if table[column_name].dtype != dt:
                     table[column_name] = table[column_name].astype(dt)
@@ -317,6 +317,7 @@ SUBST_PUNCTS = re.compile(r'\s([,?.!"%\';:`](?:\s|$))')
 
 def fix_whitespace(text: str) -> str:
     return SUBST_PUNCTS.sub(r"\1", text)
+
 
 def get_release_tags(user: str, repository: str, github_access_token: str = None) -> list[str]:
     release_tags: list[str] = ["main", "dev"]

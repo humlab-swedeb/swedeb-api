@@ -11,13 +11,10 @@ from typing import Iterable, Literal
 
 import numpy as np
 import pandas as pd
-from jinja2 import Template
 from loguru import logger
 
-from api_swedeb.core.utility import read_sql_table
-from api_swedeb.core.utility.utility import fix_whitespace
-
 from . import codecs as md
+from .utility import fix_whitespace, read_sql_table
 
 # pylint: disable=unused-argument
 
@@ -82,7 +79,8 @@ class SpeechTextService:
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]: ...
+    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
+        ...
 
 
 def zero_fill_filename_sequence(name: str) -> str:
