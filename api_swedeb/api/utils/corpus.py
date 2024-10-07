@@ -3,14 +3,13 @@ from functools import cached_property
 import pandas as pd
 import penelope.utility as pu
 from penelope.common.keyness import KeynessMetric
-from penelope.corpus import VectorizedCorpus, IVectorizedCorpus
+from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
 from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
-from api_swedeb.core.speech_index import (get_speeches_by_opts,
-                                          get_speeches_by_words)
+from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
 from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.core.utility import Lazy
 
@@ -107,10 +106,7 @@ class Corpus:
         return [self.word_in_vocabulary(word) for word in search_terms if self.word_in_vocabulary(word)]
 
     def get_word_trend_results(
-        self,
-        search_terms: list[str],
-        filter_opts: dict,
-        normalize: bool = False
+        self, search_terms: list[str], filter_opts: dict, normalize: bool = False
     ) -> pd.DataFrame:
         search_terms = self.filter_search_terms(search_terms)
 
@@ -267,7 +263,7 @@ class Corpus:
             return person['name']
         except IndexError:
             return "Okänd"
-            
+
     def get_speaker_note(self, document_name: str) -> str:
         speech = self.get_speech(document_name)
         if "speaker_note_id" not in speech:

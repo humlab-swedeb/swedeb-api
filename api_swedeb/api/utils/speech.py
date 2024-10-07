@@ -29,7 +29,7 @@ def get_speeches(commons: CommonQueryParams, corpus: Corpus) -> SpeechesResult:
 
     data = df.to_dict(orient="records")
 
-    rows = [SpeechesResultItem(**row) for row in data]
+    rows: List[SpeechesResultItem] = [SpeechesResultItem(**row) for row in data]
 
     return SpeechesResult(speech_list=rows)
 

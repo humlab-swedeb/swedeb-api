@@ -168,13 +168,13 @@ class SpeechTextRepository:
         self.service: SpeechTextService = service or SpeechTextService(self.document_index)
 
     @cached_property
-    def document_name2id(self)->dict[str, int]:
+    def document_name2id(self) -> dict[str, int]:
         return self.document_index.reset_index().set_index("document_name")["document_id"].to_dict()
-    
+
     @cached_property
-    def speech_id2id(self)->dict[str, int]:
+    def speech_id2id(self) -> dict[str, int]:
         return self.document_index.reset_index().set_index("speech_id")["document_id"].to_dict()
-        
+
     def load_protocol(self, protocol_name: str) -> tuple[dict, list[dict]]:
         return self.source.load(protocol_name)
 
@@ -188,12 +188,12 @@ class SpeechTextRepository:
         """
         if not isinstance(key, (int, str)):
             raise ValueError("key must be int or str")
-        
+
         if isinstance(key, int) or key.isdigit():
             key_idx: int = int(key)
-        elif  key.startswith('prot-'):
+        elif key.startswith('prot-'):
             key_idx = self.document_name2id.get(key)
-        elif  key.startswith('i-'):
+        elif key.startswith('i-'):
             key_idx = self.speech_id2id.get(key)
         else:
             raise ValueError(f"unknown speech key {key}")

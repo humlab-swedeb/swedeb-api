@@ -273,7 +273,7 @@ class PersonCodecs(Codecs):
     def person(self) -> pd.DataFrame:
         return self.persons_of_interest
 
-    def __getitem__(self, key: int|str) -> dict:
+    def __getitem__(self, key: int | str) -> dict:
         """Get person by key (pid, person_id or wiki_id)"""
         if isinstance(key, int) or key.isdigit():
             idx_key: int = int(key)
@@ -282,7 +282,7 @@ class PersonCodecs(Codecs):
         else:
             idx_key = self.person_id2pid[key]
         return self.persons_of_interest.loc[idx_key]
-    
+
     @property
     def codecs(self) -> list[Codec]:
         return (

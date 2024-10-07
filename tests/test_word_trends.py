@@ -96,23 +96,26 @@ def test_word_trends_speeches(fastapi_client):
 
     json = response.json()
 
+    assert 'speech_list' in json
+    assert len(json['speech_list']) > 0
+
 
 def test_word_trends_speeches_corpus(api_corpus):
     search_term = 'debatt'
     df = api_corpus.get_anforanden_for_word_trends(selected_terms=[search_term], filter_opts={'year': (1900, 2000)})
     assert len(df) > 0
     expected_columns: set[str] = {
-        'document_id',      # NEW
+        'document_id',  # NEW
         'document_name',
-        'chamber_abbrev',   # NEW
+        'chamber_abbrev',  # NEW
         'year',
-        'speech_id',        # NEW
-        'speech_name',      # RENAMED (formatted_speech_id)
+        'speech_id',  # NEW
+        'speech_name',  # RENAMED (formatted_speech_id)
         'gender',
-        'gender_abbrev',    # NEW
+        'gender_abbrev',  # NEW
         'party_abbrev',
         'name',
-        'wiki_id',          # NEW
+        'wiki_id',  # NEW
         'link',
         'speech_link',
         'node_word',
@@ -145,16 +148,8 @@ def test_word_hits_api(fastapi_client):
     assert len(json['hit_list']) > 0
 
 
-def test_ordered_word_hits_api(api_corpus):
-    search_term = 'debatt*'
-    descending_true = api_corpus.get_word_hits(search_term, descending=True, n_hits=10)
-    descending_false = api_corpus.get_word_hits(search_term, descending=False, n_hits=10)
-    # 'debatterar', 'debattera', 'debatter', 'debatt', 'debatten'
-
-
 def test_summed_word_trends(api_corpus):
-    # If more than one trend, the sum of the trends should be included
-    df = api_corpus.get_word_trend_results(
+    df: pd.DataFrame = api_corpus.get_word_trend_results(
         search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={'year': (1900, 2000)}
     )
     assert 'Totalt' in df.columns
@@ -169,11 +164,11 @@ def test_search_with_different_case(api_corpus):
     assert pd.testing.assert_frame_equal(df_anycase, df_lowercase) is None
 
 
-def test_chambers(api_corpus):
-    # chamber id not included, needs to be added
+def test_chambers(api_corpus: Corpus):
     df = api_corpus.get_word_trend_results(
-        search_terms=["arbete"], filter_opts={"chamber_abbrev": ['fk'], 'year': (1900, 3000)}
+        search_terms=["arbete"], filter_opts={"chamber_abbrev": ['ek'], 'year': (1900, 3000)}
     )
+    assert len(df) > 0
 
 
 def test_filter_by_gender(api_corpus):
@@ -191,7 +186,7 @@ def test_merged_vectors():
         'cat': np.array([0, 0, 0, 1]),
     }
     for position in range(len(input_dict['debatt'])):
-        keys = [key for key, value in input_dict.items() if value[position] == 1]
+        _ = [key for key, value in input_dict.items() if value[position] == 1]
 
     # sen ska de ju också inte vara med i riksdagsdebatt om de är med i debatt,riksdagsdebatt
     # kanske bättre att mergea i dataframen
