@@ -311,13 +311,6 @@ class Corpus:
             new_col = col.replace("unknown", "Okänt")
         return new_col
 
-    def translate_gender_column(self, english_gender: str) -> str:
-        if english_gender == "woman":
-            return "kvinna"
-        if english_gender == "unknown":
-            return "Metadata saknas"
-        return english_gender
-
 
 def load_corpus(**opts) -> Corpus:
     c = Corpus(**opts)
