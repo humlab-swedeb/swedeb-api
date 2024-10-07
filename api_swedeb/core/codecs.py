@@ -273,6 +273,16 @@ class PersonCodecs(Codecs):
     def person(self) -> pd.DataFrame:
         return self.persons_of_interest
 
+    def __getitem__(self, key: int|str) -> dict:
+        """Get person by key (pid, person_id or wiki_id)"""
+        if isinstance(key, int) or key.isdigit():
+            idx_key: int = int(key)
+        elif key.lower().startswith('q'):
+            idx_key = self.wiki_id2pid[key]
+        else:
+            idx_key = self.person_id2pid[key]
+        return self.persons_of_interest.loc[idx_key]
+    
     @property
     def codecs(self) -> list[Codec]:
         return (
@@ -333,6 +343,9 @@ class PersonCodecs(Codecs):
         self, speech_index: pd.DataFrame, value_updates: dict = None, sort_values: bool = True
     ) -> pd.DataFrame | Any:
         """Setup speech index with decoded columns and standarized column values"""
+
+        if len(speech_index) == 0:
+            return speech_index
 
         self.decode(speech_index, drop=True, keeps=['wiki_id'])
 
