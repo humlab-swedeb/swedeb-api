@@ -23,8 +23,8 @@ class SpeakerQueryParams:
             # **({"office_id": self.office_types} if self.office_types else {}),
             # **({"sub_office_type_id": self.sub_office_types} if self.sub_office_types else {}),
             **({"party_id": self.party_id} if self.party_id else {}),
-            **({"gender_id": self.gender_id} if self.gender_id else {})
-            ** ({"chamber_abbrev": self.chambers} if self.chambers else {}),
+            **({"gender_id": self.gender_id} if self.gender_id else {}),
+            **({"chamber_abbrev": self.chambers} if self.chambers else {}),
         }
         return opts
 
@@ -54,7 +54,7 @@ class CommonQueryParams(SpeakerQueryParams):
         super().__init__(office_types, sub_office_types, party_id, gender_id, chambers)
         self.from_year: int = from_year
         self.to_year: int = to_year
-        self.person_id: list[str] = who
+        self.who: list[str] = who
         self.sort_by: str = sort_by
         self.limit: int = limit
         self.offset: int = offset
@@ -65,7 +65,8 @@ class CommonQueryParams(SpeakerQueryParams):
         if include_year and (self.from_year or self.to_year):
             year_opts = {'year': (self.from_year or 0, self.to_year or 3000)}
         opts: dict[str, list[int]] = {
-            **super().get_filter_opts(include_year) ** ({"person_id": self.person_id} if self.person_id else {}),
+            **super().get_filter_opts(include_year),
+            **({"person_id": self.who} if self.who else {}),
             **year_opts,
         }
         return opts
