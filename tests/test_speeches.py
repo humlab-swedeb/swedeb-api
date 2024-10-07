@@ -37,7 +37,6 @@ def test_get_all_protocol_ids(corpus):
 
 
 def test_get_speaker_name(corpus):
-    #
     speech_id = find_a_speech_id(corpus)
     speaker = corpus.get_speaker(speech_id)
     assert speaker is not None
@@ -46,7 +45,7 @@ def test_get_speaker_name(corpus):
 
 
 def test_get_speaker_name_for_unknown_speaker(corpus: Corpus):
-    speech_id = "prot-1963-höst-ak--35_090"
+    speech_id = "prot-1974--136_032"
     speaker = corpus.get_speaker(speech_id)
     assert speaker == "Okänd"
 

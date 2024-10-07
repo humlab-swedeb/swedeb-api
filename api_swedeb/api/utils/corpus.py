@@ -259,12 +259,15 @@ class Corpus:
         return res
 
     def get_speaker(self, document_name: str) -> str:
-        document_item: dict = self.document_index[self.document_index["document_name"] == document_name].iloc[0]
-        if document_item["person_id"] == "unknown":
-            return "Okänt"
-        person: dict = self.person_codecs[document_item["person_id"]]
-        return person['name']
-    
+        try:
+            document_item: dict = self.document_index[self.document_index["document_name"] == document_name].iloc[0]
+            if document_item["person_id"] == "unknown":
+                return "Okänd"
+            person: dict = self.person_codecs[document_item["person_id"]]
+            return person['name']
+        except IndexError:
+            return "Okänd"
+            
     def get_speaker_note(self, document_name: str) -> str:
         speech = self.get_speech(document_name)
         if "speaker_note_id" not in speech:
