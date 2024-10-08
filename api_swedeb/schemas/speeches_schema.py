@@ -18,6 +18,7 @@ class SpeechesResultItem(BaseModel):
     wiki_id: str = Field(None, description="Wiki id of speaker")
     document_id: int = Field(None, description="Document system id")
 
+
 class SpeechesResult(BaseModel):
     speech_list: List[SpeechesResultItem]
 

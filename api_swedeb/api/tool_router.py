@@ -5,16 +5,11 @@ from fastapi import Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.dependencies import (get_corpus_decoder,
-                                               get_cwb_corpus,
-                                               get_shared_corpus)
+from api_swedeb.api.utils.dependencies import get_corpus_decoder, get_cwb_corpus, get_shared_corpus
 from api_swedeb.api.utils.kwic import get_kwic_data
 from api_swedeb.api.utils.ngrams import get_ngrams
-from api_swedeb.api.utils.speech import (get_speech_by_id, get_speech_zip,
-                                         get_speeches)
-from api_swedeb.api.utils.word_trends import (get_search_hit_results,
-                                              get_word_trend_speeches,
-                                              get_word_trends)
+from api_swedeb.api.utils.speech import get_speech_by_id, get_speech_zip, get_speeches
+from api_swedeb.api.utils.word_trends import get_search_hit_results, get_word_trend_speeches, get_word_trends
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem

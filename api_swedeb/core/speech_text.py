@@ -1,51 +1,16 @@
 from __future__ import annotations
 
-import abc
-import json
-import os
-import re
 import sqlite3
-import types
-import zipfile
-from collections import namedtuple
 from functools import cached_property
-from os.path import join as jj
-from typing import Iterable, Literal
+from typing import Literal
 
 import numpy as np
 import pandas as pd
-from jinja2 import Template
 from loguru import logger
-from penelope import utility as pu
-
-from api_swedeb.core.utility import read_sql_table
 
 from . import codecs as md
-
-try:
-    import github as gh  # type: ignore
-except ImportError:
-
-    def Github(_):
-        return types.SimpleNamespace()
-
-
-default_template: Template = Template(
-    """
-<b>Protokoll:</b> {{protocol_name}} sidan {{ page_number }}, {{ chamber }}, {{ date }} <br/>
-<b>Källor:</b> {{parlaclarin_links}} {{ wikidata_link }} {{ kb_labb_link }} <br/>
-<b>Talare:</b> {{name}}, {{ party_abbrev }}, {{ office_type }}, {{ sub_office_type }}, {{ district }}, {{ gender}}<br/>
-<b>Antal tokens:</b> {{ num_tokens }} ({{ num_words }}), uid: {{speech_id}}, who: {{who}} <br/>
-<h3> {{ speaker_note }} </h3>
-<span style="color: blue;line-height:50%;">
-{% for n in paragraphs %}
-{{n}}
-{% endfor %}
-</span>
-"""
-)
-
-GithubUrl = namedtuple("GithubUrl", "name url")
+from .load import Loader, ZipLoader
+from .utility import fix_whitespace, read_sql_table
 
 # pylint: disable=unused-argument
 
@@ -63,7 +28,7 @@ class SpeechTextService:
 
     @cached_property
     def name2info(self) -> dict[str, dict]:
-        """Create a map protcol name to list of dict of relevant properties"""
+        """Create a map from protocol name to list of dict of relevant properties"""
         si: pd.DataFrame = self.speech_index.set_index("protocol_name", drop=True)[
             ["speech_id", "speech_index", self.id_name, "n_utterances"]
         ]
@@ -108,63 +73,18 @@ class SpeechTextService:
         )
 
 
-class Loader(abc.ABC):
-    @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
-        ...
-
-
-def zero_fill_filename_sequence(name: str) -> str:
-    parts: list[str] = name.split('-')
-    if parts[-1].isdigit():
-        parts[-1] = parts[-1].zfill(3)
-    return '-'.join(parts)
-
-
-class ZipLoader(Loader):
-    def __init__(self, folder: str):
-        self.folder: str = folder
-
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
-        """Loads tagged protocol data from archive"""
-        sub_folder: str = protocol_name.split("-")[1]
-        for filename in [
-            jj(self.folder, sub_folder, f"{protocol_name}.zip"),
-            jj(self.folder, f"{protocol_name}.zip"),
-        ]:
-            if not os.path.isfile(filename):
-                continue
-            with zipfile.ZipFile(filename, "r") as fp:
-                json_str: str = fp.read(f"{protocol_name}.json")
-                metadata_str: str = fp.read("metadata.json")
-            metadata: dict = json.loads(metadata_str)
-            # FIXME: This is a hack to fix the filename sequence number bug, later versions of the corpus should have this fixed
-            metadata['name'] = zero_fill_filename_sequence(metadata.get("name"))
-            utterances: list[dict] = json.loads(json_str)
-            return metadata, utterances
-        raise FileNotFoundError(protocol_name)
-
-
 class SpeechTextRepository:
-    # FIXME: Adjust links to new v1.1.0 repository
-    GITHUB_REPOSITORY_URL: str = "https://github.com/welfare-state-analytics/riksdagen-corpus"
-    GITHUB_REPOSITORY_RAW_URL = "https://raw.githubusercontent.com/welfare-state-analytics/riksdagen-corpus"
-
     def __init__(
         self,
         *,
         source: str | Loader,
         person_codecs: md.PersonCodecs,
         document_index: pd.DataFrame,
-        template: Template = None,
         service: SpeechTextService = None,
     ):
-        self.template: Template = template or default_template
         self.source: Loader = source if isinstance(source, Loader) else ZipLoader(source)
         self.person_codecs: md.PersonCodecs = person_codecs
         self.document_index: pd.DataFrame = document_index
-        self.subst_puncts = re.compile(r'\s([,?.!"%\';:`](?:\s|$))')
-        self.release_tags: list[str] = self.get_github_tags()
         self.service: SpeechTextService = service or SpeechTextService(self.document_index)
 
     @cached_property
@@ -175,28 +95,21 @@ class SpeechTextRepository:
     def speech_id2id(self) -> dict[str, int]:
         return self.document_index.reset_index().set_index("speech_id")["document_id"].to_dict()
 
-    def load_protocol(self, protocol_name: str) -> tuple[dict, list[dict]]:
-        return self.source.load(protocol_name)
+    # def load_protocol(self, protocol_name: str) -> tuple[dict, list[dict]]:
+    #     return self.source.load(protocol_name)
 
-    def speeches(self, protocol_name: str) -> Iterable[dict]:
-        metadata, utterances = self.source.load(protocol_name)
-        return self.service.speeches(utterances=utterances, metadata=metadata)
+    # def speeches(self, protocol_name: str) -> Iterable[dict]:
+    #     metadata, utterances = self.source.load(protocol_name)
+    #     return self.service.speeches(utterances=utterances, metadata=metadata)
 
-    def _get_speech_info(self, key: int | str) -> dict:
+    def get_speech_info(self, key: int | str) -> dict:
         """Get speaker-info from document index and person table
         Accepts integer (document_id), speech_id (u_id of first utterance) and document_name ('prot-*)
         """
         if not isinstance(key, (int, str)):
             raise ValueError("key must be int or str")
 
-        if isinstance(key, int) or key.isdigit():
-            key_idx: int = int(key)
-        elif key.startswith('prot-'):
-            key_idx = self.document_name2id.get(key)
-        elif key.startswith('i-'):
-            key_idx = self.speech_id2id.get(key)
-        else:
-            raise ValueError(f"unknown speech key {key}")
+        key_idx: int = self.get_key_index(key)
 
         try:
             speech_info: dict = self.document_index.loc[key_idx].to_dict()
@@ -216,6 +129,17 @@ class SpeechTextRepository:
 
         return speech_info
 
+    def get_key_index(self, key):
+        if isinstance(key, int) or key.isdigit():
+            key_idx: int = int(key)
+        elif key.startswith('prot-'):
+            key_idx = self.document_name2id.get(key)
+        elif key.startswith('i-'):
+            key_idx = self.speech_id2id.get(key)
+        else:
+            raise ValueError(f"unknown speech key {key}")
+        return key_idx
+
     @cached_property
     def speaker_note_id2note(self) -> dict:
         try:
@@ -229,7 +153,7 @@ class SpeechTextRepository:
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
 
-    def speech(self, speech_name: str, mode: Literal["dict", "text", "html"]) -> dict | str:
+    def speech(self, speech_name: str, mode: Literal["dict", "text"]) -> dict | str:
         try:
             """Load speech data from speech corpus"""
             protocol_name: str = speech_name.split("_")[0]
@@ -238,7 +162,7 @@ class SpeechTextRepository:
             metadata, utterances = self.source.load(protocol_name)
             speech: dict = self.service.nth(metadata=metadata, utterances=utterances, n=speech_nr - 1)
 
-            speech_info: dict = self._get_speech_info(speech_name)
+            speech_info: dict = self.get_speech_info(speech_name)
             speech.update(**speech_info)
             speech.update(protocol_name=protocol_name)
 
@@ -253,9 +177,6 @@ class SpeechTextRepository:
         except Exception as ex:  # pylint: disable=bare-except
             speech = {"name": "speech not found", "error": str(ex)}
 
-        if mode == "html":
-            return self.to_html(speech)
-
         if mode == "text":
             return self.to_text(speech)
 
@@ -263,74 +184,5 @@ class SpeechTextRepository:
 
     def to_text(self, speech: dict) -> str:
         paragraphs: list[str] = speech.get("paragraphs", [])
-        text: str = self.fix_whitespace("\n".join(paragraphs))
+        text: str = fix_whitespace("\n".join(paragraphs))
         return text
-
-    def fix_whitespace(self, text: str) -> str:
-        return self.subst_puncts.sub(r"\1", text)
-
-    def to_html(self, speech: dict) -> str:
-        try:
-            speech["parlaclarin_links"] = self.to_parla_clarin_urls(speech["protocol_name"])
-            speech["wikidata_link"] = self.to_wikidata_link(speech["who"])
-            speech["kb_labb_link"] = self.to_kb_labb_link(speech["protocol_name"], speech["page_number"])
-            return self.template.render(speech)
-        except Exception as ex:
-            return f"render failed: {ex}"
-
-    def to_parla_clarin_urls(self, protocol_name: str, ignores: str = "alpha") -> str:
-        return " ".join(
-            map(
-                lambda x: f'<a href="{x.url}" target="_blank" style="font-weight: bold;color: blue;">{x.name}</a>&nbsp;',
-                self.get_github_xml_urls(protocol_name, ignores=ignores),
-            )
-        )
-
-    def to_wikidata_link(self, who: str) -> str:
-        if not bool(who) or who == "unknown":
-            return ""
-        height, width = 20, int(20 * 1.41)
-        img_src = f'<img width={width} heigh={height} src="https://upload.wikimedia.org/wikipedia/commons/f/ff/Wikidata-logo.svg"/>'
-        return f'<a href="https://www.wikidata.org/wiki/{who}" target="_blank" style="font-weight: bold;color: blue;">{img_src}</a>&nbsp;'
-
-    def to_kb_labb_link(self, protocol_name: str, page_number: str) -> str:
-        if not bool(protocol_name):
-            return ""
-
-        page_url: str = (
-            f"{protocol_name.replace('-', '_')}-{str(page_number).zfill(3)}.jp2/" if page_number.isnumeric() else ""
-        )
-
-        url: str = f"https://betalab.kb.se/{protocol_name}/{page_url}_view"
-
-        return f'<a href="{url}" target="_blank" style="font-weight: bold;color: blue;">KB</a>&nbsp;'
-
-    # FIXME: #46 Adjust links to new v1.1.0 repository
-    def get_github_tags(self, github_access_token: str = None) -> list[str]:
-        release_tags: list[str] = ["main", "dev"]
-        try:
-            access_token: str = github_access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
-
-            # if access_token is None:
-            #    logger.info("GITHUB_ACCESS_TOKEN not set")
-
-            github: gh.Github = gh.Github(access_token)
-
-            riksdagen_corpus = github.get_repo("welfare-state-analytics/riksdagen-corpus")
-            release_tags = release_tags + [x.title for x in riksdagen_corpus.get_releases()]
-
-        except:  # pylint: disable=bare-except
-            ...
-        return release_tags
-
-    def get_github_xml_urls(self, protocol_name: str, ignores: str = None, n: int = 2) -> list[GithubUrl]:
-        protocol_name: str = pu.strip_extensions(protocol_name)
-        sub_folder: str = protocol_name.split("-")[1]
-        xml_urls: list[GithubUrl] = []
-        tags: list[str] = [t for t in self.release_tags if ignores not in t] if ignores else self.release_tags
-        for tag in tags[:n]:
-            url: str = f"{self.GITHUB_REPOSITORY_URL}/blob/{tag}/corpus/protocols/{sub_folder}/{protocol_name}.xml"
-            raw_url: str = f"{self.GITHUB_REPOSITORY_RAW_URL}/{tag}/corpus/protocols/{sub_folder}/{protocol_name}.xml"
-            xml_urls.append(GithubUrl(name=tag, url=url))
-            xml_urls.append(GithubUrl(name=f"({tag})", url=raw_url))
-        return xml_urls

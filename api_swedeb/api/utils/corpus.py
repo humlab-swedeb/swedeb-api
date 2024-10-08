@@ -272,11 +272,6 @@ class Corpus:
             return "Talet saknar notering"
         return speech["speaker_note"]
 
-    def filter_corpus(self, filter_dict: dict, corpus: VectorizedCorpus) -> VectorizedCorpus:
-        if filter_dict is not None:
-            corpus = corpus.filter(filter_dict)
-        return corpus
-
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""
         return int(self.document_index["year"].min())
@@ -310,13 +305,6 @@ class Corpus:
         if "unknown" in col:
             new_col = col.replace("unknown", "Okänt")
         return new_col
-
-    def translate_gender_column(self, english_gender: str) -> str:
-        if english_gender == "woman":
-            return "kvinna"
-        if english_gender == "unknown":
-            return "Metadata saknas"
-        return english_gender
 
 
 def load_corpus(**opts) -> Corpus:

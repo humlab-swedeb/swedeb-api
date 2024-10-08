@@ -137,7 +137,7 @@ def test_word_trend_corpus_with_filters(api_corpus):
     wt = api_corpus.get_word_trend_results(search_terms=['krig'], filter_opts={'party_id': [9], 'year': (1900, 2000)})
     assert len(wt) > 0
     assert '1975' in wt.index
-    assert 'att S' in wt.columns
+    assert 'krig S' in wt.columns
 
 
 def test_word_hits_api(fastapi_client):
