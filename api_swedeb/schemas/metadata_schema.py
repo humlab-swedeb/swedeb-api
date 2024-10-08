@@ -22,7 +22,6 @@ class GenderItem(BaseModel):
     gender_id: int
     gender: str
     gender_abbrev: str
-    swedish_gender: str
 
 
 class GenderList(BaseModel):

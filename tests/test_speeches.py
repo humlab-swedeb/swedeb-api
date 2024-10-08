@@ -1,7 +1,10 @@
+import pandas as pd
 import pytest
 from fastapi import status
+from fastapi.testclient import TestClient
+from httpx import Response
 
-from api_swedeb.api.utils.corpus import load_corpus
+from api_swedeb.api.utils.corpus import Corpus, load_corpus
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 # these tests mainly check that the endpoints are reachable and returns something
@@ -25,7 +28,7 @@ def test_speeches_get(fastapi_client):
 
 
 def test_get_all_protocol_ids(corpus):
-    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
+    df = corpus.get_anforanden(selections={'year': (1900, 2000)})
     all_ids = df['document_name']
     for protocol_id in all_ids:
         try:
@@ -36,7 +39,6 @@ def test_get_all_protocol_ids(corpus):
 
 
 def test_get_speaker_name(corpus):
-    #
     speech_id = find_a_speech_id(corpus)
     speaker = corpus.get_speaker(speech_id)
     assert speaker is not None
@@ -44,8 +46,8 @@ def test_get_speaker_name(corpus):
     # speech with unknown speaker prot-1963-höst-ak--35_090.txt
 
 
-def test_get_speaker_name_for_unknown_speaker(corpus):
-    speech_id = "prot-1963-höst-ak--35_090"
+def test_get_speaker_name_for_unknown_speaker(corpus: Corpus):
+    speech_id = "prot-1974--136_032"
     speaker = corpus.get_speaker(speech_id)
     assert speaker == "Okänd"
 
@@ -66,16 +68,12 @@ def test_format_speech_id():
 
 
 def test_get_formatted_speech_id(corpus):
-    df_filtered = corpus.get_anforanden(
-        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}, di_selected=None
-    )
-    assert 'formatted_speech_id' in df_filtered.columns
+    df_filtered = corpus.get_anforanden(selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)})
+    assert 'speech_name' in df_filtered.columns
 
 
 def test_get_speech_by_id_client(fastapi_client, corpus):
     speech_id = find_a_speech_id(corpus)
-    start_year = corpus.get_years_start()
-    print(start_year)
 
     response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
@@ -108,16 +106,40 @@ def test_speeches_zip(fastapi_client):
 
 
 def test_get_speeches_corpus(corpus):
-    df_filtered = corpus.get_anforanden(
-        from_year=1900, to_year=2000, selections={'party_id': [4, 5], 'gender_id': [1, 2]}, di_selected=None
+    df_filtered: pd.DataFrame = corpus.get_anforanden(
+        selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
     )
-    df_unfiltered = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
+    df_unfiltered = corpus.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
 
 
+def test_get_speeches_by_ids(corpus):
+    speech_ids: list[str] = corpus.document_index.speech_id.sample(3).to_list()
+    speeches: pd.DataFrame = corpus.get_anforanden(selections={'speech_id': speech_ids})
+    assert len(speeches) == len(speech_ids)
+    assert set(speeches.speech_id) == set(speech_ids)
+
+
+def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus: Corpus):
+    speech_ids: list[str] = corpus.document_index.speech_id.sample(3).to_list()
+    args: str = '&'.join([f"speech_id={speech_id}" for speech_id in speech_ids])
+    url: str = f"{version}/tools/speeches/?{args}"
+    response: Response = fastapi_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert 'speech_list' in response.json()
+    speeches: list[dict] = response.json()['speech_list']
+
+    assert len(speeches) == len(speech_ids)
+
+    url: str = f"{version}/tools/speeches"
+    json: dict = {'speech_id': speech_ids}
+    response: Response = fastapi_client.post(url, json=json)
+    assert response.status_code == status.HTTP_200_OK
+
+
 def find_a_speech_id(corpus):
-    df = corpus.get_anforanden(from_year=1900, to_year=2000, selections={}, di_selected=None)
+    df = corpus.document_index.sample(1)
     return df.iloc[0]['document_name']
 
 

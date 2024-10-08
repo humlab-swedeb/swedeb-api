@@ -23,7 +23,7 @@ from api_swedeb.core.utility import read_sql_table
 from . import codecs as md
 
 try:
-    import github as gh # type: ignore
+    import github as gh  # type: ignore
 except ImportError:
 
     def Github(_):
@@ -35,7 +35,7 @@ default_template: Template = Template(
 <b>Protokoll:</b> {{protocol_name}} sidan {{ page_number }}, {{ chamber }}, {{ date }} <br/>
 <b>Källor:</b> {{parlaclarin_links}} {{ wikidata_link }} {{ kb_labb_link }} <br/>
 <b>Talare:</b> {{name}}, {{ party_abbrev }}, {{ office_type }}, {{ sub_office_type }}, {{ district }}, {{ gender}}<br/>
-<b>Antal tokens:</b> {{ num_tokens }} ({{ num_words }}), uid: {{u_id}}, who: {{who}} <br/>
+<b>Antal tokens:</b> {{ num_tokens }} ({{ num_words }}), uid: {{speech_id}}, who: {{who}} <br/>
 <h3> {{ speaker_note }} </h3>
 <span style="color: blue;line-height:50%;">
 {% for n in paragraphs %}
@@ -59,13 +59,13 @@ class SpeechTextService:
         self.speech_index.rename(columns={"speach_index": "speech_index"}, inplace=True, errors="ignore")
 
         """Name of speaker note reference was changed from v0.4.3 (speaker_hash => speaker_note_id)"""
-        self.id_name = "speaker_note_id" if "speaker_note_id" in self.speech_index.columns else "speaker_hash"
+        self.id_name: str = "speaker_note_id" if "speaker_note_id" in self.speech_index.columns else "speaker_hash"
 
     @cached_property
     def name2info(self) -> dict[str, dict]:
         """Create a map protcol name to list of dict of relevant properties"""
         si: pd.DataFrame = self.speech_index.set_index("protocol_name", drop=True)[
-            ["u_id", "speech_index", self.id_name, "n_utterances"]
+            ["speech_id", "speech_index", self.id_name, "n_utterances"]
         ]
         return si.assign(data=si.to_dict("records")).groupby(si.index).agg(list)["data"].to_dict()
 
@@ -166,9 +166,14 @@ class SpeechTextRepository:
         self.subst_puncts = re.compile(r'\s([,?.!"%\';:`](?:\s|$))')
         self.release_tags: list[str] = self.get_github_tags()
         self.service: SpeechTextService = service or SpeechTextService(self.document_index)
-        self.document_name2id: dict[str, int] = (
-            document_index.reset_index().set_index("document_name")["document_id"].to_dict()
-        )
+
+    @cached_property
+    def document_name2id(self) -> dict[str, int]:
+        return self.document_index.reset_index().set_index("document_name")["document_id"].to_dict()
+
+    @cached_property
+    def speech_id2id(self) -> dict[str, int]:
+        return self.document_index.reset_index().set_index("speech_id")["document_id"].to_dict()
 
     def load_protocol(self, protocol_name: str) -> tuple[dict, list[dict]]:
         return self.source.load(protocol_name)
@@ -177,20 +182,31 @@ class SpeechTextRepository:
         metadata, utterances = self.source.load(protocol_name)
         return self.service.speeches(utterances=utterances, metadata=metadata)
 
-    def _get_speech_info(self, speech_id: int | str) -> dict:
-        """Get speaker-info from document index and person table"""
+    def _get_speech_info(self, key: int | str) -> dict:
+        """Get speaker-info from document index and person table
+        Accepts integer (document_id), speech_id (u_id of first utterance) and document_name ('prot-*)
+        """
+        if not isinstance(key, (int, str)):
+            raise ValueError("key must be int or str")
 
-        speech_id: int = self.document_name2id.get(speech_id) if isinstance(speech_id, str) else speech_id
+        if isinstance(key, int) or key.isdigit():
+            key_idx: int = int(key)
+        elif key.startswith('prot-'):
+            key_idx = self.document_name2id.get(key)
+        elif key.startswith('i-'):
+            key_idx = self.speech_id2id.get(key)
+        else:
+            raise ValueError(f"unknown speech key {key}")
 
         try:
-            speech_info: dict = self.document_index.loc[speech_id].to_dict()
+            speech_info: dict = self.document_index.loc[key_idx].to_dict()
         except KeyError as ex:
-            raise KeyError(f"Speech {speech_id} not found in index") from ex
+            raise KeyError(f"Speech {key} not found in index") from ex
 
         try:
-            speaker_name: str = self.person_codecs.person.loc[speech_info["who"]]["name"] if speech_info else "unknown"
+            speaker_name: str = self.person_codecs[speech_info["person_id"]]["name"] if speech_info else "unknown"
         except KeyError:
-            speaker_name: str = speech_info["who"]
+            speaker_name: str = speech_info["person_id"]
 
         speech_info.update(name=speaker_name)
 
@@ -226,12 +242,13 @@ class SpeechTextRepository:
             speech.update(**speech_info)
             speech.update(protocol_name=protocol_name)
 
-            speech["office_type"] = self.person_codecs.office_type2name.get(speech["office_type_id"], "unknown")
+            speech["office_type"] = self.person_codecs.office_type2name.get(speech["office_type_id"], "Okänt")
             speech["sub_office_type"] = self.person_codecs.sub_office_type2name.get(
-                speech["sub_office_type_id"], "unknown"
+                speech["sub_office_type_id"], "Okänt"
             )
-            speech["gender"] = self.person_codecs.gender2name.get(speech["gender_id"], "unknown")
-            speech["party_abbrev"] = self.person_codecs.party_abbrev2name.get(speech["party_id"], "unknown")
+            speech["gender"] = self.person_codecs.gender2name.get(speech["gender_id"], "Okänt")
+            speech["gender_abbrev"] = self.person_codecs.gender2abbrev.get(speech["gender_id"], "Okänt")
+            speech["party_abbrev"] = self.person_codecs.party_abbrev2name.get(speech["party_id"], "Okänt")
 
         except Exception as ex:  # pylint: disable=bare-except
             speech = {"name": "speech not found", "error": str(ex)}

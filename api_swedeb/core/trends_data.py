@@ -29,12 +29,7 @@ class SweDebComputeOpts(wt.TrendsComputeOpts):
 
 
 class SweDebTrendsData(wt.TrendsService):
-    def __init__(
-        self,
-        corpus: pc.VectorizedCorpus,
-        person_codecs: md.PersonCodecs,
-        n_top: int = 100000,
-    ):
+    def __init__(self, corpus: pc.VectorizedCorpus, person_codecs: md.PersonCodecs, n_top: int = 100000):
         super().__init__(corpus, n_top=n_top)
         self.person_codecs: md.PersonCodecs = person_codecs
         self._compute_opts: SweDebComputeOpts = SweDebComputeOpts(

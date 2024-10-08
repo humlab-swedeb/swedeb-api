@@ -16,7 +16,7 @@ from api_swedeb.schemas.metadata_schema import (
 
 
 def get_speakers(query_params: SpeakerQueryParams, corpus):
-    selection_params = query_params.get_selection_dict()
+    selection_params: dict[str, list[int]] = query_params.get_filter_opts(include_year=False)
 
     df = corpus.get_speakers(selections=selection_params)
     data = df.to_dict(orient="records")

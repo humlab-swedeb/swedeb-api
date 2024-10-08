@@ -268,3 +268,4 @@ output
 test_data
 profiling
 *.code-workspace
+deprecated

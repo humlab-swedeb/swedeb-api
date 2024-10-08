@@ -1,17 +1,15 @@
 from functools import cached_property
-from typing import List
 
 import pandas as pd
-import penelope.utility as pu  # type: ignore
-from penelope.common.keyness import KeynessMetric  # type: ignore
-from penelope.corpus import VectorizedCorpus
-from penelope.corpus.dtm.interface import IVectorizedCorpus
-from penelope.utility import PropertyValueMaskingOpts  # type: ignore
+import penelope.utility as pu
+from penelope.common.keyness import KeynessMetric
+from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
-from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
+from api_swedeb.core.load import load_dtm_corpus, load_speech_index
+from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
 from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.core.utility import Lazy
 
@@ -24,7 +22,7 @@ class Corpus:
         self.tagged_corpus_folder: str = opts.get('tagged_corpus_folder') or ConfigValue("vrt.folder").resolve()
 
         self.__vectorized_corpus: IVectorizedCorpus = Lazy(
-            lambda: VectorizedCorpus.load(folder=self.dtm_folder, tag=self.dtm_tag)
+            lambda: load_dtm_corpus(folder=self.dtm_folder, tag=self.dtm_tag)
         )
         self.__lazy_person_codecs: md.PersonCodecs = Lazy(
             lambda: md.PersonCodecs()
@@ -39,7 +37,7 @@ class Corpus:
             )
         )
         self.__lazy_document_index: pd.DataFrame = Lazy(
-            lambda: VectorizedCorpus.load_metadata(folder=self.dtm_folder, tag=self.dtm_tag).get("document_index")
+            lambda: load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
         )
 
         self.__lazy_decoded_persons = Lazy(
@@ -56,11 +54,13 @@ class Corpus:
         return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
 
     @property
-    def vectorized_corpus(self) -> pd.DataFrame:
+    def vectorized_corpus(self) -> VectorizedCorpus:
         return self.__vectorized_corpus.value
 
     @property
     def document_index(self) -> pd.DataFrame:
+        if self.__vectorized_corpus.is_initialized:
+            return self.vectorized_corpus.document_index
         return self.__lazy_document_index.value
 
     @property
@@ -77,7 +77,7 @@ class Corpus:
 
     @cached_property
     def words_per_year(self) -> pd.DataFrame:
-        data_year_series = self.document_index.groupby("year")["n_raw_tokens"].sum()
+        data_year_series: pd.Series[int] = self.document_index.groupby("year")["n_raw_tokens"].sum()
         return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
 
     @cached_property
@@ -85,7 +85,7 @@ class Corpus:
         return self.__lazy_decoded_persons.value
 
     @cached_property
-    def possible_pivots(self) -> List[str]:
+    def possible_pivots(self) -> list[str]:
         return [v["text_name"] for v in self.person_codecs.property_values_specs]
 
     def normalize_word_per_year(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -96,9 +96,9 @@ class Corpus:
         return data
 
     def word_in_vocabulary(self, word):
-        if word in self.vectorized_corpus.vocabulary:
+        if word in self.vectorized_corpus.token2id:
             return word
-        if word.lower() in self.vectorized_corpus.vocabulary:
+        if word.lower() in self.vectorized_corpus.token2id:
             return word.lower()
         return None
 
@@ -106,31 +106,26 @@ class Corpus:
         return [self.word_in_vocabulary(word) for word in search_terms if self.word_in_vocabulary(word)]
 
     def get_word_trend_results(
-        self,
-        search_terms: List[str],
-        filter_opts: dict,
-        start_year: int,
-        end_year: int,
-        normalize: bool = False,
+        self, search_terms: list[str], filter_opts: dict, normalize: bool = False
     ) -> pd.DataFrame:
         search_terms = self.filter_search_terms(search_terms)
 
         if not search_terms:
             return pd.DataFrame()
 
+        start_year, end_year = filter_opts.pop('year') if 'year' in filter_opts else (None, None)
+
         trends_data: SweDebTrendsData = SweDebTrendsData(
-            corpus=self.vectorized_corpus,
-            person_codecs=self.person_codecs,
-            n_top=1000000,
+            corpus=self.vectorized_corpus, person_codecs=self.person_codecs, n_top=1000000
         )
         pivot_keys = list(filter_opts.keys()) if filter_opts else []
 
         opts: SweDebComputeOpts = SweDebComputeOpts(
-            fill_gaps=True,
+            fill_gaps=False,
             keyness=KeynessMetric.TF,
             normalize=False,
             pivot_keys_id_names=pivot_keys,
-            filter_opts=PropertyValueMaskingOpts(**filter_opts),
+            filter_opts=pu.PropertyValueMaskingOpts(**filter_opts),
             smooth=False,
             temporal_key="year",
             top_count=100000,
@@ -142,7 +137,8 @@ class Corpus:
 
         trends: pd.DataFrame = trends_data.extract(indices=trends_data.find_word_indices(opts))
 
-        trends = trends[trends["year"].between(start_year, end_year)]
+        if start_year or end_year:
+            trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]
 
         trends.rename(columns={"who": "person_id"}, inplace=True)
         trends_data.person_codecs.decode(trends)
@@ -165,89 +161,34 @@ class Corpus:
             unstacked_trends = self.normalize_word_per_year(unstacked_trends)
         return unstacked_trends
 
-    def get_anforanden_for_word_trends(self, selected_terms, filter_opts, start_year, end_year):
-        selected_terms = self.filter_search_terms(selected_terms)
-        if selected_terms:
-            filtered_corpus = self.filter_corpus(filter_opts, self.vectorized_corpus)
-            vectors = self.get_word_vectors(selected_terms, filtered_corpus)
-            hits = []
-            for word, vec in vectors.items():
-                if sum(vec) > 0:
-                    hit_di = filtered_corpus.document_index[vec.astype(bool)]
-                    anforanden = self.prepare_anforande_display(hit_di)
-                    anforanden["node_word"] = word
-                    hits.append(anforanden)
+    # FIXME: refactor get_anforanden_for_word_trends & get_anforanden to a single method
+    def get_anforanden_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
+        # BREAKING CHANGE:
+        #  old columns: ['year', 'document_name', 'gender', 'party_abbrev', 'name', 'link', 'speech_link', 'formatted_speech_id', 'node_word']
+        speeches: pd.DataFrame = get_speeches_by_words(
+            self.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts
+        )
+        self.person_codecs.decode_speech_index(
+            speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
+        )
+        return speeches
 
-            if len(hits) == 0:
-                return pd.DataFrame()
-
-            all_hits = pd.concat(hits)
-            all_hits = all_hits[all_hits["year"].between(start_year, end_year)]
-
-            all_hits["name"].replace("", "metadata saknas", inplace=True)
-            all_hits["party_abbrev"].replace("?", "metadata saknas", inplace=True)
-            all_hits["party_abbrev"].replace("X", "partilös", inplace=True)
-
-            # if several words in same speech, merge them
-            return (
-                all_hits.groupby(
-                    [
-                        "year",
-                        "document_name",
-                        "gender",
-                        "party_abbrev",
-                        "name",
-                        "link",
-                        "speech_link",
-                        "formatted_speech_id",
-                    ]
-                )
-                .agg({"node_word": ",".join})
-                .reset_index()
-            )
-        return pd.DataFrame()
-
-    def prepare_anforande_display(self, anforanden_doc_index: pd.DataFrame) -> pd.DataFrame:
-        anforanden_doc_index = anforanden_doc_index[["who", "year", "document_name", "gender_id", "party_id"]]
-
-        adi = anforanden_doc_index.rename(columns={"who": "person_id"})
-        self.person_codecs.decode(adi, drop=False)
-        # FIXME: #13 Very slow, should be optimized
-        adi["link"] = adi.apply(lambda x: self.get_link(x["person_id"], x["name"]), axis=1)
-        adi["speech_link"] = self.get_speech_link()
-        adi.drop(columns=["person_id", "gender_id", "party_id"], inplace=True)
-        adi["formatted_speech_id"] = adi.apply(lambda x: format_protocol_id(x["document_name"]), axis=1)
-        adi["gender"] = adi.apply(lambda x: self.translate_gender_column(x["gender"]), axis=1)
-
-        # to sort unknowns to the end of the results
-        sorted_adi = adi.sort_values(by="name", key=lambda x: x == "")
-
-        return sorted_adi
-
-    def get_speech_link(self):
-        # temporary. Should be link to pdf/speech/something interesting
-        return "https://www.riksdagen.se/sv/sok/?avd=dokument&doktyp=prot"
-
-    def get_word_vectors(self, words: list[str], corpus: VectorizedCorpus = None) -> dict:
-        """Returns individual corpus column vectors for each search term
+    def get_anforanden(self, selections: dict) -> pd.DataFrame:
+        """For getting a list of - and info about - the full 'Anföranden' (speeches)
 
         Args:
-            words: list of strings (search terms)
-            corpus (VectorizedCorpus, optional): current corpus in None.
-            Defaults to None.
+            from_year int: start year
+            to_year int: end year
+            selections dict: selected filters, i.e. genders, parties, and, speakers
 
         Returns:
-            dict: key: search term, value: corpus column vector
+            DataFrame: DataFrame with speeches for selected years and filter.
         """
-
-        vectors = {}
-        if corpus is None:
-            corpus = self.vectorized_corpus
-
-        for word in words:
-            vectors[word] = corpus.get_word_vector(word)
-
-        return vectors
+        speeches: pd.DataFrame = get_speeches_by_opts(self.document_index, selections)
+        self.person_codecs.decode_speech_index(
+            speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
+        )
+        return speeches
 
     def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Translates the (gender) columns of a data frame to Swedish
@@ -260,11 +201,6 @@ class Corpus:
         for col in cols:
             translations[col] = self.translate_gender_col_header(col)
         df.rename(columns=translations, inplace=True)
-
-    def get_link(self, person_id, name):
-        if name == "":
-            return "Okänd"
-        return f"https://www.wikidata.org/wiki/{person_id}"
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
@@ -297,13 +233,7 @@ class Corpus:
         return df.reset_index()
 
     def get_gender_meta(self):
-        df = self.metadata.gender
-        gender_df = df.reset_index()
-        swe_mapping = {"unknown": "Okänt", "man": "Man", "woman": "Kvinna"}
-        abbrev_mapping = {"unknown": "?", "man": "M", "woman": "K"}
-        gender_df["swedish_gender"] = gender_df["gender"].map(swe_mapping)
-        gender_df["gender_abbrev"] = gender_df["gender"].map(abbrev_mapping)
-        return gender_df
+        return self.metadata.gender.assign(gender_id=self.metadata.gender.index)
 
     def get_chamber_meta(self):
         df = self.metadata.chamber
@@ -317,31 +247,6 @@ class Corpus:
         df = self.metadata.sub_office_type
         return df.reset_index()
 
-    def get_anforanden(
-        self,
-        from_year: int,
-        to_year: int,
-        selections: dict,
-        di_selected: pd.DataFrame = None,
-    ) -> pd.DataFrame:
-        """For getting a list of - and info about - the full 'Anföranden' (speeches)
-
-        Args:
-            from_year int: start year
-            to_year int: end year
-            selections dict: selected filters, i.e. genders, parties, and, speakers
-
-        Returns:
-            DatFrame: DataFrame with speeches for selected years and filter.
-        """
-        if di_selected is None:
-            filtered_corpus = self.filter_corpus(selections, self.vectorized_corpus)
-            di_selected = filtered_corpus.document_index
-
-        di_selected = di_selected[di_selected["year"].between(from_year, to_year)]
-
-        return self.prepare_anforande_display(di_selected)
-
     def get_speech_text(self, document_name: str) -> str:  # type: ignore
         return self.repository.to_text(self.get_speech(document_name))
 
@@ -350,16 +255,14 @@ class Corpus:
         return res
 
     def get_speaker(self, document_name: str) -> str:
-        speech = self.repository.speech(speech_name=document_name, mode="dict")
-        # print(speech)
-
-        if "error" in speech:
+        try:
+            document_item: dict = self.document_index[self.document_index["document_name"] == document_name].iloc[0]
+            if document_item["person_id"] == "unknown":
+                return "Okänd"
+            person: dict = self.person_codecs[document_item["person_id"]]
+            return person['name']
+        except IndexError:
             return "Okänd"
-        if "name" in speech and speech["name"] == "unknown":
-            return "Okänd"
-        return self.decoded_persons.loc[self.decoded_persons["person_id"] == speech["name"]]["name"].values[0]
-
-        # return speech['name']
 
     def get_speaker_note(self, document_name: str) -> str:
         speech = self.get_speech(document_name)
@@ -371,8 +274,7 @@ class Corpus:
 
     def filter_corpus(self, filter_dict: dict, corpus: VectorizedCorpus) -> VectorizedCorpus:
         if filter_dict is not None:
-            for key in filter_dict:
-                corpus = corpus.filter(lambda row: row[key] in filter_dict[key])
+            corpus = corpus.filter(filter_dict)
         return corpus
 
     def get_years_start(self) -> int:
@@ -383,11 +285,12 @@ class Corpus:
         """Returns the last year in the corpus"""
         return int(self.document_index["year"].max())
 
-    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = False) -> list[str]:
+    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = True) -> list[str]:
         if search_term not in self.vectorized_corpus.vocabulary:
             search_term = search_term.lower()
         result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=descending)
-        return result[::-1]
+        # FIXME: remove sort amd use descending instead??
+        return result
 
     def translate_gender_col_header(self, col: str) -> str:
         """Translates gender column names to Swedish

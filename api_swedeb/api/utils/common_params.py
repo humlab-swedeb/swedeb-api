@@ -14,35 +14,28 @@ class SpeakerQueryParams:
         gender_id: List[int] = Query(None, description="List of selected genders"),
         chambers: List[str] = Query(None, description="List of selected chambers"),
     ):
-        self.office_types = office_types
-        self.sub_office_types = sub_office_types
-        self.party_id = party_id
-        self.gender_id = gender_id
-        self.chambers = chambers
+        self.office_types: List[str] = office_types
+        self.sub_office_types: List[str] = sub_office_types
+        self.party_id: List[int] = party_id
+        self.gender_id: List[int] = gender_id
+        self.chambers: List[str] = chambers
 
-    def get_selection_dict(self):
-        # Currently returns gender_id and party_id, to mimic
-        # prototype. who (speaker_id), was also included in the prototype, but
-        # not included here yet. key for genders is gender_id, key for parties is party_id
-        # and key for speaker id is who
-        # if no selections are made, return empty dict
-        selections = {}
-        if self.party_id:
-            selections.update({"party_id": self.party_id})
-        if self.gender_id:
-            selections.update({"gender_id": self.gender_id})
-
-        return selections
+    def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:
+        opts: dict[str, list[int]] = {
+            # **({"office_id": self.office_types} if self.office_types else {}),
+            # **({"sub_office_type_id": self.sub_office_types} if self.sub_office_types else {}),
+            **({"party_id": self.party_id} if self.party_id else {}),
+            **({"gender_id": self.gender_id} if self.gender_id else {}),
+            **({"chamber_abbrev": self.chambers} if self.chambers else {}),
+        }
+        return opts
 
 
 class CommonQueryParams(SpeakerQueryParams):
     def __init__(
         self,
         from_year: int = Query(None, description="The first year to be included"),
-        to_year: int = Query(
-            None,
-            description="The last year to be included",
-        ),
+        to_year: int = Query(None, description="The last year to be included"),
         office_types: List[str] = Query(None, description="List of selected office types"),
         sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
         who: List[str] = Query(
@@ -53,28 +46,29 @@ class CommonQueryParams(SpeakerQueryParams):
         party_id: List[int] = Query(None, description="List of selected parties"),
         gender_id: List[int] = Query(None, description="List of selected genders"),
         chambers: List[str] = Query(None, description="List of selected chambers"),
+        speech_id: List[str] = Query(None, description="List of speech ids to filter by"),
         limit: int = Query(None, description="The number of results per page"),
         offset: int = Query(None, description="Result offset"),
         sort_order: str = Query("asc", description="Sort order. Default is asc"),
     ):
         super().__init__(office_types, sub_office_types, party_id, gender_id, chambers)
-        self.from_year = from_year
-        self.to_year = to_year
-        self.who = who
-        self.sort_by = sort_by
-        self.limit = limit
-        self.offset = offset
-        self.sort_order = sort_order
+        self.from_year: int = from_year
+        self.to_year: int = to_year
+        self.speech_id: List[str] = speech_id
+        self.who: List[str] = who
+        self.sort_by: str = sort_by
+        self.limit: int = limit
+        self.offset: int = offset
+        self.sort_order: str = sort_order
 
-    def get_selection_dict(self):
-        # Currently returns gender_id, party_id and person_id (who)
-        # chambers, office and suboffice not yet supported
-        # if no selections are made, return empty dict
-        selections = {}
-        if self.party_id:
-            selections.update({"party_id": self.party_id})
-        if self.gender_id:
-            selections.update({"gender_id": self.gender_id})
-        if self.who:
-            selections.update({"who": self.who})
-        return selections
+    def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:
+        year_opts: dict = {}
+        if include_year and (self.from_year or self.to_year):
+            year_opts = {'year': (self.from_year or 0, self.to_year or 3000)}
+        opts: dict[str, list[int]] = {
+            **super().get_filter_opts(include_year),
+            **({"person_id": self.who} if self.who else {}),
+            **({"speech_id": self.speech_id} if self.speech_id else {}),
+            **year_opts,
+        }
+        return opts

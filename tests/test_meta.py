@@ -36,7 +36,7 @@ def test_multiple_parties(corpus):
 
 @pytest.mark.skip("must be adjusted to new data v1.1.0")
 def test_get_speaker_with_multiple_parties(corpus):
-    _ = corpus.person_codecs.person["Q6178909"]
+    _ = corpus.person_codecs["Q6178909"]
     # Raoul Hamilton should be returned for L, FRIS and X, party_id: 5, 12, 1
     speakers_5 = corpus.get_speakers(selections={'party_id': [5]})
     speakers_12 = corpus.get_speakers(selections={'party_id': [12]})
@@ -49,10 +49,16 @@ def test_get_speaker_with_multiple_parties(corpus):
 
 def test_meta_genders(corpus):
     df = corpus.get_gender_meta()
-    data = df.to_dict(orient="records")
-    rows = [GenderItem(**row) for row in data]
+    genders = df.to_dict(orient="records")
+
+    assert len(genders) == 3
+    assert genders[1].get("gender_id") == 1
+    assert genders[1].get("gender_abbrev") == 'M'
+
+    rows: list[GenderItem] = [GenderItem(**row) for row in genders]
     gender_list = GenderList(gender_list=rows)
-    print(gender_list)
+
+    assert len(gender_list.gender_list) == 3
 
 
 def test_meta_office_types(corpus):
