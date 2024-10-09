@@ -238,3 +238,32 @@ def test_corpus_attribs(corpus: Corpus):
     attribs: CorpusAttribs = CorpusAttribs(corpus)
 
     assert attribs is not None
+
+
+@pytest.mark.parametrize(
+    'words, target, filter_opts',
+    [
+        (["debatt"], "word", {}),
+        (["debatt"], "word", [{"key": "a.speech_party_id", "values": 9}]),
+        (["debatt"], "word", [{"key": "a.speech_party_id", "values": 9}]),
+    ],
+)
+def test_multiple_word_pattern(words: list[str], target: str, filter_opts: list[dict]):
+    search_opts: list[dict] = [
+        {
+            "prefix": None if not filter_opts else "a",
+            "target": target,
+            "value": word,
+            "criterias": filter_opts if filter_opts and i == 0 else None,
+        }
+        for i, word in enumerate([words] if isinstance(words, str) else words)
+    ]
+
+    expected_prefix: str = 'a:' if filter_opts else ''
+
+    query: str = compiler.to_cqp_exprs(search_opts, within="speech")
+
+    expected_patterns: str = expected_prefix + ' '.join(f'[{target}="{w}"%c]' for w in words)
+
+    assert query.startswith(expected_patterns)
+    assert query.endswith(' within speech')

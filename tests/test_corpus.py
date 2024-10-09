@@ -16,6 +16,7 @@ EXPECTED_COLUMNS: set[str] = {
     'speech_link',
     'speech_name',  # RENAMED: formatted_speech_id
     'wiki_id',  # NEW
+    'person_id',  # NEW
     'year',
     'node_word',
 }

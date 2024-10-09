@@ -40,7 +40,7 @@ def test_kwic(fastapi_client):
             "gender",
             "person_id",
             "link",
-            "formatted_speech_id",
+            "speech_name",
             "speech_link",
         }
     ) - set(first_result.keys())
