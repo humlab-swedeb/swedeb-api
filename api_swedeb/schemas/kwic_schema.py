@@ -15,8 +15,14 @@ class KeywordInContextItem(BaseModel):
     gender: Optional[str] = Field(None, description="gender of speaker")
     person_id: Optional[str] = Field(None, description="Id of speaker")
     link: Optional[str] = Field(None, description="Link to speaker wiki")
-    formatted_speech_id: Optional[str] = Field(None, description="Formatted speech id")
+    speech_name: Optional[str] = Field(None, description="Formatted speech id")  # RENAMED
     speech_link: Optional[str] = Field(None, description="Link to speech")
+    gender_abbrev: str = Field(None, description="Gender of speaker")  # NEW
+    document_name: str = Field(None, description="Unique id of speech")  # NEW
+    chamber_abbrev: str = Field(None, description="Chamber of speech")  # NEW
+    speech_id: str = Field(None, description="Unique id of speech")  # NEW
+    wiki_id: str = Field(None, description="Wiki id of speaker")  # NEW
+    document_id: int = Field(None, description="Document's system id")  # NEW
 
 
 class KeywordInContextResult(BaseModel):
