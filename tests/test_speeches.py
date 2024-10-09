@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.api.utils.protocol_id_format import format_protocol_id
+from api_swedeb.core.utility import format_protocol_id
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
