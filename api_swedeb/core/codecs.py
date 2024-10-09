@@ -48,6 +48,13 @@ class Codec:
             return self.fx.get(value, default or self.default)  # type: ignore
         return self.fx(value)
 
+    def is_decoded(self, df: pd.DataFrame) -> bool:
+        if self.to_column in df.columns:
+            return True
+        if self.from_column not in df.columns:
+            return True
+        return False
+
 
 null_frame: pd.DataFrame = pd.DataFrame()
 
@@ -201,6 +208,9 @@ class Codecs:
         fg = self.key_name_translate_any2any.get
         return [fg(key) for key in keys if fg(key) is not None]
 
+    def is_decoded(self, df: pd.DataFrame) -> bool:
+        return all(decoder.is_decoded(df) for decoder in self.decoders)
+
 
 class PersonCodecs(Codecs):
     def __init__(self):
@@ -347,7 +357,10 @@ class PersonCodecs(Codecs):
         if len(speech_index) == 0:
             return speech_index
 
-        self.decode(speech_index, drop=True, keeps=['wiki_id'])
+        if self.is_decoded(speech_index):
+            return speech_index
+
+        self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
         speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
         speech_index["speech_link"] = self.speech_link(speech_id=speech_index.speech_id)

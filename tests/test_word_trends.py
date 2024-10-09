@@ -116,6 +116,7 @@ def test_word_trends_speeches_corpus(api_corpus):
         'party_abbrev',
         'name',
         'wiki_id',  # NEW
+        'person_id',  # NEW
         'link',
         'speech_link',
         'node_word',

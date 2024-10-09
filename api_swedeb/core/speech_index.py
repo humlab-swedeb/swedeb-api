@@ -55,16 +55,22 @@ def _find_documents_with_words(corpus: VectorizedCorpus, terms: list[str], opts:
 
 
 def get_speeches_by_speech_ids(
-    speech_index: pd.DataFrame, speech_ids: pd.Series | pd.DataFrame | list[str]
+    speech_index: pd.DataFrame, speech_ids: pd.Series | pd.DataFrame | list[str], **join_opts
 ) -> pd.DataFrame:
     if len(speech_ids) == 0:
         return pd.DataFrame()
 
+    if not join_opts:
+        join_opts = dict(left_index=True, right_index=True)
+
+    if not {'left_index', 'left_on'}.intersection(join_opts.keys()):
+        join_opts['left_index'] = True
+    if not {'right_index', 'right_on'}.intersection(join_opts.keys()):
+        join_opts['right_index'] = True
+
     if isinstance(speech_ids, pd.DataFrame):
         """Merge and keep any additional columns in `speech_ids`"""
-        speech_index = speech_index[COLUMNS_OF_INTEREST].merge(
-            speech_ids, how='inner', left_index=True, right_index=True
-        )
+        speech_index = speech_index[COLUMNS_OF_INTEREST].merge(speech_ids, how='inner', **join_opts)
     else:
         speech_index = speech_index[COLUMNS_OF_INTEREST].loc[speech_ids]
 

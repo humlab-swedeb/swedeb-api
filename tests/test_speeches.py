@@ -1,10 +1,9 @@
 import pandas as pd
-import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from api_swedeb.api.utils.corpus import Corpus, load_corpus
+from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 
 # these tests mainly check that the endpoints are reachable and returns something
@@ -15,11 +14,6 @@ from api_swedeb.api.utils.protocol_id_format import format_protocol_id
 version = "v1"
 
 
-@pytest.fixture(scope="module")
-def corpus():
-    return load_corpus()
-
-
 def test_speeches_get(fastapi_client):
     # assert that the speeches endpoint is reachable
     response = fastapi_client.get(f"{version}/tools/speeches/prot-1971--1_007")
@@ -27,8 +21,8 @@ def test_speeches_get(fastapi_client):
     print(response.json())
 
 
-def test_get_all_protocol_ids(corpus):
-    df = corpus.get_anforanden(selections={'year': (1900, 2000)})
+def test_get_all_protocol_ids(api_corpus):
+    df = api_corpus.get_anforanden(selections={'year': (1900, 2000)})
     all_ids = df['document_name']
     for protocol_id in all_ids:
         try:
@@ -38,23 +32,23 @@ def test_get_all_protocol_ids(corpus):
             assert False
 
 
-def test_get_speaker_name(corpus):
-    speech_id = find_a_speech_id(corpus)
-    speaker = corpus.get_speaker(speech_id)
+def test_get_speaker_name(api_corpus):
+    speech_id = find_a_speech_id(api_corpus)
+    speaker = api_corpus.get_speaker(speech_id)
     assert speaker is not None
     assert len(speaker) > 0
     # speech with unknown speaker prot-1963-höst-ak--35_090.txt
 
 
-def test_get_speaker_name_for_unknown_speaker(corpus: Corpus):
+def test_get_speaker_name_for_unknown_speaker(api_corpus: Corpus):
     speech_id = "prot-1974--136_032"
-    speaker = corpus.get_speaker(speech_id)
+    speaker = api_corpus.get_speaker(speech_id)
     assert speaker == "Okänd"
 
 
-def test_get_speaker_name_for_non_existing_speech(corpus):
+def test_get_speaker_name_for_non_existing_speech(api_corpus):
     speech_id = "prot-made_up_and_missing"
-    speaker = corpus.get_speaker(speech_id)
+    speaker = api_corpus.get_speaker(speech_id)
     assert speaker == "Okänd"
 
 
@@ -67,13 +61,13 @@ def test_format_speech_id():
     assert format_protocol_id(prot) == 'Andra kammaren 1958:17 01 001'
 
 
-def test_get_formatted_speech_id(corpus):
-    df_filtered = corpus.get_anforanden(selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)})
+def test_get_formatted_speech_id(api_corpus):
+    df_filtered = api_corpus.get_anforanden(selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)})
     assert 'speech_name' in df_filtered.columns
 
 
-def test_get_speech_by_id_client(fastapi_client, corpus):
-    speech_id = find_a_speech_id(corpus)
+def test_get_speech_by_id_client(fastapi_client, api_corpus):
+    speech_id = find_a_speech_id(api_corpus)
 
     response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
@@ -105,24 +99,24 @@ def test_speeches_zip(fastapi_client):
     assert len(response.content) > 0
 
 
-def test_get_speeches_corpus(corpus):
-    df_filtered: pd.DataFrame = corpus.get_anforanden(
+def test_get_speeches_corpus(api_corpus):
+    df_filtered: pd.DataFrame = api_corpus.get_anforanden(
         selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
     )
-    df_unfiltered = corpus.get_anforanden(selections={'year': (1970, 1980)})
+    df_unfiltered = api_corpus.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
 
 
-def test_get_speeches_by_ids(corpus):
-    speech_ids: list[str] = corpus.document_index.speech_id.sample(3).to_list()
-    speeches: pd.DataFrame = corpus.get_anforanden(selections={'speech_id': speech_ids})
+def test_get_speeches_by_ids(api_corpus):
+    speech_ids: list[str] = api_corpus.document_index.speech_id.sample(3).to_list()
+    speeches: pd.DataFrame = api_corpus.get_anforanden(selections={'speech_id': speech_ids})
     assert len(speeches) == len(speech_ids)
     assert set(speeches.speech_id) == set(speech_ids)
 
 
-def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus: Corpus):
-    speech_ids: list[str] = corpus.document_index.speech_id.sample(3).to_list()
+def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, api_corpus: Corpus):
+    speech_ids: list[str] = api_corpus.document_index.speech_id.sample(3).to_list()
     args: str = '&'.join([f"speech_id={speech_id}" for speech_id in speech_ids])
     url: str = f"{version}/tools/speeches/?{args}"
     response: Response = fastapi_client.get(url)
@@ -138,34 +132,34 @@ def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus: Corpus):
     assert response.status_code == status.HTTP_200_OK
 
 
-def find_a_speech_id(corpus):
-    df = corpus.document_index.sample(1)
+def find_a_speech_id(api_corpus):
+    df = api_corpus.document_index.sample(1)
     return df.iloc[0]['document_name']
 
 
-def test_get_speech_by_id(corpus):
-    speech_id = find_a_speech_id(corpus)
-    speech_text = corpus.get_speech_text(speech_id)
+def test_get_speech_by_id(api_corpus):
+    speech_id = find_a_speech_id(api_corpus)
+    speech_text = api_corpus.get_speech_text(speech_id)
     assert speech_text is not None
     assert len(speech_text) > 1
 
 
-def test_get_speech_by_id_missing(corpus):
+def test_get_speech_by_id_missing(api_corpus):
     # non-existing speech (gives empty string as response)
     speech_id = 'prot-1971--1_007_missing'
-    speech_text = corpus.get_speech_text(speech_id)
+    speech_text = api_corpus.get_speech_text(speech_id)
     assert len(speech_text) == 0
 
 
-def test_get_speaker_note(corpus):
-    speech_id = find_a_speech_id(corpus)
-    speaker_note = corpus.get_speaker_note(speech_id)
+def test_get_speaker_note(api_corpus):
+    speech_id = find_a_speech_id(api_corpus)
+    speaker_note = api_corpus.get_speaker_note(speech_id)
     assert speaker_note is not None
     assert len(speaker_note) > 0
 
 
-def test_get_speech_by_api(fastapi_client, corpus):
-    speech_id = find_a_speech_id(corpus)
+def test_get_speech_by_api(fastapi_client, api_corpus):
+    speech_id = find_a_speech_id(api_corpus)
     response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0

@@ -1,6 +1,7 @@
 from typing import Annotated, Any, List
 
 import fastapi
+import pandas as pd
 from fastapi import Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
@@ -44,14 +45,14 @@ async def get_kwic_results(
     return get_kwic_data(
         corpus,
         commons,
-        search=search,
+        speech_index=get_shared_corpus().document_index,
+        keywords=search,
         lemmatized=lemmatized,
         words_before=words_before,
         words_after=words_after,
         cut_off=cut_off,
-        decoder=decoder,
-        strip_s_tags=True,
-        display_target="word",
+        codecs=decoder,
+        p_show="word",
     )
 
 
