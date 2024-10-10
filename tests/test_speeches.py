@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.utility import format_protocol_id
 
 # these tests mainly check that the endpoints are reachable and returns something
@@ -33,23 +34,26 @@ def test_get_all_protocol_ids(api_corpus):
 
 
 def test_get_speaker_name(api_corpus):
-    speech_id = find_a_speech_id(api_corpus)
-    speaker = api_corpus.get_speaker(speech_id)
-    assert speaker is not None
-    assert len(speaker) > 0
-    # speech with unknown speaker prot-1963-höst-ak--35_090.txt
+    dockument_name, speech_id = find_a_speech_id(api_corpus)
+    speaker_by_speech_id = api_corpus.get_speaker(speech_id)
+    assert speaker_by_speech_id is not None
+    assert len(speaker_by_speech_id) > 0
+    speaker_by_document_name = api_corpus.get_speaker(dockument_name)
+    assert speaker_by_document_name == speaker_by_speech_id
 
 
 def test_get_speaker_name_for_unknown_speaker(api_corpus: Corpus):
+    unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
     speech_id = "prot-1974--136_032"
     speaker = api_corpus.get_speaker(speech_id)
-    assert speaker == "Okänd"
+    assert speaker == unknown
 
 
 def test_get_speaker_name_for_non_existing_speech(api_corpus):
+    unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
     speech_id = "prot-made_up_and_missing"
     speaker = api_corpus.get_speaker(speech_id)
-    assert speaker == "Okänd"
+    assert speaker == unknown
 
 
 def test_format_speech_id():
@@ -67,14 +71,21 @@ def test_get_formatted_speech_id(api_corpus):
 
 
 def test_get_speech_by_id_client(fastapi_client, api_corpus):
-    speech_id = find_a_speech_id(api_corpus)
+    document_name, speech_id = find_a_speech_id(api_corpus)
+
+    response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
+    assert response.status_code == status.HTTP_200_OK
+
+    data_by_name: dict = response.json()
+    assert 'speech_text' in data_by_name
+    assert len(data_by_name['speech_text']) > 1
+    assert len(data_by_name['speaker_note']) > 1
 
     response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
-    assert 'speech_text' in response.json()
-    assert len(response.json()['speech_text']) > 1
-    assert len(response.json()['speaker_note']) > 1
-    print(response.json()['speaker_note'])
+    data_by_id: dict = response.json()
+
+    assert data_by_id == data_by_name
 
 
 def test_speeches_get_years(fastapi_client):
@@ -134,14 +145,15 @@ def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, api_corpus: Corp
 
 def find_a_speech_id(api_corpus):
     df = api_corpus.document_index.sample(1)
-    return df.iloc[0]['document_name']
+    return df.iloc[0]['document_name'], df.iloc[0]['speech_id']
 
 
 def test_get_speech_by_id(api_corpus):
-    speech_id = find_a_speech_id(api_corpus)
+    document_name, speech_id = find_a_speech_id(api_corpus)
     speech_text = api_corpus.get_speech_text(speech_id)
     assert speech_text is not None
     assert len(speech_text) > 1
+    assert speech_text == api_corpus.get_speech_text(document_name)
 
 
 def test_get_speech_by_id_missing(api_corpus):
@@ -152,14 +164,17 @@ def test_get_speech_by_id_missing(api_corpus):
 
 
 def test_get_speaker_note(api_corpus):
-    speech_id = find_a_speech_id(api_corpus)
-    speaker_note = api_corpus.get_speaker_note(speech_id)
-    assert speaker_note is not None
-    assert len(speaker_note) > 0
+    document_name, speech_id = find_a_speech_id(api_corpus)
+
+    speaker_note_by_name = api_corpus.get_speaker_note(document_name)
+    assert speaker_note_by_name is not None
+    assert len(speaker_note_by_name) > 0
+
+    speaker_note_by_id = api_corpus.get_speaker_note(speech_id)
 
 
-def test_get_speech_by_api(fastapi_client, api_corpus):
-    speech_id = find_a_speech_id(api_corpus)
+def test_get_speech_by_api(fastapi_client: TestClient):
+    speech_id = 'prot-197576--087_007'
     response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
