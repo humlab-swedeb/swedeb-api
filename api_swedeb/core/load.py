@@ -137,7 +137,8 @@ def zero_fill_filename_sequence(name: str) -> str:
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]: ...
+    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
+        ...
 
 
 class ZipLoader(Loader):

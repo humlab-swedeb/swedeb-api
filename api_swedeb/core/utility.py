@@ -345,7 +345,7 @@ def format_protocol_id(selected_protocol: str) -> str:
             if len(protocol_parts) == 6:
                 return f"{chamber} {protocol_parts[1]}:{id_parts}"
             # if len(protocol_parts) == 7:
-                # prot-1958-a-ak--17-01_094
+            # prot-1958-a-ak--17-01_094
             return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
         else:
             #'prot-2004--113_075' -> '2004:113 075'

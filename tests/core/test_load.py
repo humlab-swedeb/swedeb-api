@@ -40,7 +40,6 @@
 #     assert is_invalidated(source_path, target_path)
 
 
-
 # def test_speech_index_memory_usage():
 #     folder: str = ConfigValue("dtm.folder").resolve("all-data")
 #     tag: str = ConfigValue("dtm.tag").resolve("all-data")
