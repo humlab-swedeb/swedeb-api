@@ -52,3 +52,11 @@ profile-kwic-pyinstrument:
 	@PYTHONPATH=. pyinstrument --color --show-all \
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_kwic.html \
 			tests/profile_kwic.py
+
+clean-dev:
+	@rm -rf .pytest_cache build dist .eggs *.egg-info
+	@rm -rf .coverage coverage.xml htmlcov report.xml .tox
+	@find . -type d -name '__pycache__' -exec rm -rf {} +
+	@find . -type d -name '*pytest_cache*' -exec rm -rf {} +
+	@find . -type d -name '.mypy_cache' -exec rm -rf {} +
+	@rm -rf tests/output
