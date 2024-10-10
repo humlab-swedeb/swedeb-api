@@ -334,7 +334,7 @@ def get_release_tags(user: str, repository: str, github_access_token: str = None
     return release_tags
 
 
-def format_protocol_id(selected_protocol: str):
+def format_protocol_id(selected_protocol: str) -> str:
     try:
         protocol_parts: list[str] = selected_protocol.split("-")
 
@@ -344,9 +344,9 @@ def format_protocol_id(selected_protocol: str):
             chamber = f"{ch} kammaren"
             if len(protocol_parts) == 6:
                 return f"{chamber} {protocol_parts[1]}:{id_parts}"
-            if len(protocol_parts) == 7:
+            # if len(protocol_parts) == 7:
                 # prot-1958-a-ak--17-01_094
-                return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
+            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
         else:
             #'prot-2004--113_075' -> '2004:113 075'
             year = protocol_parts[1]
