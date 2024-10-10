@@ -156,6 +156,11 @@ class SpeechTextRepository:
     def speech(self, speech_name: str, mode: Literal["dict", "text"]) -> dict | str:
         try:
             """Load speech data from speech corpus"""
+            if not speech_name.startswith("prot-"):
+                key_index: int = self.get_key_index(speech_name)
+                document_item: dict = self.document_index.loc[key_index].to_dict()
+                speech_name = document_item["document_name"]
+
             protocol_name: str = speech_name.split("_")[0]
             speech_nr: int = int(speech_name.split("_")[1])
 
