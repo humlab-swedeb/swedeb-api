@@ -39,10 +39,6 @@ build-utils:
 	@poetry run cythonize tests/profiling/utilities.pyx 
 	@poetry run python setup.py build_ext --inplace
 
-profile-utils-cprofile: build-utils
-	@echo "Profiling lib..."
-	@poetry run python -m cProfile -o profile.prof tests/profiling/profile_utilities.py
-	@poetry run snakeviz profile.prof
 
 profile-utils-pyinstrument: build-utils
 	@echo "Profiling lib..."
@@ -50,9 +46,9 @@ profile-utils-pyinstrument: build-utils
 
 TIMESTAMP_IN_ISO_FORMAT=$(shell date -u +"%Y%m%dT%H%M%SZ")
 
-profile-ngrams-pyinstrument:
-	@echo "Profiling n-grams..."
+profile-kwic-pyinstrument:
+	@echo "Profiling KWIC..."
 	@mkdir -p tests/output
 	@PYTHONPATH=. pyinstrument --color --show-all \
-		-o tests/output\$(TIMESTAMP_IN_ISO_FORMAT)_profile_ngrams.html \
-			tests/profiling/profile_ngrams.py
+		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_kwic.html \
+			tests/profile_kwic.py
