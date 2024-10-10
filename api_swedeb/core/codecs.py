@@ -10,6 +10,7 @@ from typing import Any, Callable, Literal, Mapping, Self, Union
 import pandas as pd
 from penelope import utility as pu  # type: ignore
 
+from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.utility import load_tables, revdict
 
 # pylint: disable=too-many-public-methods
@@ -340,8 +341,9 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         data: pd.Series = "https://www.wikidata.org/wiki/" + wiki_id
-        data.replace("https://www.wikidata.org/wiki/unknown", "Okänd", inplace=True)
+        data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
         return data
 
     @staticmethod
