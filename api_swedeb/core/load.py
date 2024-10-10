@@ -2,10 +2,13 @@ import abc
 import json
 import os
 import zipfile
-from os.path import join
+from os.path import isfile, join
 
 import pandas as pd
+from loguru import logger
 from penelope.corpus import VectorizedCorpus
+
+from .utility import time_call
 
 USED_COLUMNS: list[str] = [
     'document_id',
@@ -26,9 +29,9 @@ USED_COLUMNS: list[str] = [
     'n_raw_tokens',
     'page_number',
     # 'protocol_name', missing?
-    'filename',
 ]
 SKIP_COLUMNS = [
+    'filename',
     'Adjective',
     'Adverb',
     'Conjunction',
@@ -42,19 +45,82 @@ SKIP_COLUMNS = [
 ]
 
 
+SPEECH_INDEX_DTYPES = {
+    # 'document_name': object,          # object
+    # 'speech_id': object,              # object
+    # 'speech_name': object,            # object
+    # 'person_id': object,              # object
+    # 'speaker_note_id': object,        # object
+    # 'filename': object,               # object
+    'chamber_abbrev': 'category',  # object
+    'speech_index': 'UInt16',  # int64
+    'year': 'UInt16',  # int64
+    'gender_id': 'category',  # int64
+    'party_id': 'UInt8',  # int64
+    'office_type_id': 'category',  # int64
+    'sub_office_type_id': 'category',  # int64
+    'n_utterances': 'Int16',  # int64
+    'n_tokens': 'Int16',  # int64
+    'n_raw_tokens': 'Int16',  # int64
+    'page_number': 'Int16',  # int64
+}
+
+
 def slim_speech_index(speech_index: pd.DataFrame) -> pd.DataFrame:
     speech_index.rename(columns={'who': 'person_id', 'u_id': 'speech_id'}, inplace=True)
-    speech_index = speech_index[USED_COLUMNS]
+    speech_index = speech_index[USED_COLUMNS].astype(SPEECH_INDEX_DTYPES)
     return speech_index
 
 
-def load_speech_index(folder: str, tag: str) -> pd.DataFrame:
-    """Load speech index from DTM corpus"""
-    si: pd.DataFrame = VectorizedCorpus.load_metadata(folder=folder, tag=tag).get("document_index")
-    slim_speech_index(si)
-    return si
+def _to_feather(df: pd.DataFrame, filename: str) -> None:
+    try:
+        df.to_feather(filename)
+    except Exception as ex:
+        logger.error(f"Failed to write feather file: {ex}")
 
 
+def _memory_usage(document_index: pd.DataFrame) -> float:
+    return document_index.memory_usage(deep=True).sum() / 1024**2
+
+
+def is_invalidated(source_path: str, target_path: str) -> bool:
+    if not isfile(target_path):
+        return True
+    logger.info(f"Source: {os.path.getmtime(source_path)}, Target: {os.path.getmtime(target_path)}")
+    return os.path.getmtime(source_path) > os.path.getmtime(target_path)
+
+
+@time_call
+def load_speech_index(folder: str, tag: str, write_feather: bool = True) -> pd.DataFrame:
+    document_index: pd.DataFrame = None
+
+    prepped_feather_path: str = join(folder, f"{tag}_document_index.prepped.feather")
+    feather_path: str = join(folder, f"{tag}_document_index.feather")
+    csv_path: str = join(folder, f"{tag}_document_index.csv.gz")
+
+    if not is_invalidated(feather_path, prepped_feather_path):
+        document_index = pd.read_feather(prepped_feather_path)
+
+    elif not is_invalidated(csv_path, feather_path):
+        document_index = slim_speech_index(pd.read_feather(feather_path))
+        if write_feather:
+            _to_feather(document_index, prepped_feather_path)
+
+    elif isfile(csv_path):
+        document_index = pd.read_csv(join(folder, csv_path), sep=';', compression="gzip", index_col=0)
+        if write_feather:
+            _to_feather(document_index, feather_path)
+        document_index = slim_speech_index(document_index)
+
+    if document_index is not None:
+        memory_after_load: float = document_index.memory_usage(deep=True).sum() / 1024**2
+        logger.info(f"Memory usage after load: {memory_after_load:3} MB")
+        return document_index
+
+    raise FileNotFoundError(f"Speech index with tag {tag} not found in folder {folder}")
+
+
+@time_call
 def load_dtm_corpus(folder: str, tag: str) -> VectorizedCorpus:
     """Load DTM corpus"""
     corpus: VectorizedCorpus = VectorizedCorpus.load(folder=folder, tag=tag)
@@ -71,8 +137,7 @@ def zero_fill_filename_sequence(name: str) -> str:
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
-        ...
+    def load(self, protocol_name: str) -> tuple[dict, list[dict]]: ...
 
 
 class ZipLoader(Loader):
