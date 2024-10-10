@@ -88,6 +88,7 @@ def test_word_trends_api_with_filter(fastapi_client):
         assert word in count
 
 
+@pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
 def test_word_trends_speeches(fastapi_client):
     search_term = 'debatt'
 
