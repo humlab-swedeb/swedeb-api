@@ -41,17 +41,17 @@ class ConfigValue(Generic[T]):
         """Resolve the value from the current store (configuration file)"""
         return self.resolve()
 
-    def resolve(self) -> T:
+    def resolve(self, context: str = None) -> T:
         """Resolve the value from the current store (configuration file)"""
         if isinstance(self.key, Config):
-            return ConfigStore.config()  # type: ignore
+            return ConfigStore.config(context)  # type: ignore
         if isclass(self.key):
             return self.key()
         if self.mandatory and not self.default:
-            if not ConfigStore.config().exists(self.key):
+            if not ConfigStore.config(context).exists(self.key):
                 raise ValueError(f"ConfigValue {self.key} is mandatory but missing from config")
 
-        value = ConfigStore.config().get(*self.key.split(","), default=self.default)
+        value = ConfigStore.config(context).get(*self.key.split(","), default=self.default)
         if value and self.after:
             return self.after(value)
         return value
@@ -71,16 +71,16 @@ class ConfigStore:
     context: str = "default"
 
     @classmethod
-    def config(cls) -> "Config":
+    def config(cls, context: str = None) -> "Config":
         if not isinstance(cls.store.get(cls.context), Config):
             raise ValueError(f"Config context {cls.context} not properly initialized")
-        return cls.store.get(cls.context)
+        return cls.store.get(context or cls.context)
 
     @classmethod
-    def resolve(cls, value: T | ConfigValue) -> T:
+    def resolve(cls, value: T | ConfigValue, context: str = None) -> T:
         if not isinstance(value, ConfigValue):
             return value
-        return dget(cls.config(), value.key)
+        return dget(cls.config(context), value.key)
 
     @classmethod
     def configure_context(
@@ -90,6 +90,7 @@ class ConfigStore:
         source: Config | str | dict = None,
         env_filename: str | None = None,
         env_prefix: str = None,
+        switch_to_context: bool = True,
     ) -> Self:
         if not cls.store.get(context) and not source:
             raise ValueError(f"Config context {context} undefined, cannot initialize")
@@ -107,15 +108,17 @@ class ConfigStore:
             env_prefix=env_prefix,
         )
 
-        return cls._set_config(context=context, cfg=cfg)
+        return cls._set_config(context=context, cfg=cfg, switch_to_context=switch_to_context)
 
     @classmethod
-    def _set_config(cls, *, context: str = "default", cfg: Config | None = None) -> Self:
+    def _set_config(
+        cls, *, context: str = "default", cfg: Config | None = None, switch_to_context: bool = True
+    ) -> Self:
         if not isinstance(cfg, Config):
             raise ValueError(f"Expected Config, found {type(cfg)}")
-        cfg.context = context
         cls.store[context] = cfg
-        cls.context = context
+        if switch_to_context:
+            cls.context = context
         return cls.store[context]
 
 

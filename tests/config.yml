@@ -24,3 +24,7 @@ display:
     updates:
       party_abbrev: { "?": "metadata saknas", "X": "partilös" }
       name: { "": "metadata saknas" }
+
+  labels:
+    speaker:
+      unknown: Okänd

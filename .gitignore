@@ -263,9 +263,10 @@ docker/public
 docker/dist
 docker/swedeb_frontend
 
-.vscode
+# .vscode
 output
 test_data
 profiling
 *.code-workspace
 deprecated
+.vscode/settings.json

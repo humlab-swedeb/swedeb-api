@@ -256,13 +256,17 @@ class Corpus:
 
     def get_speaker(self, document_name: str) -> str:
         try:
-            document_item: dict = self.document_index[self.document_index["document_name"] == document_name].iloc[0]
+            unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+            key_index: int = self.repository.get_key_index(document_name)
+            if key_index is None:
+                return unknown
+            document_item: dict = self.document_index.loc[key_index]
             if document_item["person_id"] == "unknown":
-                return "Okänd"
+                return unknown
             person: dict = self.person_codecs[document_item["person_id"]]
             return person['name']
         except IndexError:
-            return "Okänd"
+            return unknown
 
     def get_speaker_note(self, document_name: str) -> str:
         speech = self.get_speech(document_name)
