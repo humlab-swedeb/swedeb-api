@@ -267,3 +267,25 @@ def test_multiple_word_pattern(words: list[str], target: str, filter_opts: list[
 
     assert query.startswith(expected_patterns)
     assert query.endswith(' within speech')
+
+
+def test_cqp_query_that_returns_speech_id(corpus: Corpus):
+    opts = {
+        "form": "kwic",
+        "p_show": ["word"],
+        "s_show": ["year_year", "speech_id"],
+        "order": "first",
+        "cut_off": None,
+    }
+    segments: pd.DataFrame = (
+        corpus.query(
+            'a:[word="information"] :: (a.year_year="1975")',
+            context_left=2,
+            context_right=2,
+        )
+        .concordance(**opts)
+        .reset_index(drop=True)
+    )
+
+    assert segments is not None
+    assert 'speech_id' in segments.columns
