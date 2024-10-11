@@ -1,8 +1,8 @@
 import pandas as pd
+import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
-import pytest
 
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.configuration.inject import ConfigValue
