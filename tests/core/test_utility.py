@@ -27,8 +27,8 @@ def test_lazy():
     assert result.is_initialized()
     assert result.value == 42
 
-def test_replace_by_patterns():
 
+def test_replace_by_patterns():
     assert replace_by_patterns(["apa", " baa "], {"a": "b"}) == ["bpb", " bbb "]
 
     patterns = ConfigValue("display.headers.translations").resolve()
