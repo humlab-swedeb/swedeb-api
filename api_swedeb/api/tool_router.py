@@ -89,6 +89,7 @@ async def get_ngram_results(
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
     target: str = Query(default="word", description="Target for n-gram (word/lemma)"),
+    mode: str = Query(default="sliding", description="Mode for n-gram (sliding/left-aligned/right-aligned)"),
     corpus: Any = Depends(get_cwb_corpus),
 ) -> NGramResult:
     """Get ngrams"""
@@ -101,6 +102,7 @@ async def get_ngram_results(
         n_gram_width=width,
         search_target=target,
         display_target=target,
+        mode=mode,
     )
 
 
