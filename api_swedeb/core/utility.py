@@ -370,3 +370,15 @@ def time_call(func):
         return result
 
     return timeit_wrapper
+
+
+def replace_by_patterns(names: list[str], cfg: dict[str, str]) -> pd.DataFrame:
+    """Replaces patterns in names using old-pattern to new-pattern mapping in cfg."""
+
+    def fx(name: str) -> str:
+        for old, new in cfg.items():
+            if old in name:
+                name = name.replace(old, new)
+        return name
+
+    return [fx(name) for name in names]
