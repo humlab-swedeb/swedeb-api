@@ -3,13 +3,16 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+import time
 import types
+from functools import wraps
 from os.path import basename, dirname, splitext
 from typing import Any, Callable, Type
 
 import numpy as np
 import pandas as pd
 import requests
+from loguru import logger
 from penelope.utility import PropertyValueMaskingOpts
 
 try:
@@ -331,7 +334,7 @@ def get_release_tags(user: str, repository: str, github_access_token: str = None
     return release_tags
 
 
-def format_protocol_id(selected_protocol: str):
+def format_protocol_id(selected_protocol: str) -> str:
     try:
         protocol_parts: list[str] = selected_protocol.split("-")
 
@@ -341,16 +344,29 @@ def format_protocol_id(selected_protocol: str):
             chamber = f"{ch} kammaren"
             if len(protocol_parts) == 6:
                 return f"{chamber} {protocol_parts[1]}:{id_parts}"
-            if len(protocol_parts) == 7:
-                # prot-1958-a-ak--17-01_094
-                return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
-        else:
-            #'prot-2004--113_075' -> '2004:113 075'
-            year = protocol_parts[1]
-            if len(year) == 4:
-                return f"{year[:4]}:{protocol_parts[3].replace('_', ' ')}"
-            #'prot-200405--113_075' -> '2004/05:113 075'
+            # if len(protocol_parts) == 7:
+            # prot-1958-a-ak--17-01_094
+            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
 
-            return f"{year[:4]}/{year[4:]}:{protocol_parts[3].replace('_', ' ')}"
+        #'prot-2004--113_075' -> '2004:113 075'
+        year = protocol_parts[1]
+        if len(year) == 4:
+            return f"{year[:4]}:{protocol_parts[3].replace('_', ' ')}"
+        #'prot-200405--113_075' -> '2004/05:113 075'
+
+        return f"{year[:4]}/{year[4:]}:{protocol_parts[3].replace('_', ' ')}"
     except IndexError:
         return selected_protocol
+
+
+def time_call(func):
+    @wraps(func)
+    def timeit_wrapper(*args, **kwargs):
+        start_time: float = time.perf_counter()
+        result = func(*args, **kwargs)
+        end_time: float = time.perf_counter()
+        total_time: float = end_time - start_time
+        logger.info(f'Method {func.__name__}{args} {kwargs} ended in {total_time:.4f} seconds')
+        return result
+
+    return timeit_wrapper
