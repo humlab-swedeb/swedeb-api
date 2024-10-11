@@ -10,8 +10,8 @@ from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
 from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
-from api_swedeb.core.trends_data import SweDebComputeOpts, SweDebTrendsData
-from api_swedeb.core.utility import Lazy
+from api_swedeb.core.word_trends import SweDebComputeOpts, SweDebTrendsData
+from api_swedeb.core.utility import Lazy, replace_by_patterns
 
 
 class Corpus:
@@ -145,12 +145,15 @@ class Corpus:
         trends["year"] = trends["year"].astype(str)
 
         if not pivot_keys:
-            unstacked_trends = trends.set_index(opts.temporal_key)
+            unstacked_trends: pd.DataFrame = trends.set_index(opts.temporal_key)
 
         else:
-            current_pivot_keys = [opts.temporal_key] + [x for x in trends.columns if x in self.possible_pivots]
+            current_pivot_keys: list[str] = [opts.temporal_key] + [x for x in trends.columns if x in self.possible_pivots]
             unstacked_trends = pu.unstack_data(trends, current_pivot_keys)
-        self.translate_dataframe(unstacked_trends)
+
+        translations = ConfigValue("display.headers.translations").resolve()
+        unstacked_trends.columns = replace_by_patterns(unstacked_trends.columns, translations)
+
         # remove COLUMNS with only 0s, with serveral filtering options, there
         # are sometimes many such columns
         # unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
@@ -190,17 +193,6 @@ class Corpus:
         )
         return speeches
 
-    def translate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Translates the (gender) columns of a data frame to Swedish
-
-        Args:
-            df DataFrame: data frame to translate
-        """
-        cols = df.columns.tolist()
-        translations = {}
-        for col in cols:
-            translations[col] = self.translate_gender_col_header(col)
-        df.rename(columns=translations, inplace=True)
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
@@ -290,26 +282,6 @@ class Corpus:
         result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=descending)
         # FIXME: remove sort amd use descending instead??
         return result
-
-    def translate_gender_col_header(self, col: str) -> str:
-        """Translates gender column names to Swedish
-
-        Args:
-            col str: column name, possibly a gender
-
-        Returns:
-            str: Swedish translation of column name if it represents a gender,
-            else the original column name
-        """
-        new_col = col
-        if " man" in col and "woman" not in col:
-            new_col = col.replace(" man", " Män")
-        if "woman" in col:
-            new_col = col.replace("woman", "Kvinnor")
-        if "unknown" in col:
-            new_col = col.replace("unknown", "Okänt")
-        return new_col
-
 
 def load_corpus(**opts) -> Corpus:
     c = Corpus(**opts)

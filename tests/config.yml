@@ -28,3 +28,10 @@ display:
   labels:
     speaker:
       unknown: Okänd
+
+  headers:
+    translations: {
+      " man": " Män",
+      "woman": "Kvinnor",
+      "unknown": "Okänt"
+    }
