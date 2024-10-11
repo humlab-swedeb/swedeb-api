@@ -1,8 +1,6 @@
 from functools import cached_property
 
 import pandas as pd
-import penelope.utility as pu
-from penelope.common.keyness import KeynessMetric
 from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
 from api_swedeb.core import codecs as md
@@ -10,8 +8,8 @@ from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
 from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
-from api_swedeb.core.word_trends import SweDebComputeOpts, SweDebTrendsData
 from api_swedeb.core.utility import Lazy, replace_by_patterns
+from api_swedeb.core.word_trends import compute_word_trends
 
 
 class Corpus:
@@ -44,15 +42,6 @@ class Corpus:
             lambda: self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
         )
 
-        # temp fix to restore behaviour
-        self.possible_pivots = [v["text_name"] for v in self.person_codecs.property_values_specs]
-        self.words_per_year = self._set_words_per_year()
-
-    def _set_words_per_year(self) -> pd.DataFrame:
-        # temp fix to restore behaviour
-        data_year_series = self.vectorized_corpus.document_index.groupby("year")["n_raw_tokens"].sum()
-        return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
-
     @property
     def vectorized_corpus(self) -> VectorizedCorpus:
         return self.__vectorized_corpus.value
@@ -76,24 +65,8 @@ class Corpus:
         return self.__lazy_person_codecs.value
 
     @cached_property
-    def words_per_year(self) -> pd.DataFrame:
-        data_year_series: pd.Series[int] = self.document_index.groupby("year")["n_raw_tokens"].sum()
-        return data_year_series.to_frame().set_index(data_year_series.index.astype(str))
-
-    @cached_property
     def decoded_persons(self) -> pd.DataFrame:
         return self.__lazy_decoded_persons.value
-
-    @cached_property
-    def possible_pivots(self) -> list[str]:
-        return [v["text_name"] for v in self.person_codecs.property_values_specs]
-
-    def normalize_word_per_year(self, data: pd.DataFrame) -> pd.DataFrame:
-        data = data.merge(self.words_per_year, left_index=True, right_index=True)
-        data = data.iloc[:, :].div(data.n_raw_tokens, axis=0)
-        data.drop(columns=["n_raw_tokens"], inplace=True)
-
-        return data
 
     def word_in_vocabulary(self, word):
         if word in self.vectorized_corpus.token2id:
@@ -113,56 +86,13 @@ class Corpus:
         if not search_terms:
             return pd.DataFrame()
 
-        start_year, end_year = filter_opts.pop('year') if 'year' in filter_opts else (None, None)
-
-        trends_data: SweDebTrendsData = SweDebTrendsData(
-            corpus=self.vectorized_corpus, person_codecs=self.person_codecs, n_top=1000000
-        )
-        pivot_keys = list(filter_opts.keys()) if filter_opts else []
-
-        opts: SweDebComputeOpts = SweDebComputeOpts(
-            fill_gaps=False,
-            keyness=KeynessMetric.TF,
-            normalize=False,
-            pivot_keys_id_names=pivot_keys,
-            filter_opts=pu.PropertyValueMaskingOpts(**filter_opts),
-            smooth=False,
-            temporal_key="year",
-            top_count=100000,
-            unstack_tabular=False,
-            words=search_terms,
+        trends: pd.DataFrame = compute_word_trends(
+            self.vectorized_corpus, self.person_codecs, search_terms, filter_opts, normalize
         )
 
-        trends_data.transform(opts)
+        trends.columns = replace_by_patterns(trends.columns, ConfigValue("display.headers.translations").resolve())
 
-        trends: pd.DataFrame = trends_data.extract(indices=trends_data.find_word_indices(opts))
-
-        if start_year or end_year:
-            trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]
-
-        trends.rename(columns={"who": "person_id"}, inplace=True)
-        trends_data.person_codecs.decode(trends)
-        trends["year"] = trends["year"].astype(str)
-
-        if not pivot_keys:
-            unstacked_trends: pd.DataFrame = trends.set_index(opts.temporal_key)
-
-        else:
-            current_pivot_keys: list[str] = [opts.temporal_key] + [x for x in trends.columns if x in self.possible_pivots]
-            unstacked_trends = pu.unstack_data(trends, current_pivot_keys)
-
-        translations = ConfigValue("display.headers.translations").resolve()
-        unstacked_trends.columns = replace_by_patterns(unstacked_trends.columns, translations)
-
-        # remove COLUMNS with only 0s, with serveral filtering options, there
-        # are sometimes many such columns
-        # unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
-        if len(unstacked_trends.columns) > 1:
-            unstacked_trends["Totalt"] = unstacked_trends.sum(axis=1)
-
-        if normalize:
-            unstacked_trends = self.normalize_word_per_year(unstacked_trends)
-        return unstacked_trends
+        return trends
 
     # FIXME: refactor get_anforanden_for_word_trends & get_anforanden to a single method
     def get_anforanden_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
@@ -192,7 +122,6 @@ class Corpus:
             speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
         )
         return speeches
-
 
     def _get_filtered_speakers(self, selection_dict, df):
         for selection_key, selection_value in selection_dict.items():
@@ -282,6 +211,7 @@ class Corpus:
         result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=descending)
         # FIXME: remove sort amd use descending instead??
         return result
+
 
 def load_corpus(**opts) -> Corpus:
     c = Corpus(**opts)
