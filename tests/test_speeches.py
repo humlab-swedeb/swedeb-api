@@ -1,9 +1,9 @@
-from loguru import logger
 import pandas as pd
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
+from loguru import logger
 
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.configuration.inject import ConfigValue
@@ -22,10 +22,11 @@ def test_speeches_get(fastapi_client: TestClient):
     speech_name: str = "prot-1971--117_007"
     response = fastapi_client.get(f"{version}/tools/speeches/{speech_name}")
     assert response.status_code == status.HTTP_200_OK
-    data: dict[str,str] = response.json()
+    data: dict[str, str] = response.json()
     assert 'speech_text' in data
     assert 'speaker_note' in data
     assert len(data['speech_text']) > 0
+
 
 def test_get_all_protocol_ids(api_corpus: Corpus):
     df: pd.DataFrame = api_corpus.get_anforanden(selections={'year': (1900, 2000)})
@@ -71,7 +72,9 @@ def test_format_speech_id():
 
 
 def test_get_formatted_speech_id(api_corpus: Corpus):
-    df_filtered: pd.DataFrame = api_corpus.get_anforanden(selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)})
+    df_filtered: pd.DataFrame = api_corpus.get_anforanden(
+        selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
+    )
     assert 'speech_name' in df_filtered.columns
 
 
