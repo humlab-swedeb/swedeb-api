@@ -48,10 +48,11 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 WORKDIR /wheels
-RUN pip install --upgrade pip setuptools wheel \
+RUN pip install --upgrade pip \
+    && pip install setuptools wheel \
     \
-    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels cwb-ccc \
-    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels association-measures
+    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels "association-measures==0.2.7" \
+    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels cwb-ccc
 
 #####################################################################################
 # Final stage
@@ -129,7 +130,7 @@ RUN chown -R ${SWEDEB_USER}:${SWEDEB_USER} /app /data
 
 ENV SHELL=/bin/bash
 ENV HOME=/app
-ENV CORPUS_REGISTRY=/data/cwb/registry
+ENV CORPUS_REGISTRY=/data/registry
 
 # RUN python3.11 -m venv ${HOME}/.venv \
 #     && . ${HOME}/.venv/bin/activate \
