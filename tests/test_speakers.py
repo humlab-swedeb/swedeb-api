@@ -57,5 +57,3 @@ def test_get_speakers_api_with_params(client):
     assert 'speaker_list' in json
     for speaker in json['speaker_list']:
         assert 'S' in speaker['party_abbrev']
-
-        print(speaker)

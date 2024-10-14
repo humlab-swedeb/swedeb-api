@@ -28,8 +28,8 @@ def test_dynamic_base_model():
     # i.e. 1960 has 455 hits for 'att' and 314 hits for 'och'
     # and 1961 has 136 hits for 'att' and 109 hits for 'och'
 
-    data = {'debatt': [1, 2, 3], 'korv': [4, 5, 6]}
-    index = [2001, 2002, 2003]
+    data: dict[str, list[int]] = {'debatt': [1, 2, 3], 'korv': [4, 5, 6]}
+    index: list[int] = [2001, 2002, 2003]
     df = pd.DataFrame(data, index=index)
 
     # Create a list of YearCounts objects
@@ -39,11 +39,9 @@ def test_dynamic_base_model():
         year_counts = WordTrendsItem(year=year, count=counts_dict)
         counts_list.append(year_counts)
 
-    # Create a YearCountsList object
     year_counts_list = WordTrendsResult(wt_list=counts_list)
 
-    # Print the YearCountsList object
-    print(year_counts_list)
+    assert len(year_counts_list.wt_list) > 0
 
 
 def test_word_trends_with_base_model(api_corpus):
@@ -61,7 +59,7 @@ def test_word_trends_with_base_model(api_corpus):
     year_counts_list = WordTrendsResult(wt_list=counts_list)
 
     # Print the YearCountsList object
-    print(year_counts_list)
+    assert len(year_counts_list.wt_list) > 0
 
 
 def test_word_trends_api(fastapi_client):
@@ -132,7 +130,6 @@ def test_word_trend_corpus(api_corpus):
         search_terms=['debatt', 'riksdagsdebatt'], filter_opts={'year': (1900, 2000)}
     )
     assert len(wt) > 0
-    print(wt.head())
 
 
 def test_word_trend_corpus_with_filters(api_corpus):
