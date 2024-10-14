@@ -34,12 +34,12 @@ def get_speeches(commons: CommonQueryParams, corpus: Corpus) -> SpeechesResult:
     return SpeechesResult(speech_list=rows)
 
 
-def get_speech_by_id(id: str, corpus: Corpus) -> SpeechesTextResultItem:
+def get_speech_by_id(speech_id: str, corpus: Corpus) -> SpeechesTextResultItem:
     # if id == "non_id":
     #    raise HTTPException(status_code=404, detail=f"Speech with id {id} not found")
 
-    speech_text = corpus.get_speech_text(id)
-    speaker_note = corpus.get_speaker_note(id)
+    speech_text = corpus.get_speech_text(speech_id)
+    speaker_note = corpus.get_speaker_note(speech_id)
     return SpeechesTextResultItem(
         speaker_note=speaker_note,
         speech_text=speech_text,

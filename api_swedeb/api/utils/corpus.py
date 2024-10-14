@@ -11,6 +11,8 @@ from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_w
 from api_swedeb.core.utility import Lazy, replace_by_patterns
 from api_swedeb.core.word_trends import compute_word_trends
 
+# pylint: disable=cell-var-from-loop, too-many-public-methods
+
 
 class Corpus:
     def __init__(self, **opts):
@@ -48,7 +50,7 @@ class Corpus:
 
     @property
     def document_index(self) -> pd.DataFrame:
-        if self.__vectorized_corpus.is_initialized:
+        if self.__vectorized_corpus.is_initialized:  # pylint: disable=using-constant-test
             return self.vectorized_corpus.document_index
         return self.__lazy_document_index.value
 
@@ -176,8 +178,8 @@ class Corpus:
         return res
 
     def get_speaker(self, document_name: str) -> str:
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         try:
-            unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
             key_index: int = self.repository.get_key_index(document_name)
             if key_index is None:
                 return unknown
@@ -209,7 +211,6 @@ class Corpus:
         if search_term not in self.vectorized_corpus.vocabulary:
             search_term = search_term.lower()
         result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=descending)
-        # FIXME: remove sort amd use descending instead??
         return result
 
 

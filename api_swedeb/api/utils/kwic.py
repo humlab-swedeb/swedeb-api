@@ -8,6 +8,8 @@ from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.kwic import simple
 from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
 
+# pylint: disable=too-many-arguments
+
 
 def get_kwic_data(
     corpus: Any,

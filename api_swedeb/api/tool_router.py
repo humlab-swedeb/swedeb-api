@@ -1,7 +1,6 @@
-from typing import Annotated, Any, List
+from typing import Annotated, Any
 
 import fastapi
-import pandas as pd
 from fastapi import Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
@@ -114,9 +113,9 @@ async def get_speeches_result(
 
 
 @router.get("/speeches/{id}", response_model=SpeechesTextResultItem)
-async def get_speech_by_id_result(id: str) -> SpeechesTextResultItem:
+async def get_speech_by_id_result(speech_id: str) -> SpeechesTextResultItem:
     """eg. prot-1971--1_007"""
-    return get_speech_by_id(id, get_shared_corpus())
+    return get_speech_by_id(speech_id, get_shared_corpus())
 
 
 @router.post("/speech_download/")
