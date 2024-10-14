@@ -147,11 +147,16 @@ class ZipLoader(Loader):
 
     def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
         """Loads tagged protocol data from archive"""
-        sub_folder: str = protocol_name.split("-")[1]
-        for filename in [
+        parts: list[str] = protocol_name.split('-')
+        sub_folder: str = parts[1]
+        candidate_files: list[str] = [
             join(self.folder, sub_folder, f"{protocol_name}.zip"),
             join(self.folder, f"{protocol_name}.zip"),
-        ]:
+            join(self.folder, '-'.join(parts[:-1] + [parts[-1].zfill(3)]) + ".zip"),
+            join(self.folder, '-'.join(parts[:-1] + [parts[-1].zfill(4)]) + ".zip"),
+            join(self.folder, '-'.join(parts[:-1] + [parts[-1].lstrip('0')]) + ".zip"),
+        ]
+        for filename in candidate_files:
             if not os.path.isfile(filename):
                 continue
             with zipfile.ZipFile(filename, "r") as fp:
