@@ -103,7 +103,7 @@ class Corpus:
         speeches: pd.DataFrame = get_speeches_by_words(
             self.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts
         )
-        self.person_codecs.decode_speech_index(
+        speeches = self.person_codecs.decode_speech_index(
             speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
         )
         return speeches
@@ -120,7 +120,7 @@ class Corpus:
             DataFrame: DataFrame with speeches for selected years and filter.
         """
         speeches: pd.DataFrame = get_speeches_by_opts(self.document_index, selections)
-        self.person_codecs.decode_speech_index(
+        speeches = self.person_codecs.decode_speech_index(
             speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
         )
         return speeches

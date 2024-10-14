@@ -166,10 +166,12 @@ class Codecs:
             df = codec.apply(df)
 
         if drop:
-            for codec in codecs:
-                if keeps and codec.from_column in keeps:
+            for column in set(c.from_column for c in codecs):
+                if column not in df.columns:
                     continue
-                df.drop(columns=[codec.from_column], inplace=True, errors='ignore')
+                if keeps and column in keeps:
+                    continue
+                df = df.drop(columns=column)
 
         return df
 
@@ -362,7 +364,7 @@ class PersonCodecs(Codecs):
         if self.is_decoded(speech_index):
             return speech_index
 
-        self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
+        speech_index = self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
         speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
         speech_index["speech_link"] = self.speech_link(speech_id=speech_index.speech_id)

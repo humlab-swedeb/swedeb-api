@@ -91,7 +91,7 @@ def test_word_trends_speeches_corpus2(api_corpus: Corpus):
 def test_decode_speech_index(speech_index: pd.DataFrame, person_codecs: PersonCodecs):
     value_updates: dict[str, Any] = ConfigValue("display.speech_index.updates").resolve()
     speech_index = speech_index[COLUMNS_OF_INTEREST]
-    person_codecs.decode_speech_index(speech_index, value_updates=value_updates, sort_values=True)
+    speech_index = person_codecs.decode_speech_index(speech_index, value_updates=value_updates, sort_values=True)
     assert set(speech_index.columns.to_list()) == {
         'document_id',
         'document_name',
