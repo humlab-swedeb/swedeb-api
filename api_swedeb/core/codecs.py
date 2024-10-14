@@ -37,11 +37,11 @@ class Codec:
         if self.from_column in df.columns:
             if self.to_column not in df:
                 if isinstance(self.fx, dict):
-                    df[self.to_column] = df[self.from_column].map(self.fx)
+                    df = df.assign(**{self.to_column: df[self.from_column].map(self.fx)})
                 else:
-                    df[self.to_column] = df[self.from_column].apply(self.fx)
+                    df = df.assign(**{self.to_column: df[self.from_column].apply(self.fx)})
             if self.default is not None:
-                df[self.to_column] = df[self.to_column].fillna(self.default)
+                df = df.assign(**{self.to_column: df[self.to_column].fillna(self.default)})
         return df
 
     def apply_scalar(self, value: int | str, default: Any) -> str | int:
