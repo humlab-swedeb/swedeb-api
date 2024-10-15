@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from api_swedeb.api import metadata_router, tool_router
 from api_swedeb.core.configuration import ConfigStore
 
-ConfigStore.configure_context(source=os.environ.get("CONFIG_FILENAME", "config/config.yml"))
+ConfigStore.configure_context(source=os.environ.get("SWEDEB_CONFIG_PATH", "config/config.yml"))
 
 # https://stackoverflow.com/questions/65686318/sharing-python-objects-across-multiple-workers
 

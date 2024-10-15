@@ -101,6 +101,22 @@ bash:
 	  --entrypoint /bin/bash \
 	  swedeb-api:latest
 
+.PHONY: bash
+bash:
+	@docker run -it --rm \
+	  --volume "${SWEDEB_DATA_FOLDER}:/data" \
+	  --env-file .env \
+	  --entrypoint /bin/bash \
+	  swedeb-api:latest
+
+.PHONY: bash-test
+bash-test:
+	@docker run -it --rm \
+	  --volume "${SWEDEB_DATA_FOLDER}:/data" \
+	  --env-file .env \
+	  -p 8092:8092 \
+	  swedeb-api:latest
+
 .PHONY: add-host-user
 add-host-user:
 	@if [ "$(shell getent passwd swedeb && echo FOO)" != "FOO" ]; then \

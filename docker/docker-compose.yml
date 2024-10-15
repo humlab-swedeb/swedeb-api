@@ -12,9 +12,8 @@ services:
     environment:
       - SWEDEB_CONFIG_PATH=${SWEDEB_CONFIG_PATH}
       - SWEDEB_DATA_FOLDER=${SWEDEB_DATA_FOLDER}
-      - UVICORN_WORKERS=4
     volumes:
-      - "${HOST_DATA_FOLDER}:/data"
+      - "${SWEDEB_DATA_FOLDER}:/data"
 
     networks:
       - swedeb_network
@@ -25,4 +24,4 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 10.33.0.0/16
+        - subnet: 172.33.0.0/16
