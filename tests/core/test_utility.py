@@ -1,4 +1,5 @@
-from api_swedeb.core.utility import Lazy, lazy_property
+from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.utility import Lazy, lazy_property, replace_by_patterns
 
 
 def test_lazy_property():
@@ -25,3 +26,13 @@ def test_lazy():
     assert result.value == 42
     assert result.is_initialized()
     assert result.value == 42
+
+
+def test_replace_by_patterns():
+    assert replace_by_patterns(["apa", " baa "], {"a": "b"}) == ["bpb", " bbb "]
+
+    patterns = ConfigValue("display.headers.translations").resolve()
+
+    assert replace_by_patterns(["man"], patterns) == ["man"]
+    assert replace_by_patterns([" man"], patterns) == [" Män"]
+    assert replace_by_patterns([" woman"], patterns) == [" Kvinnor"]

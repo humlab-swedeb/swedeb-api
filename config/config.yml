@@ -33,17 +33,23 @@ fastapi:
 github:
   access_token:
 
-labels:
-  speaker:
-    unknown: Okänd
-
 
 display:
   speech_index:
     updates:
-      party_abbrev: { "?": "metadata saknas", "X": "partilös" }
+      party_abbrev: {
+        "?": "metadata saknas",
+        "X": "partilös"
+      }
       name: { "": "metadata saknas" }
       
   labels:
     speaker:
       unknown: Okänd
+
+  headers:
+    translations: {
+      " man": " Män",
+      "woman": "Kvinnor",
+      "unknown": "Okänt"
+    }
