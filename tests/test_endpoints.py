@@ -134,7 +134,7 @@ def test_speakers(fastapi_client):
     assert response.status_code == status.HTTP_200_OK
 
 
-def test_ngrams(fastapi_client):
+def test_ngrams_isolate_bug_69(fastapi_client):
     # FIXME: #69 Fetching ngrams with target `lemma` when fails with 500
     response = fastapi_client.get(
         f"/{version}/tools/ngrams/sverige?width=3&target=lemma&mode=sliding&sort_by=year_title&sort_order=asc"
