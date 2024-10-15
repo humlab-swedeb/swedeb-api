@@ -92,16 +92,8 @@ bump.patch: requirements.txt
 
 guard-clean-working-repository:
 	@status="$$(git status --porcelain)"
-	@if [[ "$$status" != "" ]]; then
-		echo "error: changes exists, please commit or stash them: "
-		echo "$$status"
-		exit 65
-	fi
-
-tidy-to-git: guard-clean-working-repository tidy
-	@status="$$(git status --porcelain)"
-	@if [[ "$$status" != "" ]]; then
-		@git add .
-		@git commit -m "📌 make tidy"
-		@git push
+	@if [[ "$$status" != "" ]]; then \
+		echo "error: changes exists, please commit or stash them: " ; \
+		echo "$$status" ; \
+		exit 65 ; \
 	fi
