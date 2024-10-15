@@ -32,10 +32,10 @@ pylint:
 requirements.txt: poetry.lock
 	@poetry export --without-hashes -f requirements.txt --output requirements.txt
 
-requirements.txt-to-git: requirements.txt
-	@git add requirements.txt
-	@git commit -m "📌 updated requirements.txt"
-	@git push
+# requirements.txt-to-git: requirements.txt
+# 	@git add requirements.txt \
+# 		&& git commit -m "📌 updated requirements.txt" \
+# 			&& git push
 
 .PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument
 
@@ -75,7 +75,7 @@ publish:
 
 ready: clean-dev tidy test lint requirements.txt build
 
-build: requirements.txt-to-git
+build: requirements.txt
 	@poetry build
 
 tag:
