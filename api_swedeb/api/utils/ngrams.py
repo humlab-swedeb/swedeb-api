@@ -1,5 +1,6 @@
 from typing import Any, Literal
 
+import ccc
 import pandas as pd
 
 from api_swedeb import mappers, schemas
@@ -8,7 +9,7 @@ from api_swedeb.core import n_grams
 
 
 def get_ngrams(
-    corpus: Any,
+    corpus: ccc.Corpus,
     search_term: str | list[str],
     commons: CommonQueryParams,
     n_gram_width: int | tuple[int, int] = 2,
