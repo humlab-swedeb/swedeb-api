@@ -7,37 +7,15 @@ services:
       - "${SWEDEB_PORT}"
     ports:
       - "${HOST_SWEDEB_PORT}:${SWEDEB_PORT}"
+    env_file:
+      - .env
     environment:
-      # These shouuld be read from the env file
-      # - SWEDEB_IMAGE_NAME=swedeb-api
-      # - SWEDEB_IMAGE_TAG=latest
-      # - HOST_CWB_DATA_FOLDER=/home/roger/source/swedeb/sample-data/data/1920-2020/v0.10.0/cwb
-      # - HOST_CWB_CORPUS_NAME=RIKSPROT_V0100_TEST
-      # - HOST_METADATA_FOLDER=/data/westac/riksdagen_corpus_data/metadata/
-      # - HOST_METADATA_FILENAME=riksprot_metadata.v0.10.0.db
-      # - HOST_TAGGED_CORPUS_FOLDER=/data/westac/riksdagen_corpus_data/corpus/v0.10.0/tagged_frames/
-      # - HOST_DTM_FOLDER=/data/westac/riksdagen_corpus_data/v0.10.0/dtm/dtm_vrt_text_5000000_TF10
-      # - HOST_DTM_TAG=dtm_vrt_text_5000000_TF10
-      # Don't touch these
-      # - METADATA_FILENAME=/data/metadata/${HOST_METADATA_FILENAME}
-      - METADATA_FILENAME=/data/metadata/riksprot_metadata.v1.1.0.db
-      - TAGGED_CORPUS_FOLDER=/data/corpus/tagged_frames
-      - DTM_FOLDER=/data/corpus/dtm/${HOST_DTM_TAG}
-      - DTM_TAG=${HOST_DTM_TAG}
-      - CWB_CORPUS_NAME=${HOST_CWB_CORPUS_NAME}
-      - CWB_REGISTRY_FOLDER=/data/cwb/registry
-      - CWB_DATA_FOLDER=/data/cwb/data
-      # Legacy variables
-      - FOLDER=/data/corpus/dtm/${HOST_DTM_TAG}
-      - TAG=${HOST_DTM_TAG}
-      - KWIC_CORPUS_NAME=${HOST_CWB_CORPUS_NAME}
-      - KWIC_DIR=/data/cwb/registry
-
+      - SWEDEB_CONFIG_PATH=${SWEDEB_CONFIG_PATH}
+      - SWEDEB_DATA_FOLDER=${SWEDEB_DATA_FOLDER}
+      - UVICORN_WORKERS=4
     volumes:
-      - "${HOST_CWB_DATA_FOLDER}:/data/cwb/data"
-      - "${HOST_METADATA_FOLDER}:/data/metadata"
-      - "${HOST_DTM_FOLDER}:/data/corpus/dtm"
-      - "${HOST_TAGGED_CORPUS_FOLDER}:/data/corpus/tagged_frames"
+      - "${HOST_DATA_FOLDER}:/data"
+
     networks:
       - swedeb_network
 
