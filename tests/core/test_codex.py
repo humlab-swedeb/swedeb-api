@@ -11,7 +11,7 @@ def test_person_codecs(person_codecs: PersonCodecs):
 
 def test_get_person_by_index(person_codecs: PersonCodecs):
     persons: pd.DataFrame = person_codecs.persons_of_interest
-    random_person: dict[Hashable, Any] = persons.sample(n=1).to_dict('record')[0]
+    random_person: dict[Hashable, Any] = persons.sample(n=1).to_dict('records')[0]
 
     person: dict = person_codecs[random_person['person_id']]
 

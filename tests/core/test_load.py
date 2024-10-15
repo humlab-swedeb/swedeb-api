@@ -54,9 +54,9 @@
 
 #     memory_after_astype = di.memory_usage(deep=True).sum() / 1024**2
 
-#     print(f"Memory usage after load: {memory_after_load:3} MB")
-#     print(f"Memory usage after slim: {memory_after_slim:3} MB")
-#     print(f"Memory usage after cast: {memory_after_astype:3} MB")
+#     logger.info(f"Memory usage after load: {memory_after_load:3} MB")
+#     logger.info(f"Memory usage after slim: {memory_after_slim:3} MB")
+#     logger.info(f"Memory usage after cast: {memory_after_astype:3} MB")
 
 #     assert memory_after_astype < memory_after_load
 

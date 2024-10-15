@@ -114,7 +114,7 @@ def compute_word_trends(
         trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]
 
     trends.rename(columns={"who": "person_id"}, inplace=True)
-    trends_data.person_codecs.decode(trends)
+    trends = trends_data.person_codecs.decode(trends)
     trends["year"] = trends["year"].astype(str)
 
     if not pivot_keys:
@@ -129,7 +129,7 @@ def compute_word_trends(
     # are sometimes many such columns
     # unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
     if len(unstacked_trends.columns) > 1:
-        unstacked_trends["Totalt"] = unstacked_trends.sum(axis=1)
+        unstacked_trends["Totalt"] = unstacked_trends.sum(axis=1, numeric_only=True)
 
     if normalize:
         unstacked_trends = normalize_word_per_year(vectorized_corpus, unstacked_trends)

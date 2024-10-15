@@ -3,6 +3,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
+from loguru import logger
 
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.configuration.inject import ConfigValue
@@ -18,19 +19,23 @@ version = "v1"
 
 def test_speeches_get(fastapi_client: TestClient):
     # assert that the speeches endpoint is reachable
-    response = fastapi_client.get(f"{version}/tools/speeches/prot-1971--1_007")
+    speech_name: str = "prot-1971--117_007"
+    response = fastapi_client.get(f"{version}/tools/speeches/{speech_name}")
     assert response.status_code == status.HTTP_200_OK
-    print(response.json())
+    data: dict[str, str] = response.json()
+    assert 'speech_text' in data
+    assert 'speaker_note' in data
+    assert len(data['speech_text']) > 0
 
 
 def test_get_all_protocol_ids(api_corpus: Corpus):
-    df = api_corpus.get_anforanden(selections={'year': (1900, 2000)})
-    all_ids = df['document_name']
+    df: pd.DataFrame = api_corpus.get_anforanden(selections={'year': (1900, 2000)})
+    all_ids: pd.Series = df['document_name']
     for protocol_id in all_ids:
         try:
             format_protocol_id(protocol_id)
         except IndexError:
-            print(protocol_id)
+            logger.info(f"index error {protocol_id}")
             assert False
 
 
@@ -67,14 +72,16 @@ def test_format_speech_id():
 
 
 def test_get_formatted_speech_id(api_corpus: Corpus):
-    df_filtered = api_corpus.get_anforanden(selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)})
+    df_filtered: pd.DataFrame = api_corpus.get_anforanden(
+        selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
+    )
     assert 'speech_name' in df_filtered.columns
 
 
 def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
     document_name, speech_id = find_a_speech_id(api_corpus)
 
-    response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
+    response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
     assert response.status_code == status.HTTP_200_OK
 
     data_by_name: dict = response.json()
@@ -93,7 +100,7 @@ def test_speeches_get_years(fastapi_client: TestClient):
     # assert that the returned speeches comes from the correct years
     start_year = 1970
     end_year = 1971
-    response = fastapi_client.get(f"{version}/tools/speeches?from_year={start_year}&to_year={end_year}")
+    response: Response = fastapi_client.get(f"{version}/tools/speeches?from_year={start_year}&to_year={end_year}")
     assert response.status_code == status.HTTP_200_OK
     speeches = response.json()['speech_list']
     for speech in speeches:
@@ -102,9 +109,9 @@ def test_speeches_get_years(fastapi_client: TestClient):
         assert speech['year'] <= end_year, 'year is greater than end_year'
 
 
-def test_speeches_zip(fastapi_client: TestClient):
-    payload = ['prot-1966-höst-fk--38_044', 'prot-1966-höst-fk--38_043']
-    response = fastapi_client.post(f"{version}/tools/speech_download/", json=payload)
+def test_speeches_zip(fastapi_client: TestClient, api_corpus: Corpus):
+    payload: list[str] = api_corpus.document_index.sample(2).document_name.to_list()
+    response: Response = fastapi_client.post(f"{version}/tools/speech_download/", json=payload)
     assert response.status_code == status.HTTP_200_OK
     assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
     assert response.headers['Content-Type'] == 'application/zip'
@@ -115,7 +122,7 @@ def test_get_speeches_corpus(api_corpus: Corpus):
     df_filtered: pd.DataFrame = api_corpus.get_anforanden(
         selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
     )
-    df_unfiltered = api_corpus.get_anforanden(selections={'year': (1970, 1980)})
+    df_unfiltered: pd.DataFrame = api_corpus.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
 
@@ -151,7 +158,7 @@ def find_a_speech_id(api_corpus):
 
 def test_get_speech_by_id(api_corpus: Corpus):
     document_name, speech_id = find_a_speech_id(api_corpus)
-    speech_text = api_corpus.get_speech_text(speech_id)
+    speech_text: str = api_corpus.get_speech_text(speech_id)
     assert speech_text is not None
     assert len(speech_text) > 1
     assert speech_text == api_corpus.get_speech_text(document_name)
@@ -159,26 +166,26 @@ def test_get_speech_by_id(api_corpus: Corpus):
 
 def test_get_speech_by_id_missing(api_corpus: Corpus):
     # non-existing speech (gives empty string as response)
-    speech_id = 'prot-1971--1_007_missing'
-    speech_text = api_corpus.get_speech_text(speech_id)
+    speech_id: str = 'prot-1971--1_007_missing'
+    speech_text: str = api_corpus.get_speech_text(speech_id)
     assert len(speech_text) == 0
 
 
 def test_get_speaker_note(api_corpus: Corpus):
     document_name, speech_id = find_a_speech_id(api_corpus)
 
-    speaker_note_by_name = api_corpus.get_speaker_note(document_name)
+    speaker_note_by_name: str = api_corpus.get_speaker_note(document_name)
     assert speaker_note_by_name is not None
     assert len(speaker_note_by_name) > 0
 
-    speaker_note_by_id = api_corpus.get_speaker_note(speech_id)
+    speaker_note_by_id: str = api_corpus.get_speaker_note(speech_id)
     assert speaker_note_by_id == speaker_note_by_name
 
 
 @pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
 def test_get_speech_by_api(fastapi_client: TestClient, api_corpus: Corpus):
     _, speech_id = find_a_speech_id(api_corpus)
-    response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}", timeout=10)
+    response: Response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}", timeout=10)
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
     assert len(response.json()['speaker_note']) > 0

@@ -4,6 +4,8 @@ from fastapi import Query
 
 year_regex = r"^\d{4}$"
 
+# pylint: disable=too-many-arguments
+
 
 class SpeakerQueryParams:
     def __init__(
@@ -20,7 +22,7 @@ class SpeakerQueryParams:
         self.gender_id: List[int] = gender_id
         self.chambers: List[str] = chambers
 
-    def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:
+    def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:  # pylint: disable=unused-argument
         opts: dict[str, list[int]] = {
             # **({"office_id": self.office_types} if self.office_types else {}),
             # **({"sub_office_type_id": self.sub_office_types} if self.sub_office_types else {}),

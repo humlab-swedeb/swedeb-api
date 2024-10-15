@@ -64,11 +64,11 @@ def run_kwic() -> None:
     ]
     words: str = '"att"%c'
     data: pd.DataFrame = fetch_kwic(corpus, speech_index, person_codecs, words=words, criterias=criterias)
-    print(f"{len(data)} rows found")
+    logger.info(f"{len(data)} rows found")
 
     elapsed: float = time() - start
 
-    print(f"Done in {elapsed} seconds")
+    logger.info(f"Done in {elapsed} seconds")
 
 
 run_kwic()

@@ -32,6 +32,11 @@ pylint:
 requirements.txt: poetry.lock
 	@poetry export --without-hashes -f requirements.txt --output requirements.txt
 
+requirements.txt-to-git: requirements.txt
+	@git add requirements.txt
+	@git commit -m "📌 updated requirements.txt"
+	@git push
+
 .PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument
 
 build-utils:
@@ -60,3 +65,43 @@ clean-dev:
 	@find . -type d -name '*pytest_cache*' -exec rm -rf {} +
 	@find . -type d -name '.mypy_cache' -exec rm -rf {} +
 	@rm -rf tests/output
+
+.PHONY: release publish ready build tag bump.patch guard-clean-working-repository tidy-to-git
+
+release: ready guard-clean-working-repository bump.patch tag publish
+
+publish:
+	@poetry publish
+
+ready: clean-dev tidy test lint requirements.txt build
+
+build: requirements.txt-to-git
+	@poetry build
+
+tag:
+	@poetry build
+	@git push
+	@git tag $(shell grep "^version \= " pyproject.toml | sed "s/version = //" | sed "s/\"//g") -a
+	@git push origin --tags
+
+bump.patch: requirements.txt
+	@poetry version patch
+	@git add pyproject.toml requirements.txt
+	@git commit -m "📌 bump version patch"
+	@git push
+
+guard-clean-working-repository:
+	@status="$$(git status --porcelain)"
+	@if [[ "$$status" != "" ]]; then
+		echo "error: changes exists, please commit or stash them: "
+		echo "$$status"
+		exit 65
+	fi
+
+tidy-to-git: guard-clean-working-repository tidy
+	@status="$$(git status --porcelain)"
+	@if [[ "$$status" != "" ]]; then
+		@git add .
+		@git commit -m "📌 make tidy"
+		@git push
+	fi

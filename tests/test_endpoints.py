@@ -119,9 +119,6 @@ def test_topics(fastapi_client):
     assert json['message'] == 'Not implemented yet'
 
 
-############## METADATA #####################
-
-
 def test_start_year(fastapi_client):
     response = fastapi_client.get(f"{version}/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK

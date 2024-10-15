@@ -66,7 +66,7 @@ def test_meta_office_types(corpus):
     data = df.to_dict(orient="records")
     rows = [OfficeTypeItem(**row) for row in data]
     gender_list = OfficeTypeList(office_type_list=rows)
-    print(gender_list)
+    assert gender_list is not None
 
 
 def test_meta_chamber(corpus):

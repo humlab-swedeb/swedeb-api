@@ -37,11 +37,11 @@ class Codec:
         if self.from_column in df.columns:
             if self.to_column not in df:
                 if isinstance(self.fx, dict):
-                    df[self.to_column] = df[self.from_column].map(self.fx)
+                    df = df.assign(**{self.to_column: df[self.from_column].map(self.fx)})
                 else:
-                    df[self.to_column] = df[self.from_column].apply(self.fx)
+                    df = df.assign(**{self.to_column: df[self.from_column].apply(self.fx)})
             if self.default is not None:
-                df[self.to_column] = df[self.to_column].fillna(self.default)
+                df = df.assign(**{self.to_column: df[self.to_column].fillna(self.default)})
         return df
 
     def apply_scalar(self, value: int | str, default: Any) -> str | int:
@@ -166,10 +166,12 @@ class Codecs:
             df = codec.apply(df)
 
         if drop:
-            for codec in codecs:
-                if keeps and codec.from_column in keeps:
+            for column in set(c.from_column for c in codecs):
+                if column not in df.columns:
                     continue
-                df.drop(columns=[codec.from_column], inplace=True, errors='ignore')
+                if keeps and column in keeps:
+                    continue
+                df = df.drop(columns=column)
 
         return df
 
@@ -362,7 +364,7 @@ class PersonCodecs(Codecs):
         if self.is_decoded(speech_index):
             return speech_index
 
-        self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
+        speech_index = self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
         speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
         speech_index["speech_link"] = self.speech_link(speech_id=speech_index.speech_id)

@@ -179,8 +179,10 @@ class SpeechTextRepository:
             speech["gender_abbrev"] = self.person_codecs.gender2abbrev.get(speech["gender_id"], "Okänt")
             speech["party_abbrev"] = self.person_codecs.party_abbrev2name.get(speech["party_id"], "Okänt")
 
+        except FileNotFoundError as ex:
+            speech = {"name": f"speech {speech_name} not found", "error": str(ex)}
         except Exception as ex:  # pylint: disable=bare-except
-            speech = {"name": "speech not found", "error": str(ex)}
+            speech = {"name": f"speech {speech_name}", "error": str(ex)}
 
         if mode == "text":
             return self.to_text(speech)
