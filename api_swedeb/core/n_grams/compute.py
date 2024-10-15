@@ -127,7 +127,7 @@ def query_keyword_windows(
         return pd.DataFrame(columns=['window', 'count', 'documents'])
 
     grouped_windows: pd.DataFrame = (
-        windows.groupby('word')
+        windows.groupby(p_show)
         .agg(count=('speech_id', 'size'), speech_ids=('speech_id', lambda x: ','.join(sorted(set(x)))))
         .reset_index()
     )

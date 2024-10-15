@@ -42,6 +42,22 @@ def test_n_gram_service_with_single_word(corpus: Corpus):
     assert all(ngram.ngram.lower().endswith('sverige') for ngram in right_aligned.ngram_list)
 
 
+def test_n_gram_service_fails_if_target_is_lemma(corpus: Corpus):
+    common_opts: cp.CommonQueryParams = cp.CommonQueryParams(
+        from_year=1970, to_year=1975, who=None, party_id=None, office_types=None, sub_office_types=None, gender_id=None
+    )
+    sliding_result: NGramResult = ngram_service.get_ngrams(
+        search_term='sverige',
+        commons=common_opts,
+        corpus=corpus,
+        n_gram_width=3,
+        search_target='lemma',
+        display_target='lemma',
+        mode='sliding',
+    )
+    assert sliding_result is not None
+
+
 @pytest.mark.skip("FIXME: When phrase is used, to many sliding windows are created ")
 def test_n_gram_service_with_phrase(corpus: Corpus):
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
