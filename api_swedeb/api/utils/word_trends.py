@@ -17,6 +17,8 @@ def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus, nor
         search_terms=search.split(","), filter_opts=commons.get_filter_opts(include_year=True), normalize=normalize
     )
 
+    df = df.loc[:, ~df.columns.str.contains('gender_abbrev')]
+
     counts_list = []
     for year, row in df.iterrows():
         counts_dict = row.to_dict()

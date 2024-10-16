@@ -73,17 +73,38 @@ def test_word_trends_api(fastapi_client):
         assert word in count
 
 
-def test_word_trends_api_with_filter(fastapi_client):
+def test_word_trends_api_with_gender_filter(fastapi_client):
     search_term = 'att,och'
     response = fastapi_client.get(
-        f"{version}/tools/word_trends/{search_term}?parties=9&genders=2&from_year=1900&to_year=3000"
+        f"{version}/tools/word_trends/{search_term}?party_id=9&gender_id=2&from_year=1900&to_year=3000"
     )
     json = response.json()
     first_result = json['wt_list'][0]
 
     count = first_result['count']
-    for word in search_term.split(','):
-        assert word in count
+    terms = search_term.split(',')
+
+    for key in count.keys():
+        if key != 'Totalt':
+            assert terms[0] in key or terms[1] in key
+
+
+
+
+
+
+
+def test_temp(fastapi_client):
+    search_term = 'debatt'
+    response = fastapi_client.get(
+        f"{version}/tools/word_trends/{search_term}?party_id=9&from_year=1900&to_year=3000"
+    )
+    json = response.json()
+    first_result = json['wt_list'][0]
+
+    count = first_result['count']
+    count_keys = count.keys()
+    assert 'debatt S' in count_keys
 
 
 @pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")

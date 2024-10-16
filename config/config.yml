@@ -1,6 +1,6 @@
 metadata:
   version: v1.1.0
-  filename: /data/riksprot_metadata.db
+  filename: /data/swedeb/v1.1.0/riksprot_metadata.db
   github:
     user: swerik-project
     repository: riksdagen-persons
@@ -18,11 +18,11 @@ cwb:
   corpus_name: RIKSPROT_V110_TEST
 
 dtm:
-  folder: /data/dtm/text
+  folder: /data/swedeb/v1.1.0/dtm/text
   tag: text
 
 vrt:
-  folder: /data/tagged_frames
+  folder: /data/swedeb/v1.1.0/tagged_frames
   tag: text
 
 fastapi:
