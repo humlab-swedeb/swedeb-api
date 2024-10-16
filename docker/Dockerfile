@@ -112,7 +112,7 @@ WORKDIR /app
 
 COPY dist /backend-wheels
 RUN pip3.11 install /wheels/*.whl \
-    && pip3.11 install /backend-wheels/api_swedeb-0.1.0-py3-none-any.whl \
+    && pip3.11 install /backend-wheels/api_swedeb-0.1.1-py3-none-any.whl \
     && rm -rf /backend-wheels
 
 COPY cwb/registry /data/cwb/registry
