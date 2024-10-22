@@ -1,5 +1,6 @@
-from typing import List
+from typing import List, Self
 
+import fastapi.params
 from fastapi import Query
 
 year_regex = r"^\d{4}$"
@@ -74,3 +75,10 @@ class CommonQueryParams(SpeakerQueryParams):
             **year_opts,
         }
         return opts
+
+    def resolve(self) -> Self:
+        """Replaces all Query instances with their default values."""
+        for key, value in self.__dict__.items():
+            if isinstance(value, fastapi.params.Query):
+                setattr(self, key, value.default)
+        return self
