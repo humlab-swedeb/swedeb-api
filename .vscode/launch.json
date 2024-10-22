@@ -11,7 +11,8 @@
             "program": "${file}",
             "name": "Python: Current File",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"
+                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}",
+                "PYDEVD_WARN_EVALUATION_TIMEOUT": "10"
             },
             "console": "internalConsole",
             "cwd": "${workspaceFolder}"
@@ -34,7 +35,8 @@
                 "-sv"
             ],
             "env": {
-                "PYTHONPATH": "${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}",
+                "PYDEVD_WARN_EVALUATION_TIMEOUT": "10"
             },
         }
     ]
