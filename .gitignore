@@ -270,3 +270,4 @@ profiling
 *.code-workspace
 deprecated
 .vscode/settings.json
+data
