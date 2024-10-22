@@ -177,7 +177,7 @@ class SpeechTextRepository:
             )
             speech["gender"] = self.person_codecs.gender2name.get(speech["gender_id"], "Okänt")
             speech["gender_abbrev"] = self.person_codecs.gender2abbrev.get(speech["gender_id"], "Okänt")
-            speech["party_abbrev"] = self.person_codecs.party_abbrev2name.get(speech["party_id"], "Okänt")
+            speech["party_abbrev"] = self.person_codecs.party_id2abbrev.get(speech["party_id"], "Okänt")
 
         except FileNotFoundError as ex:
             speech = {"name": f"speech {speech_name} not found", "error": str(ex)}

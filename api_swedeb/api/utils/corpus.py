@@ -27,7 +27,7 @@ class Corpus:
         self.__lazy_person_codecs: md.PersonCodecs = Lazy(
             lambda: md.PersonCodecs()
             .load(source=self.metadata_filename)
-            .add_multiple_party_abbrevs(partys_of_interest=set(self.document_index.party_id.unique())),
+            .add_multiple_party_abbrevs(),
         )
         self.__lazy_repository: sr.SpeechTextRepository = Lazy(
             lambda: sr.SpeechTextRepository(
@@ -149,11 +149,8 @@ class Corpus:
 
         return current_speakers.reset_index(inplace=False)
 
-    def get_party_meta(self):
-        df = self.metadata.party
-        df["party"].replace("Other", "Partilös", inplace=True)
-        df = df[df["party_abbrev"] != "?"]
-        return df.reset_index()
+    def get_party_meta(self) -> pd.DataFrame:
+        return self.metadata.party.sort_values(by=['sort_order', 'party']).reset_index()
 
     def get_gender_meta(self):
         return self.metadata.gender.assign(gender_id=self.metadata.gender.index)

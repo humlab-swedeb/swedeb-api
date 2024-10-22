@@ -115,12 +115,12 @@ class Codecs:
         return pu.revdict(self.sub_office_type2name)
 
     @cached_property
-    def party_abbrev2name(self) -> dict:
+    def party_id2abbrev(self) -> dict:
         return self.party['party_abbrev'].to_dict()
 
     @cached_property
     def party_abbrev2id(self) -> dict:
-        return pu.revdict(self.party_abbrev2name)
+        return pu.revdict(self.party_id2abbrev)
 
     @property
     def codecs(self) -> list[Codec]:
@@ -128,7 +128,7 @@ class Codecs:
             Codec("decode", "gender_id", "gender", self.gender2name),
             Codec("decode", "gender_id", "gender_abbrev", self.gender2abbrev),
             Codec("decode", "office_type_id", "office_type", self.office_type2name),
-            Codec("decode", "party_id", "party_abbrev", self.party_abbrev2name),
+            Codec("decode", "party_id", "party_abbrev", self.party_id2abbrev),
             Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name),
             Codec("encode", "gender", "gender_id", self.gender2id),
             Codec("encode", "office_type", "office_type_id", self.office_type2id),
@@ -309,10 +309,9 @@ class PersonCodecs(Codecs):
             ]
         )
 
-    def add_multiple_party_abbrevs(self, partys_of_interest: set[int]) -> Self:
-        party_data: pd.DataFrame = self.person_party  # pylint: disable=no-member
-        party_specs_rev = {v: k for k, v in self._get_party_specs(partys_of_interest).items()}
-        party_data["party_abbrev"] = party_data["party_id"].map(party_specs_rev)
+    def add_multiple_party_abbrevs(self) -> Self:
+        party_data: pd.DataFrame = self.person_party
+        party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev)
         party_data["party_abbrev"].fillna("?", inplace=True)
 
         grouped_party_abbrevs: pd.DataFrame = (
@@ -337,7 +336,7 @@ class PersonCodecs(Codecs):
             if specification["text_name"] == "party_abbrev":
                 specs: str | Mapping[str, int] = specification["values"]
                 for k, v in specs.items():
-                    if v in partys_of_interest:
+                    if v in (partys_of_interest or [v]):
                         selected[k] = v
         return selected
 
