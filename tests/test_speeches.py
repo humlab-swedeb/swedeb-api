@@ -5,9 +5,12 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from loguru import logger
 
+from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.api.utils.speech import get_speeches
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.utility import format_protocol_id
+from api_swedeb.schemas.speeches_schema import SpeechesResult
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
@@ -189,3 +192,34 @@ def test_get_speech_by_api(fastapi_client: TestClient, api_corpus: Corpus):
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
     assert len(response.json()['speaker_note']) > 0
+
+
+@pytest.mark.skip(reason="FIXME: This test is only used for debugging")
+def test_get_speech_party_bug():
+
+    dtm_folder: str = "/data/swedeb/v1.1.0/dtm/text"
+    dtm_tag: str = "text"
+    metadata_filename: str = "/data/swedeb/v1.1.0/riksprot_metadata.db"
+    tagged_corpus_folder: str = "/data/swedeb/v1.1.0/tagged_frames"
+
+    corpus = Corpus(
+        dtm_tag=dtm_tag,
+        dtm_folder=dtm_folder,
+        metadata_filename=metadata_filename,
+        tagged_corpus_folder=tagged_corpus_folder,
+    )
+
+    df: pd.DataFrame = corpus.get_anforanden(selections={'year': (1867, 1900)})
+
+    assert df is not None
+
+    di: pd.DataFrame = corpus.vectorized_corpus.document_index
+    assert len(di[di.year.between(1867, 1900)]) == len(df)
+
+    args: CommonQueryParams = CommonQueryParams(from_year=1867, to_year=1900).resolve()
+
+    result: SpeechesResult = get_speeches(commons=args, corpus=corpus)
+
+    assert len(df) == len(result.speech_list)
+
+    assert df.year.between(1867, 1900).all()
