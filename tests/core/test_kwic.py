@@ -150,12 +150,13 @@ def test_simple_kwic_with_decode_results_for_various_setups(
 
 
 def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person_codecs: PersonCodecs):
+    party_id = 5
     search_opts: dict[str, Any] = [
         {
             'prefix': 'a',
             'criterias': [
                 {'key': 'a.year_year', 'values': (1970, 1980)},
-                {'key': 'a.speech_party_id', 'values': 9},
+                {'key': 'a.speech_party_id', 'values': party_id},
                 {'key': 'a.speech_gender_id', 'values': [2]},
             ],
             'target': 'word',
