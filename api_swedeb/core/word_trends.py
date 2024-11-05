@@ -44,9 +44,10 @@ class SweDebTrendsData(wt.TrendsService):
 
     def _transform_corpus(self, opts: SweDebComputeOpts) -> pc.VectorizedCorpus:
         corpus: pc.VectorizedCorpus = super()._transform_corpus(opts)
+        if len(corpus.document_index) == 0:
+            return corpus
         di: pd.DataFrame = self.update_document_index(opts, corpus.document_index)
-        if len(corpus.document_index) > 0:
-            corpus.replace_document_index(di)
+        corpus.replace_document_index(di)
         return corpus
 
     def update_document_index(self, opts: SweDebComputeOpts, document_index: pd.DataFrame) -> pd.DataFrame:
