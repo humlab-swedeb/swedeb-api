@@ -45,7 +45,7 @@ def test_dynamic_base_model():
     assert len(year_counts_list.wt_list) > 0
 
 
-def test_word_trends_with_base_model(api_corpus):
+def test_word_trends_with_base_model(api_corpus: Corpus):
     df = api_corpus.get_word_trend_results(
         search_terms=['debatt', 'riksdagsdebatt'], filter_opts={'year': (1900, 2000)}
     )
@@ -63,7 +63,7 @@ def test_word_trends_with_base_model(api_corpus):
     assert len(year_counts_list.wt_list) > 0
 
 
-def test_word_trends_api(fastapi_client):
+def test_word_trends_api(fastapi_client: TestClient):
     search_term = 'att,och'
     response = fastapi_client.get(f"{version}/tools/word_trends/{search_term}")
     json = response.json()
@@ -74,7 +74,7 @@ def test_word_trends_api(fastapi_client):
         assert word in count
 
 
-def test_word_trends_api_with_gender_filter(fastapi_client):
+def test_word_trends_api_with_gender_filter(fastapi_client: TestClient):
     search_term = 'att,och'
     response = fastapi_client.get(
         f"{version}/tools/word_trends/{search_term}?party_id=9&gender_id=2&from_year=1900&to_year=3000"
@@ -107,7 +107,7 @@ def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
 
 
 @pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
-def test_word_trends_speeches(fastapi_client):
+def test_word_trends_speeches(fastapi_client: TestClient):
     search_term = 'debatt'
 
     response = fastapi_client.get(f"{version}/tools/word_trend_speeches/{search_term}")
@@ -119,7 +119,7 @@ def test_word_trends_speeches(fastapi_client):
     assert len(json['speech_list']) > 0
 
 
-def test_word_trends_speeches_corpus(api_corpus):
+def test_word_trends_speeches_corpus(api_corpus: Corpus):
     search_term = 'debatt'
     df = api_corpus.get_anforanden_for_word_trends(selected_terms=[search_term], filter_opts={'year': (1900, 2000)})
     assert len(df) > 0
@@ -143,7 +143,7 @@ def test_word_trends_speeches_corpus(api_corpus):
     assert set(df.columns) == expected_columns
 
 
-def test_word_trend_corpus(api_corpus):
+def test_word_trend_corpus(api_corpus: Corpus):
     vocabulary = api_corpus.vectorized_corpus.vocabulary
     assert 'debatt' in vocabulary
     wt = api_corpus.get_word_trend_results(
@@ -152,7 +152,7 @@ def test_word_trend_corpus(api_corpus):
     assert len(wt) > 0
 
 
-def test_word_trend_corpus_with_filters(api_corpus):
+def test_word_trend_corpus_with_filters(api_corpus: Corpus):
     wt = api_corpus.get_word_trend_results(
         search_terms=['sverige'], filter_opts={'party_id': [2], 'year': (1900, 2000)}
     )
@@ -161,7 +161,7 @@ def test_word_trend_corpus_with_filters(api_corpus):
     assert 'sverige Kd' in wt.columns
 
 
-def test_word_hits_api(fastapi_client):
+def test_word_hits_api(fastapi_client: TestClient):
     response = fastapi_client.get(f"{version}/tools/word_trend_hits/debatt*")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
