@@ -33,6 +33,22 @@ EXPECTED_COLUMNS: set[str] = {
 }
 
 
+def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Helper function that encodes party abbreviations to party ids (simplifies designing test cases)"""
+
+    if not criterias:
+        return criterias
+
+    for criteria in criterias:
+
+        if not criteria['key'].endswith("_party_abbrev"):
+            continue
+
+        criteria['key'] = 'a.speech_party_id'
+        party_abbrev: str = criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
+        criteria['values'] = [person_codecs.party_abbrev2id.get(party, 0) for party in party_abbrev]
+
+
 @pytest.mark.parametrize(
     "word,target,p_show,filter_opts,expected_words",
     [
@@ -49,7 +65,7 @@ EXPECTED_COLUMNS: set[str] = {
             "word",
             [
                 {'key': 'a.year_year', 'values': (1970, 1980)},
-                {'key': 'a.speech_party_id', 'values': 9},
+                {'key': 'a.speech_party_abbrev', 'values': 'S'},
                 {'key': 'a.speech_gender_id', 'values': [2]},
             ],
             ["debatt"],
@@ -58,12 +74,15 @@ EXPECTED_COLUMNS: set[str] = {
 )
 def test_simple_kwic_without_decode_with_multiple_terms(
     corpus: ccc.Corpus,
+    person_codecs: PersonCodecs,
     word: str | list[str],
     target: str,
     p_show: str,
     filter_opts: dict[str, Any],
     expected_words: str | list[str] | None,
 ):
+    filter_opts = encode_party_abbrev2id(person_codecs, filter_opts)
+
     search_opts: list[dict] = [
         {
             "prefix": None if not filter_opts else "a",
@@ -150,14 +169,18 @@ def test_simple_kwic_with_decode_results_for_various_setups(
 
 
 def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person_codecs: PersonCodecs):
-    party_id = 5
+    party_abbrev: str = 'S'
+    gender_id: int = 2
+
+    party_id: int = person_codecs.party_abbrev2id.get(party_abbrev, 0)
+
     search_opts: dict[str, Any] = [
         {
             'prefix': 'a',
             'criterias': [
                 {'key': 'a.year_year', 'values': (1970, 1980)},
                 {'key': 'a.speech_party_id', 'values': party_id},
-                {'key': 'a.speech_gender_id', 'values': [2]},
+                {'key': 'a.speech_gender_id', 'values': [gender_id]},
             ],
             'target': 'word',
             'value': 'debatt',
