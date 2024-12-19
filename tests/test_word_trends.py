@@ -167,6 +167,16 @@ def test_word_hits_api(fastapi_client):
     assert 'hit_list' in json
     assert len(json['hit_list']) > 0
 
+def test_normalize_api(fastapi_client):
+    response = fastapi_client.get(f"{version}/tools/word_trends/klimat?normalize=true")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+    assert 'wt_list' in json
+    wt_list = json['wt_list']
+    assert len(json['wt_list']) > 0
+    counts = [wt['count']['klimat'] for wt in wt_list]
+    assert all([count < 1 for count in counts])
+
 
 def test_summed_word_trends(api_corpus):
     df: pd.DataFrame = api_corpus.get_word_trend_results(

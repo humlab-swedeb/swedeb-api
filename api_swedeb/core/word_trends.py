@@ -68,7 +68,7 @@ def get_words_per_year(corpus: pc.VectorizedCorpus) -> pd.DataFrame:
         return corpus.recall("words_per_year")
     year_count_series: pd.Series = corpus.document_index.groupby("year")["n_raw_tokens"].sum()
     year_count_frame: pd.DataFrame = year_count_series.to_frame().set_index(year_count_series.index.astype(str))
-    corpus.remember("words_per_year", year_count_frame)
+    corpus.remember(words_per_year=year_count_frame)
     return year_count_frame
 
 
@@ -97,7 +97,7 @@ def compute_word_trends(
     opts: SweDebComputeOpts = SweDebComputeOpts(
         fill_gaps=False,
         keyness=KeynessMetric.TF,
-        normalize=False,
+        normalize=normalize,
         pivot_keys_id_names=pivot_keys,
         filter_opts=pu.PropertyValueMaskingOpts(**filter_opts),
         smooth=False,
@@ -126,13 +126,7 @@ def compute_word_trends(
         current_pivot_keys: list[str] = [opts.temporal_key] + [x for x in trends.columns if x in possible_pivots]
         unstacked_trends = pu.unstack_data(trends, current_pivot_keys)
 
-    # remove COLUMNS with only 0s, with serveral filtering options, there
-    # are sometimes many such columns
-    # unstacked_trends = unstacked_trends.loc[:, (unstacked_trends != 0).any(axis=0)]
     if len(unstacked_trends.columns) > 1:
         unstacked_trends["Totalt"] = unstacked_trends.sum(axis=1, numeric_only=True)
-
-    if normalize:
-        unstacked_trends = normalize_word_per_year(vectorized_corpus, unstacked_trends)
 
     return unstacked_trends
