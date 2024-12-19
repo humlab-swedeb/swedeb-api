@@ -76,7 +76,7 @@ def test_word_trends_api(fastapi_client):
 def test_word_trends_api_with_gender_filter(fastapi_client):
     search_term = 'att,och'
     response = fastapi_client.get(
-        f"{version}/tools/word_trends/{search_term}?party_id=9&gender_id=2&from_year=1900&to_year=3000"
+        f"{version}/tools/word_trends/{search_term}?party_id=8&gender_id=2&from_year=1900&to_year=3000"
     )
     json = response.json()
     first_result = json['wt_list'][0]
@@ -89,22 +89,18 @@ def test_word_trends_api_with_gender_filter(fastapi_client):
             assert terms[0] in key or terms[1] in key
 
 
-
-
-
-
-
-def test_temp(fastapi_client):
+def test_party_id(fastapi_client):
     search_term = 'debatt'
     response = fastapi_client.get(
-        f"{version}/tools/word_trends/{search_term}?party_id=9&from_year=1900&to_year=3000"
+        f"{version}/tools/word_trends/{search_term}?party_id=8&from_year=1900&to_year=3000"
     )
     json = response.json()
     first_result = json['wt_list'][0]
 
     count = first_result['count']
     count_keys = count.keys()
-    assert 'debatt S' in count_keys
+    assert 'debatt V' in count_keys
+
 
 
 @pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
@@ -154,10 +150,10 @@ def test_word_trend_corpus(api_corpus):
 
 
 def test_word_trend_corpus_with_filters(api_corpus):
-    wt = api_corpus.get_word_trend_results(search_terms=['krig'], filter_opts={'party_id': [9], 'year': (1900, 2000)})
+    wt = api_corpus.get_word_trend_results(search_terms=['krig'], filter_opts={'party_id': [8], 'year': (1900, 2000)})
     assert len(wt) > 0
     assert '1975' in wt.index
-    assert 'krig S' in wt.columns
+    assert 'krig V' in wt.columns
 
 
 def test_word_hits_api(fastapi_client):

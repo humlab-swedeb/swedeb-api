@@ -49,7 +49,7 @@ EXPECTED_COLUMNS: set[str] = {
             "word",
             [
                 {'key': 'a.year_year', 'values': (1970, 1980)},
-                {'key': 'a.speech_party_id', 'values': 9},
+                {'key': 'a.speech_party_id', 'values': 6},
                 {'key': 'a.speech_gender_id', 'values': [2]},
             ],
             ["debatt"],
@@ -155,7 +155,7 @@ def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person
             'prefix': 'a',
             'criterias': [
                 {'key': 'a.year_year', 'values': (1970, 1980)},
-                {'key': 'a.speech_party_id', 'values': 9},
+                {'key': 'a.speech_party_id', 'values': 6},
                 {'key': 'a.speech_gender_id', 'values': [2]},
             ],
             'target': 'word',

@@ -220,8 +220,8 @@ def test_cqp_execute_query(corpus: Corpus):
             "target": "lemma",
             "value": "information",
             "criterias": [
-                {"key": "a.speech_who", "values": ['i-AUocZy5YDqXmCwrRq6eGaW', 'i-5hWJKAnAs7X9iuugADpXr7']},
-                {"key": "a.speech_party_id", "values": "7"},
+                {"key": "a.speech_who", "values": ['i-Ua1nqYCRbnUSNc5Tw1tXiK', 'i-B4nu9XszBXgUbk8rfByBoJ']},
+                {"key": "a.speech_party_id", "values": "6"},
             ],
         }
     )
@@ -231,7 +231,7 @@ def test_cqp_execute_query(corpus: Corpus):
     assert data is not None
     assert len(data) > 0
     assert 'speech_who' in data.columns and 'speech_party_id' in data.columns
-    assert (data.speech_party_id.astype(int) == 7).all()
+    assert (data.speech_party_id.astype(int) == 6).all()
 
 
 def test_corpus_attribs(corpus: Corpus):
