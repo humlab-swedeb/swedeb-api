@@ -69,7 +69,7 @@ def get_words_per_year(corpus: pc.VectorizedCorpus) -> pd.DataFrame:
         return corpus.recall("words_per_year")
     year_count_series: pd.Series = corpus.document_index.groupby("year")["n_raw_tokens"].sum()
     year_count_frame: pd.DataFrame = year_count_series.to_frame().set_index(year_count_series.index.astype(str))
-    corpus.remember("words_per_year", year_count_frame)
+    corpus.remember(words_per_year=year_count_frame)
     return year_count_frame
 
 
