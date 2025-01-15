@@ -29,6 +29,7 @@ isort = "^5.13.2"
 ruff = "^0.3.3"
 pyinstrument = "^4.6.2"
 poetry-plugin-export = "^1.8.0"
+pytest-cov = "^6.0.0"
 
 [tool.black]
 line-length = 120
@@ -50,6 +51,18 @@ select = ["E", "F", "W"]
 ignore = []
 fixable = ["ALL"]
 unfixable = []
+
+[tool.coverage]
+    [tool.coverage.run]
+    omit = [
+        '__init__.py',
+        '__paths__.py',
+        'tests/*',
+        'api_swedeb/schemas'
+    ]
+
+    [tool.coverage.report]
+    skip_empty = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
