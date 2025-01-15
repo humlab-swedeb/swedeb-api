@@ -271,7 +271,7 @@ def dotset(data: dict, path: str, value: Any) -> dict:
     """Sets element in dict using dot notation x.y.z or x_y_z or x:y:z"""
 
     d: dict = data
-    attrs: list[str] = path.replace(":", ".").split('.')
+    attrs: list[str] = path.replace(":", ".").replace('_', '.').split('.')
     for attr in attrs[:-1]:
         if not attr:
             continue
