@@ -1,10 +1,12 @@
-from fastapi.testclient import TestClient
 import numpy as np
 import pandas as pd
 import pytest
 from fastapi import status
+from fastapi.testclient import TestClient
 
+from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.schemas.speeches_schema import SpeechesResultItemWT, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 
 # pylint: disable=redefined-outer-name
@@ -256,3 +258,35 @@ def test_frequent_words(api_corpus):
     # assert word_order_word_trends == word_hits_non_descending
     # word-trend counting and word-hits counting does not give the exact same results
     # setting descening to true gives words in alphabetical order
+
+
+def test_get_word_trend_speeches(api_corpus: Corpus):
+    search_term = 'debatt'
+    opts: CommonQueryParams = CommonQueryParams().resolve()
+    df: pd.DataFrame = api_corpus.get_anforanden_for_word_trends(
+        search_term.split(','), opts.get_filter_opts(include_year=True)
+    )
+
+    result = SpeechesResultWT(speech_list=[SpeechesResultItemWT(**row) for row in df.to_dict(orient="records")])
+
+    assert len(result.speech_list) > 0
+    assert isinstance(result, SpeechesResultWT)
+    assert all(isinstance(item, SpeechesResultItemWT) for item in result.speech_list)
+
+
+def test_word_trend_speeches_api(fastapi_client: TestClient):
+    search_term = 'debatt'
+    response = fastapi_client.get(f"{version}/tools/word_trend_speeches/{search_term}")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'speech_list' in json
+    assert len(json['speech_list']) > 0
+
+    first_result = json['speech_list'][0]
+    assert 'document_id' in first_result
+    assert 'speech_id' in first_result
+    assert 'year' in first_result
+    assert 'party_abbrev' in first_result
+    assert 'name' in first_result
+    assert 'node_word' in first_result
