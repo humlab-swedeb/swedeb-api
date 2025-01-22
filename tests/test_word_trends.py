@@ -189,7 +189,7 @@ def test_normalize_api(fastapi_client):
     wt_list = json['wt_list']
     assert len(json['wt_list']) > 0
     counts = [wt['count']['klimat'] for wt in wt_list]
-    assert all([count < 1 for count in counts])
+    assert all(count < 1 for count in counts)
 
 
 def test_summed_word_trends(api_corpus):
