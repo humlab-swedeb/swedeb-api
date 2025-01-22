@@ -1,4 +1,6 @@
 from unittest.mock import patch
+from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
 import pytest
 from fastapi.testclient import TestClient
 from api_swedeb.api.tool_router import router
@@ -129,13 +131,32 @@ class TestGetSpeechByid:
         result = SpeechesTextResultItem(**response.json())
         assert isinstance(result, SpeechesTextResultItem)
 
-@pytest.mark.skip(reason="Not implemented yet. speech_text.py raises ValueError")
-def test_get_zip():
-    response = client.post(f"{version}/tools/speech_download/", json=["test_id1", "test_id2"])
-    assert response.status_code == 200
-    assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
-    assert response.headers['Content-Type'] == 'application/zip'
-    assert len(response.content) > 0
+
+@pytest.fixture(name='speech_ids')
+def mock_speech_ids():
+    return ["i-Tthy1hzk6Yg4W5NfXLwJrA;i-Ua1nqYCRbnUSNc5Tw1tXiK", "i-284a2ff9c2603b5f-0;i-Ua1nqYCRbnUSNc5Tw1tXiK"]
+
+class TestGetZip:
+    def test_get_zip_with_valid_speech_ids(self, speech_ids):
+        response = client.post(f"{version}/tools/speech_download/", json=speech_ids)
+        assert response.status_code == 200
+        assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
+        assert response.headers['Content-Type'] == 'application/zip'
+        assert len(response.content) > 0
+        
+    def test_get_zip_with_invalid_speech_ids_raises_ValueError(self):
+        with pytest.raises(ValueError, match="unknown speech key"):
+            client.post(f"{version}/tools/speech_download/", json=["invalid_id"])
+            
+    @pytest.mark.skip(reason="HTTPException not raised. fastapi raises a RequestValidationError if the list is empty.")
+    def test_get_zip_with_no_speech_ids_raises_HTTPException(self):
+        with pytest.raises(HTTPException, match="Speech ids are required"):
+            client.post(f"{version}/tools/speech_download/", json=[])
+    
+    @pytest.mark.skip(reason="Not intended: RequestValidationError is raised instead of HTTPException")            
+    def test_get_zip_with_empty_speech_ids_raises_RequestValidationError(self):
+        with pytest.raises(RequestValidationError):
+            client.post(f"{version}/tools/speech_download/", json=[])
 
 
 class TestGetTopics:
