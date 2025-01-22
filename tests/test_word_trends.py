@@ -254,8 +254,8 @@ def test_merged_speeches(api_corpus):
 
 def test_frequent_words(api_corpus):
     # api_corpus.get_word_hits should return word in order of most to least common
-    word_hits_non_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=False)
-    word_hits_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=True)
+    word_hits_non_descending = api_corpus.get_word_hits('*debatt*', n_hits=10)
+    word_hits_descending = api_corpus.get_word_hits('*debatt*', n_hits=10)
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
