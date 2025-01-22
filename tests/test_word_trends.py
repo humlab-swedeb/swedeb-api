@@ -96,6 +96,7 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
             assert terms[0] in key or terms[1] in key
 
 
+
 def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
     search_term: str = 'sverige'
     party_abbrev: str = 'S'
@@ -180,6 +181,16 @@ def test_word_hits_api(fastapi_client: TestClient):
     assert 'hit_list' in json
     assert len(json['hit_list']) > 0
 
+def test_normalize_api(fastapi_client):
+    response = fastapi_client.get(f"{version}/tools/word_trends/klimat?normalize=true")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+    assert 'wt_list' in json
+    wt_list = json['wt_list']
+    assert len(json['wt_list']) > 0
+    counts = [wt['count']['klimat'] for wt in wt_list]
+    assert all([count < 1 for count in counts])
+
 
 def test_summed_word_trends(api_corpus):
     df: pd.DataFrame = api_corpus.get_word_trend_results(
@@ -242,21 +253,53 @@ def test_merged_speeches(api_corpus):
 
 
 def test_frequent_words(api_corpus):
-    word_hits_non_descending = api_corpus.get_word_hits('katt*', n_hits=10, descending=False)
-    word_hits_descending = api_corpus.get_word_hits('katt*', n_hits=10, descending=True)
+    # api_corpus.get_word_hits should return word in order of most to least common
+    word_hits_non_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=False)
+    word_hits_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=True)
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
-    df_sum_sorted = df_sum.sort_values(ascending=False)
+    df_sum_sorted = df_sum.sort_values(ascending=False) # ~ korrekt ordning
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
     df_sum_sorted = df_sum.sort_values(ascending=False)
     word_order_word_trends = df_sum_sorted.index.to_list()
     word_order_word_trends.remove('Totalt')
+    most_common = word_order_word_trends[0]
+    less_common = word_order_word_trends[5]
+    assert word_hits_non_descending.index(most_common) < word_hits_non_descending.index(less_common)
 
     # assert word_order_word_trends == word_hits_non_descending
     # word-trend counting and word-hits counting does not give the exact same results
+
+
+"""
+with search term *debatt* (and not reversing results in get_word_hits)
+if descending in get_word_hits is set to descending=descending
+descending = False -> word_hits_non_descending: THIS IS REVERSE FREQUENCY ORDER
+['remissdebatt', 'remissdebatten', 'skendebatt', 'generaldebatt', 'debatteras', 'interpellationsdebatt', 'sakdebatt',
+                                                                                    'debatter', 'debatt', 'debatten']
+
+descending = True -> word_hits_descending THIS IS REVERSE ALPHABETICAL ORDER
+['skendebatt', 'sakdebatt', 'remissdebatten', 'remissdebatt', 'interpellationsdebatt', 'generaldebatt', 'debatteras',
+                                                                                    'debatter', 'debatten', 'debatt']
+
+This is the order according to word trends. Compare to descending = False reversed (almost exactly the same)
+Totalt                   230
+debatten                 117
+debatt                    83
+debatter                  12
+sakdebatt                  4
+debatteras                 3
+interpellationsdebatt      3
+remissdebatten             2
+skendebatt                 2
+remissdebatt               2
+generaldebatt              2
+
+
+"""
     # setting descening to true gives words in alphabetical order
 
 
