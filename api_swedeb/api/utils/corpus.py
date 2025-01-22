@@ -25,9 +25,7 @@ class Corpus:
             lambda: load_dtm_corpus(folder=self.dtm_folder, tag=self.dtm_tag)
         )
         self.__lazy_person_codecs: md.PersonCodecs = Lazy(
-            lambda: md.PersonCodecs()
-            .load(source=self.metadata_filename)
-            .add_multiple_party_abbrevs(),
+            lambda: md.PersonCodecs().load(source=self.metadata_filename).add_multiple_party_abbrevs(),
         )
         self.__lazy_repository: sr.SpeechTextRepository = Lazy(
             lambda: sr.SpeechTextRepository(
