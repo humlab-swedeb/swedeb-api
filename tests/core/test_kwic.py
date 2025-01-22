@@ -36,18 +36,16 @@ EXPECTED_COLUMNS: set[str] = {
 def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Helper function that encodes party abbreviations to party ids (simplifies designing test cases)"""
 
-    if not criterias:
-        return criterias
+    if criterias:
+        for criteria in criterias:
+            if not criteria['key'].endswith("_party_abbrev"):
+                continue
 
-    for criteria in criterias:
+            criteria['key'] = 'a.speech_party_id'
+            party_abbrev: str = criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
+            criteria['values'] = [person_codecs.party_abbrev2id.get(party, 0) for party in party_abbrev]
 
-        if not criteria['key'].endswith("_party_abbrev"):
-            continue
-
-        criteria['key'] = 'a.speech_party_id'
-        party_abbrev: str = criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
-        criteria['values'] = [person_codecs.party_abbrev2id.get(party, 0) for party in party_abbrev]
-
+    return criterias
 
 @pytest.mark.parametrize(
     "word,target,p_show,filter_opts,expected_words",
