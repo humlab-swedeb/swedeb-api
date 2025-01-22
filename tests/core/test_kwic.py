@@ -47,6 +47,7 @@ def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str
 
     return criterias
 
+
 @pytest.mark.parametrize(
     "word,target,p_show,filter_opts,expected_words",
     [

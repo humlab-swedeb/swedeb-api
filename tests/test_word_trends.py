@@ -96,7 +96,6 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
             assert terms[0] in key or terms[1] in key
 
 
-
 def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
     search_term: str = 'sverige'
     party_abbrev: str = 'S'
@@ -181,6 +180,7 @@ def test_word_hits_api(fastapi_client: TestClient):
     assert 'hit_list' in json
     assert len(json['hit_list']) > 0
 
+
 def test_normalize_api(fastapi_client):
     response = fastapi_client.get(f"{version}/tools/word_trends/klimat?normalize=true")
     assert response.status_code == status.HTTP_200_OK
@@ -259,7 +259,7 @@ def test_frequent_words(api_corpus):
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
-    df_sum_sorted = df_sum.sort_values(ascending=False) # ~ korrekt ordning
+    df_sum_sorted = df_sum.sort_values(ascending=False)  # ~ korrekt ordning
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
@@ -300,7 +300,7 @@ generaldebatt              2
 
 
 """
-    # setting descening to true gives words in alphabetical order
+# setting descening to true gives words in alphabetical order
 
 
 def test_get_word_trend_speeches(api_corpus: Corpus):
