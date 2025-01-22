@@ -28,7 +28,10 @@ test:
 pylint:
 	@poetry run pylint $(SOURCE_FOLDERS)
 
-.PHONY: requirements.txt
+.PHONY: tools
+tools:
+	@poetry self add poetry-plugin-shell poetry-plugin-export > /dev/null
+
 requirements.txt: poetry.lock
 	@poetry export --without-hashes --format=requirements.txt > requirements.txt
 
