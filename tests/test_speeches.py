@@ -128,7 +128,7 @@ def test_get_speeches_corpus(api_corpus: Corpus):
     )
     df_unfiltered: pd.DataFrame = api_corpus.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
-    assert 'M' in df_filtered['party_abbrev'].unique()
+    assert 'L' in df_filtered['party_abbrev'].unique()
     assert 'S' in df_filtered['party_abbrev'].unique()
 
 
@@ -198,7 +198,6 @@ def test_get_speech_by_api(fastapi_client: TestClient, api_corpus: Corpus):
 
 @pytest.mark.skip(reason="FIXME: This test is only used for debugging")
 def test_get_speech_party_bug():
-
     dtm_folder: str = "/data/swedeb/v1.1.0/dtm/text"
     dtm_tag: str = "text"
     metadata_filename: str = "/data/swedeb/v1.1.0/riksprot_metadata.db"
