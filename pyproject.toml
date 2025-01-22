@@ -11,14 +11,12 @@ python = "3.11.*"
 fastapi = "^0.105.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
 python-dotenv = "^1.0.1"
-cwb-ccc = "^0.12.1"
-pandas = "1.5.3"
+cwb-ccc = "^0.12.3"
 pydantic = "^2.6.3"
 scipy = "1.12.0"
 numpy = "1.26.4"
 humlab-penelope = "^0.8.2"
 pyarrow = "^17.0.0"
-association-measures = "0.2.7"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.12.0"
@@ -29,6 +27,7 @@ isort = "^5.13.2"
 ruff = "^0.3.3"
 pyinstrument = "^4.6.2"
 poetry-plugin-export = "^1.8.0"
+pytest-cov = "^6.0.0"
 
 [tool.black]
 line-length = 120
@@ -50,6 +49,18 @@ select = ["E", "F", "W"]
 ignore = []
 fixable = ["ALL"]
 unfixable = []
+
+[tool.coverage]
+    [tool.coverage.run]
+    omit = [
+        '__init__.py',
+        '__paths__.py',
+        'tests/*',
+        'api_swedeb/schemas'
+    ]
+
+    [tool.coverage.report]
+    skip_empty = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

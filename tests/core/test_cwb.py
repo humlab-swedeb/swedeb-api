@@ -5,6 +5,7 @@ import pytest
 from ccc import Corpus
 from ccc.cwb import SubCorpus
 
+from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import compiler
 from api_swedeb.core.cwb.utility import CorpusAttribs
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
@@ -213,15 +214,16 @@ def test_compile_complex():
     )
 
 
-def test_cqp_execute_query(corpus: Corpus):
+def test_cqp_execute_query(corpus: Corpus, person_codecs: PersonCodecs):
+    party_id = person_codecs.party_abbrev2id.get("M")
     query: str = compiler.to_cqp_exprs(
         {
             "prefix": "a",
             "target": "lemma",
             "value": "information",
             "criterias": [
-                {"key": "a.speech_who", "values": ['i-Ua1nqYCRbnUSNc5Tw1tXiK', 'i-B4nu9XszBXgUbk8rfByBoJ']},
-                {"key": "a.speech_party_id", "values": "6"},
+                {"key": "a.speech_who", "values": ['i-AUocZy5YDqXmCwrRq6eGaW', 'i-5hWJKAnAs7X9iuugADpXr7']},
+                {"key": "a.speech_party_id", "values": f"{party_id}"},
             ],
         }
     )
@@ -231,7 +233,7 @@ def test_cqp_execute_query(corpus: Corpus):
     assert data is not None
     assert len(data) > 0
     assert 'speech_who' in data.columns and 'speech_party_id' in data.columns
-    assert (data.speech_party_id.astype(int) == 6).all()
+    assert (data.speech_party_id.astype(int) == party_id).all()
 
 
 def test_corpus_attribs(corpus: Corpus):

@@ -98,8 +98,6 @@ class Corpus:
 
     # FIXME: refactor get_anforanden_for_word_trends & get_anforanden to a single method
     def get_anforanden_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
-        # BREAKING CHANGE:
-        #  old columns: ['year', 'document_name', 'gender', 'party_abbrev', 'name', 'link', 'speech_link', 'formatted_speech_id', 'node_word']
         speeches: pd.DataFrame = get_speeches_by_words(
             self.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts
         )

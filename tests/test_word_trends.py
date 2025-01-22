@@ -2,8 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from fastapi import status
+from fastapi.testclient import TestClient
 
+from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.schemas.speeches_schema import SpeechesResultItemWT, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
 
 # pylint: disable=redefined-outer-name
@@ -44,7 +47,7 @@ def test_dynamic_base_model():
     assert len(year_counts_list.wt_list) > 0
 
 
-def test_word_trends_with_base_model(api_corpus):
+def test_word_trends_with_base_model(api_corpus: Corpus):
     df = api_corpus.get_word_trend_results(
         search_terms=['debatt', 'riksdagsdebatt'], filter_opts={'year': (1900, 2000)}
     )
@@ -62,7 +65,7 @@ def test_word_trends_with_base_model(api_corpus):
     assert len(year_counts_list.wt_list) > 0
 
 
-def test_word_trends_api(fastapi_client):
+def test_word_trends_api(fastapi_client: TestClient):
     search_term = 'att,och'
     response = fastapi_client.get(f"{version}/tools/word_trends/{search_term}")
     json = response.json()
@@ -73,10 +76,14 @@ def test_word_trends_api(fastapi_client):
         assert word in count
 
 
-def test_word_trends_api_with_gender_filter(fastapi_client):
+def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corpus: Corpus):
     search_term = 'att,och'
+    gender_id: str = 2
+    party_abbrev: str = 'S'
+    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
+
     response = fastapi_client.get(
-        f"{version}/tools/word_trends/{search_term}?party_id=8&gender_id=2&from_year=1900&to_year=3000"
+        f"{version}/tools/word_trends/{search_term}?party_id={party_id}&gender_id={gender_id}&from_year=1900&to_year=3000"
     )
     json = response.json()
     first_result = json['wt_list'][0]
@@ -89,22 +96,28 @@ def test_word_trends_api_with_gender_filter(fastapi_client):
             assert terms[0] in key or terms[1] in key
 
 
-def test_party_id(fastapi_client):
-    search_term = 'debatt'
+
+def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
+    search_term: str = 'sverige'
+    party_abbrev: str = 'S'
+    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
     response = fastapi_client.get(
-        f"{version}/tools/word_trends/{search_term}?party_id=8&from_year=1900&to_year=3000"
+        f"{version}/tools/word_trends/{search_term}?party_id={party_id}&from_year=1900&to_year=3000"
     )
     json = response.json()
+
+    assert json.get('wt_list') is not None
+    assert len(json['wt_list']) > 0
+
     first_result = json['wt_list'][0]
 
     count = first_result['count']
     count_keys = count.keys()
-    assert 'debatt V' in count_keys
-
+    assert f'{search_term} {party_abbrev}' in count_keys
 
 
 @pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
-def test_word_trends_speeches(fastapi_client):
+def test_word_trends_speeches(fastapi_client: TestClient):
     search_term = 'debatt'
 
     response = fastapi_client.get(f"{version}/tools/word_trend_speeches/{search_term}")
@@ -116,7 +129,7 @@ def test_word_trends_speeches(fastapi_client):
     assert len(json['speech_list']) > 0
 
 
-def test_word_trends_speeches_corpus(api_corpus):
+def test_word_trends_speeches_corpus(api_corpus: Corpus):
     search_term = 'debatt'
     df = api_corpus.get_anforanden_for_word_trends(selected_terms=[search_term], filter_opts={'year': (1900, 2000)})
     assert len(df) > 0
@@ -140,7 +153,7 @@ def test_word_trends_speeches_corpus(api_corpus):
     assert set(df.columns) == expected_columns
 
 
-def test_word_trend_corpus(api_corpus):
+def test_word_trend_corpus(api_corpus: Corpus):
     vocabulary = api_corpus.vectorized_corpus.vocabulary
     assert 'debatt' in vocabulary
     wt = api_corpus.get_word_trend_results(
@@ -149,14 +162,19 @@ def test_word_trend_corpus(api_corpus):
     assert len(wt) > 0
 
 
-def test_word_trend_corpus_with_filters(api_corpus):
-    wt = api_corpus.get_word_trend_results(search_terms=['krig'], filter_opts={'party_id': [8], 'year': (1900, 2000)})
+def test_word_trend_corpus_with_filters(api_corpus: Corpus):
+    party_abbrev: str = 'S'
+    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
+
+    wt: pd.DataFrame = api_corpus.get_word_trend_results(
+        search_terms=['sverige'], filter_opts={'party_id': [party_id], 'year': (1900, 2000)}
+    )
     assert len(wt) > 0
     assert '1975' in wt.index
-    assert 'krig V' in wt.columns
+    assert 'sverige S' in wt.columns
 
 
-def test_word_hits_api(fastapi_client):
+def test_word_hits_api(fastapi_client: TestClient):
     response = fastapi_client.get(f"{version}/tools/word_trend_hits/debatt*")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
@@ -254,7 +272,6 @@ def test_frequent_words(api_corpus):
 
     # assert word_order_word_trends == word_hits_non_descending
     # word-trend counting and word-hits counting does not give the exact same results
-    # setting descening to true gives words in reverse alphabetical order
 
 
 """
@@ -283,4 +300,36 @@ generaldebatt              2
 
 
 """
+    # setting descening to true gives words in alphabetical order
 
+
+def test_get_word_trend_speeches(api_corpus: Corpus):
+    search_term = 'debatt'
+    opts: CommonQueryParams = CommonQueryParams().resolve()
+    df: pd.DataFrame = api_corpus.get_anforanden_for_word_trends(
+        search_term.split(','), opts.get_filter_opts(include_year=True)
+    )
+
+    result = SpeechesResultWT(speech_list=[SpeechesResultItemWT(**row) for row in df.to_dict(orient="records")])
+
+    assert len(result.speech_list) > 0
+    assert isinstance(result, SpeechesResultWT)
+    assert all(isinstance(item, SpeechesResultItemWT) for item in result.speech_list)
+
+
+def test_word_trend_speeches_api(fastapi_client: TestClient):
+    search_term = 'debatt'
+    response = fastapi_client.get(f"{version}/tools/word_trend_speeches/{search_term}")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'speech_list' in json
+    assert len(json['speech_list']) > 0
+
+    first_result = json['speech_list'][0]
+    assert 'document_id' in first_result
+    assert 'speech_id' in first_result
+    assert 'year' in first_result
+    assert 'party_abbrev' in first_result
+    assert 'name' in first_result
+    assert 'node_word' in first_result

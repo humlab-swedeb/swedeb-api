@@ -41,6 +41,7 @@ class SearchHits(BaseModel):
 class ChamberItem(BaseModel):
     chamber_id: int
     chamber: str
+    chamber_abbrev: str = None
 
 
 class ChamberList(BaseModel):

@@ -75,7 +75,7 @@ def test_meta_chamber(corpus):
     rows = [ChamberItem(**row) for row in data]
     chamber_list = ChamberList(chamber_list=rows)
     assert chamber_list is not None
-
+    assert 'FK' in df.chamber_abbrev.to_list()
 
 def test_meta_sub_office_type(corpus):
     df = corpus.get_sub_office_type_meta()
