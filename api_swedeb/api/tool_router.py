@@ -119,6 +119,7 @@ async def get_speech_by_id_result(speech_id: str) -> SpeechesTextResultItem:
     return get_speech_text_by_id(speech_id, get_shared_corpus())
 
 
+#FIXME: #106 HTTPException is never raised. RequestValidationError is raised instead. No response is returned. No status_code is returned.
 @router.post("/speech_download/")
 async def get_zip(ids: list = Body(..., min_length=1, max_length=100)) -> StreamingResponse:
     if not ids:
