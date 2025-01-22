@@ -1,12 +1,13 @@
 import pandas as pd
+
 from api_swedeb import schemas
 
 
 def ngrams_to_ngram_result(ngrams: pd.DataFrame) -> schemas.NGramResult:
-    """Convert ngrams ndataframe witg columns ngram and count inti sequence of NGramResultItems"""
+    """Convert ngrams dataframe with column `ngram` and `window_count` into sequence of NGramResultItems"""
     return schemas.NGramResult(
         ngram_list=[
-            schemas.NGramResultItem(ngram="".join(x.ngram), count=x.count)
-            for x in ngrams.itertuples(index=False)
+            schemas.NGramResultItem(ngram=x.Index, count=x.window_count, documents=x.documents.split(","))
+            for x in ngrams.itertuples(index=True)
         ]
     )

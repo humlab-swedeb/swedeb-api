@@ -1,11 +1,11 @@
 ##
-## registry entry for corpus RIKSPROT_V0100_TEST
+## registry entry for corpus RIKSPROT_CORPUS
 ##
 
 # long descriptive name for the corpus
 NAME ""
 # corpus ID (must be lowercase in registry!)
-ID   riksprot_v0100_test
+ID   riksprot_corpus
 # path to binary data files
 HOME /data/cwb/data
 # optional info file (displayed by "info;" command in CQP)

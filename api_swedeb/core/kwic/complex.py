@@ -8,10 +8,25 @@ from ccc import Corpus, SubCorpus
 from api_swedeb.core.cwb import to_cqp_exprs
 
 if TYPE_CHECKING:
-    from api_swedeb.api.parlaclarin.codecs import Codecs
+    from api_swedeb.core.codecs import PersonCodecs
+
+S_ATTR_RENAMES: dict[str, str] = {
+    'year_year': 'year',
+    'id': 'speech_id',
+    'speech_who': 'person_id',
+    'speech_party_id': 'party_id',
+    'speech_gender_id': 'gender_id',
+    'speech_date': 'date',
+    'speech_title': 'document_name',
+    'speech_office_type_id': 'office_type_id',
+    'speech_sub_office_type_id': 'sub_office_type_id',
+    "left_lemma": "left_word",
+    "node_lemma": "node_word",
+    "right_lemma": "right_word",
+}
 
 
-def kwik(
+def kwic(  # pylint: disable=too-many-arguments
     corpus: Corpus,
     opts: dict[str, Any],
     *,
@@ -19,7 +34,8 @@ def kwik(
     words_after: int,
     p_show: Literal["word", "lemma"] = "word",
     s_show: list[str] = None,
-    decoder: Codecs = None,
+    decoder: PersonCodecs = None,
+    speech_index: pd.DataFrame = None,
     strip_s_tags: bool = True,
     cut_off: int = None,
     rename_columns: dict[str, str] = None,
@@ -48,9 +64,7 @@ def kwik(
     """
     query: str = to_cqp_exprs(opts, within="speech")
 
-    subcorpus: SubCorpus | str = corpus.query(
-        query, context_left=words_before, context_right=words_after
-    )
+    subcorpus: SubCorpus | str = corpus.query(query, context_left=words_before, context_right=words_after)
 
     segments: pd.DataFrame = subcorpus.concordance(
         form="kwic",
@@ -59,33 +73,41 @@ def kwik(
         order="first",
         cut_off=cut_off,
     ).reset_index(drop=True)
+
     if segments.empty:
         return segments
-    if s_show and strip_s_tags:
-        segments = segments.rename(
-            columns={name: name.split("_", maxsplit=1)[1] for name in s_show}
-        )
-        display_columns = [
-            name.split("_", maxsplit=1)[1] if name in s_show else name
-            for name in display_columns
-        ]
 
-    if rename_columns:
-        segments = segments.rename(columns=rename_columns)
+    if strip_s_tags:
+        segments = segments.rename(columns=S_ATTR_RENAMES | (rename_columns or {}))
 
-    if dtype:
-        segments = segments.astype(dtype)
+    if speech_index is not None:
+        """Return join of speech_index and segments"""
 
-    if decoder:
-        segments = decoder.decode(segments, drop=False)
+        segments = segments.set_index("speech_id")[['left_word', 'node_word', 'right_word']]
+        segments = segments.merge(speech_index, left_index=True, right_on='speech_id', how="inner")
+
+        decoder.decode_speech_index(segments, drop=False)
+
     else:
-        display_columns = [
-            name for name in display_columns if name not in segments.columns
-        ]
-    for name, fx in compute_columns or {}:
-        segments[name] = fx(segments)
+        if s_show and strip_s_tags:
+            segments = segments.rename(columns=S_ATTR_RENAMES)
+            display_columns = [name.split("_", maxsplit=1)[1] if name in s_show else name for name in display_columns]
 
-    if display_columns:
-        segments = segments[display_columns]
+        if rename_columns:
+            segments = segments.rename(columns=rename_columns)
+
+        if dtype:
+            segments = segments.astype(dtype)
+
+        if decoder:
+            segments = decoder.decode(segments, drop=False)
+        else:
+            display_columns = [name for name in display_columns if name not in segments.columns]
+
+        for name, fx in compute_columns or {}:
+            segments[name] = fx(segments)
+
+        if display_columns:
+            segments = segments[display_columns]
 
     return segments

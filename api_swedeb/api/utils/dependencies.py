@@ -5,26 +5,33 @@ from fastapi import Depends
 
 from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.core.configuration import ConfigValue
 
-shared_corpus = Corpus(".env_1920_2020")
+__shared_corpus: Corpus = None
 
 
-async def get_corpus():
-    return Corpus(".env_1920_2020")
+def get_shared_corpus() -> Corpus:
+    global __shared_corpus
+    if __shared_corpus is None:
+        __shared_corpus = Corpus()
+    return __shared_corpus
 
 
 def get_cwb_corpus_opts() -> dict[str, str | None]:
+    if ConfigValue("cwb.registry_dir").resolve() is None:
+        raise ValueError("CWB registry directory not set")
     return {
-        "registry_dir": os.environ.get("KWIC_DIR"),
-        "corpus_name": os.environ.get("KWIC_CORPUS_NAME"),
+        "registry_dir": ConfigValue("cwb.registry_dir").resolve(),
+        "corpus_name": ConfigValue("cwb.corpus_name").resolve(),
         "data_dir": (
-            os.getenv("KWIC_TEMP_DIR")
+            ConfigValue("cwb.data_dir").resolve()
             or f"/tmp/ccc-{str(ccc.__version__)}-{os.environ.get('USER', 'swedeb')}"
         ),
     }
 
 
-async def get_cwb_corpus(opts: dict = Depends(get_cwb_corpus_opts)) -> ccc.Corpus:
+def get_cwb_corpus(opts: dict = None) -> ccc.Corpus:
+    opts: dict = opts or get_cwb_corpus_opts()
     return ccc.Corpora(registry_dir=opts.get("registry_dir")).corpus(
         corpus_name=opts.get("corpus_name"), data_dir=opts.get("data_dir")
     )
@@ -32,7 +39,7 @@ async def get_cwb_corpus(opts: dict = Depends(get_cwb_corpus_opts)) -> ccc.Corpu
 
 def get_decoder_opts() -> dict[str, str | None]:
     return {
-        "metadata_filename": os.getenv("METADATA_FILENAME"),
+        "metadata_filename": ConfigValue("metadata.filename").resolve(),
     }
 
 

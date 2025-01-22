@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pandas as pd
+
 from api_swedeb import mappers, schemas
 
 
@@ -57,8 +58,9 @@ def test_to_CQP_criterias_with_year_params():
 
 
 def test_ngrams_to_ngram_result():
-
-    ngrams: pd.DataFrame = pd.DataFrame({"ngram": [["a", "b"], ["b", "c"], ["c", "d"]], "count": [1, 2, 3]})
+    ngrams: pd.DataFrame = pd.DataFrame(
+        {"ngram": ["a b", "b c", "c d"], "window_count": [1, 2, 3], 'documents': ['D1,D2,D3', 'D1,D4', 'D2']}
+    ).set_index("ngram")
 
     result = mappers.ngrams_to_ngram_result(ngrams)
 
@@ -72,3 +74,5 @@ def test_ngrams_to_ngram_result():
     assert result.ngram_list[1].count == 2
     assert result.ngram_list[2].ngram == "c d"
     assert result.ngram_list[2].count == 3
+    assert len(result.ngram_list[0].documents) == 3
+    assert len(result.ngram_list[1].documents) == 2

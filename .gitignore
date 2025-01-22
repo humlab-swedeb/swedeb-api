@@ -262,4 +262,12 @@ $RECYCLE.BIN/
 docker/public
 docker/dist
 docker/swedeb_frontend
-*_backup.*
+
+# .vscode
+output
+test_data
+profiling
+*.code-workspace
+deprecated
+.vscode/settings.json
+data*_backup.*

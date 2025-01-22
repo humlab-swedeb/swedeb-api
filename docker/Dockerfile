@@ -48,10 +48,11 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 WORKDIR /wheels
-RUN pip install --upgrade pip setuptools wheel \
+RUN pip install --upgrade pip \
+    && pip install setuptools wheel \
     \
-    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels cwb-ccc \
-    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels association-measures
+    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels "association-measures==0.3.0" \
+    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels cwb-ccc
 
 #####################################################################################
 # Final stage
@@ -111,13 +112,14 @@ WORKDIR /app
 
 COPY dist /backend-wheels
 RUN pip3.11 install /wheels/*.whl \
-    && pip3.11 install /backend-wheels/api_swedeb-0.1.0-py3-none-any.whl \
+    && pip3.11 install /backend-wheels/api_swedeb-0.1.1-py3-none-any.whl \
     && rm -rf /backend-wheels
 
 COPY cwb/registry /data/cwb/registry
 COPY public /app/public
 COPY main.py /app/main.py
 COPY entrypoint.sh entrypoint.sh
+COPY config /app/config
 
 RUN ln -s /data/cwb/registry /usr/local/share/cwb/registry \
     && chmod +x entrypoint.sh
@@ -128,7 +130,7 @@ RUN chown -R ${SWEDEB_USER}:${SWEDEB_USER} /app /data
 
 ENV SHELL=/bin/bash
 ENV HOME=/app
-ENV CORPUS_REGISTRY=/data/cwb/registry
+ENV CORPUS_REGISTRY=/data/registry
 
 # RUN python3.11 -m venv ${HOME}/.venv \
 #     && . ${HOME}/.venv/bin/activate \

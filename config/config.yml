@@ -1,0 +1,55 @@
+metadata:
+  version: v1.1.0
+  filename: /data/swedeb/v1.1.0/riksprot_metadata.db
+  github:
+    user: swerik-project
+    repository: riksdagen-persons
+    path: data
+
+corpus:
+  version: v1.1.0
+  github:
+    user: swerik-project
+    repository: riksdagen-records
+    path: data
+
+cwb:
+  registry_dir: /usr/local/share/cwb/registry
+  corpus_name: RIKSPROT_V110_TEST
+
+dtm:
+  folder: /data/swedeb/v1.1.0/dtm/text
+  tag: text
+
+vrt:
+  folder: /data/swedeb/v1.1.0/tagged_frames
+  tag: text
+
+fastapi:
+  origins:
+    - http://localhost:8080
+    - http://localhost:9002
+
+github:
+  access_token:
+
+
+display:
+  speech_index:
+    updates:
+      party_abbrev: {
+        "?": "metadata saknas",
+        "X": "partilös"
+      }
+      name: { "": "metadata saknas" }
+      
+  labels:
+    speaker:
+      unknown: Okänd
+
+  headers:
+    translations: {
+      " man": " Män",
+      "woman": "Kvinnor",
+      "unknown": "Okänt"
+    }

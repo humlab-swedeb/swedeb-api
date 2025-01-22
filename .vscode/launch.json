@@ -4,13 +4,40 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
-            "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": true
+            "name": "Python: Current File",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}",
+                "PYDEVD_WARN_EVALUATION_TIMEOUT": "10"
+            },
+            "console": "internalConsole",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "debugpy",
+            "request": "launch",
+            "purpose": [
+                "debug-test"
+            ],
+            "name": "PyTest",
+            "stopOnEntry": false,
+            // "python": "${command:python.interpreterPath}",
+            "justMyCode": true,
+            // "envFile": "${workspaceRoot}/.venv",
+            "cwd": "${workspaceRoot}",
+            "console": "internalConsole",
+            "redirectOutput": true,
+            "args": [
+                "-sv"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "PYDEVD_WARN_EVALUATION_TIMEOUT": "10"
+            },
         }
     ]
 }

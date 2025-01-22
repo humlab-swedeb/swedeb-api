@@ -1,29 +1,25 @@
-from api_swedeb.api.utils.corpus import Corpus
-
-import pytest
-from fastapi.testclient import TestClient
-from main import app
-from fastapi import status
-from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
+
+from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.schemas.speeches_schema import SpeechesResultItemWT, SpeechesResultWT
+from api_swedeb.schemas.word_trends_schema import WordTrendsItem, WordTrendsResult
+
+# pylint: disable=redefined-outer-name
 
 pd.set_option('display.max_columns', None)
 
 version = 'v1'
+
+
 @pytest.fixture(scope="module")
-def corpus():
-    env_file = '.env_1960'
-    corpus = Corpus(env_file=env_file)
+def api_corpus():
+    corpus = Corpus()
     return corpus
-
-
-@pytest.fixture(scope="module")
-def client():
-    client = TestClient(app)
-    yield client
-
-
 
 
 def test_dynamic_base_model():
@@ -35,9 +31,8 @@ def test_dynamic_base_model():
     # i.e. 1960 has 455 hits for 'att' and 314 hits for 'och'
     # and 1961 has 136 hits for 'att' and 109 hits for 'och'
 
-
-    data = {'debatt': [1, 2, 3], 'korv': [4, 5, 6]}
-    index = [2001, 2002, 2003]
+    data: dict[str, list[int]] = {'debatt': [1, 2, 3], 'korv': [4, 5, 6]}
+    index: list[int] = [2001, 2002, 2003]
     df = pd.DataFrame(data, index=index)
 
     # Create a list of YearCounts objects
@@ -47,19 +42,16 @@ def test_dynamic_base_model():
         year_counts = WordTrendsItem(year=year, count=counts_dict)
         counts_list.append(year_counts)
 
-    # Create a YearCountsList object
     year_counts_list = WordTrendsResult(wt_list=counts_list)
 
-    # Print the YearCountsList object
-    print(year_counts_list)
+    assert len(year_counts_list.wt_list) > 0
 
 
-def test_word_trends_with_base_model(corpus):
-
-    df = corpus.get_word_trend_results(search_terms=['debatt', 'riksdagsdebatt'], filter_opts={}, start_year=1900, end_year=2000)
-    assert len(df)>0
-    print(df.head())
-    print(df.info())
+def test_word_trends_with_base_model(api_corpus: Corpus):
+    df = api_corpus.get_word_trend_results(
+        search_terms=['debatt', 'riksdagsdebatt'], filter_opts={'year': (1900, 2000)}
+    )
+    assert len(df) > 0
     counts_list = []
     for year, row in df.iterrows():
         counts_dict = row.to_dict()
@@ -70,13 +62,12 @@ def test_word_trends_with_base_model(corpus):
     year_counts_list = WordTrendsResult(wt_list=counts_list)
 
     # Print the YearCountsList object
-    print(year_counts_list)
+    assert len(year_counts_list.wt_list) > 0
 
 
-
-def test_word_trends_api(client):
+def test_word_trends_api(fastapi_client: TestClient):
     search_term = 'att,och'
-    response = client.get(f"{version}/tools/word_trends/{search_term}")
+    response = fastapi_client.get(f"{version}/tools/word_trends/{search_term}")
     json = response.json()
     first_result = json['wt_list'][0]
 
@@ -84,147 +75,261 @@ def test_word_trends_api(client):
     for word in search_term.split(','):
         assert word in count
 
-def test_word_trends_api_with_filter(client):
+
+def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corpus: Corpus):
     search_term = 'att,och'
-    response = client.get(f"{version}/tools/word_trends/{search_term}?parties=9&genders=2&from_year=1960&to_year=1970")
+    gender_id: str = 2
+    party_abbrev: str = 'S'
+    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
+
+    response = fastapi_client.get(
+        f"{version}/tools/word_trends/{search_term}?party_id={party_id}&gender_id={gender_id}&from_year=1900&to_year=3000"
+    )
     json = response.json()
     first_result = json['wt_list'][0]
-    print(json)
 
     count = first_result['count']
-    for word in search_term.split(','):
-        assert word in count
+    terms = search_term.split(',')
+
+    for key in count.keys():
+        if key != 'Totalt':
+            assert terms[0] in key or terms[1] in key
 
 
-def test_word_trends_speeches(client):
+
+def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
+    search_term: str = 'sverige'
+    party_abbrev: str = 'S'
+    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
+    response = fastapi_client.get(
+        f"{version}/tools/word_trends/{search_term}?party_id={party_id}&from_year=1900&to_year=3000"
+    )
+    json = response.json()
+
+    assert json.get('wt_list') is not None
+    assert len(json['wt_list']) > 0
+
+    first_result = json['wt_list'][0]
+
+    count = first_result['count']
+    count_keys = count.keys()
+    assert f'{search_term} {party_abbrev}' in count_keys
+
+
+@pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
+def test_word_trends_speeches(fastapi_client: TestClient):
     search_term = 'debatt'
 
-    response = client.get(f"{version}/tools/word_trend_speeches/{search_term}")
+    response = fastapi_client.get(f"{version}/tools/word_trend_speeches/{search_term}")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    print(json)
+
+    assert 'speech_list' in json
+    assert len(json['speech_list']) > 0
 
 
-def test_word_trends_speeches_corpus(corpus):
+def test_word_trends_speeches_corpus(api_corpus: Corpus):
     search_term = 'debatt'
-    df = corpus.get_anforanden_for_word_trends(selected_terms=[search_term], filter_opts={}, start_year=1900, end_year=2000)
+    df = api_corpus.get_anforanden_for_word_trends(selected_terms=[search_term], filter_opts={'year': (1900, 2000)})
     assert len(df) > 0
-    print(df.head())
-    print(df.columns)
+    expected_columns: set[str] = {
+        'document_id',  # NEW
+        'document_name',
+        'chamber_abbrev',  # NEW
+        'year',
+        'speech_id',  # NEW
+        'speech_name',  # RENAMED (formatted_speech_id)
+        'gender',
+        'gender_abbrev',  # NEW
+        'party_abbrev',
+        'name',
+        'wiki_id',  # NEW
+        'person_id',  # NEW
+        'link',
+        'speech_link',
+        'node_word',
+    }
+    assert set(df.columns) == expected_columns
 
 
-
-def test_word_trend_corpus(corpus):
-    vocabulary = corpus.vectorized_corpus.vocabulary
+def test_word_trend_corpus(api_corpus: Corpus):
+    vocabulary = api_corpus.vectorized_corpus.vocabulary
     assert 'debatt' in vocabulary
-    wt = corpus.get_word_trend_results(search_terms=['debatt', 'riksdagsdebatt'], filter_opts={}, start_year=1900, end_year=2000)
-    assert len(wt)>0
-    print(wt.head())
+    wt = api_corpus.get_word_trend_results(
+        search_terms=['debatt', 'riksdagsdebatt'], filter_opts={'year': (1900, 2000)}
+    )
+    assert len(wt) > 0
 
 
-def test_word_trend_corpus_with_filters(corpus):
+def test_word_trend_corpus_with_filters(api_corpus: Corpus):
+    party_abbrev: str = 'S'
+    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
 
-    wt = corpus.get_word_trend_results(search_terms=['att'], filter_opts={'party_id':[9]}, start_year=1900, end_year=2000)
-    assert len(wt)>0
-    assert '1963' in wt.index #year without result for att for 1960-test corpus should be included
-    columns = wt.columns
-    for c in columns:
-        # 9 corresponds to S
-        assert 'S' in c
+    wt: pd.DataFrame = api_corpus.get_word_trend_results(
+        search_terms=['sverige'], filter_opts={'party_id': [party_id], 'year': (1900, 2000)}
+    )
+    assert len(wt) > 0
+    assert '1975' in wt.index
+    assert 'sverige S' in wt.columns
 
 
-def test_word_hits_api(client):
-    response = client.get(f"{version}/tools/word_trend_hits/debatt*")
+def test_word_hits_api(fastapi_client: TestClient):
+    response = fastapi_client.get(f"{version}/tools/word_trend_hits/debatt*")
     assert response.status_code == status.HTTP_200_OK
     json = response.json()
     assert 'hit_list' in json
     assert len(json['hit_list']) > 0
 
+def test_normalize_api(fastapi_client):
+    response = fastapi_client.get(f"{version}/tools/word_trends/klimat?normalize=true")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+    assert 'wt_list' in json
+    wt_list = json['wt_list']
+    assert len(json['wt_list']) > 0
+    counts = [wt['count']['klimat'] for wt in wt_list]
+    assert all([count < 1 for count in counts])
 
-def test_ordered_word_hits_api(corpus):
-    search_term = 'debatt*'
-    descending_true = corpus.get_word_hits(search_term, descending=True, n_hits=10)
-    descending_false = corpus.get_word_hits(search_term, descending=False, n_hits=10)
-    print('TRUE', descending_true)
-    print('FALSE', descending_false)
-    # 'debatterar', 'debattera', 'debatter', 'debatt', 'debatten'
 
-
-def test_summed_word_trends(corpus):
-    # If more than one trend, the sum of the trends should be included
-    df = corpus.get_word_trend_results(search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={}, start_year=1960, end_year=1961)
+def test_summed_word_trends(api_corpus):
+    df: pd.DataFrame = api_corpus.get_word_trend_results(
+        search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={'year': (1900, 2000)}
+    )
     assert 'Totalt' in df.columns
-    df = corpus.get_word_trend_results(search_terms=['debatt'], filter_opts={}, start_year=1960, end_year=1961)
-    assert 'Totalt' not in df.columns   
+    df = api_corpus.get_word_trend_results(search_terms=['debatt'], filter_opts={'year': (1900, 2000)})
+    assert 'Totalt' not in df.columns
 
 
-def test_eu_debatt(corpus):
-    df = corpus.get_word_trend_results(search_terms=['EU-debatt'], filter_opts={}, start_year=1900, end_year=3000)
-    print(df.head())
-    df_small = corpus.get_word_trend_results(search_terms=['eu-debatt'], filter_opts={}, start_year=1900, end_year=3000)
-    print(df_small.head())
-    assert 'EU-debatt' in corpus.vectorized_corpus.vocabulary
-    assert 'eu-debatt' not in corpus.vectorized_corpus.vocabulary
+def test_search_with_different_case(api_corpus):
+    df_anycase = api_corpus.get_word_trend_results(search_terms=['Sverige'], filter_opts={'year': (1900, 2000)})
+    df_lowercase = api_corpus.get_word_trend_results(search_terms=['sverige'], filter_opts={'year': (1900, 2000)})
+
+    assert pd.testing.assert_frame_equal(df_anycase, df_lowercase) is None
 
 
-def test_chambers(corpus):
+def test_chambers(api_corpus: Corpus):
+    df = api_corpus.get_word_trend_results(
+        search_terms=["arbete"], filter_opts={"chamber_abbrev": ['ek'], 'year': (1900, 3000)}
+    )
+    assert len(df) > 0
+
+
+def test_filter_by_gender(api_corpus):
     # chamber id not included, needs to be added
-    df = corpus.get_word_trend_results(search_terms=["arbete"], filter_opts={"chamber_id": [0]}, start_year=1960, end_year=1961)
-    print(df.head())
-
-def test_chambers_di(corpus):
-    di = corpus.vectorized_corpus.document_index
-    print(di.columns)
-    print(di.head()[['document_id', 'document_name']])
+    df = api_corpus.get_word_trend_results(
+        search_terms=["sverige"], filter_opts={"gender_id": [1], 'year': (1900, 2000)}
+    )
+    assert len(df) > 0
 
 
 def test_merged_vectors():
-    input_dict = {'debatt': np.array([0, 1, 1,0]), 'riksdagsdebatt': np.array([1, 1, 0,0]), 'cat':np.array([0, 0, 0, 1])}
+    input_dict = {
+        'debatt': np.array([0, 1, 1, 0]),
+        'riksdagsdebatt': np.array([1, 1, 0, 0]),
+        'cat': np.array([0, 0, 0, 1]),
+    }
     for position in range(len(input_dict['debatt'])):
-        keys = [key for key, value in input_dict.items() if value[position] == 1]
-        print(keys)
+        _ = [key for key, value in input_dict.items() if value[position] == 1]
 
     # sen ska de ju också inte vara med i riksdagsdebatt om de är med i debatt,riksdagsdebatt
     # kanske bättre att mergea i dataframen
 
-def test_merged_speeches(corpus):
+
+@pytest.mark.skip("Needs to be adjusted to v1.1.0 corpus")
+def test_merged_speeches(api_corpus):
     # if same speech_id, search terms should be concatenated
-    df_merged = corpus.get_anforanden_for_word_trends(selected_terms=["debatt","debattörer"], filter_opts={"who":["Q5991041"]}, start_year=1971, end_year=1971)
+    df_merged = api_corpus.get_anforanden_for_word_trends(
+        selected_terms=["debatt", "debattörer"],
+        filter_opts={"who": ["Q5991041"], 'year': (1971, 1971)},
+    )
     #  Björn Molin L Man uses both debatt and debattörer in the same speech: 1971:100 003
 
-    assert len(df_merged['document_name']) == len(df_merged['document_name'].unique()) 
-    assert ('debatt,debattörer'in df_merged['node_word'].to_list() or 'debattörer,debatt' in df_merged['node_word'].to_list())
+    assert len(df_merged['document_name']) == len(df_merged['document_name'].unique())
+    assert (
+        'debatt,debattörer' in df_merged['node_word'].to_list()
+        or 'debattörer,debatt' in df_merged['node_word'].to_list()
+    )
 
 
-def test_frequent_words(corpus):
-    word_hits_non_descending = corpus.get_word_hits('katt*', n_hits=10, descending=False)
-    word_hits_descending = corpus.get_word_hits('katt*', n_hits=10, descending=True)   
+def test_frequent_words(api_corpus):
+    # api_corpus.get_word_hits should return word in order of most to least common
+    word_hits_non_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=False)
+    word_hits_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=True)
 
+    df = api_corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={'year': (1900, 3000)})
+    df_sum = df.sum(axis=0)
+    df_sum_sorted = df_sum.sort_values(ascending=False) # ~ korrekt ordning
 
-    print('word sums TOP WORDS DESCENDING')
-    print(word_hits_descending)
-    df = corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={}, start_year=1900, end_year=3000)
+    df = api_corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
     df_sum_sorted = df_sum.sort_values(ascending=False)
-    print(df_sum_sorted)
-
-    print('word sums TOP WORDS non DESCENDING')
-    print(word_hits_non_descending)
-    df = corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={}, start_year=1900, end_year=3000)
-    df_sum = df.sum(axis=0)
-    df_sum_sorted = df_sum.sort_values(ascending=False)
-    print(df_sum_sorted)
     word_order_word_trends = df_sum_sorted.index.to_list()
     word_order_word_trends.remove('Totalt')
-    print('WT ORDER',word_order_word_trends)
+    most_common = word_order_word_trends[0]
+    less_common = word_order_word_trends[5]
+    assert word_hits_non_descending.index(most_common) < word_hits_non_descending.index(less_common)
 
-    #assert word_order_word_trends == word_hits_non_descending
+    # assert word_order_word_trends == word_hits_non_descending
     # word-trend counting and word-hits counting does not give the exact same results
+
+
+"""
+with search term *debatt* (and not reversing results in get_word_hits)
+if descending in get_word_hits is set to descending=descending
+descending = False -> word_hits_non_descending: THIS IS REVERSE FREQUENCY ORDER
+['remissdebatt', 'remissdebatten', 'skendebatt', 'generaldebatt', 'debatteras', 'interpellationsdebatt', 'sakdebatt',
+                                                                                    'debatter', 'debatt', 'debatten']
+
+descending = True -> word_hits_descending THIS IS REVERSE ALPHABETICAL ORDER
+['skendebatt', 'sakdebatt', 'remissdebatten', 'remissdebatt', 'interpellationsdebatt', 'generaldebatt', 'debatteras',
+                                                                                    'debatter', 'debatten', 'debatt']
+
+This is the order according to word trends. Compare to descending = False reversed (almost exactly the same)
+Totalt                   230
+debatten                 117
+debatt                    83
+debatter                  12
+sakdebatt                  4
+debatteras                 3
+interpellationsdebatt      3
+remissdebatten             2
+skendebatt                 2
+remissdebatt               2
+generaldebatt              2
+
+
+"""
     # setting descening to true gives words in alphabetical order
 
-    for wt, hit in zip(word_order_word_trends, word_hits_non_descending):
-        print(wt, hit, wt==hit)
+
+def test_get_word_trend_speeches(api_corpus: Corpus):
+    search_term = 'debatt'
+    opts: CommonQueryParams = CommonQueryParams().resolve()
+    df: pd.DataFrame = api_corpus.get_anforanden_for_word_trends(
+        search_term.split(','), opts.get_filter_opts(include_year=True)
+    )
+
+    result = SpeechesResultWT(speech_list=[SpeechesResultItemWT(**row) for row in df.to_dict(orient="records")])
+
+    assert len(result.speech_list) > 0
+    assert isinstance(result, SpeechesResultWT)
+    assert all(isinstance(item, SpeechesResultItemWT) for item in result.speech_list)
 
 
+def test_word_trend_speeches_api(fastapi_client: TestClient):
+    search_term = 'debatt'
+    response = fastapi_client.get(f"{version}/tools/word_trend_speeches/{search_term}")
+    assert response.status_code == status.HTTP_200_OK
 
+    json = response.json()
+    assert 'speech_list' in json
+    assert len(json['speech_list']) > 0
+
+    first_result = json['speech_list'][0]
+    assert 'document_id' in first_result
+    assert 'speech_id' in first_result
+    assert 'year' in first_result
+    assert 'party_abbrev' in first_result
+    assert 'name' in first_result
+    assert 'node_word' in first_result

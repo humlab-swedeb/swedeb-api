@@ -1,92 +1,81 @@
-from ccc import Corpora, Corpus
-import pandas as pd
-from api_swedeb.api.utils import ngrams as ngram_service
-from api_swedeb.api.utils import common_params as cp
+from typing import Any
 
-from api_swedeb.core.n_grams import compute_n_grams, to_n_grams
+import pytest
+from ccc import Corpus
+
+from api_swedeb.api.utils import common_params as cp
+from api_swedeb.api.utils import ngrams as ngram_service
+from api_swedeb.schemas.ngrams_schema import NGramResult
 
 version = "v1"
 
-CWB_TEST_REGISTRY: str = "/usr/local/share/cwb/registry"
-CWB_TEST_CORPUS_NAME: str = "RIKSPROT_V0100_TEST"
 
-
-# ==Context Descriptor=======================================
-# Positional Attributes:  * word lemma pos xpos
-# Structural Attributes:
-#   year:     year_year/title
-#   protocol: protocol_title/date
-#   speech:   speech_id/title/who/date/party_id/gender_id/office_type_id/sub_office_type_id/name/page_number
-
-
-def test_to_n_grams():
-    words = ["a", "b", "c", "d", "e"]
-    n = 2
-    n_grams = to_n_grams(words, n)
-    assert n_grams == [["a", "b"], ["b", "c"], ["c", "d"], ["d", "e"]]
-    n = 3
-    n_grams = to_n_grams(words, n)
-    assert n_grams == [["a", "b", "c"], ["b", "c", "d"], ["c", "d", "e"]]
-
-
-def test_compute_n_grams():
-    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(corpus_name=CWB_TEST_CORPUS_NAME)
-    # attribs: CorpusAttribs = CorpusAttribs(corpus)
-
-    opts: dict = {
-        "prefix": "a",
-        "target": "lemma",
-        "value": "information",
-        "criterias": [
-            {"key": "a.speech_who", "values": ["Q1807154", "Q4973765"]},
-            {"key": "a.speech_party_id", "values": "7"},
-        ],
+def test_n_gram_service_with_single_word(corpus: Corpus):
+    common_opts: cp.CommonQueryParams = cp.CommonQueryParams(
+        from_year=1970, to_year=1975, who=None, party_id=None, office_types=None, sub_office_types=None, gender_id=None
+    )
+    opts: dict[str, Any] = {
+        'search_term': ['sverige'],
+        'search_target': "lemma",
+        'display_target': "word",
+        'n_gram_width': 5,
     }
-    n: int = 4
 
-    data: pd.DataFrame = compute_n_grams(corpus, opts, n=n, p_show="word", mode="dataframe")
-    assert data is not None
+    sliding_result: NGramResult = ngram_service.get_ngrams(corpus=corpus, commons=common_opts, **opts, mode="sliding")
+    assert sliding_result is not None
+    assert len(sliding_result.ngram_list) > 0
+    assert all('sverige' in ngram.ngram.lower() for ngram in sliding_result.ngram_list)
+    assert not all(ngram.ngram.lower().startswith('sverige') for ngram in sliding_result.ngram_list)
+
+    left_aligned: NGramResult = ngram_service.get_ngrams(
+        corpus=corpus, commons=common_opts, **opts, mode="left-aligned"
+    )
+    assert left_aligned is not None
+    assert len(left_aligned.ngram_list) > 0
+    assert all(ngram.ngram.lower().startswith('sverige') for ngram in left_aligned.ngram_list)
+
+    right_aligned: NGramResult = ngram_service.get_ngrams(
+        corpus=corpus, commons=common_opts, **opts, mode="right-aligned"
+    )
+    assert right_aligned is not None
+    assert len(right_aligned.ngram_list) > 0
+    assert all(ngram.ngram.lower().endswith('sverige') for ngram in right_aligned.ngram_list)
 
 
-def test_n_gram_service():
-    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(corpus_name=CWB_TEST_CORPUS_NAME)
-    result = ngram_service.get_ngrams(
+def test_n_gram_service_fails_if_target_is_lemma(corpus: Corpus):
+    common_opts: cp.CommonQueryParams = cp.CommonQueryParams(
+        from_year=1970, to_year=1975, who=None, party_id=None, office_types=None, sub_office_types=None, gender_id=None
+    )
+    sliding_result: NGramResult = ngram_service.get_ngrams(
+        search_term='sverige',
+        commons=common_opts,
         corpus=corpus,
-        search_term="propaganda",
-        commons=cp.CommonQueryParams(
-            from_year=1952,
-            to_year=1968,
-            who=None,
-            party_id=None,
-            office_types=None,
-            sub_office_types=None,
-            gender_id=None,
-        ),
-        search_target="lemma",
-        display_target="word",
         n_gram_width=3,
+        search_target='lemma',
+        display_target='lemma',
+        mode='sliding',
     )
-    assert result is not None
-    assert len(result.ngram_list) > 0
+    assert sliding_result is not None
 
 
-def test_bench():
-    corpus: Corpus = Corpora(registry_dir=CWB_TEST_REGISTRY).corpus(corpus_name=CWB_TEST_CORPUS_NAME)
-    opts = {
-        "form": "kwic",
-        "p_show": ["word"],
-        "s_show": ["year_year"],
-        "order": "first",
-        "cut_off": None,
+@pytest.mark.skip("FIXME: When phrase is used, to many sliding windows are created ")
+def test_n_gram_service_with_phrase(corpus: Corpus):
+    common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
+    opts: dict[str, Any] = {
+        'search_term': ['sverige', 'vara'],
+        'search_target': "lemma",
+        'display_target': "word",
+        'n_gram_width': 5,
     }
-    segments: pd.DataFrame = (
-        corpus.query(
-            'a:[word="information"]::(a.year_year="1939")',
-            context_left=2,
-            context_right=2,
-        )
-        .concordance(**opts)
-        .reset_index(drop=True)
+
+    sliding_result: NGramResult = ngram_service.get_ngrams(corpus=corpus, commons=common_opts, **opts, mode="sliding")
+    assert sliding_result is not None
+    assert len(sliding_result.ngram_list) > 0
+    assert all('sverige vara' in ngram.ngram.lower() for ngram in sliding_result.ngram_list)
+    left_aligned: NGramResult = ngram_service.get_ngrams(
+        corpus=corpus, commons=common_opts, **opts, mode="left-aligned"
     )
 
-    assert segments is not None
+    assert left_aligned is not None
+    assert len(left_aligned.ngram_list) > 0
+    assert all('sverige vara' in ngram.ngram.lower() for ngram in sliding_result.ngram_list)

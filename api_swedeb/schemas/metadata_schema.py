@@ -22,7 +22,6 @@ class GenderItem(BaseModel):
     gender_id: int
     gender: str
     gender_abbrev: str
-    swedish_gender: str
 
 
 class GenderList(BaseModel):
@@ -42,6 +41,7 @@ class SearchHits(BaseModel):
 class ChamberItem(BaseModel):
     chamber_id: int
     chamber: str
+    chamber_abbrev: str = None
 
 
 class ChamberList(BaseModel):

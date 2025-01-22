@@ -37,6 +37,15 @@ build-frontend: create-tmpdir
 		&& rm -rf $(TMPDIR_BUILD)
 
 .ONESHELL: build-backend
+ifeq ($(SWEDEB_BACKEND_TAG),workdir)
+build-backend:
+	@echo "Building backend API using $(SWEDEB_BACKEND_TAG)..." \
+		&& cd .. \
+		&& poetry build \
+		&& rm -rf docker/dist \
+		&& mv -f dist docker/ \
+		&& cd docker
+else
 build-backend: create-tmpdir
 	@echo "Building backend API using $(SWEDEB_BACKEND_TAG)..." \
 		&& pushd . > /dev/null \
@@ -48,8 +57,20 @@ build-backend: create-tmpdir
 		&& rm -rf dist \
 		&& mv -f $(TMPDIR_BUILD)/swedeb-api/dist dist \
 		&& rm -rf $(TMPDIR_BUILD)
+endif
 
-.ONESHELL: build-image
+.ONESHELL: backend
+.PHONY: backend
+backend: create-tmpdir
+	@echo "Building backend API from working directory..." \
+		&& cd .. \
+		&& poetry build \
+		&& rm -rf docker/dist \
+		&& mv -f dist docker/ \
+		&& cd docker
+
+
+.PHONY: build-image
 build-image:
 	@echo "Building image using $(SWEDEB_BACKEND_TAG)..."
 	@docker build \
@@ -57,6 +78,10 @@ build-image:
 		-t $(SWEDEB_IMAGE_NAME):$(SWEDEB_IMAGE_TAG) \
 		-t $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) \
 		-f ./Dockerfile .
+
+.PHONY: image
+image: build-image
+	@echo "Done building $(SWEDEB_BACKEND_TAG)!"
 
 .ONESHELL: build-image
 build: build-frontend build-backend build-image
@@ -70,12 +95,27 @@ create-tmpdir:
 .PHONY: bash
 bash:
 	@docker run -it --rm \
-	  --volume "${HOST_CWB_DATA_FOLDER}:/data/cwb/data" \
-      --volume "${HOST_METADATA_FOLDER}:/data/metadata" \
-      --volume "${HOST_DTM_FOLDER}:/data/corpus/dtm" \
-      --volume "${HOST_TAGGED_CORPUS_FOLDER}:/data/corpus/tagged_frames" \
+	  --volume "${HOST_DATA_FOLDER}:/data" \
+      --volume "${CONFIG_FILENAME}:/data/config/config.yml" \
 	  --env-file .env \
-	  swedeb-api:latest /bin/bash
+	  --entrypoint /bin/bash \
+	  swedeb-api:latest
+
+.PHONY: bash
+bash:
+	@docker run -it --rm \
+	  --volume "${SWEDEB_DATA_FOLDER}:/data" \
+	  --env-file .env \
+	  --entrypoint /bin/bash \
+	  swedeb-api:latest
+
+.PHONY: bash-test
+bash-test:
+	@docker run -it --rm \
+	  --volume "${SWEDEB_DATA_FOLDER}:/data" \
+	  --env-file .env \
+	  -p 8092:8092 \
+	  swedeb-api:latest
 
 .PHONY: add-host-user
 add-host-user:

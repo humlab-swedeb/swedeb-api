@@ -1,2 +1,2 @@
-from .codecs import CODE_TABLENAMES, Codecs, PersonCodecs
-from .speech_text import SpeechTextRepository
+from ...core.codecs import CODE_TABLES, Codecs, PersonCodecs
+from ...core.speech_text import SpeechTextRepository
