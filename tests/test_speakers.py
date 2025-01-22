@@ -1,8 +1,8 @@
-from httpx import Response
 import pandas as pd
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from api_swedeb.api.utils.corpus import Corpus, load_corpus
 from api_swedeb.core.codecs import PersonCodecs
