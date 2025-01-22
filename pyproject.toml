@@ -8,7 +8,6 @@ packages = [{include = "api_swedeb"}]
 
 [tool.poetry.dependencies]
 python = "3.11.*"
-association-measures = "0.2.7"
 fastapi = "^0.105.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
 python-dotenv = "^1.0.1"
@@ -27,7 +26,6 @@ pylint = "^3.1.0"
 isort = "^5.13.2"
 ruff = "^0.3.3"
 pyinstrument = "^4.6.2"
-poetry-plugin-export = "^1.8.0"
 pytest-cov = "^6.0.0"
 
 [tool.black]
@@ -70,3 +68,7 @@ addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::Deprecatio
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+# [tool.poetry.requires-plugins]
+# poetry-plugin-export = ">=1.8"
+# poetry-plugin-shell = ">=1.0"
