@@ -203,7 +203,11 @@ class Corpus:
     def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = True) -> list[str]:
         if search_term not in self.vectorized_corpus.vocabulary:
             search_term = search_term.lower()
-        result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=descending)
+        # setting descending to False gives most common to least common but reversed
+        # True sorts the same sublist but alphabetically, not in frequency order
+        result = self.vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=False)
+        # the results are therefore reversed here
+        result = result[::-1]
         return result
 
 

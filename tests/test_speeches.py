@@ -128,7 +128,8 @@ def test_get_speeches_corpus(api_corpus: Corpus):
     )
     df_unfiltered: pd.DataFrame = api_corpus.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
-    assert 'L' in df_filtered['party_abbrev'].unique()
+    assert 'M' in df_filtered['party_abbrev'].unique()
+    assert 'S' in df_filtered['party_abbrev'].unique()
 
 
 def test_get_speeches_by_ids(api_corpus: Corpus):
