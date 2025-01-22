@@ -30,7 +30,7 @@ pylint:
 
 .PHONY: requirements.txt
 requirements.txt: poetry.lock
-	@poetry export --without-hashes -f requirements.txt --output requirements.txt
+	@poetry export --without-hashes --format=requirements.txt > requirements.txt
 
 # requirements.txt-to-git: requirements.txt
 # 	@git add requirements.txt \
