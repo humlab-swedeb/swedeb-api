@@ -223,6 +223,14 @@ def test_filter_by_gender(api_corpus):
     assert len(df) > 0
 
 
+def test_filter_by_chamber_abbrev(api_corpus):
+    # chamber id not included, needs to be added
+    df = api_corpus.get_word_trend_results(
+        search_terms=["sverige"], filter_opts={"chamber_abbrev": ['ek'], 'year': (1900, 2000)}
+    )
+    assert len(df) > 0
+
+
 def test_merged_vectors():
     input_dict = {
         'debatt': np.array([0, 1, 1, 0]),
