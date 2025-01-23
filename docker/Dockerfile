@@ -110,10 +110,17 @@ RUN tar xf /tmp/cwb.bin.install.tar -C /usr/local/bin \
 
 WORKDIR /app
 
+ARG SWEDEB_BACKEND_TAG
+
 COPY dist /backend-wheels
-RUN pip3.11 install /wheels/*.whl \
-    && pip3.11 install /backend-wheels/api_swedeb-0.1.1-py3-none-any.whl \
-    && rm -rf /backend-wheels
+RUN pip3.11 install /wheels/*.whl
+
+RUN if echo "$SWEDEB_BACKEND_TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then \
+        pip3.11 install "api_swedeb==${SWEDEB_BACKEND_TAG}"; \
+    else \
+        pip3.11 install /backend-wheels/api_swedeb-"$(SWEDEB_BACKEND_TAG)"-py3-none-any.whl && \
+        rm -rf /backend-wheels; \
+    fi
 
 COPY cwb/registry /data/cwb/registry
 COPY public /app/public
