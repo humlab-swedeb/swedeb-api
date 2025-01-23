@@ -96,7 +96,6 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
             assert terms[0] in key or terms[1] in key
 
 
-
 def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
     search_term: str = 'sverige'
     party_abbrev: str = 'S'
@@ -181,6 +180,7 @@ def test_word_hits_api(fastapi_client: TestClient):
     assert 'hit_list' in json
     assert len(json['hit_list']) > 0
 
+
 def test_normalize_api(fastapi_client):
     response = fastapi_client.get(f"{version}/tools/word_trends/klimat?normalize=true")
     assert response.status_code == status.HTTP_200_OK
@@ -189,7 +189,7 @@ def test_normalize_api(fastapi_client):
     wt_list = json['wt_list']
     assert len(json['wt_list']) > 0
     counts = [wt['count']['klimat'] for wt in wt_list]
-    assert all([count < 1 for count in counts])
+    assert all(count < 1 for count in counts)
 
 
 def test_summed_word_trends(api_corpus):
@@ -219,6 +219,14 @@ def test_filter_by_gender(api_corpus):
     # chamber id not included, needs to be added
     df = api_corpus.get_word_trend_results(
         search_terms=["sverige"], filter_opts={"gender_id": [1], 'year': (1900, 2000)}
+    )
+    assert len(df) > 0
+
+
+def test_filter_by_chamber_abbrev(api_corpus):
+    # chamber id not included, needs to be added
+    df = api_corpus.get_word_trend_results(
+        search_terms=["sverige"], filter_opts={"chamber_abbrev": ['ek'], 'year': (1900, 2000)}
     )
     assert len(df) > 0
 
@@ -254,12 +262,12 @@ def test_merged_speeches(api_corpus):
 
 def test_frequent_words(api_corpus):
     # api_corpus.get_word_hits should return word in order of most to least common
-    word_hits_non_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=False)
-    word_hits_descending = api_corpus.get_word_hits('*debatt*', n_hits=10, descending=True)
+    word_hits_non_descending = api_corpus.get_word_hits('*debatt*', n_hits=10)
+    word_hits_descending = api_corpus.get_word_hits('*debatt*', n_hits=10)
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
-    df_sum_sorted = df_sum.sort_values(ascending=False) # ~ korrekt ordning
+    df_sum_sorted = df_sum.sort_values(ascending=False)  # ~ korrekt ordning
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
@@ -300,7 +308,7 @@ generaldebatt              2
 
 
 """
-    # setting descening to true gives words in alphabetical order
+# setting descening to true gives words in alphabetical order
 
 
 def test_get_word_trend_speeches(api_corpus: Corpus):

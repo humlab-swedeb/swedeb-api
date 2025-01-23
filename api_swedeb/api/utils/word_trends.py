@@ -16,8 +16,10 @@ def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus, nor
     df: DataFrame = corpus.get_word_trend_results(
         search_terms=search.split(","), filter_opts=commons.get_filter_opts(include_year=True), normalize=normalize
     )
-
+    # FIXME: Add this logic to penelope.VectorizedCorpus so that thses hacks can be removed
+    # Remove implicit pivoting by filter columns
     df = df.loc[:, ~df.columns.str.contains('gender_abbrev')]
+    df = df.loc[:, ~df.columns.str.contains('chamber_abbrev')]
 
     counts_list: list[WordTrendsItem] = [WordTrendsItem(year=year, count=row.to_dict()) for year, row in df.iterrows()]
     return WordTrendsResult(wt_list=counts_list)

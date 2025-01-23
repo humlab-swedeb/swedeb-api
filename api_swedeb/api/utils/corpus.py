@@ -200,7 +200,7 @@ class Corpus:
         """Returns the last year in the corpus"""
         return int(self.document_index["year"].max())
 
-    def get_word_hits(self, search_term: str, n_hits: int = 5, descending: bool = True) -> list[str]:
+    def get_word_hits(self, search_term: str, n_hits: int = 5) -> list[str]:
         if search_term not in self.vectorized_corpus.vocabulary:
             search_term = search_term.lower()
         # setting descending to False gives most common to least common but reversed

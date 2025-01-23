@@ -310,7 +310,7 @@ class PersonCodecs(Codecs):
         )
 
     def add_multiple_party_abbrevs(self) -> Self:
-        party_data: pd.DataFrame = self.person_party
+        party_data: pd.DataFrame = getattr(self, "person_party")
         party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev)
         party_data["party_abbrev"].fillna("?", inplace=True)
 
