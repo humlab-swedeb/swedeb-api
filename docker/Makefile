@@ -185,4 +185,5 @@ down: guard-production
 
 .PHONY: restart
 restart: guard-production down up
-	@docker compose down
+	@echo daemon started
+
