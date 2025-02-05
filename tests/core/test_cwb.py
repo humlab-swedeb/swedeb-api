@@ -203,6 +203,7 @@ def test_compile_complex():
         office_types=[1],
         sub_office_types=[1, 2],
         gender_id=[1],
+        chamber_abbrev=[],
     )
     search_opts = query_params_to_CQP_opts(commons, [("debatt", "word")])
 
@@ -212,7 +213,6 @@ def test_compile_complex():
         '&(a.speech_who="u-1|u-2|u-3")&(a.speech_party_id="1")&(a.speech_office_type_id="1")'
         '&(a.speech_sub_office_type_id="1|2")&(a.speech_gender_id="1") within speech'
     )
-
 
 def test_cqp_execute_query(corpus: Corpus, person_codecs: PersonCodecs):
     party_id = person_codecs.party_abbrev2id.get("M")
@@ -293,12 +293,15 @@ def test_cqp_query_that_returns_speech_id(corpus: Corpus):
     assert 'speech_id' in segments.columns
 
 
-@pytest.mark.parametrize('query, answer', [
-    ('"information"', {'ak', 'ek'}),
-    ('a:[word="information"] :: (a.year_year="1975")', {'ek'}),
-    ('a:[word="information"] :: (a.protocol_chamber="ek")', {'ek'}),
-    ('a:[word="information"] :: (a.protocol_chamber="ak")', {'ak'}),
-])
+@pytest.mark.parametrize(
+    'query, answer',
+    [
+        ('"information"', {'ak', 'ek'}),
+        ('a:[word="information"] :: (a.year_year="1975")', {'ek'}),
+        ('a:[word="information"] :: (a.protocol_chamber="ek")', {'ek'}),
+        ('a:[word="information"] :: (a.protocol_chamber="ak")', {'ak'}),
+    ],
+)
 def test_cqp_query_with_chamber_filter(corpus: Corpus, query: str, answer: set[str]):
     opts = {
         "form": "kwic",
@@ -308,9 +311,7 @@ def test_cqp_query_with_chamber_filter(corpus: Corpus, query: str, answer: set[s
         "cut_off": None,
     }
     segments: pd.DataFrame = (
-        corpus.query( query, context_left=2, context_right=2 )
-        .concordance(**opts)
-        .reset_index(drop=True)
+        corpus.query(query, context_left=2, context_right=2).concordance(**opts).reset_index(drop=True)
     )
     assert segments is not None
     assert 'protocol_chamber' in segments.columns

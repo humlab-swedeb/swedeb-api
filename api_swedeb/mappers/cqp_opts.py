@@ -38,13 +38,14 @@ def query_params_to_CQP_criterias(params: CommonQueryParams = None) -> list[dict
             if isinstance(value, Query):
                 value = value.default
             if fx is not None:
-                try:
-                    if isinstance(value, list):
-                        value = [ fx(x) for x in value ]
-                    else:
-                        value = fx(value)
-                except: # pylint: disable=bare-except
-                    ...
+                if value is not None:
+                    try:
+                        if isinstance(value, list):
+                            value = [fx(x) for x in value]
+                        else:
+                            value = fx(value)
+                    except:  # pylint: disable=bare-except
+                        ...
         if value is not None:
             criterias.append({"key": f"a.{tag}_{name}", "values": value})
 
