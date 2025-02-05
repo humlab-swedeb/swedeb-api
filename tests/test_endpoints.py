@@ -83,7 +83,7 @@ def test_word_trends(fastapi_client):
     json = response.json()
     ek_hits = len(json['wt_list'])
 
-    assert ek_hits > 0 and ek_hits < all_hits
+    assert 0 < ek_hits < all_hits
 
 
 def test_ngrams(fastapi_client):

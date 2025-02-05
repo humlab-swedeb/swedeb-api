@@ -7,6 +7,8 @@ from api_swedeb.api.utils.common_params import CommonQueryParams
 
 YEAR_EPOCH: int = 1850
 
+# pylint: disable=too-many-nested-blocks
+
 FIND_ATTRIBS = {
     ("from_year", "to_year"): ("year", "year", None),
     "who": ("speech", "who", None),
@@ -41,9 +43,9 @@ def query_params_to_CQP_criterias(params: CommonQueryParams = None) -> list[dict
                 if value is not None:
                     try:
                         if isinstance(value, list):
-                            value = [fx(x) for x in value]
+                            value = [fx(x) for x in value]  # pylint: disable=not-callable
                         else:
-                            value = fx(value)
+                            value = fx(value)  # pylint: disable=not-callable
                     except:  # pylint: disable=bare-except
                         ...
         if value is not None:
