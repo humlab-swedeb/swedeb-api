@@ -124,12 +124,10 @@ class Corpus:
     def _get_filtered_speakers(self, selection_dict: dict[str, str], df: pd.DataFrame) -> pd.DataFrame:
         for key, value in selection_dict.items():
             if key == "party_id":
-                df = df[
-                    df["multi_party_id"]
-                    .astype(str)
-                    .str.split(",")
-                    .apply(lambda x: any(item in x for item in map(str, value)))
-                ]
+                value: list[int] = [int(v) for v in value] if isinstance(value, list) else [int(value)]
+                person_party = getattr(self.metadata, 'person_party')
+                party_person_ids: set[str] = set(person_party[person_party.party_id.isin(value)].person_id)
+                df = df[df["person_id"].isin(party_person_ids)]
             elif key == "chamber_abbrev" and value:
                 value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [v.lower()]
                 di: pd.DataFrame = self.vectorized_corpus.document_index
