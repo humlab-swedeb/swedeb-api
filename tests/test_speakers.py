@@ -62,3 +62,12 @@ def test_get_speakers_api_with_params(person_codecs: PersonCodecs, client: TestC
     assert 'speaker_list' in json
     for speaker in json['speaker_list']:
         assert 'S' in speaker['party_abbrev']
+
+
+def test_speakers_with_chamber_abbrev(client: TestClient):
+    response: Response = client.get(f"{version}/metadata/speakers?&chamber_abbrev=ak")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    assert 'speaker_list' in json
+    assert len(json['speaker_list']) > 0

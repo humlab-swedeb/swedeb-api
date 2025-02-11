@@ -121,18 +121,21 @@ class Corpus:
         )
         return speeches
 
-    def _get_filtered_speakers(self, selection_dict, df):
-        for selection_key, selection_value in selection_dict.items():
-            if selection_key == "party_id":
+    def _get_filtered_speakers(self, selection_dict: dict[str, str], df: pd.DataFrame) -> pd.DataFrame:
+        for key, value in selection_dict.items():
+            if key == "party_id":
                 df = df[
                     df["multi_party_id"]
                     .astype(str)
                     .str.split(",")
-                    .apply(lambda x: any(item in x for item in map(str, selection_value)))
+                    .apply(lambda x: any(item in x for item in map(str, value)))
                 ]
-
+            elif key == "chamber_abbrev" and value:
+                value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [v.lower()]
+                di: pd.DataFrame = self.vectorized_corpus.document_index
+                df = df[df["person_id"].isin(set(di[di.chamber_abbrev.isin(value)].person_id.unique()))]
             else:
-                df = df[df[selection_key].isin(selection_value)]
+                df = df[df[key].isin(value)]
         return df
 
     def get_speakers(self, selections):
