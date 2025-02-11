@@ -341,3 +341,21 @@ def test_word_trend_speeches_api(fastapi_client: TestClient):
     assert 'party_abbrev' in first_result
     assert 'name' in first_result
     assert 'node_word' in first_result
+
+
+def get_a_test_person(api_corpus: Corpus):
+    """Returns the id of a person in the test data set"""
+    return api_corpus.document_index['person_id'][0]
+
+
+def test_word_trends_for_speaker(fastapi_client: TestClient, api_corpus: Corpus):
+    wt = "word_trends"
+    who = get_a_test_person(api_corpus)
+    search_term = "och"
+
+    url_wt = f"{version}/tools/{wt}/{search_term}?&who={who}"
+    response_wt = fastapi_client.get(url_wt)
+    assert response_wt.status_code == status.HTTP_200_OK
+    word_res = response_wt.json()['wt_list']
+
+    assert len(word_res) > 0  # no count in word trends for the test person saying "och" har snabbmeny
