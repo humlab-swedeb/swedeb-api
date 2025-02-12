@@ -17,7 +17,6 @@ def test_to_CQP_criterias_with_params_no_year():
         office_types="office_types",
         sub_office_types="sub_office_types",
         gender_id="gender_id",
-        chamber_abbrev=None
     )
     result = mappers.query_params_to_CQP_criterias(param)
     assert {(x["key"], x["values"]) for x in result} == {
@@ -49,7 +48,6 @@ def test_to_CQP_criterias_with_year_params():
         office_types=None,
         sub_office_types=None,
         gender_id=None,
-        chamber_abbrev=None,
     )
 
     result = mappers.query_params_to_CQP_criterias(params)

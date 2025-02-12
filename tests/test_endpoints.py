@@ -77,7 +77,7 @@ def test_word_trends(fastapi_client):
 
     all_hits = len(json['wt_list'])
 
-    response = fastapi_client.get(f"{version}/tools/word_trends/debatt?chamber_abbrev=ek")
+    response = fastapi_client.get(f"{version}/tools/word_trends/debatt?chambers=ek")
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()

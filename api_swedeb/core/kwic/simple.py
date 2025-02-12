@@ -12,7 +12,6 @@ from api_swedeb.core.speech_index import get_speeches_by_speech_ids
 S_ATTR_RENAMES: dict[str, str] = {
     'year_year': 'year',
     'id': 'speech_id',
-    'protocol_chamber': 'chamber_abbrev',
     'speech_who': 'person_id',
     'speech_party_id': 'party_id',
     'speech_gender_id': 'gender_id',

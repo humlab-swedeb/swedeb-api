@@ -9,7 +9,6 @@ class SpeechesResultItem(BaseModel):
     gender: str = Field(None, description="Gender of speaker")
     gender_abbrev: str = Field(None, description="Gender of speaker")
     party_abbrev: str = Field(None, description="Party of speaker")
-    party: str = Field(None, description="Full party name of speaker")
     speech_link: str = Field(None, description="Source of speech")
     document_name: str = Field(None, description="Unique id of speech")
     link: str = Field(None, description="Link to the speaker")
