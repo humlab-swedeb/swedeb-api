@@ -15,7 +15,7 @@ corpus:
 
 cwb:
   registry_dir: /usr/local/share/cwb/registry
-  corpus_name: RIKSPROT_V110_TEST
+  corpus_name: RIKSPROT_1867_2020_V110
 
 dtm:
   folder: /data/swedeb/v1.1.0/dtm/text
