@@ -1,3 +1,4 @@
+import pytest
 from fastapi import status
 
 from .core.test_kwic import EXPECTED_COLUMNS
@@ -41,3 +42,22 @@ def test_kwic_speech_id_in_search_results(fastapi_client):
     assert set(first_result.keys()) == EXPECTED_COLUMNS
     # FIXME: `title` is None in this response (add as decode if needed)
     # assert all(x is not None for x in first_result.values())
+
+
+@pytest.mark.parametrize(
+    "word, chambers, n_expected",
+    [
+        ("sverige", "ak", 42),
+        ("sverige", "AK", 42),
+        ("sverige", "ek", 264),
+        ("sverige", ["ak", "ek"], 264 + 42),
+    ],
+)
+def test_kwic_filter_by_chamber(fastapi_client, word: str, chambers: str | list[str], n_expected: int):
+    chambers = [chambers] if isinstance(chambers, str) else chambers
+    chamber_criteria: str = '&'.join([f"chamber_abbrev={chamber}" for chamber in chambers])
+    response = fastapi_client.get(f"{version}/tools/kwic/{word}?words_before=2&words_after=2&{chamber_criteria}")
+    assert response.status_code == 200
+    data: dict = response.json()
+    assert 'kwic_list' in data
+    assert len(data['kwic_list']) == n_expected
