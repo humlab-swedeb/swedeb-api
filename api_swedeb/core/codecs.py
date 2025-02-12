@@ -160,9 +160,17 @@ class Codecs:
         return [c for c in self.codecs if c.type == 'encode']
 
     def apply_codec(
-        self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True, keeps: list[str] = None
+        self,
+        df: pd.DataFrame,
+        codecs: list[Codec],
+        drop: bool = True,
+        keeps: list[str] = None,
+        ignores: list[str] = None,
     ) -> pd.DataFrame:
+        """Applies codecs to DataFrame. Ignores target columns in `ignores` and keeps columns in `keeps`."""
         for codec in codecs:
+            if ignores and codec.to_column in ignores:
+                continue
             df = codec.apply(df)
 
         if drop:
@@ -175,11 +183,15 @@ class Codecs:
 
         return df
 
-    def decode(self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None) -> pd.DataFrame:
-        return self.apply_codec(df, self.decoders, drop=drop, keeps=keeps)
+    def decode(
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+    ) -> pd.DataFrame:
+        return self.apply_codec(df, self.decoders, drop=drop, keeps=keeps, ignores=ignores)
 
-    def encode(self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None) -> pd.DataFrame:
-        return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps)
+    def encode(
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+    ) -> pd.DataFrame:
+        return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps, ignores=ignores)
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:

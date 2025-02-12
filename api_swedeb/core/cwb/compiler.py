@@ -249,6 +249,8 @@ def to_cqp_criteria_expr(criterias: None | str | list[dict[str, Any]]) -> str:
             for x in [
                 f'{criteria.get("key")}="{_to_value_expr(criteria.get("values"))}"{fx_case(criteria)}'
                 for criteria in criterias
+                if criteria.get("values")
+
             ]
             if x
         ]
