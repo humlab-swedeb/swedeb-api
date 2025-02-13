@@ -154,6 +154,7 @@ class Corpus:
 
     def get_chamber_meta(self):
         df = self.metadata.chamber
+        df = df[df['chamber_abbrev'].str.strip().astype(bool)]
         return df.reset_index()
 
     def get_office_type_meta(self):
