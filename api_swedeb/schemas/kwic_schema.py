@@ -23,6 +23,8 @@ class KeywordInContextItem(BaseModel):
     speech_id: str = Field(None, description="Unique id of speech")  # NEW
     wiki_id: str = Field(None, description="Wiki id of speaker")  # NEW
     document_id: int = Field(None, description="Document's system id")  # NEW
+    party: str = Field(None, description="Full party name of speaker")
+
 
 
 class KeywordInContextResult(BaseModel):
