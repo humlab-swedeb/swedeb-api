@@ -272,3 +272,4 @@ deprecated
 .vscode/settings.json
 data
 tmp
+*.bak
