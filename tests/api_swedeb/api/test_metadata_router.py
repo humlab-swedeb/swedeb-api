@@ -76,8 +76,8 @@ def test_get_meta_chambers(mock_get_chambers: Mock, fastapi_client):
     assert isinstance(response.json(), dict)
     assert 'chamber_list' in response.json()
     assert len(response.json()['chamber_list']) == 1
-    assert isinstance(response.json()['chamber_list'], list)
-    assert isinstance(response.json()['chamber_list'][0], dict)
+    assert isinstance(response.json()['chamber_list'], list)  # NOTE: Should be a ChamberList object?
+    assert isinstance(response.json()['chamber_list'][0], dict)  # NOTE: Should be a ChamberItem object?
     assert response.json() == {"chamber_list": [{"chamber_id": 1, "chamber": "chamber", "chamber_abbrev": "C"}]}
 
 
@@ -91,8 +91,8 @@ def test_get_meta_office_types(mock_get_office_types: Mock, fastapi_client):
     assert isinstance(response.json(), dict)
     assert 'office_type_list' in response.json()
     assert len(response.json()['office_type_list']) == 1
-    assert isinstance(response.json()['office_type_list'], list)
-    assert isinstance(response.json()['office_type_list'][0], dict)
+    assert isinstance(response.json()['office_type_list'], list)  # NOTE: Should be a OfficeTypeList object?
+    assert isinstance(response.json()['office_type_list'][0], dict)  # NOTE: Should be a OfficeTypeItem object?
     assert response.json() == {"office_type_list": [{"office_type_id": 1, "office": "office"}]}
 
 
@@ -108,8 +108,8 @@ def test_get_meta_sub_office_types(mock_get_sub_office_types: Mock, fastapi_clie
     assert isinstance(response.json(), dict)
     assert 'sub_office_type_list' in response.json()
     assert len(response.json()['sub_office_type_list']) == 1
-    assert isinstance(response.json()['sub_office_type_list'], list)
-    assert isinstance(response.json()['sub_office_type_list'][0], dict)
+    assert isinstance(response.json()['sub_office_type_list'], list)  # NOTE: Should be a SubOfficeTypeList object?
+    assert isinstance(response.json()['sub_office_type_list'][0], dict)  # NOTE: Should be a SubOfficeTypeItem object?
     assert response.json() == {
         "sub_office_type_list": [{"sub_office_type_id": 1, "office_type_id": 1, "identifier": "identifier"}]
     }
@@ -132,8 +132,8 @@ def test_get_meta_speakers(mock_get_speakers: Mock, fastapi_client):
     assert isinstance(response.json(), dict)
     assert 'speaker_list' in response.json()
     assert len(response.json()['speaker_list']) == 1
-    assert isinstance(response.json()['speaker_list'], list)
-    assert isinstance(response.json()['speaker_list'][0], dict)
+    assert isinstance(response.json()['speaker_list'], list)  # NOTE: Should be a SpeakerResult object?
+    assert isinstance(response.json()['speaker_list'][0], dict)  # NOTE: Should be a SpeakerItem object?
     assert response.json() == {
         "speaker_list": [
             {"name": "name", "party_abbrev": "PA", "year_of_birth": 1800, "year_of_death": 1940, "person_id": "123"}
