@@ -15,13 +15,13 @@ class SpeakerQueryParams:
         sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
         party_id: List[int] = Query(None, description="List of selected parties"),
         gender_id: List[int] = Query(None, description="List of selected genders"),
-        chambers: List[str] = Query(None, description="List of selected chambers"),
+        chamber_abbrev: List[str] = Query(None, description="List of selected chambers"),
     ):
         self.office_types: List[str] = office_types
         self.sub_office_types: List[str] = sub_office_types
         self.party_id: List[int] = party_id
         self.gender_id: List[int] = gender_id
-        self.chambers: List[str] = chambers
+        self.chamber_abbrev: List[str] = chamber_abbrev
 
     def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:  # pylint: disable=unused-argument
         opts: dict[str, list[int]] = {
@@ -29,7 +29,7 @@ class SpeakerQueryParams:
             # **({"sub_office_type_id": self.sub_office_types} if self.sub_office_types else {}),
             **({"party_id": self.party_id} if self.party_id else {}),
             **({"gender_id": self.gender_id} if self.gender_id else {}),
-            **({"chamber_abbrev": self.chambers} if self.chambers else {}),
+            **({"chamber_abbrev": self.chamber_abbrev} if self.chamber_abbrev else {}),
         }
         return opts
 
@@ -48,13 +48,13 @@ class CommonQueryParams(SpeakerQueryParams):
         sort_by: str = Query("year_title", description="Column to sort by"),
         party_id: List[int] = Query(None, description="List of selected parties"),
         gender_id: List[int] = Query(None, description="List of selected genders"),
-        chambers: List[str] = Query(None, description="List of selected chambers"),
+        chamber_abbrev: List[str] = Query(None, description="List of selected chambers"),
         speech_id: List[str] = Query(None, description="List of speech ids to filter by"),
         limit: int = Query(None, description="The number of results per page"),
         offset: int = Query(None, description="Result offset"),
         sort_order: str = Query("asc", description="Sort order. Default is asc"),
     ):
-        super().__init__(office_types, sub_office_types, party_id, gender_id, chambers)
+        super().__init__(office_types, sub_office_types, party_id, gender_id, chamber_abbrev)
         self.from_year: int = from_year
         self.to_year: int = to_year
         self.speech_id: List[str] = speech_id

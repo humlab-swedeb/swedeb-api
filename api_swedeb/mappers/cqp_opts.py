@@ -8,12 +8,13 @@ from api_swedeb.api.utils.common_params import CommonQueryParams
 YEAR_EPOCH: int = 1850
 
 FIND_ATTRIBS = {
-    ("from_year", "to_year"): ("year", "year"),
-    "who": ("speech", "who"),
-    "party_id": ("speech", "party_id"),
-    "office_types": ("speech", "office_type_id"),
-    "sub_office_types": ("speech", "sub_office_type_id"),
-    "gender_id": ("speech", "gender_id"),
+    ("from_year", "to_year"): ("year", "year", None),
+    "who": ("speech", "who", None),
+    "party_id": ("speech", "party_id", None),
+    "office_types": ("speech", "office_type_id", None),
+    "sub_office_types": ("speech", "sub_office_type_id", None),
+    "gender_id": ("speech", "gender_id", None),
+    "chamber_abbrev": ("protocol", "chamber", str.lower),
 }
 
 
@@ -24,7 +25,7 @@ def query_params_to_CQP_criterias(params: CommonQueryParams = None) -> list[dict
     if not params:
         return criterias
 
-    for key, (tag, name) in FIND_ATTRIBS.items():
+    for key, (tag, name, fx) in FIND_ATTRIBS.items():
         value: Any = None
         if isinstance(key, tuple):
             """Year range"""
@@ -36,6 +37,15 @@ def query_params_to_CQP_criterias(params: CommonQueryParams = None) -> list[dict
             value: Any = getattr(params, key)
             if isinstance(value, Query):
                 value = value.default
+            if fx is not None:
+                if value is not None:
+                    try:
+                        if isinstance(value, list):
+                            value = [fx(x) for x in value]
+                        else:
+                            value = fx(value)
+                    except:  # pylint: disable=bare-except
+                        ...
         if value is not None:
             criterias.append({"key": f"a.{tag}_{name}", "values": value})
 

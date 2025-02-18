@@ -203,6 +203,7 @@ def test_compile_complex():
         office_types=[1],
         sub_office_types=[1, 2],
         gender_id=[1],
+        chamber_abbrev=[],
     )
     search_opts = query_params_to_CQP_opts(commons, [("debatt", "word")])
 
@@ -291,3 +292,28 @@ def test_cqp_query_that_returns_speech_id(corpus: Corpus):
 
     assert segments is not None
     assert 'speech_id' in segments.columns
+
+
+@pytest.mark.parametrize(
+    'query, answer',
+    [
+        ('"information"', {'ak', 'ek'}),
+        ('a:[word="information"] :: (a.year_year="1975")', {'ek'}),
+        ('a:[word="information"] :: (a.protocol_chamber="ek")', {'ek'}),
+        ('a:[word="information"] :: (a.protocol_chamber="ak")', {'ak'}),
+    ],
+)
+def test_cqp_query_with_chamber_filter(corpus: Corpus, query: str, answer: set[str]):
+    opts = {
+        "form": "kwic",
+        "p_show": ["word"],
+        "s_show": ["year_year", "speech_id", "protocol_chamber"],
+        "order": "first",
+        "cut_off": None,
+    }
+    segments: pd.DataFrame = (
+        corpus.query(query, context_left=2, context_right=2).concordance(**opts).reset_index(drop=True)
+    )
+    assert segments is not None
+    assert 'protocol_chamber' in segments.columns
+    assert set(segments.protocol_chamber.unique()) == answer

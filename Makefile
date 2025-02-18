@@ -34,9 +34,12 @@ coverage:
 pylint:
 	@poetry run pylint $(SOURCE_FOLDERS)
 
-.PHONY: requirements.txt
+.PHONY: tools
+tools:
+	@poetry self add poetry-plugin-shell poetry-plugin-export > /dev/null
+
 requirements.txt: poetry.lock
-	@poetry export --without-hashes -f requirements.txt --output requirements.txt
+	@poetry export --without-hashes --format=requirements.txt > requirements.txt
 
 # requirements.txt-to-git: requirements.txt
 # 	@git add requirements.txt \

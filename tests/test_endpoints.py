@@ -75,6 +75,16 @@ def test_word_trends(fastapi_client):
     json = response.json()
     assert len(json) > 0
 
+    all_hits = len(json['wt_list'])
+
+    response = fastapi_client.get(f"{version}/tools/word_trends/debatt?chamber_abbrev=ek")
+    assert response.status_code == status.HTTP_200_OK
+
+    json = response.json()
+    ek_hits = len(json['wt_list'])
+
+    assert ek_hits > 0 and ek_hits < all_hits
+
 
 def test_ngrams(fastapi_client):
     search_term = 'debatt'

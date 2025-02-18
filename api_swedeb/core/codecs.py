@@ -122,6 +122,14 @@ class Codecs:
     def party_abbrev2id(self) -> dict:
         return pu.revdict(self.party_id2abbrev)
 
+    @cached_property
+    def party_id2party(self) -> dict:
+        return self.party['party'].to_dict()
+
+    @cached_property
+    def party2id(self) -> dict:
+        return pu.revdict(self.party_id2party)
+
     @property
     def codecs(self) -> list[Codec]:
         return self.extra_codecs + [
@@ -129,6 +137,7 @@ class Codecs:
             Codec("decode", "gender_id", "gender_abbrev", self.gender2abbrev),
             Codec("decode", "office_type_id", "office_type", self.office_type2name),
             Codec("decode", "party_id", "party_abbrev", self.party_id2abbrev),
+            Codec("decode", "party_id", "party", self.party_id2party),
             Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name),
             Codec("encode", "gender", "gender_id", self.gender2id),
             Codec("encode", "office_type", "office_type_id", self.office_type2id),
@@ -160,9 +169,17 @@ class Codecs:
         return [c for c in self.codecs if c.type == 'encode']
 
     def apply_codec(
-        self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True, keeps: list[str] = None
+        self,
+        df: pd.DataFrame,
+        codecs: list[Codec],
+        drop: bool = True,
+        keeps: list[str] = None,
+        ignores: list[str] = None,
     ) -> pd.DataFrame:
+        """Applies codecs to DataFrame. Ignores target columns in `ignores` and keeps columns in `keeps`."""
         for codec in codecs:
+            if ignores and codec.to_column in ignores:
+                continue
             df = codec.apply(df)
 
         if drop:
@@ -175,11 +192,15 @@ class Codecs:
 
         return df
 
-    def decode(self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None) -> pd.DataFrame:
-        return self.apply_codec(df, self.decoders, drop=drop, keeps=keeps)
+    def decode(
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+    ) -> pd.DataFrame:
+        return self.apply_codec(df, self.decoders, drop=drop, keeps=keeps, ignores=ignores)
 
-    def encode(self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None) -> pd.DataFrame:
-        return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps)
+    def encode(
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+    ) -> pd.DataFrame:
+        return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps, ignores=ignores)
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
@@ -310,7 +331,7 @@ class PersonCodecs(Codecs):
         )
 
     def add_multiple_party_abbrevs(self) -> Self:
-        party_data: pd.DataFrame = self.person_party
+        party_data: pd.DataFrame = getattr(self, "person_party")
         party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev)
         party_data["party_abbrev"].fillna("?", inplace=True)
 

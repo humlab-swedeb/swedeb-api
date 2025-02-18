@@ -181,6 +181,17 @@ def test_word_hits_api(fastapi_client: TestClient):
     assert len(json['hit_list']) > 0
 
 
+def test_normalize_api(fastapi_client):
+    response = fastapi_client.get(f"{version}/tools/word_trends/klimat?normalize=true")
+    assert response.status_code == status.HTTP_200_OK
+    json = response.json()
+    assert 'wt_list' in json
+    wt_list = json['wt_list']
+    assert len(json['wt_list']) > 0
+    counts = [wt['count']['klimat'] for wt in wt_list]
+    assert all(count < 1 for count in counts)
+
+
 def test_summed_word_trends(api_corpus):
     df: pd.DataFrame = api_corpus.get_word_trend_results(
         search_terms=['debatt', 'riksdagsdebatt', 'debatter'], filter_opts={'year': (1900, 2000)}
@@ -208,6 +219,14 @@ def test_filter_by_gender(api_corpus):
     # chamber id not included, needs to be added
     df = api_corpus.get_word_trend_results(
         search_terms=["sverige"], filter_opts={"gender_id": [1], 'year': (1900, 2000)}
+    )
+    assert len(df) > 0
+
+
+def test_filter_by_chamber_abbrev(api_corpus):
+    # chamber id not included, needs to be added
+    df = api_corpus.get_word_trend_results(
+        search_terms=["sverige"], filter_opts={"chamber_abbrev": ['ek'], 'year': (1900, 2000)}
     )
     assert len(df) > 0
 
@@ -242,22 +261,54 @@ def test_merged_speeches(api_corpus):
 
 
 def test_frequent_words(api_corpus):
-    word_hits_non_descending = api_corpus.get_word_hits('katt*', n_hits=10, descending=False)
-    word_hits_descending = api_corpus.get_word_hits('katt*', n_hits=10, descending=True)
+    # api_corpus.get_word_hits should return word in order of most to least common
+    word_hits_non_descending = api_corpus.get_word_hits('*debatt*', n_hits=10)
+    word_hits_descending = api_corpus.get_word_hits('*debatt*', n_hits=10)
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
-    df_sum_sorted = df_sum.sort_values(ascending=False)
+    df_sum_sorted = df_sum.sort_values(ascending=False)  # ~ korrekt ordning
 
     df = api_corpus.get_word_trend_results(search_terms=word_hits_non_descending, filter_opts={'year': (1900, 3000)})
     df_sum = df.sum(axis=0)
     df_sum_sorted = df_sum.sort_values(ascending=False)
     word_order_word_trends = df_sum_sorted.index.to_list()
     word_order_word_trends.remove('Totalt')
+    most_common = word_order_word_trends[0]
+    less_common = word_order_word_trends[5]
+    assert word_hits_non_descending.index(most_common) < word_hits_non_descending.index(less_common)
 
     # assert word_order_word_trends == word_hits_non_descending
     # word-trend counting and word-hits counting does not give the exact same results
-    # setting descening to true gives words in alphabetical order
+
+
+"""
+with search term *debatt* (and not reversing results in get_word_hits)
+if descending in get_word_hits is set to descending=descending
+descending = False -> word_hits_non_descending: THIS IS REVERSE FREQUENCY ORDER
+['remissdebatt', 'remissdebatten', 'skendebatt', 'generaldebatt', 'debatteras', 'interpellationsdebatt', 'sakdebatt',
+                                                                                    'debatter', 'debatt', 'debatten']
+
+descending = True -> word_hits_descending THIS IS REVERSE ALPHABETICAL ORDER
+['skendebatt', 'sakdebatt', 'remissdebatten', 'remissdebatt', 'interpellationsdebatt', 'generaldebatt', 'debatteras',
+                                                                                    'debatter', 'debatten', 'debatt']
+
+This is the order according to word trends. Compare to descending = False reversed (almost exactly the same)
+Totalt                   230
+debatten                 117
+debatt                    83
+debatter                  12
+sakdebatt                  4
+debatteras                 3
+interpellationsdebatt      3
+remissdebatten             2
+skendebatt                 2
+remissdebatt               2
+generaldebatt              2
+
+
+"""
+# setting descening to true gives words in alphabetical order
 
 
 def test_get_word_trend_speeches(api_corpus: Corpus):
@@ -290,3 +341,21 @@ def test_word_trend_speeches_api(fastapi_client: TestClient):
     assert 'party_abbrev' in first_result
     assert 'name' in first_result
     assert 'node_word' in first_result
+
+
+def get_a_test_person(api_corpus: Corpus):
+    """Returns the id of a person in the test data set"""
+    return api_corpus.document_index['person_id'][0]
+
+
+def test_word_trends_for_speaker(fastapi_client: TestClient, api_corpus: Corpus):
+    wt = "word_trends"
+    who = get_a_test_person(api_corpus)
+    search_term = "och"
+
+    url_wt = f"{version}/tools/{wt}/{search_term}?&who={who}"
+    response_wt = fastapi_client.get(url_wt)
+    assert response_wt.status_code == status.HTTP_200_OK
+    word_res = response_wt.json()['wt_list']
+
+    assert len(word_res) > 0  # no count in word trends for the test person saying "och" har snabbmeny

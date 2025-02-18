@@ -39,7 +39,8 @@ disable=invalid-name,
         bad-option-value,
         use-dict-literal,
         trailing-whitespace,
-        unnecessary-lambda-assignment
+        unnecessary-lambda-assignment,
+        too-many-positional-arguments
         # apply-builtin,
         # backtick,
         # bad-inline-option,
