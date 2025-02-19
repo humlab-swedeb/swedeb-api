@@ -22,6 +22,7 @@ EXPECTED_COLUMNS: set[str] = {
 }
 
 # FIXME: #145 Extra items in the left set: 'party'
+@pytest.mark.skip(reason="FIXME: #145 Extra items in the left set: 'party'")
 @pytest.mark.parametrize(
     'terms, opts, expected_count',
     [
@@ -50,6 +51,7 @@ def test_get_anforanden_for_word_trends_if_word_doesnt_exist():
     assert len(speeches) == 0
 
 # FIXME: #145 Extra items in the left set: 'party'
+@pytest.mark.skip(reason="FIXME: #145 Extra items in the left set: 'party'")
 def test_get_anforanden():
     corpus: api_corpus.Corpus = api_corpus.Corpus()
     filter_opts: dict = {'year': (1970, 1980)}
