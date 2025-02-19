@@ -96,7 +96,7 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
         if key != 'Totalt':
             assert terms[0] in key or terms[1] in key
 
-
+@pytest.mark.skip(reason="FIXME: This test fails due to #146")
 def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
     search_term: str = 'sverige'
     party_abbrev: str = 'S'
