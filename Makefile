@@ -31,6 +31,10 @@ coverage:
 	@poetry run pytest --durations=0 --cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html --cov-branch tests/ || true
 .PHONY: coverage
 
+notes:
+	@poetry run pylint --notes=FIXME,XXX,TODO --disable=all --enable=W0511 -f colorized $(SOURCE_FOLDERS) || true
+.PHONY: notes
+
 pylint:
 	@poetry run pylint $(SOURCE_FOLDERS)
 
