@@ -88,6 +88,7 @@ def test_word_trends_speeches_corpus2(api_corpus: Corpus):
     ]
 
 
+# FIXME #144 this test fails: party is in set(speech_index.columns.to_list()) but not in the expected columns
 def test_decode_speech_index(speech_index: pd.DataFrame, person_codecs: PersonCodecs):
     value_updates: dict[str, Any] = ConfigValue("display.speech_index.updates").resolve()
     speech_index = speech_index[COLUMNS_OF_INTEREST]
