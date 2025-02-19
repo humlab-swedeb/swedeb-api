@@ -53,6 +53,28 @@ class TestCodec:
         df = codec.apply(df)
         assert codec.is_decoded(df)
         
+    def test_codec_is_decoded_when_to_column_not_in_df(self):
+        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
+        df = pd.DataFrame({'gender_id': [1, 2, 1, 2]})
+        assert not codec.is_decoded(df)
+        df = codec.apply(df)
+        assert codec.is_decoded(df)
+
+    def test_codec_is_decoded_when_to_column_in_df(self):
+        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
+        df = pd.DataFrame({'gender_id': [1, 2, 1, 2], 'gender': ['Male', 'Female', 'Male', 'Female']})
+        assert codec.is_decoded(df)
+
+    def test_codec_is_decoded_when_from_column_not_in_df(self):
+        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
+        df = pd.DataFrame({'gender': ['Male', 'Female', 'Male', 'Female']})
+        assert codec.is_decoded(df)
+        
+    def test_codec_is_decoded_when_to_column_not_in_df_and_from_column_not_in_df(self):
+        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
+        df = pd.DataFrame({'some_other_column': [1, 2, 1, 2]})
+        assert codec.is_decoded(df)
+        
 
 class TestCodecs:
 
