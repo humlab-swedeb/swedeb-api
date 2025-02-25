@@ -74,7 +74,7 @@ class Codecs:
 
     def load(self, source: str | sqlite3.Connection | str) -> Self:
         self.source_filename = source if isinstance(source, str) else None
-        if not isfile(source):
+        if isinstance(source, str) and not isfile(source):
             raise FileNotFoundError(f"File not found: {source}")
         with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
             tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
