@@ -53,6 +53,7 @@ class TestGetKwicResults:
         result = KeywordInContextResult(**response.json())
         assert isinstance(result, KeywordInContextResult)
 
+# FIXME: #151 Fix TestGetWordTrendsResult.
 @pytest.mark.skip(reason="Fails on `api_swedeb/api/utils/word_trends.py#L21` because `df` is empty")
 class TestGetWordTrendsResult:
     
