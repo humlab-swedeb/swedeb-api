@@ -124,7 +124,7 @@ class TestGetNgramResults:
         assert isinstance(result, NGramResult)
 
 
-class TestGetWordTrendsResult:
+class TestGetSpeechesResult:
     def test_get_speeches_result(self):
         response = client.get(f"{version}/tools/speeches")
         assert response.status_code == 200
