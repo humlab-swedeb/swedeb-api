@@ -506,6 +506,24 @@ class TestCodecs:
         assert codecs.is_decoded(df)
 
 
+    def test_property_values_specs(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
+        codecs = Codecs()
+        codecs.gender = gender_dataframe
+        codecs.office_type = office_type_dataframe
+        codecs.party = party_dataframe
+        codecs.sub_office_type = sub_office_type_dataframe
+
+        expected_specs = [
+            dict(text_name='gender', id_name='gender_id', values=codecs.gender2id),
+            dict(text_name='office_type', id_name='office_type_id', values=codecs.office_type2id),
+            dict(text_name='party_abbrev', id_name='party_id', values=codecs.party_abbrev2id),
+            dict(text_name='sub_office_type', id_name='sub_office_type_id', values=codecs.sub_office_type2id),
+        ]
+
+        assert codecs.property_values_specs == expected_specs
+
+
+
 class TestPersonCodecs:
 
     def test_person_codecs_load(self):
@@ -520,3 +538,4 @@ class TestPersonCodecs:
         )
         assert person_codecs.any2any('pid', 'person_id') == {1: 'p1', 2: 'p2'}
         assert person_codecs.any2any('person_id', 'name') == {'p1': 'John Doe', 'p2': 'Jane Doe'}
+        
