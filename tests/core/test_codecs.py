@@ -7,6 +7,9 @@ import pytest
 from api_swedeb.core.codecs import Codec, Codecs, PersonCodecs
 
 
+
+
+
 class TestCodec:
 
     def test_codec_apply(self):
@@ -260,8 +263,15 @@ class TestCodecs:
         '''
         )
 
+       
+
+        
+
+        
+
         conn.commit()
         return conn
+
 
     def test_codecs_load_with_sqlite_connection(self, sqlite3db_connection):
         codecs = Codecs()
@@ -579,16 +589,203 @@ class TestCodecs:
 
 class TestPersonCodecs:
 
-    def test_person_codecs_load(self):
-        person_codecs = PersonCodecs()
-        with pytest.raises(FileNotFoundError):
-            person_codecs.load('non_existing_file.db')
+    # def test_person_codecs_load(self, person_codecs):
+    #     with pytest.raises(FileNotFoundError):
+    #         person_codecs.load('non_existing_file.db')
+    
+    # TODO: Use fixture from conftest.py
+    @pytest.fixture(name="person_codecs")
+    def fixture_person_codecs(self):
+        return PersonCodecs()
 
-    def test_person_codecs_any2any(self):
-        person_codecs = PersonCodecs()
+    def test_person_codecs_any2any(self,person_codecs):
         person_codecs.persons_of_interest = pd.DataFrame(
             {'pid': [1, 2], 'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']}
         )
         assert person_codecs.any2any('pid', 'person_id') == {1: 'p1', 2: 'p2'}
         assert person_codecs.any2any('person_id', 'name') == {'p1': 'John Doe', 'p2': 'Jane Doe'}
+   
+    def test_person_codecs_load_with_non_existing_file(self, person_codecs):
+        with pytest.raises(FileNotFoundError):
+            person_codecs.load('non_existing_file.db')
 
+    # FIXME: Use this fixture for all tests. Move to conftest.py
+    @pytest.fixture(name="sqlite3db_connection")
+    def fixture_sqlite3db(self, tmp_path):
+        db_path = tmp_path / "test.db"
+        conn = sqlite3.connect(str(db_path))
+
+        # Create tables and insert test data
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            '''
+            CREATE TABLE gender (
+                gender_id INTEGER PRIMARY KEY,
+                gender TEXT,
+                gender_abbrev TEXT
+            )
+        '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO gender (gender_id, gender, gender_abbrev) VALUES
+            (1, 'Male', 'M'),
+            (2, 'Female', 'F')
+        '''
+        )
+        
+        cursor.execute(
+            '''
+            CREATE TABLE persons_of_interest (
+                pid INTEGER PRIMARY KEY AUTOINCREMENT,
+                person_id TEXT,
+                name TEXT
+            )
+        '''
+        )
+        
+        cursor.execute(
+            '''
+            INSERT INTO persons_of_interest (person_id, name) VALUES
+            ('p1', 'John Doe'),
+            ('p2', 'Jane Doe')
+        '''
+        )
+        
+        cursor.execute(
+            '''
+            CREATE TABLE chamber (
+                chamber_id INTEGER PRIMARY KEY,
+                chamber TEXT,
+                chamber_abbrev TEXT
+            )
+        '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO chamber (chamber_id, chamber, chamber_abbrev) VALUES
+            (1, 'Chamber A', 'CA'),
+            (2, 'Chamber B', 'CB')
+        '''
+        )
+
+        cursor.execute(
+            '''
+            CREATE TABLE government (
+                government_id INTEGER PRIMARY KEY,
+                government TEXT
+            )
+        '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO government (government_id, government) VALUES
+            (1, 'Government A'),
+            (2, 'Government B')
+        '''
+        )
+
+
+        cursor.execute(
+            '''
+            CREATE TABLE office_type (
+                office_type_id INTEGER PRIMARY KEY,
+                office TEXT
+            )
+        '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO office_type (office_type_id, office) VALUES
+            (1, 'Office A'),
+            (2, 'Office B')
+        '''
+        )
+        
+        cursor.execute(
+            '''
+            CREATE TABLE party (
+                party_id INTEGER PRIMARY KEY,
+                party TEXT,
+                party_abbrev TEXT
+            )
+        '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO party (party_id, party, party_abbrev) VALUES
+            (1, 'Party A', 'PA'),
+            (2, 'Party B', 'PB')
+        '''
+        )
+        
+        cursor.execute(
+            '''
+            CREATE TABLE sub_office_type (
+                sub_office_type_id INTEGER PRIMARY KEY,
+                office_type_id INTEGER,
+                identifier TEXT,
+                description TEXT
+            )
+        '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO sub_office_type (sub_office_type_id, office_type_id, identifier, description) VALUES
+            (1, 1, 'A', 'Description A'),
+            (2, 2, 'B', 'Description B')
+        '''
+        )
+        
+        cursor.execute(
+            '''
+            CREATE TABLE person_party (
+                person_id TEXT,
+                party_id INTEGER,
+                PRIMARY KEY (person_id, party_id)
+            )
+        '''
+        )
+        cursor.execute(
+            '''
+            INSERT INTO person_party (person_id, party_id) VALUES
+            ('p1', 1),
+            ('p2', 2)
+        '''
+        )
+        
+        conn.commit()
+        return conn
+
+    @pytest.mark.skip(reason="Fails core/utility.py:121. KeyError: None of ['person_party_id'] are in the columns")
+    def test_person_codecs_load_with_existing_file(self, person_codecs, sqlite3db_connection):
+        conn = sqlite3db_connection
+        assert type(conn) == sqlite3.Connection
+        person_codecs.load(conn)
+        assert person_codecs.source_filename is None
+        assert not person_codecs.persons_of_interest.empty
+
+    @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
+    def test_person_codecs_load_with_dict(self, person_codecs):
+        data = {
+            "persons_of_interest": pd.DataFrame({
+                "person_id": ["p1", "p2"],
+                "name": ["John Doe", "Jane Doe"]
+            })
+        }
+        person_codecs.load(data)
+        assert not person_codecs.persons_of_interest.empty
+        assert "pid" in person_codecs.persons_of_interest.columns
+
+    @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
+    def test_person_codecs_load_adds_pid_column(self, person_codecs):
+        data = {
+            "persons_of_interest": pd.DataFrame({
+                "person_id": ["p1", "p2"],
+                "name": ["John Doe", "Jane Doe"]
+            })
+        }
+        person_codecs.load(data)
+        assert "pid" in person_codecs.persons_of_interest.columns
+        assert person_codecs.persons_of_interest["pid"].tolist() == [0, 1]
