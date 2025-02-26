@@ -7,9 +7,6 @@ import pytest
 from api_swedeb.core.codecs import Codec, Codecs, PersonCodecs
 
 
-
-
-
 class TestCodec:
 
     def test_codec_apply(self):
@@ -154,7 +151,6 @@ class TestCodecs:
         codecs = Codecs()
         with pytest.raises(FileNotFoundError):
             codecs.load('non_existing_file.db')
-
 
     def test_codecs_load_with_sqlite_connection(self, sqlite3db_connection):
         codecs = Codecs()
@@ -398,8 +394,9 @@ class TestCodecs:
         df = codecs.decode(df)
         assert codecs.is_decoded(df)
 
-
-    def test_property_values_specs(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
+    def test_property_values_specs(
+        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
+    ):
         codecs = Codecs()
         codecs.gender = gender_dataframe
         codecs.office_type = office_type_dataframe
@@ -417,7 +414,9 @@ class TestCodecs:
 
     # TODO: Use this fixture in other tests.
     @pytest.fixture(name="codecs_instance")
-    def fixture_codecs_instance(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
+    def fixture_codecs_instance(
+        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
+    ):
         codecs = Codecs()
         codecs.gender = gender_dataframe
         codecs.office_type = office_type_dataframe
@@ -427,7 +426,7 @@ class TestCodecs:
 
     def test_key_name_translate_id2text(self, codecs_instance):
         expected_translation = {
-            'gender_id': 'gender_abbrev', # NOTE: See #152
+            'gender_id': 'gender_abbrev',  # NOTE: See #152
             'office_type_id': 'office_type',
             'party_id': 'party',
             'sub_office_type_id': 'sub_office_type',
@@ -436,13 +435,12 @@ class TestCodecs:
 
     def test_key_name_translate_text2id(self, codecs_instance):
         expected_translation = {
-            'gender_abbrev': 'gender_id', # NOTE: See #152
+            'gender_abbrev': 'gender_id',  # NOTE: See #152
             'office_type': 'office_type_id',
             'party': 'party_id',
             'sub_office_type': 'sub_office_type_id',
         }
         assert codecs_instance.key_name_translate_text2id == expected_translation
-
 
     def test_key_name_translate_any2any(self, codecs_instance):
         expected_translation = {
@@ -468,31 +466,27 @@ class TestCodecs:
         assert codecs_instance.translate_key_names(keys) == expected_translated_keys
 
 
-
-
 class TestPersonCodecs:
 
     # def test_person_codecs_load(self, person_codecs):
     #     with pytest.raises(FileNotFoundError):
     #         person_codecs.load('non_existing_file.db')
-    
+
     # TODO: Use fixture from conftest.py
     @pytest.fixture(name="person_codecs")
     def fixture_person_codecs(self):
         return PersonCodecs()
 
-    def test_person_codecs_any2any(self,person_codecs):
+    def test_person_codecs_any2any(self, person_codecs):
         person_codecs.persons_of_interest = pd.DataFrame(
             {'pid': [1, 2], 'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']}
         )
         assert person_codecs.any2any('pid', 'person_id') == {1: 'p1', 2: 'p2'}
         assert person_codecs.any2any('person_id', 'name') == {'p1': 'John Doe', 'p2': 'Jane Doe'}
-   
+
     def test_person_codecs_load_with_non_existing_file(self, person_codecs):
         with pytest.raises(FileNotFoundError):
             person_codecs.load('non_existing_file.db')
-
-   
 
     @pytest.mark.skip(reason="Fails core/utility.py:121. KeyError: None of ['person_party_id'] are in the columns")
     def test_person_codecs_load_with_existing_file(self, person_codecs, sqlite3db_connection):
@@ -504,24 +498,14 @@ class TestPersonCodecs:
 
     @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
     def test_person_codecs_load_with_dict(self, person_codecs):
-        data = {
-            "persons_of_interest": pd.DataFrame({
-                "person_id": ["p1", "p2"],
-                "name": ["John Doe", "Jane Doe"]
-            })
-        }
+        data = {"persons_of_interest": pd.DataFrame({"person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]})}
         person_codecs.load(data)
         assert not person_codecs.persons_of_interest.empty
         assert "pid" in person_codecs.persons_of_interest.columns
 
     @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
     def test_person_codecs_load_adds_pid_column(self, person_codecs):
-        data = {
-            "persons_of_interest": pd.DataFrame({
-                "person_id": ["p1", "p2"],
-                "name": ["John Doe", "Jane Doe"]
-            })
-        }
+        data = {"persons_of_interest": pd.DataFrame({"person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]})}
         person_codecs.load(data)
         assert "pid" in person_codecs.persons_of_interest.columns
         assert person_codecs.persons_of_interest["pid"].tolist() == [0, 1]

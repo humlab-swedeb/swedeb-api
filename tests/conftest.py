@@ -67,6 +67,8 @@ def fastapi_client(fastapi_app: FastAPI) -> TestClient:  # pylint: disable=redef
 
 
 import sqlite3
+
+
 @pytest.fixture(name="sqlite3db_connection")
 def fixture_sqlite3db(tmp_path):
     db_path = tmp_path / "test.db"
@@ -74,7 +76,7 @@ def fixture_sqlite3db(tmp_path):
 
     # Create tables and insert test data
     cursor = conn.cursor()
-    
+
     cursor.execute(
         '''
         CREATE TABLE gender (
@@ -91,7 +93,7 @@ def fixture_sqlite3db(tmp_path):
         (2, 'Female', 'F')
     '''
     )
-    
+
     cursor.execute(
         '''
         CREATE TABLE persons_of_interest (
@@ -101,7 +103,7 @@ def fixture_sqlite3db(tmp_path):
         )
     '''
     )
-    
+
     cursor.execute(
         '''
         INSERT INTO persons_of_interest (person_id, name) VALUES
@@ -109,7 +111,7 @@ def fixture_sqlite3db(tmp_path):
         ('p2', 'Jane Doe')
     '''
     )
-    
+
     cursor.execute(
         '''
         CREATE TABLE chamber (
@@ -143,7 +145,6 @@ def fixture_sqlite3db(tmp_path):
     '''
     )
 
-
     cursor.execute(
         '''
         CREATE TABLE office_type (
@@ -159,7 +160,7 @@ def fixture_sqlite3db(tmp_path):
         (2, 'Office B')
     '''
     )
-    
+
     cursor.execute(
         '''
         CREATE TABLE party (
@@ -176,7 +177,7 @@ def fixture_sqlite3db(tmp_path):
         (2, 'Party B', 'PB')
     '''
     )
-    
+
     cursor.execute(
         '''
         CREATE TABLE sub_office_type (
@@ -194,7 +195,7 @@ def fixture_sqlite3db(tmp_path):
         (2, 2, 'B', 'Description B')
     '''
     )
-    
+
     cursor.execute(
         '''
         CREATE TABLE person_party (
@@ -211,6 +212,6 @@ def fixture_sqlite3db(tmp_path):
         ('p2', 2)
     '''
     )
-    
+
     conn.commit()
     return conn
