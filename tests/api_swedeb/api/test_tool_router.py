@@ -13,7 +13,6 @@ from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
-
 version = "v1"
 
 

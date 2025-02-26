@@ -13,6 +13,7 @@ from api_swedeb.schemas.metadata_schema import (
     OfficeTypeList,
     PartyItem,
     PartyList,
+    SpeakerItem,
     SpeakerResult,
     SubOfficeTypeList,
 )
@@ -115,7 +116,6 @@ def test_get_meta_sub_office_types(mock_get_sub_office_types: Mock, fastapi_clie
     }
 
 
-from api_swedeb.schemas.metadata_schema import SpeakerItem
 
 
 @patch(
