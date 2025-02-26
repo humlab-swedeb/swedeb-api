@@ -145,6 +145,7 @@ class Codecs:
             Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id),
         ]
 
+    # FIXME: #152 When no `to_name` is provided, what codec is used is determined by position in the codecs list. This may result in unexpected results.
     def decode_any_id(self, from_name: str, value: int, *, default_value: str = "unknown", to_name: str = None) -> str:
         codec: Codec | None = self.decoder(from_name, to_name)
         if codec is None:
