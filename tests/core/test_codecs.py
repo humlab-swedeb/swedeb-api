@@ -522,7 +522,33 @@ class TestCodecs:
 
         assert codecs.property_values_specs == expected_specs
 
+    # TODO: Use this fixture in other tests.
+    @pytest.fixture(name="codecs_instance")
+    def fixture_codecs_instance(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
+        codecs = Codecs()
+        codecs.gender = gender_dataframe
+        codecs.office_type = office_type_dataframe
+        codecs.party = party_dataframe
+        codecs.sub_office_type = sub_office_type_dataframe
+        return codecs
 
+    def test_key_name_translate_id2text(self, codecs_instance):
+        expected_translation = {
+            'gender_id': 'gender_abbrev', # NOTE: See #152
+            'office_type_id': 'office_type',
+            'party_id': 'party',
+            'sub_office_type_id': 'sub_office_type',
+        }
+        assert codecs_instance.key_name_translate_id2text == expected_translation
+
+    def test_key_name_translate_text2id(self, codecs_instance):
+        expected_translation = {
+            'gender_abbrev': 'gender_id', # NOTE: See #152
+            'office_type': 'office_type_id',
+            'party': 'party_id',
+            'sub_office_type': 'sub_office_type_id',
+        }
+        assert codecs_instance.key_name_translate_text2id == expected_translation
 
 class TestPersonCodecs:
 
@@ -538,4 +564,6 @@ class TestPersonCodecs:
         )
         assert person_codecs.any2any('pid', 'person_id') == {1: 'p1', 2: 'p2'}
         assert person_codecs.any2any('person_id', 'name') == {'p1': 'John Doe', 'p2': 'Jane Doe'}
-        
+
+
+
