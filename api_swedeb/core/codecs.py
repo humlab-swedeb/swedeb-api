@@ -129,7 +129,16 @@ class Codecs:
     @cached_property
     def party2id(self) -> dict:
         return pu.revdict(self.party_id2party)
+    
+    @cached_property
+    def chamber_id2abbrev(self) -> dict:
+        """Not implemented"""
+        return {}
 
+    @cached_property
+    def chamber_abbrev2id(self) -> dict:
+        return pu.revdict(self.chamber_id2abbrev)
+    
     @property
     def codecs(self) -> list[Codec]:
         return self.extra_codecs + [
@@ -208,6 +217,7 @@ class Codecs:
             dict(text_name='gender', id_name='gender_id', values=self.gender2id),
             dict(text_name='office_type', id_name='office_type_id', values=self.office_type2id),
             dict(text_name='party_abbrev', id_name='party_id', values=self.party_abbrev2id),
+            dict(text_name='chamber_abbrev', id_name='chamber_id', values=self.chamber_abbrev2id),
             dict(text_name='sub_office_type', id_name='sub_office_type_id', values=self.sub_office_type2id),
         ]
 
