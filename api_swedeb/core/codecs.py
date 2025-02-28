@@ -129,7 +129,7 @@ class Codecs:
     @cached_property
     def party2id(self) -> dict:
         return pu.revdict(self.party_id2party)
-    
+
     @cached_property
     def chamber_id2abbrev(self) -> dict:
         """Not implemented"""
@@ -138,7 +138,7 @@ class Codecs:
     @cached_property
     def chamber_abbrev2id(self) -> dict:
         return pu.revdict(self.chamber_id2abbrev)
-    
+
     @property
     def codecs(self) -> list[Codec]:
         return self.extra_codecs + [

@@ -361,6 +361,7 @@ def test_word_trends_for_speaker(fastapi_client: TestClient, api_corpus: Corpus)
 
     assert len(word_res) > 0  # no count in word trends for the test person saying "och" har snabbmeny
 
+
 def test_word_trends_by_year_and_chamber_bug(fastapi_client: TestClient, api_corpus: Corpus):
     url_wt = "/v1/tools/word_trends/sverige?from_year=1970&to_year=1975&chamber_abbrev=ek"
     response_wt = fastapi_client.get(url_wt)
@@ -375,4 +376,3 @@ def test_word_trends_by_year_and_chamber_bug(fastapi_client: TestClient, api_cor
     assert all(y in range(1970, 1976) for y in [wt['year'] for wt in word_res])
     assert all(all(w.startswith('sverige') for w in wt['count']) for wt in word_res)
     assert all(all(isinstance(w, int) for w in wt['count'].values()) for wt in word_res)
-    
