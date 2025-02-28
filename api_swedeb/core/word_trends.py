@@ -54,12 +54,20 @@ class SweDebTrendsData(wt.TrendsService):
         """Decodes ID columns (keeps ID) and updates document index with filename, time_period and document_name."""
         if not opts.pivot_keys_id_names:
             return document_index
-        di: pd.DataFrame = self.person_codecs.decode(document_index, drop=False)
-        pivot_keys_text_names = self.person_codecs.translate_key_names(opts.pivot_keys_id_names)
-        di["document_name"] = di[pivot_keys_text_names].apply(lambda x: "_".join(x).lower(), axis=1)
+        di: pd.DataFrame = self.person_codecs.decode(document_index, drop=False, ignores=['wiki_id', 'pid'])
+        di["document_name"] = self._generate_pivot_document_name(di, opts.pivot_keys_id_names, opts.temporal_key)
         di["filename"] = di.document_name
         di["time_period"] = di[opts.temporal_key]
         return di
+
+    def _generate_pivot_document_name(self, di: pd.DataFrame, pivot_keys: list[str], temporal_key: str) -> pd.DataFrame:
+        id2name: dict[str, str] = {
+            x.from_column: x.to_column
+            for x in self.person_codecs.decoders
+            if x.from_column in pivot_keys and x.to_column in di.columns
+        }
+        pivot_keys_text_names: list[str] = [id2name.get(x, x) for x in pivot_keys]
+        return di[pivot_keys_text_names + ([temporal_key] if temporal_key else [])].astype(str).agg('_'.join, axis=1)
 
 
 # FIXME: Add this logic to penelope.VectorizedCorpus
@@ -116,7 +124,7 @@ def compute_word_trends(
         trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]
 
     trends.rename(columns={"who": "person_id"}, inplace=True)
-    trends = trends_data.person_codecs.decode(trends)
+    trends = trends_data.person_codecs.decode(trends, ignores=["wiki_id", "pid"], drop=True)
     trends["year"] = trends["year"].astype(str)
 
     if not pivot_keys:

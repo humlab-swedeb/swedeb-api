@@ -24,7 +24,6 @@ router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {
 @router.get(
     "/kwic/{search}",
     response_model=KeywordInContextResult,
-    description="NOTE: query parameters are not available in test data",
 )
 async def get_kwic_results(
     commons: CommonParams,
@@ -115,7 +114,7 @@ async def get_speeches_result(
 # FIXME: rename endpoint to /speeches/{speech_id}/text
 @router.get("/speeches/{speech_id}", response_model=SpeechesTextResultItem)
 async def get_speech_by_id_result(speech_id: str) -> SpeechesTextResultItem:
-    """eg. prot-1971--1_007"""
+    """eg. i-246211bdfc60c4fd-265"""
     return get_speech_text_by_id(speech_id, get_shared_corpus())
 
 

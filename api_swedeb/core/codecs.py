@@ -129,7 +129,16 @@ class Codecs:
     @cached_property
     def party2id(self) -> dict:
         return pu.revdict(self.party_id2party)
+    
+    @cached_property
+    def chamber_id2abbrev(self) -> dict:
+        """Not implemented"""
+        return {}
 
+    @cached_property
+    def chamber_abbrev2id(self) -> dict:
+        return pu.revdict(self.chamber_id2abbrev)
+    
     @property
     def codecs(self) -> list[Codec]:
         return self.extra_codecs + [
@@ -169,9 +178,17 @@ class Codecs:
         return [c for c in self.codecs if c.type == 'encode']
 
     def apply_codec(
-        self, df: pd.DataFrame, codecs: list[Codec], drop: bool = True, keeps: list[str] = None
+        self,
+        df: pd.DataFrame,
+        codecs: list[Codec],
+        drop: bool = True,
+        keeps: list[str] = None,
+        ignores: list[str] = None,
     ) -> pd.DataFrame:
+        """Applies codecs to DataFrame. Ignores target columns in `ignores` and keeps columns in `keeps`."""
         for codec in codecs:
+            if ignores and codec.to_column in ignores:
+                continue
             df = codec.apply(df)
 
         if drop:
@@ -184,11 +201,15 @@ class Codecs:
 
         return df
 
-    def decode(self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None) -> pd.DataFrame:
-        return self.apply_codec(df, self.decoders, drop=drop, keeps=keeps)
+    def decode(
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+    ) -> pd.DataFrame:
+        return self.apply_codec(df, self.decoders, drop=drop, keeps=keeps, ignores=ignores)
 
-    def encode(self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None) -> pd.DataFrame:
-        return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps)
+    def encode(
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+    ) -> pd.DataFrame:
+        return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps, ignores=ignores)
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
@@ -196,6 +217,7 @@ class Codecs:
             dict(text_name='gender', id_name='gender_id', values=self.gender2id),
             dict(text_name='office_type', id_name='office_type_id', values=self.office_type2id),
             dict(text_name='party_abbrev', id_name='party_id', values=self.party_abbrev2id),
+            dict(text_name='chamber_abbrev', id_name='chamber_id', values=self.chamber_abbrev2id),
             dict(text_name='sub_office_type', id_name='sub_office_type_id', values=self.sub_office_type2id),
         ]
 

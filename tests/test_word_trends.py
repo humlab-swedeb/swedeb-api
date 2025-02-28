@@ -341,3 +341,37 @@ def test_word_trend_speeches_api(fastapi_client: TestClient):
     assert 'party_abbrev' in first_result
     assert 'name' in first_result
     assert 'node_word' in first_result
+
+
+def get_a_test_person(api_corpus: Corpus):
+    """Returns the id of a person in the test data set"""
+    return api_corpus.document_index['person_id'][0]
+
+
+def test_word_trends_for_speaker(fastapi_client: TestClient, api_corpus: Corpus):
+    wt = "word_trends"
+    who = get_a_test_person(api_corpus)
+    search_term = "och"
+
+    url_wt = f"{version}/tools/{wt}/{search_term}?&who={who}"
+    response_wt = fastapi_client.get(url_wt)
+    assert response_wt.status_code == status.HTTP_200_OK
+    word_res = response_wt.json()['wt_list']
+
+    assert len(word_res) > 0  # no count in word trends for the test person saying "och" har snabbmeny
+
+def test_word_trends_by_year_and_chamber_bug(fastapi_client: TestClient, api_corpus: Corpus):
+    url_wt = "/v1/tools/word_trends/sverige?from_year=1970&to_year=1975&chamber_abbrev=ek"
+    response_wt = fastapi_client.get(url_wt)
+    assert response_wt.status_code == status.HTTP_200_OK
+    word_res = response_wt.json()['wt_list']
+
+    assert len(word_res) > 0
+    assert all(isinstance(wt, dict) for wt in word_res)
+    assert all('year' in wt for wt in word_res)
+    assert all('count' in wt for wt in word_res)
+    assert all(isinstance(wt['count'], dict) for wt in word_res)
+    assert all(y in range(1970, 1976) for y in [wt['year'] for wt in word_res])
+    assert all(all(w.startswith('sverige') for w in wt['count']) for wt in word_res)
+    assert all(all(isinstance(w, int) for w in wt['count'].values()) for wt in word_res)
+    

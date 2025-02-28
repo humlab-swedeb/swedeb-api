@@ -214,6 +214,7 @@ def test_compile_complex():
         '&(a.speech_sub_office_type_id="1|2")&(a.speech_gender_id="1") within speech'
     )
 
+
 def test_cqp_execute_query(corpus: Corpus, person_codecs: PersonCodecs):
     party_id = person_codecs.party_abbrev2id.get("M")
     query: str = compiler.to_cqp_exprs(
