@@ -141,6 +141,7 @@ def test_word_trends_speeches_corpus(api_corpus: Corpus):
         'speech_name',  # RENAMED (formatted_speech_id)
         'gender',
         'gender_abbrev',  # NEW
+        'party',
         'party_abbrev',
         'name',
         'wiki_id',  # NEW

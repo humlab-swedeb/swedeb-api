@@ -102,6 +102,7 @@ def test_decode_speech_index(speech_index: pd.DataFrame, person_codecs: PersonCo
         'gender',
         'gender_abbrev',
         'party_abbrev',
+        'party',
         'name',
         'wiki_id',
         'person_id',

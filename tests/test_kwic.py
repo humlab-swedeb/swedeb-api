@@ -18,7 +18,7 @@ def test_kwic_api(fastapi_client):
     assert len(data["kwic_list"]) > 0
 
     item: dict = data["kwic_list"][0]
-    assert set(item.keys()) == EXPECTED_COLUMNS
+    assert set(item.keys()) == EXPECTED_COLUMNS | {'party'}
 
 
 def test_kwic_non_existing_search_term(fastapi_client):

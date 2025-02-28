@@ -36,7 +36,6 @@ def test_kwic(fastapi_client):
             "year",
             "name",
             "party_abbrev",
-            "title",
             "gender",
             "person_id",
             "link",

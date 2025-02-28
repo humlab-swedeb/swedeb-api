@@ -25,7 +25,6 @@ class KeywordInContextItem(BaseModel):
     party: str = Field(None, description="Full party name of speaker")
 
 
-
 class KeywordInContextResult(BaseModel):
     kwic_list: List[KeywordInContextItem]
 

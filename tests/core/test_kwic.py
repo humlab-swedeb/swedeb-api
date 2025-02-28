@@ -15,7 +15,7 @@ EXPECTED_COLUMNS: set[str] = {
     "year",
     "name",
     "party_abbrev",
-    "title",
+    "party",
     "gender",
     "person_id",
     "link",
