@@ -217,6 +217,7 @@ class Codecs:
             dict(text_name='gender', id_name='gender_id', values=self.gender2id),
             dict(text_name='office_type', id_name='office_type_id', values=self.office_type2id),
             dict(text_name='party_abbrev', id_name='party_id', values=self.party_abbrev2id),
+            dict(text_name='party', id_name='party_id', values=self.party2id),
             dict(text_name='chamber_abbrev', id_name='chamber_id', values=self.chamber_abbrev2id),
             dict(text_name='sub_office_type', id_name='sub_office_type_id', values=self.sub_office_type2id),
         ]
