@@ -129,7 +129,7 @@ class Corpus:
                 party_person_ids: set[str] = set(person_party[person_party.party_id.isin(value)].person_id)
                 df = df[df["person_id"].isin(party_person_ids)]
             elif key == "chamber_abbrev" and value:
-                value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [v.lower()]
+                value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [value.lower()]
                 di: pd.DataFrame = self.vectorized_corpus.document_index
                 df = df[df["person_id"].isin(set(di[di.chamber_abbrev.isin(value)].person_id.unique()))]
             else:
