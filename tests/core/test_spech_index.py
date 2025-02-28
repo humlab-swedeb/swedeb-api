@@ -116,6 +116,27 @@ def test_chambers_chamber_abbrev(speech_index: pd.DataFrame):
     assert set(speech_index.chamber_abbrev.unique()) - {'ak', 'ek', 'fk'} == set()
 
 
+def test_page_number(speech_index: pd.DataFrame):
+    assert 'page_number' in speech_index.columns
+    speeches: dict[str, dict] = speech_index.set_index('speech_id').to_dict(orient='index')
+
+    assert speeches is not None
+
+    speech = speeches.get('i-RpB9hBunARAQt8qDQox5Dh')
+
+    assert speech is not None
+    document_name: str = speech['document_name']
+    protocol_name: str = '_'.join(document_name.split('_')[:-1])
+    page_number: str = speech['page_number']
+    year: int = speech['year']
+
+    url: str = (
+        f"https://pdf.swedeb.se/riksdagen-records-pdf/{year}/{protocol_name}/{protocol_name}_{page_number:03}.pdf"
+    )
+
+    assert url is not None
+
+
 def test_speech_name(speech_index: pd.DataFrame):
     assert 'speech_name' in speech_index.columns
     assert any(speech_index.speech_name.str.startswith("Andra kammaren"))
