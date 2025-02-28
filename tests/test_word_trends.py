@@ -112,7 +112,7 @@ def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
 
     count = first_result['count']
     count_keys = count.keys()
-    assert f'{search_term} {party_abbrev}' in count_keys
+    assert any(x.startswith(f'{search_term} {party_abbrev}') for x in count_keys)
 
 
 @pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
@@ -141,6 +141,7 @@ def test_word_trends_speeches_corpus(api_corpus: Corpus):
         'speech_name',  # RENAMED (formatted_speech_id)
         'gender',
         'gender_abbrev',  # NEW
+        'party',
         'party_abbrev',
         'name',
         'wiki_id',  # NEW

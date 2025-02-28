@@ -11,6 +11,7 @@ EXPECTED_COLUMNS: set[str] = {
     'gender',
     'link',
     'name',
+    'party',
     'party_abbrev',
     'speech_id',  # NEW
     'speech_link',
