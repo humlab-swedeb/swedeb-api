@@ -334,7 +334,7 @@ class PersonCodecs(Codecs):
     def add_multiple_party_abbrevs(self) -> Self:
         party_data: pd.DataFrame = getattr(self, "person_party")
         party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev)
-        party_data["party_abbrev"].fillna("?", inplace=True)
+        party_data["party_abbrev"].fillna("?", inplace=True)  # FIXME: #158 Use party_data["party_abbrev"] = party_data["party_abbrev"].fillna("?") to avoid FutureWarning
 
         grouped_party_abbrevs: pd.DataFrame = (
             party_data.groupby("person_id")
@@ -349,7 +349,7 @@ class PersonCodecs(Codecs):
         grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
 
         self.persons_of_interest = self.persons_of_interest.merge(grouped_party_abbrevs, on="person_id", how="left")
-        self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
+        self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)  # FIXME: #159 Use self.persons_of_interest["party_abbrev"] = self.persons_of_interest["party_abbrev"].fillna("?") to avoid FutureWarning
         return self
 
     def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
