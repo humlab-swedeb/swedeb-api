@@ -72,14 +72,17 @@ class Codecs:
         self.source_filename: str | None = None
         self.code_tables: dict[str, str] = CODE_TABLES
 
-    def load(self, source: str | sqlite3.Connection | str) -> Self:
+    def load(self, source: str | sqlite3.Connection | dict) -> Self:
         self.source_filename = source if isinstance(source, str) else None
         if isinstance(source, str) and not isfile(source):
             raise FileNotFoundError(f"File not found: {source}")
-        with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
-            tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
-            for table_name, table in tables.items():
-                setattr(self, table_name, table)
+        if isinstance(source, dict):
+            tables = source
+        else:
+            with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
+                tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
+        for table_name, table in tables.items():
+            setattr(self, table_name, table)
         return self
 
     def tablenames(self) -> dict[str, str]:
@@ -249,7 +252,7 @@ class PersonCodecs(Codecs):
         return tables
 
     def load(self, source: str | sqlite3.Connection | dict) -> Self:
-        super().load(source)
+        super().load(source)  # FIXME: #168 Super class method expects a string, but this method can also accept a dict.
         if "pid" not in self.persons_of_interest.columns:
             self.persons_of_interest["pid"] = self.persons_of_interest.reset_index().index
         return self
@@ -362,6 +365,7 @@ class PersonCodecs(Codecs):
                         selected[k] = v
         return selected
 
+    # FIXME: #169 person_wiki_link should be updated to handle both str and pd.Series[str]
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
