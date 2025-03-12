@@ -468,6 +468,7 @@ class TestCodecs:
 
 class TestPersonCodecs:
 
+
     def test_person_codecs_load_with_non_existing_file(self, person_codecs):
         with pytest.raises(FileNotFoundError):
             person_codecs.load('non_existing_file.db')
@@ -481,8 +482,9 @@ class TestPersonCodecs:
         assert person_codecs.source_filename is None
         assert not person_codecs.persons_of_interest.empty
 
-    # FIXME: AttributeError: 'dict' object has no attribute 'cursor'
-    @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
+    # FIXME: AttributeError: 'dict' object has no attribute 'cursor'.
+    # NOTE: Fixed by modifying the load method in the PersonCodecs class to handle the dictionary case properly.
+    # @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
     def test_person_codecs_load_with_dict(self, person_codecs):
         """AttributeError: 'dict' object has no attribute 'cursor'
 
@@ -497,12 +499,18 @@ class TestPersonCodecs:
         assert not person_codecs.persons_of_interest.empty
         assert "pid" in person_codecs.persons_of_interest.columns
 
-    @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
+    # @pytest.mark.skip(reason="Fails in core/utility.py:102. AttributeError: 'dict' object has no attribute 'cursor'")
     def test_person_codecs_load_adds_pid_column(self, person_codecs):
         data = {"persons_of_interest": pd.DataFrame({"person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]})}
         person_codecs.load(data)
         assert "pid" in person_codecs.persons_of_interest.columns
         assert person_codecs.persons_of_interest["pid"].tolist() == [0, 1]
+        
+    def test_person_codecs_load_with_pid_column(self, person_codecs):
+        data = {"persons_of_interest": pd.DataFrame({"pid": [1, 2], "person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]})}
+        person_codecs.load(data)
+        assert "pid" in person_codecs.persons_of_interest.columns
+        assert person_codecs.persons_of_interest["pid"].tolist() == [1, 2]
 
     def test_pid2person_id(self):
         person_codecs = PersonCodecs()
@@ -571,34 +579,45 @@ class TestPersonCodecs:
         person_codecs = PersonCodecs()
         person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
         assert person_codecs.wiki_id2pid == {}
-
-    @pytest.mark.skip(
-        reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
-    )
-    def test_person_id2wiki_id(self):
+        
+    def test_person_id2wiki_id(self, source_dict):
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.person_id2wiki_id == {'1': 'w1', '2': 'w2'}
+        person_codecs.load(source_dict)
+        assert person_codecs.person_id2wiki_id == {'p1': 'q1', 'p2': 'q2'}
 
-    @pytest.mark.skip(
-        reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
-    )
-    def test_person_id2wiki_id_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
-        assert person_codecs.person_id2wiki_id == {}
+    # @pytest.mark.skip(
+    #     reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
+    # )
+    # def test_person_id2wiki_id(self):
+    #     person_codecs = PersonCodecs()
+    #     person_codecs.persons_of_interest = pd.DataFrame(
+    #         {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
+    #     )
+    #     assert person_codecs.person_id2wiki_id == {'1': 'w1', '2': 'w2'}
+        
+    # @pytest.mark.skip(
+    #     reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
+    # )
+    # def test_person_id2wiki_id_empty(self):
+    #     person_codecs = PersonCodecs()
+    #     person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
+    #     assert person_codecs.person_id2wiki_id == {}
 
-    @pytest.mark.skip(
-        reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
-    )
-    def test_wiki_id2person_id(self):
+
+    def test_wiki_id2person_id(self, source_dict):
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.wiki_id2person_id == {'w1': 1, 'w2': 2}
+        person_codecs.load(source_dict)
+        assert person_codecs.wiki_id2person_id == {'q1': 'p1', 'q2': 'p2'}
+
+    # @pytest.mark.skip(
+    #     reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
+    # )
+    # def test_wiki_id2person_id(self):
+    #     person_codecs = PersonCodecs()
+    #     person_codecs.persons_of_interest = pd.DataFrame(
+    #         {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
+    #     )
+    #     assert person_codecs.wiki_id2person_id == {'w1': 1, 'w2': 2}
 
     @pytest.mark.skip(
         reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
@@ -615,6 +634,15 @@ class TestPersonCodecs:
         )
         assert person_codecs.any2any('pid', 'person_id') == {1: 'p1', 2: 'p2'}
         assert person_codecs.any2any('person_id', 'name') == {'p1': 'John Doe', 'p2': 'Jane Doe'}
+        
+    # test any2any with from_key not in self.persons_of_interest.columns
+    def test_any2any_with_non_existing_from_key_raises_ValueError(self):
+        person_codecs = PersonCodecs()
+        person_codecs.persons_of_interest = pd.DataFrame(
+            {'pid': [1, 2], 'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']}
+        )
+        with pytest.raises(ValueError):
+            person_codecs.any2any('non_existing_key', 'person_id')
 
     @pytest.mark.skip(reason="Fails in core/codecs.py:91:gender2name. KeyError: 'gender'")
     def test_property_values_specs(self):
@@ -654,3 +682,130 @@ class TestPersonCodecs:
         assert type(person_codecs.person) == pd.DataFrame
         assert person_codecs.person.empty
         assert person_codecs.person.shape == (0, 2)
+
+    def test_getitem_by_pid(self, source_dict):
+        person_codecs = PersonCodecs()
+        person_codecs.load(source_dict)
+        person = person_codecs[0]
+        assert person['person_id'] == 'p1'
+        assert person['name'] == 'John Doe'
+
+    def test_getitem_by_person_id(self, source_dict):
+        person_codecs = PersonCodecs()
+        person_codecs.load(source_dict)
+        person = person_codecs['p1']
+        assert person['pid'] == 0
+        assert person['name'] == 'John Doe'
+
+    def test_getitem_by_non_existing_key(self, source_dict):
+        person_codecs = PersonCodecs()
+        person_codecs.load(source_dict)
+        with pytest.raises(KeyError):
+            person_codecs['non_existing_key']
+            
+    def test_getitem_by_wiki_id(self, source_dict):
+        person_codecs = PersonCodecs()
+        person_codecs.load(source_dict)
+        person = person_codecs['q1']
+        assert person['pid'] == 0
+        assert person['name'] == 'John Doe'
+
+    
+    def test_get_party_specs_with_existing_partys_of_interest(self):
+        person_codecs = PersonCodecs()
+        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
+        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
+        person_codecs.property_values_specs = [
+            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
+        ]
+        partys_of_interest = [100]
+        result = person_codecs._get_party_specs(partys_of_interest)
+        assert result == {'PA': 100}
+
+    def test_get_party_specs_with_non_existing_partys_of_interest(self):
+        person_codecs = PersonCodecs()
+        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
+        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
+        person_codecs.property_values_specs = [
+            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
+        ]
+        partys_of_interest = [300]
+        result = person_codecs._get_party_specs(partys_of_interest)
+        assert result == {}
+
+    def test_get_party_specs_with_empty_partys_of_interest(self):
+        person_codecs = PersonCodecs()
+        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
+        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
+        person_codecs.property_values_specs = [
+            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
+        ]
+        partys_of_interest = []
+        result = person_codecs._get_party_specs(partys_of_interest)
+        assert result == {'PA': 100, 'PB': 200}
+
+    def test_get_party_specs_with_none_partys_of_interest(self):
+        person_codecs = PersonCodecs()
+        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
+        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
+        person_codecs.property_values_specs = [
+            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
+        ]
+        partys_of_interest = None
+        result = person_codecs._get_party_specs(partys_of_interest)
+        assert result == {'PA': 100, 'PB': 200}
+        
+    def test_get_party_specs_with_non_party_abbrev_specification(self):
+        person_codecs = PersonCodecs()
+        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
+        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
+        person_codecs.property_values_specs = [
+            dict(text_name='non_party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
+        ]
+        partys_of_interest = [100]
+        result = person_codecs._get_party_specs(partys_of_interest)
+        assert result == {}
+
+    @pytest.mark.skip(reason="person_wiki_link should be updated to handle both str and pd.Series[str]")
+    @pytest.mark.parametrize(
+        "wiki_id, expected",
+        [
+            ("Q12345", "https://www.wikidata.org/wiki/Q12345"),
+            ("unknown", "Okänd"),  # Assuming "Okänd" is the resolved value for unknown
+        ],
+    )
+    def test_person_wiki_link(self, wiki_id, expected):
+        assert PersonCodecs.person_wiki_link(wiki_id) == expected
+
+    @pytest.mark.skip(reason="person_wiki_link should be updated to handle both str and pd.Series[str]")
+    def test_person_wiki_link_series(self):
+        wiki_ids = pd.Series(["Q12345", "unknown"])
+        expected = pd.Series(["https://www.wikidata.org/wiki/Q12345", "Okänd"])  # Assuming "Okänd" is the resolved value for unknown
+        pd.testing.assert_series_equal(PersonCodecs.person_wiki_link(wiki_ids), expected)
+
+    @pytest.mark.parametrize(
+        "speech_id, expected",
+        [
+            ("12345", "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/12345"),
+            ("67890", "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/67890"),
+        ],
+    )
+    def test_speech_link(self, speech_id, expected):
+        assert PersonCodecs.speech_link(speech_id) == expected
+
+    def test_speech_link_series(self):
+        speech_ids = pd.Series(["12345", "67890"])
+        expected = pd.Series([
+            "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/12345",
+            "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/67890"
+        ])
+        pd.testing.assert_series_equal(PersonCodecs.speech_link(speech_ids), expected)
+
+
+
+    def test_decode_speech_index_with_empty_dataframe(self):
+        person_codecs = PersonCodecs()
+        empty_df = pd.DataFrame()
+        result = person_codecs.decode_speech_index(empty_df)
+        assert result.empty
+
