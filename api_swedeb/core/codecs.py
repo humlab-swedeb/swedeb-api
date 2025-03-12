@@ -365,13 +365,15 @@ class PersonCodecs(Codecs):
                         selected[k] = v
         return selected
 
-    # FIXME: #169 person_wiki_link should be updated to handle both str and pd.Series[str]
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-        data: pd.Series = "https://www.wikidata.org/wiki/" + wiki_id
-        data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
-        return data
+        if isinstance(wiki_id, pd.Series):
+            data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
+            data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
+            return data
+        else:
+            return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
     def speech_link(speech_id: str | pd.Series[str]) -> str | pd.Series[str]:
