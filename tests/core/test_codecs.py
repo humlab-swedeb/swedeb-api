@@ -468,7 +468,6 @@ class TestCodecs:
 
 class TestPersonCodecs:
 
-
     def test_person_codecs_load_with_non_existing_file(self, person_codecs):
         with pytest.raises(FileNotFoundError):
             person_codecs.load('non_existing_file.db')
@@ -505,9 +504,13 @@ class TestPersonCodecs:
         person_codecs.load(data)
         assert "pid" in person_codecs.persons_of_interest.columns
         assert person_codecs.persons_of_interest["pid"].tolist() == [0, 1]
-        
+
     def test_person_codecs_load_with_pid_column(self, person_codecs):
-        data = {"persons_of_interest": pd.DataFrame({"pid": [1, 2], "person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]})}
+        data = {
+            "persons_of_interest": pd.DataFrame(
+                {"pid": [1, 2], "person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]}
+            )
+        }
         person_codecs.load(data)
         assert "pid" in person_codecs.persons_of_interest.columns
         assert person_codecs.persons_of_interest["pid"].tolist() == [1, 2]
@@ -579,7 +582,7 @@ class TestPersonCodecs:
         person_codecs = PersonCodecs()
         person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
         assert person_codecs.wiki_id2pid == {}
-        
+
     def test_person_id2wiki_id(self, source_dict):
         person_codecs = PersonCodecs()
         person_codecs.load(source_dict)
@@ -594,7 +597,7 @@ class TestPersonCodecs:
     #         {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
     #     )
     #     assert person_codecs.person_id2wiki_id == {'1': 'w1', '2': 'w2'}
-        
+
     # @pytest.mark.skip(
     #     reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
     # )
@@ -602,7 +605,6 @@ class TestPersonCodecs:
     #     person_codecs = PersonCodecs()
     #     person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
     #     assert person_codecs.person_id2wiki_id == {}
-
 
     def test_wiki_id2person_id(self, source_dict):
         person_codecs = PersonCodecs()
@@ -634,7 +636,7 @@ class TestPersonCodecs:
         )
         assert person_codecs.any2any('pid', 'person_id') == {1: 'p1', 2: 'p2'}
         assert person_codecs.any2any('person_id', 'name') == {'p1': 'John Doe', 'p2': 'Jane Doe'}
-        
+
     # test any2any with from_key not in self.persons_of_interest.columns
     def test_any2any_with_non_existing_from_key_raises_ValueError(self):
         person_codecs = PersonCodecs()
@@ -702,7 +704,7 @@ class TestPersonCodecs:
         person_codecs.load(source_dict)
         with pytest.raises(KeyError):
             person_codecs['non_existing_key']
-            
+
     def test_getitem_by_wiki_id(self, source_dict):
         person_codecs = PersonCodecs()
         person_codecs.load(source_dict)
@@ -710,7 +712,6 @@ class TestPersonCodecs:
         assert person['pid'] == 0
         assert person['name'] == 'John Doe'
 
-    
     def test_get_party_specs_with_existing_partys_of_interest(self):
         person_codecs = PersonCodecs()
         person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
@@ -754,7 +755,7 @@ class TestPersonCodecs:
         partys_of_interest = None
         result = person_codecs._get_party_specs(partys_of_interest)
         assert result == {'PA': 100, 'PB': 200}
-        
+
     def test_get_party_specs_with_non_party_abbrev_specification(self):
         person_codecs = PersonCodecs()
         person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
@@ -780,7 +781,9 @@ class TestPersonCodecs:
     @pytest.mark.skip(reason="person_wiki_link should be updated to handle both str and pd.Series[str]")
     def test_person_wiki_link_series(self):
         wiki_ids = pd.Series(["Q12345", "unknown"])
-        expected = pd.Series(["https://www.wikidata.org/wiki/Q12345", "Okänd"])  # Assuming "Okänd" is the resolved value for unknown
+        expected = pd.Series(
+            ["https://www.wikidata.org/wiki/Q12345", "Okänd"]
+        )  # Assuming "Okänd" is the resolved value for unknown
         pd.testing.assert_series_equal(PersonCodecs.person_wiki_link(wiki_ids), expected)
 
     @pytest.mark.parametrize(
@@ -795,17 +798,16 @@ class TestPersonCodecs:
 
     def test_speech_link_series(self):
         speech_ids = pd.Series(["12345", "67890"])
-        expected = pd.Series([
-            "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/12345",
-            "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/67890"
-        ])
+        expected = pd.Series(
+            [
+                "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/12345",
+                "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/67890",
+            ]
+        )
         pd.testing.assert_series_equal(PersonCodecs.speech_link(speech_ids), expected)
-
-
 
     def test_decode_speech_index_with_empty_dataframe(self):
         person_codecs = PersonCodecs()
         empty_df = pd.DataFrame()
         result = person_codecs.decode_speech_index(empty_df)
         assert result.empty
-
