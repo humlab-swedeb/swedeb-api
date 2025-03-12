@@ -767,7 +767,6 @@ class TestPersonCodecs:
         result = person_codecs._get_party_specs(partys_of_interest)
         assert result == {}
 
-    @pytest.mark.skip(reason="person_wiki_link should be updated to handle both str and pd.Series[str]")
     @pytest.mark.parametrize(
         "wiki_id, expected",
         [
@@ -778,7 +777,6 @@ class TestPersonCodecs:
     def test_person_wiki_link(self, wiki_id, expected):
         assert PersonCodecs.person_wiki_link(wiki_id) == expected
 
-    @pytest.mark.skip(reason="person_wiki_link should be updated to handle both str and pd.Series[str]")
     def test_person_wiki_link_series(self):
         wiki_ids = pd.Series(["Q12345", "unknown"])
         expected = pd.Series(
