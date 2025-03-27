@@ -4,6 +4,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 from loguru import logger
+import requests
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
@@ -156,9 +157,48 @@ def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, api_corpus: Corp
     assert response.status_code == status.HTTP_200_OK
 
 
+def check_url_availability(url):
+    try:
+        response = requests.head(url, allow_redirects=False, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
 def find_a_speech_id(api_corpus):
     df = api_corpus.document_index.sample(1)
     return df.iloc[0]['document_name'], df.iloc[0]['speech_id']
+
+
+def test_pdf_link(api_corpus: Corpus):
+    """
+    Test that the pdf link points to available pdf"""
+
+    protocol_ids = [
+        find_a_speech_id(api_corpus)[0],
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links = [api_corpus.person_codecs.speech_link(protocol_id) for protocol_id in protocol_ids]
+    for test_link in test_links:
+        assert check_url_availability(test_link)
+
+
+def test_pdf_link_with_series(api_corpus: Corpus):
+    """
+    Test that the pdf link points to available pdf"""
+
+    protocol_ids = [
+        find_a_speech_id(api_corpus)[0],
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links_series = pd.Series(protocol_ids)
+    test_links = api_corpus.person_codecs.speech_link(test_links_series)
+    for test_link in test_links:
+        assert check_url_availability(test_link)
 
 
 def test_get_speech_by_id(api_corpus: Corpus):
