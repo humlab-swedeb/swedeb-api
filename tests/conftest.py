@@ -220,43 +220,22 @@ def fixture_sqlite3db(tmp_path):
 @pytest.fixture(name='source_dict')
 def fixture_source_dict():
     return {
-        'gender': pd.DataFrame({
-            'gender_id': [1, 2],
-            'gender': ['Male', 'Female'],
-            'gender_abbrev': ['M', 'F']
-        }),
-        'persons_of_interest': pd.DataFrame({
-            # 'pid': [1, 2],
-            'person_id': ['p1', 'p2'],
-            'name': ['John Doe', 'Jane Doe'],
-            'wiki_id': ['q1', 'q2']
-        }),
-        'chamber': pd.DataFrame({
-            'chamber_id': [1, 2],
-            'chamber': ['Chamber A', 'Chamber B'],
-            'chamber_abbrev': ['CA', 'CB']
-        }),
-        'government': pd.DataFrame({
-            'government_id': [1, 2],
-            'government': ['Government A', 'Government B']
-        }),
-        'office_type': pd.DataFrame({
-            'office_type_id': [1, 2],
-            'office': ['Office A', 'Office B']
-        }),
-        'party': pd.DataFrame({
-            'party_id': [1, 2],
-            'party': ['Party A', 'Party B'],
-            'party_abbrev': ['PA', 'PB']
-        }),
-        'sub_office_type': pd.DataFrame({
-            'sub_office_type_id': [1, 2],
-            'office_type_id': [1, 2],
-            'identifier': ['A', 'B'],
-            'description': ['Description A', 'Description B']
-        }),
-        'person_party': pd.DataFrame({
-            'person_id': ['p1', 'p2'],
-            'party_id': [1, 2]
-        })
+        'gender': pd.DataFrame({'gender': ['Male', 'Female'], 'gender_abbrev': ['M', 'F']}, index=[1, 2]),
+        'persons_of_interest': pd.DataFrame(
+            {
+                # 'pid': [1, 2],
+                'person_id': ['p1', 'p2'],
+                'name': ['John Doe', 'Jane Doe'],
+                'wiki_id': ['q1', 'q2'],
+            }
+        ),
+        'chamber': pd.DataFrame({'chamber': ['Chamber A', 'Chamber B'], 'chamber_abbrev': ['CA', 'CB']}, index=[1, 2]),
+        'government': pd.DataFrame({'government': ['Government A', 'Government B']}, index=[1, 2]),
+        'office_type': pd.DataFrame({'office': ['Office A', 'Office B']}, index=[1, 2]),
+        'party': pd.DataFrame({'party': ['Party A', 'Party B'], 'party_abbrev': ['PA', 'PB']}, index=[1, 2]),
+        'sub_office_type': pd.DataFrame(
+            {'office_type_id': [1, 2], 'identifier': ['A', 'B'], 'description': ['Description A', 'Description B']},
+            index=[1, 2],
+        ),
+        'person_party': pd.DataFrame({'person_id': ['p1', 'p2'], 'party_id': [1, 2]}),
     }

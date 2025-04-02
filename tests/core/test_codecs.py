@@ -779,9 +779,7 @@ class TestPersonCodecs:
 
     def test_person_wiki_link_series(self):
         wiki_ids = pd.Series(["Q12345", "unknown"])
-        expected = pd.Series(
-            ["https://www.wikidata.org/wiki/Q12345", "Okänd"]
-        )
+        expected = pd.Series(["https://www.wikidata.org/wiki/Q12345", "Okänd"])
         pd.testing.assert_series_equal(PersonCodecs.person_wiki_link(wiki_ids), expected)
 
     @pytest.mark.parametrize(
@@ -809,3 +807,47 @@ class TestPersonCodecs:
         empty_df = pd.DataFrame()
         result = person_codecs.decode_speech_index(empty_df)
         assert result.empty
+
+    def test_decode_speech_index_with_non_decoded_dataframe(self, person_codecs, speech_index):
+        result = person_codecs.decode_speech_index(speech_index)
+        assert 'link' in result.columns
+        assert 'speech_link' in result.columns
+        assert len(result) == len(speech_index) > 0
+        assert any(result['link'].str.contains('wikidata.org'))
+        assert any(result['speech_link'].str.contains('riksdagen.se'))
+
+    def test_decode_speech_index_with_decoded_dataframe(self, person_codecs, speech_index):
+        result = person_codecs.decode_speech_index(speech_index)
+        result = person_codecs.decode_speech_index(result)
+        assert 'link' in result.columns
+        assert 'speech_link' in result.columns
+        assert len(result) == len(speech_index) > 0
+        assert any(result['link'].str.contains('wikidata.org'))
+        assert any(result['speech_link'].str.contains('riksdagen.se'))
+
+    def test_decode_speech_index_with_value_updates(self, person_codecs, speech_index):
+        value_updates = {'Eric Holmqvist': 'Eric Holmberg'}
+        result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates)
+        assert 'Eric Holmberg' in result['name'].to_list()
+
+    @pytest.mark.skip(
+        reason="Sort parameter is implemented in an ambiguous way. Does not sort names but moves empty values to the end."
+    )
+    def test_decode_speech_index_with_sort_values(self, person_codecs, speech_index):
+        result = person_codecs.decode_speech_index(speech_index, sort_values=True)
+        assert result['name'].is_monotonic_increasing
+        assert result['name'].is_unique
+
+    def test_decode_speech_index_with_sort_values_and_empty_values(self, person_codecs, speech_index):
+        update_name = 'Eric Holmqvist'
+        value_updates = {update_name: ''}
+        result = person_codecs.decode_speech_index(speech_index)
+        name_count = result['name'].value_counts()[update_name]
+        assert name_count == 6
+
+        result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates, sort_values=True)
+
+        with pytest.raises(KeyError):
+            result['name'].value_counts()[update_name]
+
+        assert result['name'].value_counts()[''] == name_count
