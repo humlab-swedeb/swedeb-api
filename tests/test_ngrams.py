@@ -59,7 +59,8 @@ def test_n_gram_service_fails_if_target_is_lemma(corpus: Corpus):
 
 
 @pytest.mark.skip("FIXME: When phrase is used, to many sliding windows are created ")
-def test_n_gram_service_with_phrase(corpus: Corpus):
+# issue is now "vara"/"är", new test below passes
+def test_n_gram_service_with_phrase_word_lemma(corpus: Corpus):
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
     opts: dict[str, Any] = {
         'search_term': ['sverige', 'vara'],
@@ -79,3 +80,26 @@ def test_n_gram_service_with_phrase(corpus: Corpus):
     assert left_aligned is not None
     assert len(left_aligned.ngram_list) > 0
     assert all('sverige vara' in ngram.ngram.lower() for ngram in sliding_result.ngram_list)
+
+
+def test_n_gram_service_with_phrase(corpus: Corpus):
+    common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
+    opts: dict[str, Any] = {
+        'search_term': ['sverige', 'är'],
+        'search_target': "word",
+        'display_target': "word",
+        'n_gram_width': 5,
+    }
+
+    sliding_result: NGramResult = ngram_service.get_ngrams(corpus=corpus, commons=common_opts, **opts, mode="sliding")
+    assert sliding_result is not None
+    assert len(sliding_result.ngram_list) > 0
+    assert all('sverige är' in ngram.ngram.lower() for ngram in sliding_result.ngram_list)
+    left_aligned: NGramResult = ngram_service.get_ngrams(
+        corpus=corpus, commons=common_opts, **opts, mode="left-aligned"
+    )
+
+    assert left_aligned is not None
+    assert len(left_aligned.ngram_list) > 0
+    assert all('sverige är' in ngram.ngram.lower() for ngram in sliding_result.ngram_list)
+
