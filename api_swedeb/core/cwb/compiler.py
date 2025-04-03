@@ -6,7 +6,7 @@ def _to_value_expr(value: str | list[str] | tuple[int, int]) -> str:
     if isinstance(value, tuple):
         return _to_interval_expr(*value)
     if isinstance(value, list):
-        return "|".join([str(v or "") for v in value])
+        return "|".join([str(v) for v in value if v is not None])
     return str(value)
 
 

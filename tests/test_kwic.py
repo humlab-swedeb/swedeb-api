@@ -61,3 +61,14 @@ def test_kwic_filter_by_chamber(fastapi_client, word: str, chambers: str | list[
     data: dict = response.json()
     assert 'kwic_list' in data
     assert len(data['kwic_list']) == n_expected
+
+
+def test_kwic_with_party_id_0(fastapi_client):
+    # debugging test.
+    # part_id=0 should return data for det
+    search_term = "det"
+    response = fastapi_client.get(f"{version}/tools/kwic/{search_term}?party_id=0")
+    assert response.status_code == 200
+    data: dict = response.json()
+    assert 'kwic_list' in data
+    assert len(data['kwic_list']) > 0

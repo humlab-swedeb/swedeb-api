@@ -14,6 +14,7 @@ from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 
 
 def test_to_value_expr():
+    assert compiler._to_value_expr([0]) == "0"
     assert compiler._to_value_expr("") == ""
     assert compiler._to_value_expr([""]) == ""
     assert compiler._to_value_expr([None]) == ""
