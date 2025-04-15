@@ -72,14 +72,17 @@ class Codecs:
         self.source_filename: str | None = None
         self.code_tables: dict[str, str] = CODE_TABLES
 
-    def load(self, source: str | sqlite3.Connection | str) -> Self:
+    def load(self, source: str | sqlite3.Connection | dict) -> Self:
         self.source_filename = source if isinstance(source, str) else None
-        if not isfile(source):
+        if isinstance(source, str) and not isfile(source):
             raise FileNotFoundError(f"File not found: {source}")
-        with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
-            tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
-            for table_name, table in tables.items():
-                setattr(self, table_name, table)
+        if isinstance(source, dict):
+            tables = source
+        else:
+            with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
+                tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
+        for table_name, table in tables.items():
+            setattr(self, table_name, table)
         return self
 
     def tablenames(self) -> dict[str, str]:
@@ -375,9 +378,12 @@ class PersonCodecs(Codecs):
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-        data: pd.Series = "https://www.wikidata.org/wiki/" + wiki_id
-        data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
-        return data
+        if isinstance(wiki_id, pd.Series):
+            data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
+            data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
+            return data
+        else:
+            return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
     def speech_link(speech_id: str | pd.Series[str]) -> str | pd.Series[str]:

@@ -1,6 +1,7 @@
 
 SHELL := /bin/bash
 SOURCE_FOLDERS=api_swedeb tests
+PACKAGE_FOLDER=api_swedeb
 PYTEST_ARGS=--durations=0 tests 
 
 #--cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html tests
@@ -24,6 +25,15 @@ black:
 test:
 	@echo "Running tests..."
 	@poetry run pytest $(PYTEST_ARGS) tests
+
+coverage:
+	@echo "Running tests with coverage..."
+	@poetry run pytest --durations=0 --cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html --cov-branch tests/ || true
+.PHONY: coverage
+
+notes:
+	@poetry run pylint --notes=FIXME,XXX,TODO --disable=all --enable=W0511 -f colorized $(SOURCE_FOLDERS) || true
+.PHONY: notes
 
 pylint:
 	@poetry run pylint $(SOURCE_FOLDERS)

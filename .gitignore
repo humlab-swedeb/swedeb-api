@@ -270,5 +270,6 @@ profiling
 *.code-workspace
 deprecated
 .vscode/settings.json
-data*_backup.*
 data
+tmp
+*.bak
