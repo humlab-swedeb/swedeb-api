@@ -52,10 +52,11 @@ class TestGetKwicResults:
         result = KeywordInContextResult(**response.json())
         assert isinstance(result, KeywordInContextResult)
 
+
 # FIXME: #151 Fix TestGetWordTrendsResult.
 @pytest.mark.skip(reason="Fails on `api_swedeb/api/utils/word_trends.py#L21` because `df` is empty")
 class TestGetWordTrendsResult:
-    
+
     def test_get_word_trends_result(self, fastapi_client):
         response = fastapi_client.get(f"{version}/tools/word_trends/test_search")
         assert response.status_code == 200
@@ -163,16 +164,6 @@ class TestGetZip:
     def test_get_zip_with_invalid_speech_ids_raises_ValueError(self, fastapi_client):
         with pytest.raises(ValueError, match="unknown speech key"):
             fastapi_client.post(f"{version}/tools/speech_download/", json=["invalid_id"])
-
-    @pytest.mark.skip(reason="HTTPException not raised. fastapi raises a RequestValidationError if the list is empty.")
-    def test_get_zip_with_no_speech_ids_raises_HTTPException(self, fastapi_client):
-        with pytest.raises(HTTPException, match="Speech ids are required"):
-            fastapi_client.post(f"{version}/tools/speech_download/", json=[])
-
-    @pytest.mark.skip(reason="Not intended: RequestValidationError is raised instead of HTTPException")
-    def test_get_zip_with_empty_speech_ids_raises_RequestValidationError(self, fastapi_client):
-        with pytest.raises(RequestValidationError):
-            fastapi_client.post(f"{version}/tools/speech_download/", json=[])
 
 
 class TestGetTopics:
