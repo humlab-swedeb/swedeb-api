@@ -138,7 +138,7 @@ def slim_table_types(
     for table in tables:
         for column_name, value in defaults.items():
             if column_name in table.columns:
-                table[column_name].fillna(value, inplace=True)  # FIXME: #160 Use table[column_name] = table[column_name].fillna(value) to avoid FutureWarning
+                table[column_name].fillna(value, inplace=True)
 
         for column_name, dt in dtypes.items():
             if column_name in table.columns:

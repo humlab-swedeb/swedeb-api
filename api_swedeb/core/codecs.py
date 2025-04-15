@@ -148,7 +148,6 @@ class Codecs:
             Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id),
         ]
 
-    # FIXME: #152 When no `to_name` is provided, what codec is used is determined by position in the codecs list. This may result in unexpected results.
     def decode_any_id(self, from_name: str, value: int, *, default_value: str = "unknown", to_name: str = None) -> str:
         codec: Codec | None = self.decoder(from_name, to_name)
         if codec is None:
@@ -252,7 +251,7 @@ class PersonCodecs(Codecs):
         return tables
 
     def load(self, source: str | sqlite3.Connection | dict) -> Self:
-        super().load(source)  # FIXME: #168 Super class method expects a string, but this method can also accept a dict.
+        super().load(source)
         if "pid" not in self.persons_of_interest.columns:
             self.persons_of_interest["pid"] = self.persons_of_interest.reset_index().index
         return self
@@ -337,7 +336,7 @@ class PersonCodecs(Codecs):
     def add_multiple_party_abbrevs(self) -> Self:
         party_data: pd.DataFrame = getattr(self, "person_party")
         party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev)
-        party_data["party_abbrev"].fillna("?", inplace=True)  # FIXME: #158 Use party_data["party_abbrev"] = party_data["party_abbrev"].fillna("?") to avoid FutureWarning
+        party_data["party_abbrev"].fillna("?", inplace=True)
 
         grouped_party_abbrevs: pd.DataFrame = (
             party_data.groupby("person_id")
@@ -352,7 +351,7 @@ class PersonCodecs(Codecs):
         grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
 
         self.persons_of_interest = self.persons_of_interest.merge(grouped_party_abbrevs, on="person_id", how="left")
-        self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)  # FIXME: #159 Use self.persons_of_interest["party_abbrev"] = self.persons_of_interest["party_abbrev"].fillna("?") to avoid FutureWarning
+        self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
         return self
 
     def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
