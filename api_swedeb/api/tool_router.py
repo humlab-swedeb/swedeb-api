@@ -121,7 +121,8 @@ async def get_speech_by_id_result(speech_id: str) -> SpeechesTextResultItem:
 
 @router.post("/speech_download/")
 async def get_zip(ids: list = Body(..., min_length=1, max_length=100)) -> StreamingResponse:
-    if not ids:
+    if not ids:  # pragma: no cover
+        # NOTE: This never happens, since the request body is validated by Pydantic
         raise HTTPException(status_code=400, detail="Speech ids are required")
     return get_speech_zip(ids, get_shared_corpus())
 
