@@ -12,15 +12,13 @@ VERSION = "v1"
 EXISTING_SEARCH_TERM = "vad"
 NON_EXISTING_SEARCH_TERM = "non_existing_word"
 
-
 @pytest.fixture(name='speech_ids')
 def mock_speech_ids():
     return ["i-Tthy1hzk6Yg4W5NfXLwJrA;i-Ua1nqYCRbnUSNc5Tw1tXiK", "i-284a2ff9c2603b5f-0;i-Ua1nqYCRbnUSNc5Tw1tXiK"]
 
-
 # NOTE: search other than "test_search". Search with some other string that is in test data.
 class TestGetKwicResults:
-
+    
     @pytest.mark.parametrize("search_term", [EXISTING_SEARCH_TERM, NON_EXISTING_SEARCH_TERM])
     def test_get_kwic_results(self, fastapi_client, search_term):
         response = fastapi_client.get(f"{VERSION}/tools/kwic/{search_term}")
@@ -64,7 +62,7 @@ class TestGetWordTrendsResult:
         assert response.status_code == 200
         result = WordTrendsResult(**response.json())
         assert isinstance(result, WordTrendsResult)
-
+        
     # FIXME: #151 get_word_trends uses .str accessor on columns that may contain non-string data
     def test_get_word_trends_result_with_non_existing_word(self, fastapi_client):
         with pytest.raises(AttributeError, match="Can only use .str accessor with string values!"):
@@ -115,11 +113,12 @@ class TestGetNgramResults:
         assert response.status_code == 200
         result = NGramResult(**response.json())
         assert isinstance(result, NGramResult)
-
+        
     def test_get_ngram_results_with_invalid_width(self, fastapi_client):
         response = fastapi_client.get(f"{VERSION}/tools/ngrams/{EXISTING_SEARCH_TERM}?width=invalid")
         assert response.status_code == 422
         assert response.is_error
+    
 
     @pytest.mark.parametrize("search_term", [EXISTING_SEARCH_TERM, NON_EXISTING_SEARCH_TERM])
     def test_get_ngram_results_with_target(self, fastapi_client, search_term):
