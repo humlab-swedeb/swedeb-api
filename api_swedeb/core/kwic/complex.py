@@ -7,7 +7,7 @@ from ccc import Corpus, SubCorpus
 
 from api_swedeb.core.cwb import to_cqp_exprs
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from api_swedeb.core.codecs import PersonCodecs
 
 S_ATTR_RENAMES: dict[str, str] = {
@@ -105,7 +105,7 @@ def kwic(  # pylint: disable=too-many-arguments
         else:
             display_columns = [name for name in display_columns if name not in segments.columns]
 
-        for name, fx in compute_columns or {}:
+        for name, fx in compute_columns or {}:  # pragma: no cover
             segments[name] = fx(segments)
 
         if display_columns:
