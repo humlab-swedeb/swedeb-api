@@ -210,6 +210,21 @@ def test_to_cqp_exprs(opts, expected):
     assert compiler.to_cqp_exprs(opts) == expected
 
 
+def test_to_cqp_exprs_when_criteria_expr_is_none(mocker):
+    mocker.patch("api_swedeb.core.cwb.compiler.to_cqp_criteria_expr", return_value=None)
+    opts = {
+        "prefix": "a",
+        "target": "word",
+        "value": "information",
+        "criterias": [
+            {"key": "a.speech_who", "values": ["Q1807154", "Q4973765"], "ignore_case": True},
+            {"key": "a.speech_party_id", "values": ["7"], "ignore_case": True},
+            {"key": "a.pos", "values": ["NN", "PM"], "ignore_case": True},
+        ],
+    }
+    assert compiler.to_cqp_exprs(opts) == 'a:[word="information"%c]'
+
+
 def test_compile_complex():
     commons = Mock(
         lemmatized=False,
