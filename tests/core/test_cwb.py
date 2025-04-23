@@ -34,6 +34,11 @@ def test_to_interval_expr():
     assert compiler._to_interval_expr(1992, 1997) == "199[2-7]"
 
 
+def test_to_interval_expr_raises_ValueError_if_high_is_less_than_low():
+    with pytest.raises(ValueError):
+        compiler._to_interval_expr(2000, 1990)
+
+
 def test_to_cqp_pattern_with_faulty_opts():
     with pytest.raises(ValueError):
         assert compiler.to_cqp_pattern({"value": "bepa"}) == ""
@@ -124,6 +129,14 @@ def test_to_cqp_patterns_with_correct_opts(opts, expected):
             ],
             '(a.speech_who="Q1807154|Q4973765"%c)',
         ),
+        (
+            None,
+            '',
+        ),
+        (
+            {"key": "a.speech_party_id", "values": ["7"], "ignore_case": True},
+            '(a.speech_party_id="7"%c)',
+        ),
     ],
 )
 def test_to_cqp_criteria_expr(criterias, expected):
@@ -186,6 +199,10 @@ def test_to_cqp_criteria_expr(criterias, expected):
                 {"target": "word", "value": "propaganda", "ignore_case": False},
             ],
             'a:[word="information"] "och" [word="propaganda"] :: (a.speech_who="Q1807154|Q4973765")',
+        ),
+        (
+            "information",
+            '"information"%c',
         ),
     ],
 )
