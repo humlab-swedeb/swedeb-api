@@ -252,7 +252,9 @@ class TestCompiler:
             }
         )
         subcorpus: SubCorpus | str | str = corpus.query(query, context_left=2, context_right=2)
-        data: pd.DataFrame = subcorpus.concordance(form="kwic", p_show=["word"], s_show=["speech_who", "speech_party_id"])
+        data: pd.DataFrame = subcorpus.concordance(
+            form="kwic", p_show=["word"], s_show=["speech_who", "speech_party_id"]
+        )
 
         assert data is not None
         assert len(data) > 0
@@ -338,3 +340,107 @@ class TestUtility:
         attribs: CorpusAttribs = CorpusAttribs(corpus)
 
         assert attribs is not None
+
+    def test_corpus_attribs_with_dataframe(self, corpus: Corpus):
+        attribs: CorpusAttribs = CorpusAttribs(corpus.available_attributes())
+
+        assert attribs is not None
+        assert isinstance(attribs.data, dict)
+        assert len(attribs.data) > 0
+
+    @pytest.mark.skip(reason="Fix the issue with integer keys in attributes. See #181.")
+    def test_corpus_attribs_with_dict(self, corpus: Corpus):
+        """
+        The issue is that corpus.available_attributes().to_dict("index") contains integer keys, which cannot be split using the split method. To fix this, ensure that the keys are strings before attempting to split them.
+
+
+        self.attributes = {
+            k: v | dict(zip(["tag", "id"], str(k).split("_", maxsplit=1)))
+            for k, v in attributes.items()
+        }
+        """
+        attribs: CorpusAttribs = CorpusAttribs(corpus.available_attributes().to_dict("index"))
+
+        assert attribs is not None
+        assert isinstance(attribs.data, dict)
+        assert len(attribs.data) > 0
+
+    def test_corpus_attribs_with_dict(self, corpus: Corpus):
+        """
+        Ensure that the keys in the attributes dictionary are strings.
+        """
+        attributes_dict = {str(k): v for k, v in corpus.available_attributes().to_dict("index").items()}
+        attribs: CorpusAttribs = CorpusAttribs(attributes_dict)
+
+        assert attribs is not None
+        assert isinstance(attribs.data, dict)
+        assert len(attribs.data) > 0
+
+    def test_corpus_attribs_with_invalid_types(self):
+        with pytest.raises(ValueError):
+            CorpusAttribs(123)
+        with pytest.raises(ValueError):
+            CorpusAttribs(["invalid", "type"])
+        with pytest.raises(ValueError):
+            CorpusAttribs(None)
+        with pytest.raises(ValueError):
+            CorpusAttribs(123.45)
+        with pytest.raises(ValueError):
+            CorpusAttribs(True)
+        with pytest.raises(ValueError):
+            CorpusAttribs(object())
+
+    def test_corpus_attribs_with_empty_dataframe(self):
+        empty_df = pd.DataFrame(columns=["attribute", "type"])
+        attribs: CorpusAttribs = CorpusAttribs(empty_df)
+
+        assert attribs is not None
+        assert isinstance(attribs.data, dict)
+        assert len(attribs.data) == 0
+
+    def test_corpus_attribs_with_empty_dict(self):
+        empty_dict = {}
+        attribs: CorpusAttribs = CorpusAttribs(empty_dict)
+
+        assert attribs is not None
+        assert isinstance(attribs.data, dict)
+        assert len(attribs.data) == 0
+
+    def test_corpus_attribs_with_positional_attributes(self, corpus: Corpus):
+        attribs: CorpusAttribs = CorpusAttribs(corpus)
+        positional_attributes = attribs.positional_attributes
+
+        assert positional_attributes is not None
+        assert isinstance(positional_attributes, dict)
+        assert len(positional_attributes) > 0
+
+    def test_corpus_attribs_with_tags(self, corpus: Corpus):
+        attribs: CorpusAttribs = CorpusAttribs(corpus)
+        tags = attribs.tags
+
+        assert tags is not None
+        assert isinstance(tags, dict)
+        assert len(tags) > 0
+        assert all(isinstance(k, str) for k in tags.keys())
+        assert all(isinstance(v, dict) for v in tags.values())
+
+    def test_corpus_attribs_with_name2id(self, corpus: Corpus):
+        attribs: CorpusAttribs = CorpusAttribs(corpus)
+        name2id = attribs.name2id
+
+        assert name2id is not None
+        assert isinstance(name2id, dict)
+        assert len(name2id) > 0
+        assert all(isinstance(k, str) for k in name2id.keys())
+        assert all(isinstance(v, str) for v in name2id.values())
+
+    @pytest.mark.skip(reason="Fix the issue with method not iterable. See #182.")
+    def test_corpus_attribs_with_id2name(self, corpus: Corpus):
+        attribs: CorpusAttribs = CorpusAttribs(corpus)
+        id2name = attribs.id2name
+
+        assert id2name is not None
+        assert isinstance(id2name, dict)
+        assert len(id2name) > 0
+        assert all(isinstance(k, str) for k in id2name.keys())
+        assert all(isinstance(v, str) for v in id2name.values())
