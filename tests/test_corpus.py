@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from api_swedeb.api.utils import corpus as api_corpus
+from api_swedeb.core.speech import Speech
 
 EXPECTED_COLUMNS: set[str] = {
     'chamber_abbrev',  # NEW
@@ -22,8 +23,7 @@ EXPECTED_COLUMNS: set[str] = {
     'node_word',
 }
 
-# FIXME: #145 Extra items in the left set: 'party'
-@pytest.mark.skip(reason="FIXME: #145 Extra items in the left set: 'party'")
+
 @pytest.mark.parametrize(
     'terms, opts, expected_count',
     [
@@ -51,8 +51,7 @@ def test_get_anforanden_for_word_trends_if_word_doesnt_exist():
 
     assert len(speeches) == 0
 
-# FIXME: #145 Extra items in the left set: 'party'
-@pytest.mark.skip(reason="FIXME: #145 Extra items in the left set: 'party'")
+
 def test_get_anforanden():
     corpus: api_corpus.Corpus = api_corpus.Corpus()
     filter_opts: dict = {'year': (1970, 1980)}
