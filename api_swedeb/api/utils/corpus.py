@@ -1,3 +1,4 @@
+# type: ignore
 from functools import cached_property
 
 import pandas as pd
@@ -7,6 +8,7 @@ from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
+from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
 from api_swedeb.core.utility import Lazy, replace_by_patterns
 from api_swedeb.core.word_trends import compute_word_trends
@@ -165,12 +167,9 @@ class Corpus:
         df = self.metadata.sub_office_type
         return df.reset_index()
 
-    def get_speech_text(self, document_name: str) -> str:  # type: ignore
-        return self.repository.to_text(self.get_speech(document_name))
-
-    def get_speech(self, document_name: str):  # type: ignore
-        res = self.repository.speech(speech_name=document_name, mode="dict")
-        return res
+    def get_speech(self, document_name: str) -> Speech:
+        speech: Speech = self.repository.speech(speech_name=document_name)
+        return speech
 
     def get_speaker(self, document_name: str) -> str:
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
@@ -185,14 +184,6 @@ class Corpus:
             return person['name']
         except IndexError:
             return unknown
-
-    def get_speaker_note(self, document_name: str) -> str:
-        speech = self.get_speech(document_name)
-        if "speaker_note_id" not in speech:
-            return ""
-        if speech["speaker_note_id"] == "missing":
-            return "Talet saknar notering"
-        return speech["speaker_note"]
 
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""
