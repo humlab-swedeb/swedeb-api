@@ -7,7 +7,7 @@ import time
 import types
 from functools import wraps
 from os.path import basename, dirname, splitext
-from typing import Any, Callable, Type
+from typing import Any, Callable, ItemsView, Iterator, KeysView, Type, ValuesView
 
 import numpy as np
 import pandas as pd
@@ -382,3 +382,41 @@ def replace_by_patterns(names: list[str], cfg: dict[str, str]) -> pd.DataFrame:
         return name
 
     return [fx(name) for name in names]
+
+
+class DictLikeObject:
+
+    def __init__(self, data: dict[str, Any]):
+        self._data: dict[str, Any] = data
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self._data:
+            return self._data[name]
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}' or key in underlying data")
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._data.get(key, default)
+
+    def keys(self) -> KeysView[str]:
+        return self._data.keys()
+
+    def values(self) -> ValuesView[Any]:
+        return self._data.values()
+
+    def items(self) -> ItemsView[str, Any]:
+        return self._data.items()
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._data!r})"
