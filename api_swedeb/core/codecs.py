@@ -382,8 +382,7 @@ class PersonCodecs(Codecs):
             data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
             data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
             return data
-        else:
-            return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
+        return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
     def speech_link(speech_id: str | pd.Series[str]) -> str | pd.Series[str]:

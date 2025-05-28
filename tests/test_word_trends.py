@@ -75,6 +75,7 @@ def test_word_trends_api(fastapi_client: TestClient):
     for word in search_term.split(','):
         assert word in count
 
+
 @pytest.mark.skip(reason="FIXME: This test fails due to #146")
 def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corpus: Corpus):
     search_term = 'att,och'
@@ -95,6 +96,7 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
     for key in count.keys():
         if key != 'Totalt':
             assert terms[0] in key or terms[1] in key
+
 
 @pytest.mark.skip(reason="FIXME: This test fails due to #146")
 def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
@@ -127,6 +129,7 @@ def test_word_trends_speeches(fastapi_client: TestClient):
 
     assert 'speech_list' in json
     assert len(json['speech_list']) > 0
+
 
 # FIXME: #145 Extra items in the left set: 'party'
 @pytest.mark.skip(reason="FIXME: #145 Extra items in the left set: 'party'")

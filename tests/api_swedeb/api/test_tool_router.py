@@ -1,3 +1,4 @@
+# type: ignore
 from unittest.mock import patch
 
 import pytest
@@ -52,10 +53,11 @@ class TestGetKwicResults:
         result = KeywordInContextResult(**response.json())
         assert isinstance(result, KeywordInContextResult)
 
+
 # FIXME: #151 Fix TestGetWordTrendsResult.
 @pytest.mark.skip(reason="Fails on `api_swedeb/api/utils/word_trends.py#L21` because `df` is empty")
 class TestGetWordTrendsResult:
-    
+
     def test_get_word_trends_result(self, fastapi_client):
         response = fastapi_client.get(f"{version}/tools/word_trends/test_search")
         assert response.status_code == 200

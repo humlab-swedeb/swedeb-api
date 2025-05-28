@@ -116,8 +116,6 @@ def test_get_meta_sub_office_types(mock_get_sub_office_types: Mock, fastapi_clie
     }
 
 
-
-
 @patch(
     "api_swedeb.api.metadata_router.get_speakers",
     return_value=SpeakerResult(

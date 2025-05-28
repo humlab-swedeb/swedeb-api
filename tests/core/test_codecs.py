@@ -1,5 +1,4 @@
 import sqlite3
-from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -87,6 +86,7 @@ class TestCodec:
         assert codec.is_decoded(df)
 
 
+# pylint: disable=too-many-public-methods
 class TestCodecs:
     """For the `Codecs` class to work correctly, the following keys are required in the dataframes:
 
@@ -155,9 +155,9 @@ class TestCodecs:
     def test_codecs_load_with_sqlite_connection(self, sqlite3db_connection):
         codecs = Codecs()
         conn = sqlite3db_connection
-        assert type(conn) == sqlite3.Connection
+        assert isinstance(conn, sqlite3.Connection)
         codecs = codecs.load(conn)
-        assert type(codecs) == Codecs
+        assert isinstance(codecs, Codecs)
 
     def test_tablenames(self):
         expected_tablenames = {
@@ -466,6 +466,9 @@ class TestCodecs:
         assert codecs_instance.translate_key_names(keys) == expected_translated_keys
 
 
+# pylint: disable=too-many-public-methods
+
+
 class TestPersonCodecs:
 
     def test_person_codecs_load_with_non_existing_file(self, person_codecs):
@@ -476,7 +479,7 @@ class TestPersonCodecs:
     @pytest.mark.skip(reason="Fails core/utility.py:121. KeyError: None of ['person_party_id'] are in the columns")
     def test_person_codecs_load_with_existing_file(self, person_codecs, sqlite3db_connection):
         conn = sqlite3db_connection
-        assert type(conn) == sqlite3.Connection
+        assert isinstance(conn, sqlite3.Connection)
         person_codecs.load(conn)
         assert person_codecs.source_filename is None
         assert not person_codecs.persons_of_interest.empty
@@ -671,7 +674,7 @@ class TestPersonCodecs:
     def test_person(self):
         person_codecs = PersonCodecs()
         person_codecs.persons_of_interest = pd.DataFrame({'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']})
-        assert type(person_codecs.person) == pd.DataFrame
+        assert isinstance(person_codecs.person, pd.DataFrame)
         assert 'person_id' in person_codecs.person.columns
         assert 'name' in person_codecs.person.columns
         assert person_codecs.person.shape == (2, 2)
@@ -681,7 +684,7 @@ class TestPersonCodecs:
     def test_person_empty(self):
         person_codecs = PersonCodecs()
         person_codecs.persons_of_interest = pd.DataFrame(columns=['person_id', 'name'])
-        assert type(person_codecs.person) == pd.DataFrame
+        assert isinstance(person_codecs.person, pd.DataFrame)
         assert person_codecs.person.empty
         assert person_codecs.person.shape == (0, 2)
 
@@ -703,7 +706,7 @@ class TestPersonCodecs:
         person_codecs = PersonCodecs()
         person_codecs.load(source_dict)
         with pytest.raises(KeyError):
-            person_codecs['non_existing_key']
+            person_codecs['non_existing_key']  # pylint: disable=pointless-statement
 
     def test_getitem_by_wiki_id(self, source_dict):
         person_codecs = PersonCodecs()
@@ -720,7 +723,7 @@ class TestPersonCodecs:
             dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
         ]
         partys_of_interest = [100]
-        result = person_codecs._get_party_specs(partys_of_interest)
+        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
         assert result == {'PA': 100}
 
     def test_get_party_specs_with_non_existing_partys_of_interest(self):
@@ -731,8 +734,8 @@ class TestPersonCodecs:
             dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
         ]
         partys_of_interest = [300]
-        result = person_codecs._get_party_specs(partys_of_interest)
-        assert result == {}
+        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
+        assert not result
 
     def test_get_party_specs_with_empty_partys_of_interest(self):
         person_codecs = PersonCodecs()
@@ -742,7 +745,7 @@ class TestPersonCodecs:
             dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
         ]
         partys_of_interest = []
-        result = person_codecs._get_party_specs(partys_of_interest)
+        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
         assert result == {'PA': 100, 'PB': 200}
 
     def test_get_party_specs_with_none_partys_of_interest(self):
@@ -753,7 +756,7 @@ class TestPersonCodecs:
             dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
         ]
         partys_of_interest = None
-        result = person_codecs._get_party_specs(partys_of_interest)
+        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
         assert result == {'PA': 100, 'PB': 200}
 
     def test_get_party_specs_with_non_party_abbrev_specification(self):
@@ -764,8 +767,8 @@ class TestPersonCodecs:
             dict(text_name='non_party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
         ]
         partys_of_interest = [100]
-        result = person_codecs._get_party_specs(partys_of_interest)
-        assert result == {}
+        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
+        assert not result
 
     @pytest.mark.parametrize(
         "wiki_id, expected",
@@ -848,6 +851,6 @@ class TestPersonCodecs:
         result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates, sort_values=True)
 
         with pytest.raises(KeyError):
-            result['name'].value_counts()[update_name]
+            result['name'].value_counts()[update_name]  # pylint: disable=pointless-statement, expression-not-assigned
 
         assert result['name'].value_counts()[''] == name_count

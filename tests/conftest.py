@@ -1,3 +1,4 @@
+import sqlite3
 import uuid
 
 import ccc
@@ -64,9 +65,6 @@ def fastapi_app() -> FastAPI:
 def fastapi_client(fastapi_app: FastAPI) -> TestClient:  # pylint: disable=redefined-outer-name
     client = TestClient(fastapi_app)
     return client
-
-
-import sqlite3
 
 
 @pytest.fixture(name="sqlite3db_connection")
