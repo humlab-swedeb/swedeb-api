@@ -8,23 +8,55 @@ on:
 
 jobs:
   release:
+    name: Semantic Release & PyPI Publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
 
     steps:
-      
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true # Optional: creates .venv in project root
+          installer-parallel: true
+
+      - name: Load cached Poetry environment
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies (if cache not found)
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project (for local tools if needed, e.g., if your build has dependencies)
+        run: poetry install --no-interaction
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # Use v4
         with:
           node-version: '20'
 
       - name: Install semantic-release and plugins
         run: |
-          sudo apt-get install bumpversion
+          # sudo apt-get install bumpversion
           npm install -g semantic-release \
             @semantic-release/commit-analyzer \
             @semantic-release/release-notes-generator \
@@ -33,7 +65,23 @@ jobs:
             @semantic-release/github \
             @semantic-release/exec \
             conventional-changelog-conventionalcommits
+
       - name: Run semantic-release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # For semantic-release to commit, it needs user info
+          GIT_AUTHOR_NAME: semantic-release-bot
+          GIT_AUTHOR_EMAIL: semantic-release-bot@users.noreply.github.com
+          GIT_COMMITTER_NAME: semantic-release-bot
+          GIT_COMMITTER_EMAIL: semantic-release-bot@users.noreply.github.com
+        run: npx semantic-release --debug # Add --debug for more verbose output when troubleshooting
+
+      - name: Publish package to PyPI
+        if: success() # Or a more specific condition based on semantic-release output
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }} # Store your PyPI token as a secret
+        run: |
+          poetry publish --username __token__ --password ${{ env.POETRY_PYPI_TOKEN_PYPI }}
+          # Alternatively, using Poetry's built-in token configuration:
+          # poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+          # poetry publish

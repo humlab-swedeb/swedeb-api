@@ -4,7 +4,7 @@ branches:
 plugins:
   - - "@semantic-release/commit-analyzer"
     - preset: conventionalcommits
-      defaultReleaseRules: true
+      # defaultReleaseRules: true # You have custom rules, so this is likely overridden or not needed if all cases are covered
       parserOpts:
         noteKeywords:
           - BREAKING CHANGE
@@ -27,6 +27,8 @@ plugins:
           release: false
         - type: no-release
           release: false
+        - type: test
+          release: false
 
   - - "@semantic-release/release-notes-generator"
     - preset: conventionalcommits
@@ -41,48 +43,46 @@ plugins:
           - scope
       presetConfig:
         types:
-          - type: feat
-            section: "🍕 Features"
-          - type: feature
-            section: "🍕 Features"
-          - type: fix
-            section: "🐛 Bug Fixes"
-          - type: perf
-            section: "🔥 Performance Improvements"
-          - type: revert
-            section: "⏩ Reverts"
-          - type: docs
-            section: "📝 Documentation"
-          - type: style
-            section: "🎨 Styles"
-          - type: refactor
-            section: "🧑‍💻 Code Refactoring"
-          - type: test
-            section: "✅ Tests"
-          - type: build
-            section: "🤖 Build System"
-          - type: ci
-            section: "🔁 Continuous Integration"
+          - { type: "feat", section: "🍕 Features", hidden: false }
+          - { type: "feature", section: "🍕 Features", hidden: false } # Keep both if you use both
+          - { type: "fix", section: "🐛 Bug Fixes", hidden: false }
+          - { type: "perf", section: "🔥 Performance Improvements", hidden: false }
+          - { type: "revert", section: "⏩ Reverts", hidden: false }
+          - { type: "docs", section: "📝 Documentation", hidden: false } # Will show even if release: false
+          - { type: "style", section: "🎨 Styles", hidden: true } # Example: hide style changes from notes
+          - { type: "refactor", section: "🧑‍💻 Code Refactoring", hidden: false }
+          - { type: "test", section: "✅ Tests", hidden: true } # Example: hide test changes
+          - { type: "build", section: "🤖 Build System", hidden: false }
+          - { type: "ci", section: "🔁 Continuous Integration", hidden: false }
+          - { type: "data", section: "💾 Data Updates", hidden: false } # Added for your 'data' type
 
   - - "@semantic-release/changelog"
     - changelogTitle: |
-        # 📦 Changelog 
+        # 📦 Changelog
         [![conventional commits](https://img.shields.io/badge/conventional%20commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
         [![semantic versioning](https://img.shields.io/badge/semantic%20versioning-2.0.0-green.svg)](https://semver.org)
         > All notable changes to this project will be documented in this file
 
-  - - "@semantic-release/github"
-    - addReleases: bottom
-      assets:
-        - path: "./dist/**/*.{msi,deb,rpm,AppImage,dmg,sha256sum,bin,exe}"
-      successComment: false
-      failTitle: false
+  - - "@semantic-release/exec"
+    - prepareCmd: 'poetry version ${nextRelease.version} && poetry build'
 
   - - "@semantic-release/git"
     - assets:
         - LICENSE*
         - CHANGELOG.md
+        - pyproject.toml
       message: |
         chore(${nextRelease.type}): ${nextRelease.version} [skip ci]
 
         ${nextRelease.notes}
+
+  - - "@semantic-release/github"
+    - addReleases: bottom
+      assets: 
+        - path: dist/*.whl
+          label: "Python Wheel"
+        - path: dist/*.tar.gz
+          label: "Source Distribution (sdist)"
+        # - path: "./dist/**/*.{msi,deb,rpm,AppImage,dmg,sha256sum,bin,exe}" # Keep if you generate these
+      successComment: false
+      failTitle: false
