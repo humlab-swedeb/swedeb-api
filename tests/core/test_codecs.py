@@ -407,7 +407,9 @@ class TestCodecs:
             dict(text_name='gender', id_name='gender_id', values=codecs.gender2id),
             dict(text_name='office_type', id_name='office_type_id', values=codecs.office_type2id),
             dict(text_name='party_abbrev', id_name='party_id', values=codecs.party_abbrev2id),
-            dict(text_name='sub_office_type', id_name='sub_office_type_id', values=codecs.sub_office_type2id),
+            dict(text_name='party', id_name='party_id', values=codecs.party2id),
+            dict(text_name='chamber_abbrev', id_name='chamber_id', values=codecs.chamber_abbrev2id),
+            dict(text_name='sub_office_type', id_name='sub_office_type_id', values=codecs.sub_office_type2id)
         ]
 
         assert codecs.property_values_specs == expected_specs

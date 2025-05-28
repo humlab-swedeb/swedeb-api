@@ -9,6 +9,7 @@ from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.speech import get_speeches
 from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.speech import Speech
 from api_swedeb.core.utility import format_protocol_id
 from api_swedeb.schemas.speeches_schema import SpeechesResult
 
@@ -163,28 +164,29 @@ def find_a_speech_id(api_corpus):
 
 def test_get_speech_by_id(api_corpus: Corpus):
     document_name, speech_id = find_a_speech_id(api_corpus)
-    speech_text: str = api_corpus.get_speech_text(speech_id)
-    assert speech_text is not None
-    assert len(speech_text) > 1
-    assert speech_text == api_corpus.get_speech_text(document_name)
+    speech: Speech = api_corpus.get_speech(speech_id)
+    assert speech is not None
+    assert len(speech.text) > 1
+    assert speech.text == api_corpus.get_speech(document_name).text
 
 
 def test_get_speech_by_id_missing(api_corpus: Corpus):
     # non-existing speech (gives empty string as response)
     speech_id: str = 'prot-1971--1_007_missing'
-    speech_text: str = api_corpus.get_speech_text(speech_id)
-    assert len(speech_text) == 0
+    speech: Speech = api_corpus.get_speech(speech_id)
+    assert speech is not None
+    assert len(speech.text) == 0
 
 
-def test_get_speaker_note(api_corpus: Corpus):
+def test_speaker_note(api_corpus: Corpus):
     document_name, speech_id = find_a_speech_id(api_corpus)
 
-    speaker_note_by_name: str = api_corpus.get_speaker_note(document_name)
-    assert speaker_note_by_name is not None
-    assert len(speaker_note_by_name) > 0
+    speech: Speech = api_corpus.get_speech(document_name)
+    assert speech is not None
+    assert len(speech.speaker_note) > 0
 
-    speaker_note_by_id: str = api_corpus.get_speaker_note(speech_id)
-    assert speaker_note_by_id == speaker_note_by_name
+    speaker_note_by_id: str = api_corpus.get_speech(speech_id).speaker_note
+    assert speaker_note_by_id == speech.speaker_note
 
 
 @pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
