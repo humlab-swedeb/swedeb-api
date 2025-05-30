@@ -8,7 +8,6 @@ from os.path import isfile
 from typing import Any, Callable, Literal, Mapping, Self, Union
 
 import pandas as pd
-from penelope import utility as pu  # type: ignore
 
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.utility import load_tables, revdict
@@ -99,7 +98,7 @@ class Codecs:
 
     @cached_property
     def gender2id(self) -> dict:
-        return pu.revdict(self.gender2name)
+        return revdict(self.gender2name)
 
     @cached_property
     def office_type2name(self) -> dict:
@@ -107,7 +106,7 @@ class Codecs:
 
     @cached_property
     def office_type2id(self) -> dict:
-        return pu.revdict(self.office_type2name)
+        return revdict(self.office_type2name)
 
     @cached_property
     def sub_office_type2name(self) -> dict:
@@ -115,7 +114,7 @@ class Codecs:
 
     @cached_property
     def sub_office_type2id(self) -> dict:
-        return pu.revdict(self.sub_office_type2name)
+        return revdict(self.sub_office_type2name)
 
     @cached_property
     def party_id2abbrev(self) -> dict:
@@ -123,7 +122,7 @@ class Codecs:
 
     @cached_property
     def party_abbrev2id(self) -> dict:
-        return pu.revdict(self.party_id2abbrev)
+        return revdict(self.party_id2abbrev)
 
     @cached_property
     def party_id2party(self) -> dict:
@@ -131,7 +130,7 @@ class Codecs:
 
     @cached_property
     def party2id(self) -> dict:
-        return pu.revdict(self.party_id2party)
+        return revdict(self.party_id2party)
 
     @cached_property
     def chamber_id2abbrev(self) -> dict:
@@ -140,7 +139,7 @@ class Codecs:
 
     @cached_property
     def chamber_abbrev2id(self) -> dict:
-        return pu.revdict(self.chamber_id2abbrev)
+        return revdict(self.chamber_id2abbrev)
 
     @property
     def codecs(self) -> list[Codec]:
@@ -231,7 +230,7 @@ class Codecs:
 
     @cached_property
     def key_name_translate_text2id(self) -> dict:
-        return pu.revdict(self.key_name_translate_id2text)
+        return revdict(self.key_name_translate_id2text)
 
     @cached_property
     def key_name_translate_any2any(self) -> dict:
@@ -273,7 +272,7 @@ class PersonCodecs(Codecs):
 
     @cached_property
     def person_id2pid(self) -> dict:
-        return pu.revdict(self.pid2person_id)
+        return revdict(self.pid2person_id)
 
     @cached_property
     def pid2person_name(self) -> dict:

@@ -4,12 +4,12 @@ import pandas as pd
 import pytest
 import scipy
 import scipy.sparse
-from penelope.corpus import VectorizedCorpus
 
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.speech_index import COLUMNS_OF_INTEREST, _find_documents_with_words, get_speeches_by_words
+from penelope.corpus import VectorizedCorpus
 
 # pylint: disable=redefined-outer-name
 

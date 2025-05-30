@@ -51,8 +51,9 @@ WORKDIR /wheels
 RUN pip install --upgrade pip \
     && pip install setuptools wheel \
     \
-    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels "association-measures==0.3.0" \
+    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels "association-measures" \
     && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels cwb-ccc
+
 
 #####################################################################################
 # Final stage

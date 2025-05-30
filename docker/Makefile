@@ -1,21 +1,32 @@
 SHELL:=/bin/bash
 
-.DEFAULT_GOAL=help
+#BUILD_ENV ?= staging
 
-ifeq (,$(wildcard .env))
-    $(error .env does not found Please run make !)
+# check if BUILD_ENV is production or staging
+ifeq ($(BUILD_ENV),production)
+$(info SWEDEB_ENVIRONMENT set to production)
+else ifeq ($(BUILD_ENV),staging)
+$(info SWEDEB_ENVIRONMENT set to staging)
+else
+$(info usage: make -e BUILD_ENV=staging|production.)
+$(error BUILD_ENV must be set to either 'staging' or 'production')
 endif
 
-include ./.env
+# check if file "./compose/$(BUILD_ENV)/.env" exists
+ifeq (,$(wildcard ./compose/$(BUILD_ENV)/.env))
+$(error ./compose/$(BUILD_ENV)/.env not found!)
+endif
+
+include ./compose/$(BUILD_ENV)/.env
 export
+
+.DEFAULT_GOAL=help
 
 help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Primary targets:"
 	@echo "  help              - Show this help"
-	@echo "  setup-production  - Setup .env for production deployment "
-	@echo "  setup-staging     - Setup .env for staging deployment"
 	@echo "  image             - Build frontend, backend and image"
 	@echo "Secondary targets:"
 	@echo "  frontend          - Build frontend application and copy dist to ./public folder"
@@ -51,13 +62,12 @@ help:
 	@echo "  SWEDEB_CONFIG_PATH=$${SWEDEB_CONFIG_PATH}"
 
 
-
 ifndef SWEDEB_BACKEND_TAG
-	$(error SWEDEB_BACKEND_TAG is undefined)
+ $(error SWEDEB_BACKEND_TAG is undefined)
 endif
 
 ifndef SWEDEB_FRONTEND_TAG
-	$(error SWEDEB_FRONTEND_TAG is undefined)
+ $(error SWEDEB_FRONTEND_TAG is undefined)
 endif
 
 .PHONY: build frontend backend create-tmpdir
@@ -67,21 +77,22 @@ FRONTEND_REPO = https://github.com/humlab-swedeb/swedeb_frontend.git
 BACKEND_REPO = https://github.com/humlab-swedeb/swedeb-api.git
 TMPDIR_BUILD := /tmp/swedeb-build-${USER}
 
-setup-production:
-	@cp -f .env.production .env
-	@echo "Current environment is now PRODUCTION"
-	@exit 0
-
-setup-staging:
-	@cp -f .env.staging .env
-	@echo "Current environment is now DEVELOPMENT"
-
 .ONESHELL: frontend
 .PHONY: frontend
 frontend: create-tmpdir
 	@echo "Checking for updates on branch $(SWEDEB_FRONTEND_TAG)..."
 	@LATEST_SHA=$$(git ls-remote $(FRONTEND_REPO) refs/heads/$(SWEDEB_FRONTEND_TAG) | awk '{print $$1}'); \
-	if [ ! -f $(SHA_FILE) ] || [ "$$(cat $(SHA_FILE))" != "$$LATEST_SHA" ]; then \
+	if [ "$(SWEDEB_FRONTEND_TAG)" == "workdir" ]; then \
+		frontend_folder=$(shell find "$$HOME" -type d -path '*/swedeb_frontend/.git' -printf '%h\n' 2>/dev/null); \
+		echo "Using local swedeb_frontend at $$frontend_folder"; \
+		pushd "$$frontend_folder" > /dev/null \
+			&& pnpm install \
+			&& pnpm build \
+			&& popd > /dev/null \
+			&& rm -rf public \
+			&& mv -f $$frontend_folder/dist/spa public \
+			&& rm -rf $(TMPDIR_BUILD); \
+	elif [ ! -f $(SHA_FILE) ] || [ "$$(cat $(SHA_FILE))" != "$$LATEST_SHA" ]; then \
 		echo "Changes detected on branch $(SWEDEB_FRONTEND_TAG). Building frontend..."; \
 		pushd . > /dev/null && \
 		cd $(TMPDIR_BUILD) && \
@@ -102,7 +113,7 @@ frontend: create-tmpdir
 .PHONY: backend
 backend:
 	@echo "Determining backend build method for $(SWEDEB_BACKEND_TAG)..."
-	@if [ "$(SWEDEB_BACKEND_TAG)" = "workdir" ]; then \
+	@if [ "$(SWEDEB_BACKEND_TAG)" == "workdir" ]; then \
 		echo "Building backend API using $(SWEDEB_BACKEND_TAG)..."; \
 		cd .. && \
 		poetry build && \
@@ -151,14 +162,22 @@ image: guard-production backend frontend
 create-tmpdir:
 	@rm -rf $(TMPDIR_BUILD) dist && mkdir -p $(TMPDIR_BUILD) dist
 
-.PHONY: bash
-bash:
+.PHONY: run-bash
+run-bash:
 	@echo docker run -it --rm \
 	  --volume "$(HOST_DATA_FOLDER):/data" \
       --volume "$(CONFIG_FILENAME):/data/config/config.yml" \
-	  --env-file .env.$(SWEDEB_ENVIRONMENT) \
+	  --env-file ./compose/$(BUILD_ENV)/.env \
 	  --entrypoint /bin/bash \
 	  swedeb-api:$(SWEDEB_BACKEND_TAG)
+
+.PHONY: bash
+bash:
+	@docker exec -it swedeb-api-$(SWEDEB_ENVIRONMENT) /bin/bash
+
+.PHONY: logs
+logs:
+	@docker logs swedeb-api-$(SWEDEB_ENVIRONMENT) --follow
 
 .PHONY: add-host-user
 add-host-user:
@@ -177,11 +196,11 @@ tools:
 
 .PHONY: up
 up: guard-production
-	@docker compose up -d
+	@docker compose -f ./compose/$(BUILD_ENV)/docker-compose.yml up -d
 
 .PHONY: down
 down: guard-production
-	@docker compose down
+	@docker compose -f ./compose/$(BUILD_ENV)/docker-compose.yml down
 
 .PHONY: restart
 restart: guard-production down up

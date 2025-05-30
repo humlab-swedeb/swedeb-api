@@ -2,7 +2,6 @@
 from functools import cached_property
 
 import pandas as pd
-from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
 from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
@@ -12,6 +11,7 @@ from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
 from api_swedeb.core.utility import Lazy, replace_by_patterns
 from api_swedeb.core.word_trends import compute_word_trends
+from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
 # pylint: disable=cell-var-from-loop, too-many-public-methods
 

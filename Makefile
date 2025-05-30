@@ -1,7 +1,7 @@
 
 SHELL := /bin/bash
-SOURCE_FOLDERS=api_swedeb tests
-PACKAGE_FOLDER=api_swedeb
+SOURCE_FOLDERS=api_swedeb penelope tests
+PACKAGE_FOLDER=api_swedeb penelope 
 PYTEST_ARGS=--durations=0 tests 
 
 #--cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html tests

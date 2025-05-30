@@ -6,6 +6,7 @@ from os.path import isfile, join
 
 import pandas as pd
 from loguru import logger
+
 from penelope.corpus import VectorizedCorpus
 
 from .utility import time_call

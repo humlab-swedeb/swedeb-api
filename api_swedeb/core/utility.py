@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import os
 import re
 import sqlite3
@@ -7,12 +8,13 @@ import time
 import types
 from functools import wraps
 from os.path import basename, dirname, splitext
-from typing import Any, Callable, ItemsView, Iterator, KeysView, Type, ValuesView
+from typing import Any, Callable, ItemsView, Iterator, KeysView, Type, TypeVar, ValuesView
 
 import numpy as np
 import pandas as pd
 import requests
 from loguru import logger
+
 from penelope.utility import PropertyValueMaskingOpts
 
 try:
@@ -420,3 +422,35 @@ class DictLikeObject:
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._data!r})"
+
+
+def clear_attrib(obj, attrib):
+    if (value := getattr(obj, attrib, None)) is not None:
+        setattr(obj, attrib, None)
+    return value
+
+
+Q = TypeVar("Q")
+
+
+def deep_clone(obj: Q, ignores: None | list[str] = None, assign_ignores: bool = True) -> Q:
+    """Takes deep clone but avoids deep-copying ìgnores attributes."""
+    ignores_store: dict = {attrib: clear_attrib(obj, attrib) for attrib in (ignores or []) if hasattr(obj, attrib)}
+    other: Q = copy.deepcopy(obj)
+    for attrib, value in ignores_store.items():
+        setattr(obj, attrib, value)
+        if assign_ignores:
+            setattr(other, attrib, value)
+    return other
+
+
+def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
+    """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
+    if len(pivot_keys) <= 1 or data is None:
+        return data
+    data: pd.DataFrame = data.set_index(pivot_keys)
+    while isinstance(data.index, pd.MultiIndex):
+        data = data.unstack(level=1, fill_value=0)
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = [' '.join(x) for x in data.columns]
+    return data

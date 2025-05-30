@@ -2,10 +2,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
+
 import penelope.utility as pu
 from penelope import corpus as pc  # type: ignore
+from penelope.common import word_trends as wt  # type: ignore
 from penelope.common.keyness import KeynessMetric
-from penelope.notebook import word_trends as wt  # type: ignore
 
 from . import codecs as md
 

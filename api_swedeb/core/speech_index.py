@@ -1,10 +1,10 @@
 from typing import Any
 
 import pandas as pd
-from penelope.corpus import VectorizedCorpus
-from penelope.utility import PropertyValueMaskingOpts
 
 from api_swedeb.core.utility import filter_by_opts
+from penelope.corpus import VectorizedCorpus
+from penelope.utility import PropertyValueMaskingOpts
 
 
 def word_in_vocabulary(corpus: VectorizedCorpus, word: str) -> str | None:
