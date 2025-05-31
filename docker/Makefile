@@ -82,7 +82,9 @@ TMPDIR_BUILD := /tmp/swedeb-build-${USER}
 frontend: create-tmpdir
 	@echo "Checking for updates on branch $(SWEDEB_FRONTEND_TAG)..."
 	@LATEST_SHA=$$(git ls-remote $(FRONTEND_REPO) refs/heads/$(SWEDEB_FRONTEND_TAG) | awk '{print $$1}'); \
-	if [ "$(SWEDEB_FRONTEND_TAG)" == "workdir" ]; then \
+	if [ "$(SWEDEB_FRONTEND_TAG)" == "workdir-dist" ]; then \
+		echo "Using existing swedeb_frontend dist in local public folder"; \
+	elif [ "$(SWEDEB_FRONTEND_TAG)" == "workdir" ]; then \
 		frontend_folder=$(shell find "$$HOME" -type d -path '*/swedeb_frontend/.git' -printf '%h\n' 2>/dev/null); \
 		echo "Using local swedeb_frontend at $$frontend_folder"; \
 		pushd "$$frontend_folder" > /dev/null \
