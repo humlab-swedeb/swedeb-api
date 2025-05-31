@@ -115,17 +115,13 @@ frontend: create-tmpdir
 .PHONY: backend
 backend:
 	@echo "Determining backend build method for $(SWEDEB_BACKEND_TAG)..."
-	@if [ "$(SWEDEB_BACKEND_TAG)" == "workdir" ]; then \
+	@if [ "$(SWEDEB_BACKEND_SOURCE)" == "workdir" ]; then \
 		echo "Building backend API using $(SWEDEB_BACKEND_TAG)..."; \
-		cd .. && \
-		poetry build && \
-		rm -rf docker/dist && \
-		mv -f dist docker/ && \
-		cd docker; \
-	elif echo "$(SWEDEB_BACKEND_TAG)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+		poetry build --directory .. --output docker/dist ; \
+	elif [ "$(SWEDEB_BACKEND_SOURCE)" == "pypi" ]; then \
 		echo "Using backend from PyPi api_swedeb-$(SWEDEB_BACKEND_TAG)-py3-none-any.whl"; \
-	else \
-		echo "Building backend API using $(SWEDEB_BACKEND_TAG)..."; \
+	elif [ "$(SWEDEB_BACKEND_SOURCE)" == "git" ]; then \
+		echo "Building backend API using git tag $(SWEDEB_BACKEND_TAG)..."; \
 		pushd . > /dev/null && \
 		mkdir -p $(TMPDIR_BUILD) && cd $(TMPDIR_BUILD) && \
 		git clone $(BACKEND_REPO) --branch $(SWEDEB_BACKEND_TAG) --depth 1 && \
