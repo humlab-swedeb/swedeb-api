@@ -96,14 +96,6 @@ from .pos_tags import (
     pos_tags_to_str,
 )
 
-# from .streamify_source import (
-#     get_document_by_any_source,
-#     list_any_source,
-#     read_text,
-#     streamify_any_source,
-#     streamify_folder_source,
-#     streamify_zip_source,
-# )
 from .utils import (
     LOG_FORMAT,
     CommaStr,
@@ -190,18 +182,6 @@ from .zip_utils import (  # , read_dataframe, read_json
 )
 
 T = t.TypeVar('T')
-
-
-# class PropsMixIn(t.Generic[T]):
-#     @property
-#     def props(self):
-#         return {k: v for k, v in self.__dict__.items() if k != 'props' and not k.startswith('_') and not callable(v)}
-
-#     def update(self, **kwargs) -> T:
-#         for key in kwargs:
-#             if hasattr(self, key):
-#                 setattr(self, key, kwargs.get(key))
-#         return self
 
 
 class EmptyDataError(ValueError): ...
