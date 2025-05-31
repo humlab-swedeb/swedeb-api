@@ -116,10 +116,10 @@ ARG SWEDEB_BACKEND_TAG
 COPY dist /backend-wheels
 RUN pip3.11 install /wheels/*.whl
 
-RUN if echo "$SWEDEB_BACKEND_TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then \
+RUN if [ "${SWEDEB_BACKEND_SOURCE}" == "pypi" ]; then \
         pip3.11 install "api_swedeb==${SWEDEB_BACKEND_TAG}"; \
     else \
-        pip3.11 install /backend-wheels/api_swedeb-"$(SWEDEB_BACKEND_TAG)"-py3-none-any.whl && \
+        pip3.11 install /backend-wheels/api_swedeb-"${SWEDEB_BACKEND_TAG}"-py3-none-any.whl && \
         rm -rf /backend-wheels; \
     fi
 
