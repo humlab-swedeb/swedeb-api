@@ -7,7 +7,7 @@ NAME ""
 # corpus ID (must be lowercase in registry!)
 ID   riksprot_corpus
 # path to binary data files
-HOME /data/cwb/data
+HOME /data/cwb
 # optional info file (displayed by "info;" command in CQP)
 INFO /data/cwb/.info
 
