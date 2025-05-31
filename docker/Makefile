@@ -159,7 +159,7 @@ image: guard-production backend frontend
 .PHONY: create-tmpdir
 create-tmpdir:
 	@rm -rf $(TMPDIR_BUILD) && mkdir -p $(TMPDIR_BUILD)
-
+	
 .PHONY: run-bash
 run-bash:
 	@echo docker run -it --rm \
@@ -194,11 +194,11 @@ tools:
 
 .PHONY: up
 up: guard-production
-	@docker compose -f ./compose/$(BUILD_ENV)/docker-compose.yml up -d
+	@docker compose -f ./compose/$(BUILD_ENV)/compose.yml up -d
 
 .PHONY: down
 down: guard-production
-	@docker compose -f ./compose/$(BUILD_ENV)/docker-compose.yml down
+	@docker compose -f ./compose/$(BUILD_ENV)/compose.yml down
 
 .PHONY: restart
 restart: guard-production down up
