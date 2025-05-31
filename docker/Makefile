@@ -70,7 +70,7 @@ ifndef SWEDEB_FRONTEND_TAG
  $(error SWEDEB_FRONTEND_TAG is undefined)
 endif
 
-.PHONY: build frontend backend create-tmpdir
+.PHONY: create-tmpdir frontend backend
 
 SHA_FILE = public/.frontend_last_built_sha
 FRONTEND_REPO = https://github.com/humlab-swedeb/swedeb_frontend.git
@@ -79,7 +79,7 @@ TMPDIR_BUILD := /tmp/swedeb-build-${USER}
 
 .ONESHELL: frontend
 .PHONY: frontend
-frontend: create-tmpdir
+frontend:
 	@echo "Checking for updates on branch $(SWEDEB_FRONTEND_TAG)..."
 	@LATEST_SHA=$$(git ls-remote $(FRONTEND_REPO) refs/heads/$(SWEDEB_FRONTEND_TAG) | awk '{print $$1}'); \
 	if [ "$(SWEDEB_FRONTEND_TAG)" == "workdir-dist" ]; then \
@@ -158,7 +158,7 @@ image: guard-production backend frontend
 
 .PHONY: create-tmpdir
 create-tmpdir:
-	@rm -rf $(TMPDIR_BUILD) dist && mkdir -p $(TMPDIR_BUILD) dist
+	@rm -rf $(TMPDIR_BUILD) && mkdir -p $(TMPDIR_BUILD)
 
 .PHONY: run-bash
 run-bash:
