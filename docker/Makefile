@@ -79,7 +79,7 @@ TMPDIR_BUILD := /tmp/swedeb-build-${USER}
 
 .ONESHELL: frontend
 .PHONY: frontend
-frontend:
+frontend: create-tmpdir
 	@echo "Checking for updates on branch $(SWEDEB_FRONTEND_TAG)..."
 	@LATEST_SHA=$$(git ls-remote $(FRONTEND_REPO) refs/heads/$(SWEDEB_FRONTEND_TAG) | awk '{print $$1}'); \
 	if [ "$(SWEDEB_FRONTEND_TAG)" == "workdir-dist" ]; then \
