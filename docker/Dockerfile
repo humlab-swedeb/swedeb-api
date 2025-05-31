@@ -123,14 +123,12 @@ RUN if [ "${SWEDEB_BACKEND_SOURCE}" == "pypi" ]; then \
         rm -rf /backend-wheels; \
     fi
 
-COPY cwb/registry /data/cwb/registry
 COPY public /app/public
 COPY main.py /app/main.py
 COPY entrypoint.sh entrypoint.sh
 COPY config /app/config
 
-RUN ln -s /data/cwb/registry /usr/local/share/cwb/registry \
-    && chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 RUN chown -R ${SWEDEB_USER}:${SWEDEB_USER} /app /data
 
