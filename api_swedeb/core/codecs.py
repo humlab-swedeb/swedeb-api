@@ -383,9 +383,17 @@ class PersonCodecs(Codecs):
         return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
-    def speech_link(speech_id: str | pd.Series[str]) -> str | pd.Series[str]:
-        """FiXME: this should be a link to the actual speech in Humlabs Swedeb PDF store"""
-        return "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/" + speech_id
+    def speech_link(document_name: str | pd.Series, page: int = 1) -> str | pd.Series:
+        base_url = "https://pdf.swedeb.se/riksdagen-records-pdf/"
+        page_nr = f"#page={page}"
+        if isinstance(document_name, pd.Series):
+            year = document_name.str.split('-').str[1]
+            base_filename = document_name.str.split('_').str[0] + ".pdf"
+            return base_url + year + "/" + base_filename + page_nr
+        else:
+            year = document_name.split('-')[1]
+            base_filename = document_name.split('_')[0] + ".pdf"
+            return f"{base_url}{year}/{base_filename}{page_nr}"
 
     def decode_speech_index(
         self, speech_index: pd.DataFrame, value_updates: dict = None, sort_values: bool = True
@@ -401,7 +409,7 @@ class PersonCodecs(Codecs):
         speech_index = self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
         speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
-        speech_index["speech_link"] = self.speech_link(speech_id=speech_index.speech_id)
+        speech_index["speech_link"] = self.speech_link(speech_id=speech_index.document_name)
 
         if sort_values:
             speech_index = speech_index.sort_values(by="name", key=lambda x: x == "")
