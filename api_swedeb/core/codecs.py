@@ -409,7 +409,7 @@ class PersonCodecs(Codecs):
         speech_index = self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
         speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
-        speech_index["speech_link"] = self.speech_link(speech_id=speech_index.document_name)
+        speech_index["speech_link"] = self.speech_link(document_name=speech_index.document_name)
 
         if sort_values:
             speech_index = speech_index.sort_values(by="name", key=lambda x: x == "")
