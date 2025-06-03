@@ -2,11 +2,11 @@ import os
 
 import ccc
 from fastapi import Depends
+from loguru import logger
 
 from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.configuration import ConfigValue
-from loguru import logger
 
 __shared_corpus: Corpus = None
 

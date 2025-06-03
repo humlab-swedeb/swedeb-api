@@ -95,7 +95,6 @@ from .pos_tags import (
     get_pos_schema,
     pos_tags_to_str,
 )
-
 from .utils import (
     LOG_FORMAT,
     CommaStr,
