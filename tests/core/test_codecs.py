@@ -549,7 +549,9 @@ class TestPersonCodecs:
 
     def test_person_name2pid(self):
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame({'person_id': ['a', 'b'], 'pid': [1, 2], 'name': ['John Doe', 'Jane Doe']})
+        person_codecs.persons_of_interest = pd.DataFrame(
+            {'person_id': ['a', 'b'], 'pid': [1, 2], 'name': ['John Doe', 'Jane Doe']}
+        )
         assert person_codecs.person_name2pid == {'John Doe (a)': 1, 'Jane Doe (b)': 2}
 
     def test_person_name2pid_empty(self):
@@ -641,12 +643,14 @@ class TestPersonCodecs:
         with pytest.raises(ValueError):
             person_codecs.any2any('non_existing_key', 'person_id')
 
-    def test_property_values_specs(self, person_codecs  ):
+    def test_property_values_specs(self, person_codecs):
         assert len(person_codecs.property_values_specs) > 0
 
     def test_person_id2name(self):
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame({'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe'], 'gender_id': [1,2]})
+        person_codecs.persons_of_interest = pd.DataFrame(
+            {'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe'], 'gender_id': [1, 2]}
+        )
         assert person_codecs.person_id2name == {'p1': 'John Doe', 'p2': 'Jane Doe'}
 
     def test_person_id2name_empty(self):
