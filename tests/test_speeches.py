@@ -82,9 +82,20 @@ def test_get_formatted_speech_id(api_corpus: Corpus):
     assert 'speech_name' in df_filtered.columns
 
 
-def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
-    document_name, speech_id = find_a_speech_id(api_corpus)
+def test_get_speech_by_id_page_number(fastapi_client: TestClient):
 
+    speech_id = 'i-34625fce7c35cf80-3'
+
+    response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    data: dict = response.json()
+    assert data['page_number'] == 38
+
+
+def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
+    document_name, speech_id = ('prot-197576--087_018', 'i-34625fce7c35cf80-3')
+    # find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
     assert response.status_code == status.HTTP_200_OK
 
@@ -98,6 +109,14 @@ def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus)
     data_by_id: dict = response.json()
 
     assert data_by_id == data_by_name
+
+
+def test_get_speech_by_id_page_number_byclient(fastapi_client: TestClient, api_corpus: Corpus):
+    speech_id = 'i-34625fce7c35cf80-3'
+    response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert (data or {}).get('page_number') == 38
 
 
 def test_speeches_get_years(fastapi_client: TestClient):
@@ -189,7 +208,6 @@ def test_speaker_note(api_corpus: Corpus):
     assert speaker_note_by_id == speech.speaker_note
 
 
-@pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
 def test_get_speech_by_api(fastapi_client: TestClient, api_corpus: Corpus):
     _, speech_id = find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}", timeout=10)

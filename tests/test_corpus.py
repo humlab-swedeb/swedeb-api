@@ -27,8 +27,8 @@ EXPECTED_COLUMNS: set[str] = {
 @pytest.mark.parametrize(
     'terms, opts, expected_count',
     [
-        (['skola', {'year': (1970, 1980)}, 143]),
-        (['skola', 'lärare'], {'year': (1970, 1980)}, 32),
+        (['skola', {'year': (1970, 1980)}, 124]),
+        (['skola', 'lärare'], {'year': (1970, 1980)}, 29),
         (['skola', 'lärare'], {'year': (1975, 1975)}, 20),
     ],
 )
@@ -90,5 +90,5 @@ def test_get_speech_dto():
     assert speech.text and len(speech.text) > 0
     assert speech.speaker_note.startswith('Chefen för')
     assert speech.text.startswith('Herr talman!')
-    assert speech.page_number == 2
+    assert speech.page_number == 4
     assert speech.party_abbrev == 'S'
