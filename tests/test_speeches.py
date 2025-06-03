@@ -83,8 +83,9 @@ def test_get_formatted_speech_id(api_corpus: Corpus):
 
 
 def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
-    document_name, speech_id = find_a_speech_id(api_corpus)
 
+    document_name, speech_id = ('prot-197576--087_018', 'i-34625fce7c35cf80-3')
+    # find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
     assert response.status_code == status.HTTP_200_OK
 
@@ -189,7 +190,6 @@ def test_speaker_note(api_corpus: Corpus):
     assert speaker_note_by_id == speech.speaker_note
 
 
-@pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
 def test_get_speech_by_api(fastapi_client: TestClient, api_corpus: Corpus):
     _, speech_id = find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}", timeout=10)
