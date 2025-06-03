@@ -28,7 +28,7 @@ def corpus() -> ccc.Corpus:
 
 @pytest.fixture(scope="module")
 def api_corpus() -> api_swedeb.Corpus:
-    corpus:  api_swedeb.Corpus = api_swedeb.Corpus()
+    corpus: api_swedeb.Corpus = api_swedeb.Corpus()
     _ = corpus.vectorized_corpus
     _ = corpus.person_codecs
     _ = corpus.document_index
@@ -46,11 +46,12 @@ def speech_index(api_corpus: api_swedeb.Corpus) -> pd.DataFrame:
 def person_codecs(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
     return api_corpus.person_codecs
 
+
 @pytest.fixture(scope="session")
 def person_codecs2() -> PersonCodecs:
     metadata_filename: str = ConfigValue("metadata.filename").value
     return PersonCodecs().load(source=metadata_filename).add_multiple_party_abbrevs()
- 
+
 
 @pytest.fixture(scope='session')
 def fastapi_app() -> FastAPI:
