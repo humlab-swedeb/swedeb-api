@@ -171,7 +171,7 @@ class SpeechTextRepository:
             speech_info: dict = self.get_speech_info(speech_name)
             speech.update(**speech_info)
             speech.update(protocol_name=protocol_name)
-            speech.update(page_number=utterances[0]["page_number"] if utterances else None)
+            speech.update(page_number=speech.get("page_number", 1) if utterances else None)
 
             speech["office_type"] = self.person_codecs.office_type2name.get(speech["office_type_id"], "Okänt")
             speech["sub_office_type"] = self.person_codecs.sub_office_type2name.get(
