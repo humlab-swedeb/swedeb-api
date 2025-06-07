@@ -18,11 +18,17 @@ echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --passw
 echo "Building and pushing Docker image for version ${VERSION}..."
 echo "Using frontend image: ${FRONTEND_IMAGE_BASE}:${FRONTEND_VERSION}"
 
+pushd docker > /dev/null
+
 docker build \
   --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
   --tag "${IMAGE_NAME}:${VERSION}" \
   --tag "${IMAGE_NAME}:latest" \
-  -f ./Dockerfile .
+  --tag "${IMAGE_NAME}:$(echo ${VERSION} | cut -d. -f1-2)" \
+  --tag "${IMAGE_NAME}:$(echo ${VERSION} | cut -d. -f1)" \
+    -f ./Dockerfile .
+
+popd > /dev/null
 
 docker push --all-tags "${IMAGE_NAME}"
 

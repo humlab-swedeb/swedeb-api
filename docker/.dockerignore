@@ -11,17 +11,10 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.venv/
-venv/
-*.egg-info/
-# dist/ # We DO want to copy the dist folder if it contains a wheel
 build/
 
-# IDE / OS files
-.idea/
-.vscode/
-*.swp
-*~
-.DS_Store
-
-node_modules/
+compose
+dependencies
+public
+README*.md
+Makefile
