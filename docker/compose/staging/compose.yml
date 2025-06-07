@@ -19,7 +19,3 @@ services:
 networks:
   swedeb_staging_network:
     driver: bridge
-    # ipam:
-    #   driver: default
-    #   config:
-    #     - subnet: "${SWEDEB_SUBNET}"
