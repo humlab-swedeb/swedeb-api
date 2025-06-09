@@ -1,5 +1,5 @@
 services:
-  swedeb_api_staging:
+  swedeb_api:
     image: "${SWEDEB_IMAGE_NAME}:${SWEDEB_IMAGE_TAG}"
     container_name: "${SWEDEB_CONTAINER_NAME}-${SWEDEB_ENVIRONMENT}"
     restart: always
@@ -14,8 +14,9 @@ services:
       - "${SWEDEB_DATA_FOLDER}:/data"
       - "${SWEDEB_METADATA_FILENAME}:/data/riksprot_metadata.${METADATA_VERSION}.db"
     networks:
-      - swedeb_staging_network
+      - swedeb_app_network
 
 networks:
-  swedeb_staging_network:
+  swedeb_app_network:
+    name: "swedeb_${SWEDEB_ENVIRONMENT}_network"
     driver: bridge
