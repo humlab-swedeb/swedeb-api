@@ -1,0 +1,29 @@
+services:
+  swedeb_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SWEDEB_PORT: "${SWEDEB_PORT}"
+        SWEDEB_BACKEND_TAG: "${SWEDEB_BACKEND_TAG}"
+        SWEDEB_FRONTEND_TAG: "${SWEDEB_FRONTEND_TAG}"
+    image: "${SWEDEB_IMAGE_NAME}:${SWEDEB_IMAGE_TAG}"
+    container_name: "${SWEDEB_CONTAINER_NAME}-${SWEDEB_ENVIRONMENT}"
+    restart: always
+    ports:
+      - "${SWEDEB_HOST_PORT}:${SWEDEB_PORT}"
+    env_file:
+      - ".env.${SWEDEB_ENVIRONMENT}"
+    environment:
+      - SWEDEB_CONFIG_PATH=${SWEDEB_CONFIG_PATH}
+      - SWEDEB_DATA_FOLDER=${SWEDEB_DATA_FOLDER}
+    volumes:
+      - "${SWEDEB_DATA_FOLDER}:/data"
+      - "${SWEDEB_METADATA_FILENAME}:/data/riksprot_metadata.${METADATA_VERSION}.db"
+    networks:
+      - swedeb_app_network
+
+networks:
+  swedeb_app_network:
+    name: "swedeb_${SWEDEB_ENVIRONMENT}_network"
+    driver: bridge
