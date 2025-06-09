@@ -18,7 +18,7 @@ The backend is built on a containerized architecture, leveraging modern Python t
 *   **[Swedeb Sample Data](https://github.com/humlab-swedeb/sample-data)**: Produces data for the Swedeb infrastructure based on **[SWERIK](https://github.com/swerik)** data.
 *   **[humlab-penelope](https://github.com/humlab/humlab-penelope)**: A tools package supporting text analysis using Python.
 *   **[pyriksprot](https://github.com/humlab/pyriksprot)**: A Python package for reading and processing SWERIK parliamentary data.
-*   **[humlab-tagger](https://github.com/humlab/humlab-tagger)**: A tool for annotating and tagging SWERIK parliamentary data.
+*   **[pyriksprot-tagger](https://github.com/humlab/pyriksprot-tagger)**: A tool for annotating and tagging SWERIK parliamentary data.
 
 ## Other Used Packages
 *   **[cwb-ccc](https://github.com/humlab/cwb-ccc)**: A Python package for working with the CWB (Corpus Workbench) command-line tools.
@@ -180,3 +180,166 @@ This project uses several environment variables to configure the build and runti
 | `CORPUS_VERSION`           | The version of the corpus to use                                  | Runtime Only    |
 | `SWEDEB_METADATA_FILENAME` | The path to the metadata file to mount into the container         | Runtime Only    |
 
+
+# Environment Management and Deployment Strategy
+
+This project utilizes Docker and Docker Compose to manage different environments: Development, Staging, and Production. This document outlines the setup and deployment process for each.
+
+## Core Principles
+
+*   **Consistency:** The Docker build process aims to be as consistent as possible across all environments.
+*   **Configuration via Environment Variables:** Application behavior, connection strings, image tags, and network names are primarily controlled by environment variables, managed through `.env` files specific to each environment.
+*   **Single `docker-compose.yml`:** We use a single `docker-compose.yml` file that is parameterized by environment variables.
+
+## Environment Setup
+
+### 1. Environment Files (`.env` files)
+
+Environment-specific configurations are managed using `.env` files. You will need to create these based on the provided examples. These files are typically gitignored to prevent committing sensitive or environment-specific data.
+
+*   `.env.development`: For local development.
+*   `.env.staging`: For the staging environment.
+*   `.env.production`: For the production environment.
+
+**Example structure of an environment file (e.g., `.env.development`):**
+```dotenv
+# Environment identifier
+SWEDEB_ENVIRONMENT=development
+
+# Docker Image Configuration
+SWEDEB_IMAGE_NAME=your-repo/swedeb-api # Or just swedeb-api if building locally
+SWEDEB_IMAGE_TAG=dev-latest
+SWEDEB_BACKEND_TAG=dev-latest # Build arg for Dockerfile
+SWEDEB_FRONTEND_TAG=dev     # Build arg for Dockerfile
+# NODE_VERSION=20           # Build arg for Dockerfile, if needed
+
+# Docker Compose Runtime Configuration
+SWEDEB_CONTAINER_NAME=swedeb_api
+SWEDEB_HOST_PORT=8094      # Port on the host machine
+SWEDEB_PORT=8092           # Port the application listens on inside the container
+SWEDEB_NETWORK_NAME=swedeb_development_network # Actual Docker network name
+
+# Application Specific Configuration
+SWEDEB_CONFIG_PATH=config/config_development.yml
+SWEDEB_DATA_FOLDER=./data_dev # Local path for development data
+SWEDEB_METADATA_FILENAME=./metadata/dev_metadata.db # Example
+METADATA_VERSION=dev # Example
+# ... other application-specific variables
+```
+*(Ensure you have corresponding `.env.staging` and `.env.production` files with appropriate values.)*
+
+### 2. `docker-compose.yml`
+
+Our `docker-compose.yml` is designed to read variables from an environment-specific `.env` file determined by the `SWEDEB_ENVIRONMENT` variable.
+
+Key parts of `docker-compose.yml`:
+```yaml
+# docker-compose.yml (snippet)
+version: '3.8'
+
+services:
+  swedeb_api:
+    build:
+      context: .
+      args: # Populated from the loaded .env.<environment> file
+        SWEDEB_PORT: "${SWEDEB_PORT}"
+        SWEDEB_BACKEND_TAG: "${SWEDEB_BACKEND_TAG}"
+        # ... other build args
+    image: "${SWEDEB_IMAGE_NAME}:${SWEDEB_IMAGE_TAG}"
+    container_name: "${SWEDEB_CONTAINER_NAME}-${SWEDEB_ENVIRONMENT}"
+    env_file:
+      - ".env.${SWEDEB_ENVIRONMENT}" # Loads the specific .env file
+    # ... other service configurations
+    networks:
+      - swedeb_app_network
+
+networks:
+  swedeb_app_network:
+    name: "${SWEDEB_NETWORK_NAME}" # Actual network name from .env.<environment>
+    driver: bridge
+```
+
+## Deployment Workflows
+
+### A. Development Environment
+
+Typically run on a developer's local machine.
+
+1.  **Prerequisites:**
+    *   Git, Docker, and Docker Compose installed.
+    *   Repository cloned.
+2.  **Setup:**
+    *   Create or copy the `.env.development` file in the project root.
+    *   Populate it with your local development settings (e.g., local paths for `SWEDEB_DATA_FOLDER`).
+3.  **Running:**
+    ```bash
+    # Set the environment context
+    export SWEDEB_ENVIRONMENT=development
+
+    # Build (if needed) and start services
+    docker-compose up --build -d
+
+    # To stop
+    docker-compose down
+    ```
+    Alternatively, use a Makefile target:
+    ```bash
+    make up-dev
+    ```
+
+### B. Staging Environment
+
+Deployed to a dedicated staging server for testing and validation before production.
+
+1.  **Trigger:**
+    *   Deployment to staging is typically initiated manually via a GitHub Actions `workflow_dispatch` trigger or automatically on pushes/merges to a specific staging branch (e.g., `release/*` or a dedicated `staging` branch).
+2.  **Process (GitHub Action `staging-deploy.yml`):**
+    *   The GitHub Action workflow is triggered.
+    *   It checks out the specified commit/branch.
+    *   It builds the Docker image, tagging it appropriately for staging (e.g., `humlab-swedeb/swedeb-api:staging-latest` or `humlab-swedeb/swedeb-api:staging-<commit-sha>`).
+    *   It pushes the image to GitHub Container Registry (GHCR).
+    *   It connects to the staging server via SSH (using secrets for credentials).
+    *   On the staging server, it:
+        *   Ensures the `docker-compose.yml` is up-to-date.
+        *   Ensures an `.env.staging` file is present and correctly configured (this file might be managed on the server or its content injected via GitHub Actions secrets).
+        *   Sets the `SWEDEB_ENVIRONMENT=staging` variable.
+        *   Pulls the new Docker image from GHCR.
+        *   Runs `docker-compose -f docker-compose.yml --env-file .env.staging up -d --remove-orphans` (or similar, ensuring it reads the `.env.staging` by setting `SWEDEB_ENVIRONMENT` before the compose command).
+3.  **Manual Fallback (if needed):**
+    *   SSH into the staging server.
+    *   Set `export SWEDEB_ENVIRONMENT=staging`.
+    *   Pull the latest image: `docker pull humlab-swedeb/swedeb-api:staging-tag`.
+    *   Update `SWEDEB_IMAGE_TAG` in `.env.staging` if necessary.
+    *   Run `docker-compose up -d`.
+
+### C. Production Environment
+
+Deployed to the live production server.
+
+1.  **Trigger:**
+    *   Deployment to production is typically automated and triggered by:
+        *   Pushing a new Git tag (e.g., `v1.0.0`).
+        *   Merging changes into the `main` branch.
+2.  **Process (GitHub Action `release.yml`):**
+    *   The GitHub Action workflow is triggered.
+    *   It checks out the specific tag/commit from the `main` branch.
+    *   It builds the Docker image, tagging it with the version and `latest` (e.g., `humlab-swedeb/swedeb-api:v1.0.0` and `humlab-swedeb/swedeb-api:prod-latest`).
+    *   It pushes the image(s) to GHCR.
+    *   It connects to the production server(s) via SSH.
+    *   On the production server, it performs a similar sequence to staging:
+        *   Ensures `docker-compose.yml` and `.env.production` are correct.
+        *   Sets `SWEDEB_ENVIRONMENT=production`.
+        *   Pulls the new production-tagged Docker image.
+        *   Runs `docker-compose -f docker-compose.yml --env-file .env.production up -d --remove-orphans`.
+        *   May include additional steps like database migrations, health checks, or rolling updates if applicable.
+
+## Managing Configuration Files on Servers
+
+*   **`docker-compose.yml`**: Can be checked into Git and pulled onto the server, or copied via `scp` during deployment.
+*   **`.env.<environment>` files**:
+    *   **Option 1 (Recommended for security):** Do not commit these to Git if they contain secrets.
+        *   Create them manually on the server.
+        *   Or, use a secrets management system (like HashiCorp Vault, or GitHub Actions encrypted secrets for CI/CD) to inject their content during deployment. For GitHub Actions, you can store the *content* of the `.env` file as a secret and write it to the server.
+    *   **Option 2 (If no sensitive data):** Commit template/example files (`.env.example`) and copy/rename them on the server, then populate values.
+
+This strategy provides a clear path for code from development to production, leveraging Docker for consistency and GitHub Actions for automation where appropriate.
