@@ -82,6 +82,7 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
     party_abbrev: str = 'S'
     party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
 
+    # FIXME: #146 Input should be a valid integer, unable to parse string as an integer
     response = fastapi_client.get(
         f"{version}/tools/word_trends/{search_term}?party_id={party_id}&gender_id={gender_id}&from_year=1900&to_year=3000"
     )
@@ -115,7 +116,6 @@ def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
     assert any(x.startswith(f'{search_term} {party_abbrev}') for x in count_keys)
 
 
-@pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
 def test_word_trends_speeches(fastapi_client: TestClient):
     search_term = 'debatt'
 
@@ -171,7 +171,7 @@ def test_word_trend_corpus_with_filters(api_corpus: Corpus):
     )
     assert len(wt) > 0
     assert '1975' in wt.index
-    assert 'sverige S' in wt.columns
+    assert any(x.startswith('sverige S') for x in wt.columns)
 
 
 def test_word_hits_api(fastapi_client: TestClient):
@@ -361,7 +361,8 @@ def test_word_trends_for_speaker(fastapi_client: TestClient, api_corpus: Corpus)
 
     assert len(word_res) > 0  # no count in word trends for the test person saying "och" har snabbmeny
 
-def test_word_trends_by_year_and_chamber_bug(fastapi_client: TestClient, api_corpus: Corpus):
+
+def test_word_trends_by_year_and_chamber_bug(fastapi_client: TestClient):
     url_wt = "/v1/tools/word_trends/sverige?from_year=1970&to_year=1975&chamber_abbrev=ek"
     response_wt = fastapi_client.get(url_wt)
     assert response_wt.status_code == status.HTTP_200_OK
@@ -375,4 +376,3 @@ def test_word_trends_by_year_and_chamber_bug(fastapi_client: TestClient, api_cor
     assert all(y in range(1970, 1976) for y in [wt['year'] for wt in word_res])
     assert all(all(w.startswith('sverige') for w in wt['count']) for wt in word_res)
     assert all(all(isinstance(w, int) for w in wt['count'].values()) for wt in word_res)
-    

@@ -1,12 +1,9 @@
 from typing import Any, Hashable
 
 import pandas as pd
+import pytest
 
 from api_swedeb.core.codecs import PersonCodecs
-
-
-def test_person_codecs(person_codecs: PersonCodecs):
-    assert person_codecs is not None
 
 
 def test_get_person_by_index(person_codecs: PersonCodecs):

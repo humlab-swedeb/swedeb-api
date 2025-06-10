@@ -4,11 +4,13 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 from loguru import logger
+import requests
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.api.utils.speech import get_speeches
 from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.speech import Speech
 from api_swedeb.core.utility import format_protocol_id
 from api_swedeb.schemas.speeches_schema import SpeechesResult
 
@@ -18,6 +20,48 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult
 # pylint: disable=redefined-outer-name
 
 version = "v1"
+
+def check_url_availability(url):
+    try:
+        response = requests.head(url, allow_redirects=False, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
+def test_pdf_link(api_corpus: Corpus):
+    """
+    Test that the pdf link points to available pdf"""
+
+    protocol_ids = [
+        find_a_speech_id(api_corpus)[0],
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links = [api_corpus.person_codecs.speech_link(protocol_id) for protocol_id in protocol_ids]
+    for test_link in test_links:
+        assert check_url_availability(test_link)
+        print(f"Link {test_link} is available.")
+
+def test_pdf_link_with_series(api_corpus: Corpus):
+    """
+    Test that the pdf link points to available pdf"""
+
+    protocol_ids = [
+        find_a_speech_id(api_corpus)[0],
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links_series = pd.Series(protocol_ids)
+    test_links = api_corpus.person_codecs.speech_link(test_links_series)
+    for test_link in test_links:
+        assert check_url_availability(test_link)
+        print(f"Link {test_link} is available.")
+
+
+
 
 
 def test_speeches_get(fastapi_client: TestClient):
@@ -81,9 +125,20 @@ def test_get_formatted_speech_id(api_corpus: Corpus):
     assert 'speech_name' in df_filtered.columns
 
 
-def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
-    document_name, speech_id = find_a_speech_id(api_corpus)
+def test_get_speech_by_id_page_number(fastapi_client: TestClient):
 
+    speech_id = 'i-34625fce7c35cf80-3'
+
+    response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    data: dict = response.json()
+    assert data['page_number'] == 38
+
+
+def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
+    document_name, speech_id = ('prot-197576--087_018', 'i-34625fce7c35cf80-3')
+    # find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
     assert response.status_code == status.HTTP_200_OK
 
@@ -97,6 +152,14 @@ def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus)
     data_by_id: dict = response.json()
 
     assert data_by_id == data_by_name
+
+
+def test_get_speech_by_id_page_number_byclient(fastapi_client: TestClient, api_corpus: Corpus):
+    speech_id = 'i-34625fce7c35cf80-3'
+    response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert (data or {}).get('page_number') == 38
 
 
 def test_speeches_get_years(fastapi_client: TestClient):
@@ -163,31 +226,31 @@ def find_a_speech_id(api_corpus):
 
 def test_get_speech_by_id(api_corpus: Corpus):
     document_name, speech_id = find_a_speech_id(api_corpus)
-    speech_text: str = api_corpus.get_speech_text(speech_id)
-    assert speech_text is not None
-    assert len(speech_text) > 1
-    assert speech_text == api_corpus.get_speech_text(document_name)
+    speech: Speech = api_corpus.get_speech(speech_id)
+    assert speech is not None
+    assert len(speech.text) > 1
+    assert speech.text == api_corpus.get_speech(document_name).text
 
 
 def test_get_speech_by_id_missing(api_corpus: Corpus):
     # non-existing speech (gives empty string as response)
     speech_id: str = 'prot-1971--1_007_missing'
-    speech_text: str = api_corpus.get_speech_text(speech_id)
-    assert len(speech_text) == 0
+    speech: Speech = api_corpus.get_speech(speech_id)
+    assert speech is not None
+    assert len(speech.text) == 0
 
 
-def test_get_speaker_note(api_corpus: Corpus):
+def test_speaker_note(api_corpus: Corpus):
     document_name, speech_id = find_a_speech_id(api_corpus)
 
-    speaker_note_by_name: str = api_corpus.get_speaker_note(document_name)
-    assert speaker_note_by_name is not None
-    assert len(speaker_note_by_name) > 0
+    speech: Speech = api_corpus.get_speech(document_name)
+    assert speech is not None
+    assert len(speech.speaker_note) > 0
 
-    speaker_note_by_id: str = api_corpus.get_speaker_note(speech_id)
-    assert speaker_note_by_id == speaker_note_by_name
+    speaker_note_by_id: str = api_corpus.get_speech(speech_id).speaker_note
+    assert speaker_note_by_id == speech.speaker_note
 
 
-@pytest.mark.skip(reason="FIXME: This test fails when run in parallel with other tests")
 def test_get_speech_by_api(fastapi_client: TestClient, api_corpus: Corpus):
     _, speech_id = find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}", timeout=10)

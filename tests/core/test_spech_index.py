@@ -4,12 +4,12 @@ import pandas as pd
 import pytest
 import scipy
 import scipy.sparse
-from penelope.corpus import VectorizedCorpus
 
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.speech_index import COLUMNS_OF_INTEREST, _find_documents_with_words, get_speeches_by_words
+from penelope.corpus import VectorizedCorpus
 
 # pylint: disable=redefined-outer-name
 
@@ -114,6 +114,31 @@ def test_decode_speech_index(speech_index: pd.DataFrame, person_codecs: PersonCo
 def test_chambers_chamber_abbrev(speech_index: pd.DataFrame):
     assert 'chamber_abbrev' in speech_index.columns
     assert set(speech_index.chamber_abbrev.unique()) - {'ak', 'ek', 'fk'} == set()
+
+
+def test_page_number(speech_index: pd.DataFrame):
+
+    speech_id = 'i-34625fce7c35cf80-3'
+
+    assert 'page_number' in speech_index.columns
+    speeches: dict[str, dict] = speech_index.set_index('speech_id').to_dict(orient='index')
+
+    assert speeches is not None
+
+    speech = speeches.get(speech_id)
+
+    assert speech is not None
+    document_name: str = speech['document_name']
+    protocol_name: str = '_'.join(document_name.split('_')[:-1])
+    page_number: str = speech['page_number']
+    year_folder: str = protocol_name.split('-')[1]
+
+    url: str = (
+        f"https://pdf.swedeb.se/riksdagen-records-pdf/{year_folder}/{protocol_name}/{protocol_name}_{page_number:03}.pdf"
+    )
+
+    expected_url: str = "https://pdf.swedeb.se/riksdagen-records-pdf/197576/prot-197576--087/prot-197576--087_038.pdf"
+    assert url == expected_url
 
 
 def test_speech_name(speech_index: pd.DataFrame):

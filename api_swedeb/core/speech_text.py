@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import sqlite3
 from functools import cached_property
-from typing import Literal
 
 import numpy as np
 import pandas as pd
 from loguru import logger
+
+from api_swedeb.core.speech import Speech
 
 from . import codecs as md
 from .load import Loader, ZipLoader
@@ -153,7 +154,7 @@ class SpeechTextRepository:
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
 
-    def speech(self, speech_name: str, mode: Literal["dict", "text"]) -> dict | str:
+    def speech(self, speech_name: str) -> Speech:
         try:
             """Load speech data from speech corpus"""
             if not speech_name.startswith("prot-"):
@@ -170,6 +171,7 @@ class SpeechTextRepository:
             speech_info: dict = self.get_speech_info(speech_name)
             speech.update(**speech_info)
             speech.update(protocol_name=protocol_name)
+            speech.update(page_number=speech.get("page_number", 1) if utterances else None)
 
             speech["office_type"] = self.person_codecs.office_type2name.get(speech["office_type_id"], "Okänt")
             speech["sub_office_type"] = self.person_codecs.sub_office_type2name.get(
@@ -184,10 +186,7 @@ class SpeechTextRepository:
         except Exception as ex:  # pylint: disable=bare-except
             speech = {"name": f"speech {speech_name}", "error": str(ex)}
 
-        if mode == "text":
-            return self.to_text(speech)
-
-        return speech
+        return Speech(speech)
 
     def to_text(self, speech: dict) -> str:
         paragraphs: list[str] = speech.get("paragraphs", [])

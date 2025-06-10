@@ -1,0 +1,102 @@
+# NOTE: The following folder structure is assumed:
+# local /data corresponds to hosts /data/swedeb/v1.1.0
+# data
+# ├── cwb
+# │   ├── lemma.corpus.cnt
+# │   └── ...
+# ├── config
+# │   ├── config.yml  <-- THIS FILE
+# ├── dehyphen
+# │   └── word-frequencies.pkl
+# ├── dehyphen_datadir -> /data/swedeb/v1.1.0/dehyphen 
+# ├── dtm
+# │   ├── lemma
+# │   └── text
+# ├── parlaclarin
+# │   └── protocols
+# │       ├── metadata
+# │       ├── chair_mp.csv
+# │       ├── ...
+# │       ├── version
+# │       └── wiki_id.csv
+# └── protocols
+#         ├── 1867
+#         ├── ....
+#         ├── 202223
+#         ├── prot-ak.xml
+#         ├── prot-ek.xml
+#         └── prot-fk.xml
+# ├── registry
+# │   └── riksprot_1867_2020_v110 <== FIXME: Use generic "RIKSPROT_CORPUS" instead
+# ├── riksprot_metadata.db
+# ├── riksprot_metadata.v1.1.0.db -> /data/swedeb/v1.1.0/riksprot_metadata.db  <== FIXME: Dont use generic "RIKSPROT_CORPUS" instead
+# ├── speeches
+# │   ├── tagged_frames_speeches_lemma.feather
+# │   ├── tagged_frames_speeches_text.feather
+# │   ├── text_speeches_base.zip
+# │   └── text_speeches_dedent_dehyphen.zip
+# ├── tagged_frames
+# │   ├── 1867
+# │   ├── ...
+# │   ├── 202223
+# │   ├── tag_config.yml
+# │   └── version
+# └── vrt
+#     ├── 1867.vrt.gz
+#     ├── ...
+#     └── 202223.vrt.gz
+
+metadata:
+  version: v1.1.0
+  filename: /data/riksprot_metadata.db
+  github:
+    user: swerik-project
+    repository: riksdagen-persons
+    path: data
+
+corpus:
+  version: v1.1.0
+  github:
+    user: swerik-project
+    repository: riksdagen-records
+    path: data
+
+cwb:
+  registry_dir: /data/registry
+  corpus_name: RIKSPROT_CORPUS
+
+dtm:
+  folder: /data/dtm/text
+  tag: text
+
+vrt:
+  folder: /data/tagged_frames
+  tag: text
+
+fastapi:
+  origins:
+    - http://localhost:8080
+    - http://localhost:9002
+
+github:
+  access_token:
+
+display:
+  speech_index:
+    updates:
+      party_abbrev: {
+        "?": "metadata saknas",
+        "X": "partilös"
+      }
+      name: { "": "metadata saknas" }
+      
+  labels:
+    speaker:
+      unknown: Okänd
+
+  headers:
+    translations: {
+      " man": " Män",
+      "woman": "Kvinnor",
+      "unknown": "Okänt"
+    }

@@ -8,7 +8,6 @@ from os.path import isfile
 from typing import Any, Callable, Literal, Mapping, Self, Union
 
 import pandas as pd
-from penelope import utility as pu  # type: ignore
 
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.utility import load_tables, revdict
@@ -72,14 +71,17 @@ class Codecs:
         self.source_filename: str | None = None
         self.code_tables: dict[str, str] = CODE_TABLES
 
-    def load(self, source: str | sqlite3.Connection | str) -> Self:
+    def load(self, source: str | sqlite3.Connection | dict) -> Self:
         self.source_filename = source if isinstance(source, str) else None
-        if not isfile(source):
+        if isinstance(source, str) and not isfile(source):
             raise FileNotFoundError(f"File not found: {source}")
-        with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
-            tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
-            for table_name, table in tables.items():
-                setattr(self, table_name, table)
+        if isinstance(source, dict):
+            tables = source
+        else:
+            with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
+                tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
+        for table_name, table in tables.items():
+            setattr(self, table_name, table)
         return self
 
     def tablenames(self) -> dict[str, str]:
@@ -96,7 +98,7 @@ class Codecs:
 
     @cached_property
     def gender2id(self) -> dict:
-        return pu.revdict(self.gender2name)
+        return revdict(self.gender2name)
 
     @cached_property
     def office_type2name(self) -> dict:
@@ -104,7 +106,7 @@ class Codecs:
 
     @cached_property
     def office_type2id(self) -> dict:
-        return pu.revdict(self.office_type2name)
+        return revdict(self.office_type2name)
 
     @cached_property
     def sub_office_type2name(self) -> dict:
@@ -112,7 +114,7 @@ class Codecs:
 
     @cached_property
     def sub_office_type2id(self) -> dict:
-        return pu.revdict(self.sub_office_type2name)
+        return revdict(self.sub_office_type2name)
 
     @cached_property
     def party_id2abbrev(self) -> dict:
@@ -120,7 +122,7 @@ class Codecs:
 
     @cached_property
     def party_abbrev2id(self) -> dict:
-        return pu.revdict(self.party_id2abbrev)
+        return revdict(self.party_id2abbrev)
 
     @cached_property
     def party_id2party(self) -> dict:
@@ -128,8 +130,8 @@ class Codecs:
 
     @cached_property
     def party2id(self) -> dict:
-        return pu.revdict(self.party_id2party)
-    
+        return revdict(self.party_id2party)
+
     @cached_property
     def chamber_id2abbrev(self) -> dict:
         """Not implemented"""
@@ -137,8 +139,8 @@ class Codecs:
 
     @cached_property
     def chamber_abbrev2id(self) -> dict:
-        return pu.revdict(self.chamber_id2abbrev)
-    
+        return revdict(self.chamber_id2abbrev)
+
     @property
     def codecs(self) -> list[Codec]:
         return self.extra_codecs + [
@@ -228,7 +230,7 @@ class Codecs:
 
     @cached_property
     def key_name_translate_text2id(self) -> dict:
-        return pu.revdict(self.key_name_translate_id2text)
+        return revdict(self.key_name_translate_id2text)
 
     @cached_property
     def key_name_translate_any2any(self) -> dict:
@@ -270,7 +272,7 @@ class PersonCodecs(Codecs):
 
     @cached_property
     def person_id2pid(self) -> dict:
-        return pu.revdict(self.pid2person_id)
+        return revdict(self.pid2person_id)
 
     @cached_property
     def pid2person_name(self) -> dict:
@@ -343,8 +345,7 @@ class PersonCodecs(Codecs):
 
     def add_multiple_party_abbrevs(self) -> Self:
         party_data: pd.DataFrame = getattr(self, "person_party")
-        party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev)
-        party_data["party_abbrev"].fillna("?", inplace=True)
+        party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev).fillna("?")
 
         grouped_party_abbrevs: pd.DataFrame = (
             party_data.groupby("person_id")
@@ -359,7 +360,7 @@ class PersonCodecs(Codecs):
         grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
 
         self.persons_of_interest = self.persons_of_interest.merge(grouped_party_abbrevs, on="person_id", how="left")
-        self.persons_of_interest["party_abbrev"].fillna("?", inplace=True)
+        self.persons_of_interest["party_abbrev"] = self.persons_of_interest["party_abbrev"].fillna("?")
         return self
 
     def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
@@ -375,14 +376,24 @@ class PersonCodecs(Codecs):
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-        data: pd.Series = "https://www.wikidata.org/wiki/" + wiki_id
-        data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
-        return data
+        if isinstance(wiki_id, pd.Series):
+            data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
+            data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
+            return data
+        return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
-    def speech_link(speech_id: str | pd.Series[str]) -> str | pd.Series[str]:
-        """FiXME: this should be a link to the actual speech in Humlabs Swedeb PDF store"""
-        return "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/" + speech_id
+    def speech_link(document_name: str | pd.Series, page: int = 1) -> str | pd.Series:
+        base_url = "https://pdf.swedeb.se/riksdagen-records-pdf/"
+        page_nr = f"#page={page}"
+        if isinstance(document_name, pd.Series):
+            year = document_name.str.split('-').str[1]
+            base_filename = document_name.str.split('_').str[0] + ".pdf"
+            return base_url + year + "/" + base_filename + page_nr
+        else:
+            year = document_name.split('-')[1]
+            base_filename = document_name.split('_')[0] + ".pdf"
+            return f"{base_url}{year}/{base_filename}{page_nr}"
 
     def decode_speech_index(
         self, speech_index: pd.DataFrame, value_updates: dict = None, sort_values: bool = True
@@ -398,7 +409,7 @@ class PersonCodecs(Codecs):
         speech_index = self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
         speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
-        speech_index["speech_link"] = self.speech_link(speech_id=speech_index.speech_id)
+        speech_index["speech_link"] = self.speech_link(document_name=speech_index.document_name)
 
         if sort_values:
             speech_index = speech_index.sort_values(by="name", key=lambda x: x == "")

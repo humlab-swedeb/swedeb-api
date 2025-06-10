@@ -49,8 +49,8 @@ def test_kwic_speech_id_in_search_results(fastapi_client):
     [
         ("sverige", "ak", 42),
         ("sverige", "AK", 42),
-        ("sverige", "ek", 264),
-        ("sverige", ["ak", "ek"], 264 + 42),
+        ("sverige", "ek", 225),
+        ("sverige", ["ak", "ek"], 225 + 42),
     ],
 )
 def test_kwic_filter_by_chamber(fastapi_client, word: str, chambers: str | list[str], n_expected: int):

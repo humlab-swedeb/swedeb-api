@@ -51,8 +51,9 @@ WORKDIR /wheels
 RUN pip install --upgrade pip \
     && pip install setuptools wheel \
     \
-    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels "association-measures==0.3.0" \
+    && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels "association-measures" \
     && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels cwb-ccc
+
 
 #####################################################################################
 # Final stage
@@ -115,21 +116,19 @@ ARG SWEDEB_BACKEND_TAG
 COPY dist /backend-wheels
 RUN pip3.11 install /wheels/*.whl
 
-RUN if echo "$SWEDEB_BACKEND_TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then \
+RUN if [ "${SWEDEB_BACKEND_SOURCE}" == "pypi" ]; then \
         pip3.11 install "api_swedeb==${SWEDEB_BACKEND_TAG}"; \
     else \
-        pip3.11 install /backend-wheels/api_swedeb-"$(SWEDEB_BACKEND_TAG)"-py3-none-any.whl && \
+        pip3.11 install /backend-wheels/api_swedeb-"${SWEDEB_BACKEND_TAG}"-py3-none-any.whl && \
         rm -rf /backend-wheels; \
     fi
 
-COPY cwb/registry /data/cwb/registry
 COPY public /app/public
 COPY main.py /app/main.py
 COPY entrypoint.sh entrypoint.sh
 COPY config /app/config
 
-RUN ln -s /data/cwb/registry /usr/local/share/cwb/registry \
-    && chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 RUN chown -R ${SWEDEB_USER}:${SWEDEB_USER} /app /data
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import os
 import re
 import sqlite3
@@ -7,12 +8,13 @@ import time
 import types
 from functools import wraps
 from os.path import basename, dirname, splitext
-from typing import Any, Callable, Type
+from typing import Any, Callable, ItemsView, Iterator, KeysView, Type, TypeVar, ValuesView
 
 import numpy as np
 import pandas as pd
 import requests
 from loguru import logger
+
 from penelope.utility import PropertyValueMaskingOpts
 
 try:
@@ -138,7 +140,9 @@ def slim_table_types(
     for table in tables:
         for column_name, value in defaults.items():
             if column_name in table.columns:
-                table[column_name].fillna(value, inplace=True)
+                # OLD: gived futurewarning [column_name].fillna(value, inplace=True)
+                # alt: table.fillna({ column_name: value }, inplace=True)
+                table[column_name] = table[column_name].fillna(value)
 
         for column_name, dt in dtypes.items():
             if column_name in table.columns:
@@ -382,3 +386,73 @@ def replace_by_patterns(names: list[str], cfg: dict[str, str]) -> pd.DataFrame:
         return name
 
     return [fx(name) for name in names]
+
+
+class DictLikeObject:
+
+    def __init__(self, data: dict[str, Any]):
+        self._data: dict[str, Any] = data
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self._data:
+            return self._data[name]
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}' or key in underlying data")
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._data.get(key, default)
+
+    def keys(self) -> KeysView[str]:
+        return self._data.keys()
+
+    def values(self) -> ValuesView[Any]:
+        return self._data.values()
+
+    def items(self) -> ItemsView[str, Any]:
+        return self._data.items()
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._data!r})"
+
+
+def clear_attrib(obj, attrib):
+    if (value := getattr(obj, attrib, None)) is not None:
+        setattr(obj, attrib, None)
+    return value
+
+
+Q = TypeVar("Q")
+
+
+def deep_clone(obj: Q, ignores: None | list[str] = None, assign_ignores: bool = True) -> Q:
+    """Takes deep clone but avoids deep-copying ìgnores attributes."""
+    ignores_store: dict = {attrib: clear_attrib(obj, attrib) for attrib in (ignores or []) if hasattr(obj, attrib)}
+    other: Q = copy.deepcopy(obj)
+    for attrib, value in ignores_store.items():
+        setattr(obj, attrib, value)
+        if assign_ignores:
+            setattr(other, attrib, value)
+    return other
+
+
+def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
+    """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
+    if len(pivot_keys) <= 1 or data is None:
+        return data
+    data: pd.DataFrame = data.set_index(pivot_keys)
+    while isinstance(data.index, pd.MultiIndex):
+        data = data.unstack(level=1, fill_value=0)
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = [' '.join(x) for x in data.columns]
+    return data

@@ -38,6 +38,18 @@
                 "PYTHONPATH": "${workspaceFolder}",
                 "PYDEVD_WARN_EVALUATION_TIMEOUT": "10"
             },
+            
+        },
+        {
+            "name": "Python Debugger: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "main:app",
+                "--reload"
+            ],
+            "jinja": true
         }
     ]
 }

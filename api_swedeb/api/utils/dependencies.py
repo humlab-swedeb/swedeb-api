@@ -2,6 +2,7 @@ import os
 
 import ccc
 from fastapi import Depends
+from loguru import logger
 
 from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
@@ -32,7 +33,10 @@ def get_cwb_corpus_opts() -> dict[str, str | None]:
 
 def get_cwb_corpus(opts: dict = None) -> ccc.Corpus:
     opts: dict = opts or get_cwb_corpus_opts()
-    return ccc.Corpora(registry_dir=opts.get("registry_dir")).corpus(
+    registry_dir = opts.get("registry_dir")
+    logger.info(f"Registry dir is {registry_dir}")
+    logger.info(f"Exists on disk? {os.path.isdir(registry_dir)}")
+    return ccc.Corpora(registry_dir=registry_dir).corpus(
         corpus_name=opts.get("corpus_name"), data_dir=opts.get("data_dir")
     )
 

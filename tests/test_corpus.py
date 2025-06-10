@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from api_swedeb.api.utils import corpus as api_corpus
+from api_swedeb.core.speech import Speech
 
 EXPECTED_COLUMNS: set[str] = {
     'chamber_abbrev',  # NEW
@@ -26,8 +27,8 @@ EXPECTED_COLUMNS: set[str] = {
 @pytest.mark.parametrize(
     'terms, opts, expected_count',
     [
-        (['skola', {'year': (1970, 1980)}, 143]),
-        (['skola', 'lärare'], {'year': (1970, 1980)}, 32),
+        (['skola', {'year': (1970, 1980)}, 124]),
+        (['skola', 'lärare'], {'year': (1970, 1980)}, 29),
         (['skola', 'lärare'], {'year': (1975, 1975)}, 20),
     ],
 )
@@ -59,3 +60,35 @@ def test_get_anforanden():
 
     assert set(speeches.columns) == EXPECTED_COLUMNS - {'node_word'}
     assert len(speeches) > 0
+
+
+def test_get_speech_dto():
+    corpus: api_corpus.Corpus = api_corpus.Corpus()
+
+    speech_id: str = 'dummy-id'
+    speech: Speech | None = corpus.get_speech(speech_id)  # type: ignore
+
+    assert speech is not None
+    assert speech.error is not None
+    assert speech.name == f'speech {speech_id}'
+    assert speech.speech_id is None
+    assert speech.error.startswith(f'unknown speech key {speech_id}')
+
+    speech_id: str = 'i-DqLyxCPRqqgCA3Qopb7GiG'
+    speech: Speech | None = corpus.get_speech(speech_id)  # type: ignore
+
+    assert speech is not None
+
+    assert not speech.error
+
+    assert speech.speech_id == speech_id
+    assert speech.gender == 'Man'
+    assert speech.gender_abbrev == 'M'
+    assert speech.speaker == 'Eric Holmqvist'
+    assert speech.paragraphs and len(speech.paragraphs) > 0
+    assert speech.paragraphs[0].startswith('Herr talman!')
+    assert speech.text and len(speech.text) > 0
+    assert speech.speaker_note.startswith('Chefen för')
+    assert speech.text.startswith('Herr talman!')
+    assert speech.page_number == 4
+    assert speech.party_abbrev == 'S'

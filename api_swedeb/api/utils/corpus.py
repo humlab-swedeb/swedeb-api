@@ -1,15 +1,17 @@
+# type: ignore
 from functools import cached_property
 
 import pandas as pd
-from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
 from api_swedeb.core import codecs as md
 from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
+from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
 from api_swedeb.core.utility import Lazy, replace_by_patterns
 from api_swedeb.core.word_trends import compute_word_trends
+from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
 # pylint: disable=cell-var-from-loop, too-many-public-methods
 
@@ -129,7 +131,7 @@ class Corpus:
                 party_person_ids: set[str] = set(person_party[person_party.party_id.isin(value)].person_id)
                 df = df[df["person_id"].isin(party_person_ids)]
             elif key == "chamber_abbrev" and value:
-                value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [v.lower()]
+                value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [value.lower()]
                 di: pd.DataFrame = self.vectorized_corpus.document_index
                 df = df[df["person_id"].isin(set(di[di.chamber_abbrev.isin(value)].person_id.unique()))]
             else:
@@ -165,12 +167,9 @@ class Corpus:
         df = self.metadata.sub_office_type
         return df.reset_index()
 
-    def get_speech_text(self, document_name: str) -> str:  # type: ignore
-        return self.repository.to_text(self.get_speech(document_name))
-
-    def get_speech(self, document_name: str):  # type: ignore
-        res = self.repository.speech(speech_name=document_name, mode="dict")
-        return res
+    def get_speech(self, document_name: str) -> Speech:
+        speech: Speech = self.repository.speech(speech_name=document_name)
+        return speech
 
     def get_speaker(self, document_name: str) -> str:
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
@@ -185,14 +184,6 @@ class Corpus:
             return person['name']
         except IndexError:
             return unknown
-
-    def get_speaker_note(self, document_name: str) -> str:
-        speech = self.get_speech(document_name)
-        if "speaker_note_id" not in speech:
-            return ""
-        if speech["speaker_note_id"] == "missing":
-            return "Talet saknar notering"
-        return speech["speaker_note"]
 
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""
