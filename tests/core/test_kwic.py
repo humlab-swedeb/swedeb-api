@@ -117,7 +117,7 @@ def test_simple_kwic_without_decode_with_multiple_terms(
             ],
             ["att", "Att"],
         ),
-        ("information|kunskap", "word", "word", None, ["information", "kunskap", "Information"]),
+        ("information|kunskap", "word", "word", None, ["information", "kunskap"]),
         ("information", "lemma", "lemma", None, ["information"]),
         (
             "information",

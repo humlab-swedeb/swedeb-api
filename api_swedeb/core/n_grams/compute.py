@@ -115,7 +115,7 @@ def query_keyword_windows(
     query: str = query_or_opts if isinstance(query_or_opts, str) else to_cqp_exprs(query_or_opts, within="speech")
 
     if isinstance(context_width, int):
-        context_width = (context_width - 1, context_width - 1)
+        context_width = (context_width - len(query_or_opts), context_width - len(query_or_opts))
 
     subcorpus: SubCorpus | str = corpus.query(query, context_left=context_width[0], context_right=context_width[1])
 
@@ -158,7 +158,7 @@ def n_grams(
     """
 
     n_gram_mode: str = 'locked' if mode.endswith('aligned') else 'sliding'
-    n = (0, n - 1) if mode.startswith('left') else (n - 1, 0) if mode.startswith('right') else n
+    n = (0, n - len(opts)) if mode.startswith('left') else (n - len(opts), 0) if mode.startswith('right') else n
 
     windows: pd.DataFrame = query_keyword_windows(corpus, opts, context_width=n, p_show=p_show)
     n_grams: pd.DataFrame = compile_n_grams(windows, n=n, threshold=threshold, mode=n_gram_mode)

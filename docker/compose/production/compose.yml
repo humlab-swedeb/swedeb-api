@@ -1,6 +1,6 @@
 services:
   swedeb_api:
-    image: "${SWEDEB_IMAGE_NAME}:${SWEDEB_IMAGE_TAG}"
+    image: "swedeb-api-staging:staging"
     container_name: "${SWEDEB_CONTAINER_NAME}-${SWEDEB_ENVIRONMENT}"
     restart: always
     ports:
