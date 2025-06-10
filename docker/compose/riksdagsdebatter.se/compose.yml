@@ -1,6 +1,6 @@
 services:
   swedeb_api:
-    image: "swedeb-api-staging:staging"
+    image: "${SWEDEB_IMAGE_NAME}:${SWEDEB_IMAGE_TAG}"
     container_name: "${SWEDEB_CONTAINER_NAME}-${SWEDEB_ENVIRONMENT}"
     restart: always
     ports:
@@ -12,14 +12,13 @@ services:
       - SWEDEB_DATA_FOLDER=${SWEDEB_DATA_FOLDER}
     volumes:
       - "${SWEDEB_DATA_FOLDER}:/data"
-      - "${SWEDEB_METADATA_FILENAME}:/data/riksprot_metadata.${METADATA_VERSION}.db"
     networks:
       - swedeb_network
 
 networks:
   swedeb_network:
     driver: bridge
-    # ipam:
-    #   driver: default
-    #   config:
-    #     - subnet: "${SWEDEB_SUBNET}"
+    ipam:
+      driver: default
+      config:
+        - subnet: "${SWEDEB_SUBNET}"
