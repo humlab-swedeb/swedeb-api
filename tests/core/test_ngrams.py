@@ -111,7 +111,7 @@ def test_compute_n_grams_with_locked_window():
 
 def test_compute_n_grams2(corpus: Corpus):
     n: int = 2
-    keyword: str = '"sverige"%c'
+    keyword: str = "'sverige'%c"
 
     windows: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts=keyword, context_size=n, p_show="word")
 
