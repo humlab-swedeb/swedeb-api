@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+import requests
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
@@ -134,7 +135,7 @@ def test_get_speech_by_id_page_number(fastapi_client: TestClient):
     assert data['page_number'] == 38
 
 
-def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
+def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):  # pylint: disable=unused-argument
     document_name, speech_id = ('prot-197576--087_018', 'i-34625fce7c35cf80-3')
     # find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
@@ -152,7 +153,9 @@ def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus)
     assert data_by_id == data_by_name
 
 
-def test_get_speech_by_id_page_number_byclient(fastapi_client: TestClient, api_corpus: Corpus):
+def test_get_speech_by_id_page_number_byclient(
+    fastapi_client: TestClient, api_corpus: Corpus  # pylint: disable=unused-argument
+):
     speech_id = 'i-34625fce7c35cf80-3'
     response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
