@@ -383,17 +383,24 @@ class PersonCodecs(Codecs):
         return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
-    def speech_link(document_name: str | pd.Series, page: int = 1) -> str | pd.Series:
-        base_url = "https://pdf.swedeb.se/riksdagen-records-pdf/"
-        page_nr = f"#page={page}"
+    def speech_link(document_name: str | pd.Series, page_nr: str | int | pd.Series[int|str] = 1) -> str | pd.Series[str]:
+        base_url: str = ConfigValue("pdf_server.base_url").resolve()
         if isinstance(document_name, pd.Series):
-            year = document_name.str.split('-').str[1]
-            base_filename = document_name.str.split('_').str[0] + ".pdf"
-            return base_url + year + "/" + base_filename + page_nr
-        else:
-            year = document_name.split('-')[1]
-            base_filename = document_name.split('_')[0] + ".pdf"
-            return f"{base_url}{year}/{base_filename}{page_nr}"
+            return PersonCodecs._speech_links(document_name, base_url, page_nr)
+        return PersonCodecs._speech_link(document_name, base_url, page_nr)
+
+    @staticmethod
+    def _speech_link(document_name: str, base_url: str, page_nr: Any) -> str:
+        year: str = document_name.split('-')[1]
+        base_filename: str = document_name.split('_')[0] + ".pdf"
+        return f"{base_url}{year}/{base_filename}#page={page_nr}"
+
+    @staticmethod
+    def _speech_links(document_names: pd.Series[str], base_url: str, page_nrs: int | str |pd.Series[int|str] = 1) -> pd.Series:
+        year: pd.Series[str] = document_names.str.split('-').str[1]
+        base_filename: pd.Series[str] = document_names.str.split('_').str[0] + ".pdf"
+        page_nrs = page_nrs.astype(str) if isinstance(page_nrs, pd.Series) else str(page_nrs)
+        return base_url + year + "/" + base_filename + "#page=" + page_nrs
 
     def decode_speech_index(
         self, speech_index: pd.DataFrame, value_updates: dict = None, sort_values: bool = True

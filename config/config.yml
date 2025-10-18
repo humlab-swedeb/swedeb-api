@@ -30,6 +30,9 @@ fastapi:
     - http://localhost:8080
     - http://localhost:9002
 
+pdf_server:
+  base_url: "https://pdf.swedeb.se/riksdagen-records-pdf/"
+
 github:
   access_token:
 
