@@ -234,6 +234,16 @@ def to_cqp_patterns(args: None | str | list[dict[str, Any]]) -> str:
 
 
 def to_cqp_criteria_expr(criterias: None | str | list[dict[str, Any]]) -> str:
+    """Compile a CQP criteria expression from a list of criteria options.
+    Args:
+        criterias (list[dict[str, Any]]): List of criteria options.
+            Each option is a dictionary with the following data:
+                key (str): CQP attribute key.
+                values (str | list[str] | tuple[int, int]): CQP attribute value(s).
+                ignore_case (bool, optional): Flag for caseless search. Defaults to False.
+    Returns:
+        str: compiled CQP criteria expression with a CQP pattern for each item in criterias
+    """  # noqa: E501
     if criterias is None:
         criterias = []
 
