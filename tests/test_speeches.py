@@ -4,7 +4,6 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 from loguru import logger
-import requests
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
@@ -20,6 +19,7 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult
 # pylint: disable=redefined-outer-name
 
 version = "v1"
+
 
 def check_url_availability(url):
     try:
@@ -44,6 +44,7 @@ def test_pdf_link(api_corpus: Corpus):
         assert check_url_availability(test_link)
         print(f"Link {test_link} is available.")
 
+
 def test_pdf_link_with_series(api_corpus: Corpus):
     """
     Test that the pdf link points to available pdf"""
@@ -59,9 +60,6 @@ def test_pdf_link_with_series(api_corpus: Corpus):
     for test_link in test_links:
         assert check_url_availability(test_link)
         print(f"Link {test_link} is available.")
-
-
-
 
 
 def test_speeches_get(fastapi_client: TestClient):

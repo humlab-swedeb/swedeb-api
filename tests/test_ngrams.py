@@ -80,6 +80,7 @@ def test_n_gram_service_with_phrase(corpus: Corpus):
     assert len(left_aligned.ngram_list) > 0
     assert all('sverige vara' in ngram.ngram.lower() for ngram in sliding_result.ngram_list)
 
+
 def test_n_gram_service_with_phrase_word(corpus: Corpus):
     # test n-gram with a phrase
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
@@ -129,4 +130,3 @@ def test_n_gram_service_with_smaller_window(corpus: Corpus):
     print(lower_ngram_list)
     assert all('det är därför' in ngram for ngram in lower_ngram_list)
     assert all(len(ngram.ngram.split(" ")) == 3 for ngram in left_aligned.ngram_list)
-

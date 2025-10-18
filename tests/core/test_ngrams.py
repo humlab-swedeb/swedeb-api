@@ -141,7 +141,6 @@ def test_n_grams(corpus: Corpus):
 
     # with patch("api_swedeb.core.n_grams.compute.compile_n_grams", lambda *_, **__: 'apa'):
     data: pd.DataFrame = ng.n_grams(corpus, query_or_opts, n=n, threshold=2, mode="sliding")
-
     assert data is not None
     assert len(data) > 0
     assert data.columns.tolist() == ['window_count', 'documents']
