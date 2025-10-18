@@ -1,5 +1,6 @@
 from typing import Any, Iterable, Literal
 
+from loguru import logger
 import pandas as pd
 from ccc import Corpus, SubCorpus
 
