@@ -30,14 +30,14 @@ jobs:
       - name: Install Python build tools
         run: pipx install poetry
 
-      - name: Install semantic-release using project setup
-        run: npm ci
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
+
+      - name: Install semantic-release using project setup
+        run: npm ci
 
       # - name: Install semantic-release and its plugins (done above via npm ci)
       #   run: npm install semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/git @semantic-release/github @semantic-release/exec
