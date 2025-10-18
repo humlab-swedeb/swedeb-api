@@ -81,8 +81,8 @@ def compile_n_grams(
 
 def query_keyword_windows(
     corpus: Corpus,
-    query_or_opts: str | dict[str, Any],
-    context_width: int | tuple[int, int],
+    query_or_opts: str | dict[str, Any] | list[dict[str, Any]],
+    context_size: int | tuple[int, int],
     p_show: Literal['word', 'lemma'],
 ) -> pd.DataFrame:
     """Get KWIC windows from a corpus with window counts and source document ids.
@@ -106,7 +106,7 @@ def query_keyword_windows(
         ...         {"key": "a.speech_party_id", "values": "7"},
         ...     ],
         ... }
-        >>> data = query_keyword_windows(corpus, opts, n=2, p_show="word")
+        >>> data = query_keyword_windows(corpus, opts, context_size=2, p_show="word")
             window                                count document
             alltför högljudda propagandan mot England 1 ['i-19bbfe5b4652a214-2']
             att denna propaganda skulle få            2 ['i-d9090ad17b861735-10']
@@ -161,7 +161,7 @@ def n_grams(
     n_gram_mode: str = 'locked' if mode.endswith('aligned') else 'sliding'
     n = (0, n - len(opts)) if mode.startswith('left') else (n - len(opts), 0) if mode.startswith('right') else n
 
-    windows: pd.DataFrame = query_keyword_windows(corpus, opts, context_width=n, p_show=p_show)
+    windows: pd.DataFrame = query_keyword_windows(corpus, query_or_opts, context_size=n, p_show=p_show)
     n_grams: pd.DataFrame = compile_n_grams(windows, n=n, threshold=threshold, mode=n_gram_mode)
 
     return n_grams

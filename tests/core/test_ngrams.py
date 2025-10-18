@@ -72,7 +72,7 @@ def test_to_n_grams():
 def test_query_keyword_windows():
     corpus: MagicMock = corpus_mock(SUPER_SIMPLE_CONCORDANCE)
 
-    result: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts="noop", context_width=1, p_show="word")
+    result: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts="noop", context_size=1, p_show="word")
 
     expected_result: pd.DataFrame = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
 
@@ -113,7 +113,7 @@ def test_compute_n_grams2(corpus: Corpus):
     n: int = 2
     keyword: str = '"sverige"%c'
 
-    windows: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts=keyword, context_width=n, p_show="word")
+    windows: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts=keyword, context_size=n, p_show="word")
 
     ngram_counter: Counter = defaultdict(int)
     ngram_documents: Counter = defaultdict(set)
