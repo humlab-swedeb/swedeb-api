@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from api_swedeb.core.codecs import Codec, Codecs, PersonCodecs
+from api_swedeb.core.configuration.inject import ConfigValue
 
 
 class TestCodec:
@@ -773,24 +774,32 @@ class TestPersonCodecs:
         pd.testing.assert_series_equal(PersonCodecs.person_wiki_link(wiki_ids), expected)
 
     @pytest.mark.parametrize(
-        "speech_id, expected",
+        "speech_id, subfolder, page_nr",
         [
-            ("12345", "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/12345"),
-            ("67890", "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/67890"),
+            ("prot-1867--ak--0118_001", "1867", 1),
+            ("prot-19992000--001_001", "19992000", 6),
+            ("prot-201011--084_160", "201011", 4),
         ],
     )
-    def test_speech_link(self, speech_id, expected):
-        assert PersonCodecs.speech_link(speech_id) == expected
+    def test_speech_link(self, speech_id, subfolder, page_nr):
+        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
+        protocol_name: str = speech_id.split('_')[0]
+        expected: str = f'{base_url}/{subfolder}/{protocol_name}.pdf#page={page_nr}'
+        assert PersonCodecs.speech_link(speech_id, page_nr) == expected
 
     def test_speech_link_series(self):
-        speech_ids = pd.Series(["12345", "67890"])
+        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
+        speech_ids = pd.Series(["prot-1867--ak--0118_001", "prot-19992000--001_001", "prot-201011--084_160"])
+        page_nrs = pd.Series([1, 6, 4])
         expected = pd.Series(
             [
-                "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/12345",
-                "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-oppna-data/anforanden/67890",
+                f"{base_url}/1867/prot-1867--ak--0118.pdf#page=1",
+                f"{base_url}/19992000/prot-19992000--001.pdf#page=6",
+                f"{base_url}/201011/prot-201011--084.pdf#page=4",
             ]
         )
-        pd.testing.assert_series_equal(PersonCodecs.speech_link(speech_ids), expected)
+        result: pd.Series[str] = PersonCodecs.speech_link(speech_ids, page_nrs)
+        pd.testing.assert_series_equal(result, expected)
 
     def test_decode_speech_index_with_empty_dataframe(self):
         person_codecs = PersonCodecs()
@@ -799,21 +808,23 @@ class TestPersonCodecs:
         assert result.empty
 
     def test_decode_speech_index_with_non_decoded_dataframe(self, person_codecs2, speech_index):
+        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
         result = person_codecs2.decode_speech_index(speech_index)
         assert 'link' in result.columns
         assert 'speech_link' in result.columns
         assert len(result) == len(speech_index) > 0
         assert any(result['link'].str.contains('wikidata.org'))
-        assert any(result['speech_link'].str.contains('riksdagen.se'))
+        assert any(result['speech_link'].str.contains(base_url))
 
     def test_decode_speech_index_with_decoded_dataframe(self, person_codecs, speech_index):
+        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
         result = person_codecs.decode_speech_index(speech_index)
         result = person_codecs.decode_speech_index(result)
         assert 'link' in result.columns
         assert 'speech_link' in result.columns
         assert len(result) == len(speech_index) > 0
         assert any(result['link'].str.contains('wikidata.org'))
-        assert any(result['speech_link'].str.contains('riksdagen.se'))
+        assert any(result['speech_link'].str.contains(base_url))
 
     def test_decode_speech_index_with_value_updates(self, person_codecs, speech_index):
         value_updates = {'Eric Holmqvist': 'Eric Holmberg'}

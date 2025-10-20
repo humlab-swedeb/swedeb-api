@@ -1,4 +1,5 @@
 import sqlite3
+import sys
 import uuid
 
 import ccc
@@ -17,6 +18,10 @@ ConfigStore.configure_context(source='tests/config.yml')
 
 # pylint: disable=redefined-outer-name
 
+from loguru import logger
+
+logger.remove()
+logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 @pytest.fixture(scope='module')
 def corpus() -> ccc.Corpus:

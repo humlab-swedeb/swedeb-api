@@ -1,0 +1,29 @@
+docker run --name=swedeb-api-production \
+        --hostname=3bf6843f9afd \
+        --volume /data/swedeb/v1.1.0:/data \
+        --env=SWEDEB_CONTAINER_NAME=swedeb-api \
+        --env=SWEDEB_IMAGE_TAG=0.2.1 \
+        --env=SWEDEB_HOST_PORT=8092 \
+        --env=SWEDEB_BACKEND_TAG=0.2.2 \
+        --env=SWEDEB_ENVIRONMENT=production \
+        --env=SWEDEB_IMAGE_NAME=swedeb-api \
+        --env=SWEDEB_CONFIG_PATH=/app/config/config.yml \
+        --env=SWEDEB_SUBNET=172.33.0.0/16 \
+        --env=SWEDEB_FRONTEND_TAG=main \
+        --env=SWEDEB_DATA_FOLDER=/data/swedeb/v1.1.0 \
+        --network=docker_swedeb_network \
+        --workdir=/app \
+        -p 8092:8092 \
+        --restart=always \
+        --label='com.docker.compose.image=sha256:17542e5b432c6332e4bb68cf3e6f8cd5a201d568dc5b2c4bff35113c418c1e38' \
+        --label='com.docker.compose.project=docker' \
+        --label='com.docker.compose.service=swedeb_api' \
+        --label='com.docker.compose.project.working_dir=/home/rebecka/source/tmp/swedeb-api/docker' \
+        --label='com.docker.compose.version=2.33.1' \
+        --label='com.docker.compose.container-number=1' \
+        --label='com.docker.compose.depends_on=' \
+        --label='com.docker.compose.project.config_files=/home/rebecka/source/tmp/swedeb-api/docker/docker-compose.yml' \
+        --label='com.docker.compose.config-hash=a5e9ebfd636e3582e5c13056ab57d1cb817ac059e0ab00721eee2071634fcd92' \
+        --label='com.docker.compose.oneoff=False' \
+        --runtime=runc \
+        swedeb-api:kermit

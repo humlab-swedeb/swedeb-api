@@ -33,6 +33,9 @@ fastapi:
   origins:
     - http://localhost:8080
     - http://localhost:9002
+    
+pdf_server:
+  base_url: "https://pdf.swedeb.se/riksdagen-records-pdf/"
 
 vrt:
   folder: tests/test_data/v1.4.1/tagged_frames

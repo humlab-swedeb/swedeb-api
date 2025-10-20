@@ -1,7 +1,6 @@
 from typing import Any, Hashable
 
 import pandas as pd
-import pytest
 
 from api_swedeb.core.codecs import PersonCodecs
 

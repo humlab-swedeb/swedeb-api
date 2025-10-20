@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "api-swedeb"
-version = "0.2.13"
+version = "0.3.0"
 description = ""
 authors = ["rebeckaw <rebecka.weegar@umu.se>"]
 readme = "README.md"
 packages = [{include = "api_swedeb"},  {include = "penelope"}]
 
 [tool.poetry.dependencies]
-python = "3.11.*"
+python = ">=3.11,<3.13"
 fastapi = "*"
 uvicorn = {extras = ["standard"], version = "*"}
 python-dotenv = "*"
@@ -33,7 +33,7 @@ isort = "*"
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py312"]
 skip-string-normalization = true
 
 
@@ -41,7 +41,7 @@ skip-string-normalization = true
 max-line-length = 120
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 120
 # output-format = "grouped"
 exclude = [ ".eggs", ".git", ".ruff_cache", ".venv", "dist" ]

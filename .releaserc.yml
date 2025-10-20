@@ -71,18 +71,30 @@ plugins:
         [![semantic versioning](https://img.shields.io/badge/semantic%20versioning-2.0.0-green.svg)](https://semver.org)
         > All notable changes to this project will be documented in this file
 
+  - - "@semantic-release/exec"
+    - prepareCmd: "./.github/scripts/prepare-release-assets.sh ${nextRelease.version}"
+
+  # Creates the GitHub Release and uploads the .whl as an artifact.
   - - "@semantic-release/github"
     - addReleases: bottom
+      # Updated asset path to point to the Python wheel
       assets:
-        - path: "./dist/**/*.{msi,deb,rpm,AppImage,dmg,sha256sum,bin,exe}"
+        - path: "dist/*.whl"
+          label: "Python Package (.whl)"
       successComment: false
       failTitle: false
 
+  # Builds and pushes the final application Docker image to GHCR.
+  - - "@semantic-release/exec"
+    - publishCmd: "./.github/scripts/publish-docker.sh ${nextRelease.version}"
+
+  # Commits the version bump in pyproject.toml and the updated CHANGELOG.md.
   - - "@semantic-release/git"
     - assets:
-        - LICENSE*
         - CHANGELOG.md
+        - pyproject.toml
+        - .bumpversion.cfg
       message: |
-        chore(${nextRelease.type}): ${nextRelease.version} [skip ci]
+        chore(release): ${nextRelease.version} [skip ci]
 
         ${nextRelease.notes}
