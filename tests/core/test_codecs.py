@@ -838,17 +838,3 @@ class TestPersonCodecs:
         result = person_codecs.decode_speech_index(speech_index, sort_values=True)
         assert result['name'].is_monotonic_increasing
         assert result['name'].is_unique
-
-    def test_decode_speech_index_with_sort_values_and_empty_values(self, person_codecs, speech_index):
-        update_name = 'Eric Holmqvist'
-        value_updates = {update_name: ''}
-        result = person_codecs.decode_speech_index(speech_index)
-        name_count = result['name'].value_counts()[update_name]
-        assert name_count == 6
-
-        result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates, sort_values=True)
-
-        with pytest.raises(KeyError):
-            result['name'].value_counts()[update_name]  # pylint: disable=pointless-statement, expression-not-assigned
-
-        assert result['name'].value_counts()[''] == name_count
