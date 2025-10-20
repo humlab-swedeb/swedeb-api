@@ -827,7 +827,7 @@ class TestPersonCodecs:
         assert any(result['speech_link'].str.contains(base_url))
 
     def test_decode_speech_index_with_value_updates(self, person_codecs, speech_index):
-        value_updates = {'Eric Holmqvist': 'Eric Holmberg'}
+        value_updates = {'name': {'Eric Holmqvist': 'Eric Holmberg'}}
         result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates)
         assert 'Eric Holmberg' in result['name'].to_list()
 
