@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
+from loguru import logger
 
 from api_swedeb.api import metadata_router, tool_router
 from api_swedeb.api.utils import corpus as api_swedeb
@@ -18,10 +19,10 @@ ConfigStore.configure_context(source='tests/config.yml')
 
 # pylint: disable=redefined-outer-name
 
-from loguru import logger
 
 logger.remove()
 logger.add(sys.stderr, backtrace=True, diagnose=True)
+
 
 @pytest.fixture(scope='module')
 def corpus() -> ccc.Corpus:
