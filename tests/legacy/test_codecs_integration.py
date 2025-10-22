@@ -8,12 +8,6 @@ from api_swedeb.core.codecs import Codec, PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
 
 
-@pytest.fixture(name="codecs_instance")
-def fixture_codecs_instance() -> PersonCodecs:
-    codecs = PersonCodecs()
-    return codecs
-
-
 @pytest.fixture(name="gender_dataframe")
 def fixture_gender_dataframe() -> pd.DataFrame:
     gender_ids: list[int] = [10, 20]
@@ -260,7 +254,7 @@ class TestCodecs:
     def test_codecs_encode(self, store: dict[str, pd.DataFrame]) -> None:
         codecs: PersonCodecs = PersonCodecs().load(store)
 
-        codecs._codecs = codecs.decoders + [c.reverse() for c in codecs.decoders]
+        codecs._codecs = codecs.decoders + [c.reverse() for c in codecs.decoders]  # pylint: disable=protected-access
 
         df = pd.DataFrame(
             {
@@ -473,7 +467,9 @@ class TestPersonCodecs:
         result: pd.DataFrame = person_codecs.decode_speech_index(empty_df)
         assert result.empty
 
-    def test_decode_speech_index_with_non_decoded_dataframe(self, person_codecs: PersonCodecs, speech_index: pd.DataFrame) -> None:
+    def test_decode_speech_index_with_non_decoded_dataframe(
+        self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
+    ) -> None:
         speech_index_copy = speech_index.copy()
 
         with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
@@ -486,7 +482,9 @@ class TestPersonCodecs:
             assert any(result['link'].str.contains('wikidata.org'))
             assert any(result['speech_link'].str.contains(base_url))
 
-    def test_decode_speech_index_with_decoded_dataframe(self, person_codecs: PersonCodecs, speech_index: pd.DataFrame) -> None:
+    def test_decode_speech_index_with_decoded_dataframe(
+        self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
+    ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
 
         with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
@@ -502,19 +500,24 @@ class TestPersonCodecs:
             assert any(result['link'].str.contains('wikidata.org'))
             assert any(result['speech_link'].str.contains(base_url))
 
-
-    def test_decode_speech_index_with_value_updates(self, person_codecs: PersonCodecs, speech_index: pd.DataFrame) -> None:
+    def test_decode_speech_index_with_value_updates(
+        self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
+    ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
         with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
             mock_config_value.return_value.resolve.return_value = "https://example.com/"
             value_updates: dict[str, dict[str, str]] = {'name': {'Eric Holmqvist': 'Eric Holmberg'}}
-            result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(speech_index_copy, value_updates=value_updates)
+            result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(
+                speech_index_copy, value_updates=value_updates
+            )
             assert 'Eric Holmberg' in result['name'].to_list()
 
     @pytest.mark.skip(
         reason="Sort parameter is implemented in an ambiguous way. Does not sort names but moves empty values to the end."
     )
-    def test_decode_speech_index_with_sort_values(self, person_codecs: PersonCodecs, speech_index: pd.DataFrame) -> None:
+    def test_decode_speech_index_with_sort_values(
+        self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
+    ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
         result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(speech_index_copy, sort_values=True)
         assert result['name'].is_monotonic_increasing

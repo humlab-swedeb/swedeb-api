@@ -55,7 +55,8 @@ class Registry:
     @classmethod
     def is_registered(cls, key: str) -> bool:
         return key in cls.items
-    
+
+
 def _ensure_key_property(cls):
     if not hasattr(cls, "key"):
 
@@ -64,6 +65,7 @@ def _ensure_key_property(cls):
 
         cls.key = property(key)
     return cls
+
 
 def flatten(lst: list[list[Any]]) -> list[Any]:
     """Flatten a list of lists."""
@@ -158,15 +160,16 @@ def load_tables(
     assign_primary_key(tables, data)
     return data
 
+
 def assign_primary_key(schema: dict[str, str], data: dict[str, pd.DataFrame]) -> None:
     """Assigns primary key as pandas index for tables in data."""
-    
+
     for table_name in data:
         table: pd.DataFrame = data[table_name]
 
         if table_name not in schema:
             raise KeyError(f"Table {table_name} not found in tables definition")
-        
+
         pk_name: str = schema[table_name]
 
         if table.index.name == pk_name:

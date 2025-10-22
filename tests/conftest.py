@@ -59,8 +59,9 @@ def speech_index(_speech_index_cached: pd.DataFrame) -> pd.DataFrame:
 def _person_codecs_cached(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
     return api_corpus.person_codecs
 
+
 @pytest.fixture
-def person_codecs(_person_codecs_cached: PersonCodecs, api_corpus: api_swedeb.Corpus) -> PersonCodecs:
+def person_codecs(_person_codecs_cached: PersonCodecs) -> PersonCodecs:
     return _person_codecs_cached.Clone()
 
 

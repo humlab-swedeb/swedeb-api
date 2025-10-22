@@ -138,8 +138,7 @@ class Codecs:
         clone.filename = self.filename
         clone.codecs = [c for c in self.codecs]
         return clone
- 
-    
+
     @property
     def codecs(self) -> list[Codec]:
         """List of Codec objects from specification, actual mapping lazy loaded."""
@@ -440,6 +439,7 @@ def _merge_specifications(spec1: dict[Any, Any], spec2: dict[Any, Any]) -> dict[
     spec1["codecs"].extend(spec2.get("codecs", []))
     spec1["property_values_specs"].extend(spec2.get("property_values_specs", []))
     return spec1
+
 
 @OnLoadHooks.register(key="rename_sub_office_type")
 class SubOfficeRenameHook:

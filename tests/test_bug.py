@@ -2,9 +2,9 @@
 
 from typing import Any
 
-from httpx import Response
 import pandas as pd
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus

@@ -2,15 +2,17 @@
 Tests for api_swedeb.core.codecs module.
 """
 
+import os
 import sqlite3
+import tempfile
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import Codecs, Codec, MultiplePartyAbbrevsHook, PersonCodecs
+from api_swedeb.core.codecs import Codec, Codecs, MultiplePartyAbbrevsHook, PersonCodecs
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access, too-many-public-methods
 
 
 class TestCodec:
@@ -49,7 +51,7 @@ class TestCodec:
 
         codec = Codec(table="test_table", type="decode", from_column="id", to_column="name", fx=test_fx)
 
-        assert codec.get_fx() == test_fx
+        assert codec.get_fx() is test_fx
 
     def test_get_fx_with_fx_factory(self):
         """Test get_fx returns result of fx_factory when provided."""
@@ -360,8 +362,6 @@ class TestBaseCodecs:
     def test_load_from_sqlite_file(self, sample_specification, sqlite3db_connection):
         """Test load method with SQLite file."""
         # Create temporary file with connection
-        import tempfile
-        import os
 
         with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
             tmp_file.close()
@@ -511,7 +511,9 @@ class TestBaseCodecs:
         codecs: PersonCodecs = PersonCodecs(specification=sample_specification).load(sample_store)
 
         specs: list[dict[str, str | dict[str, int]]] = codecs.property_values_specs
-        expected: list[dict[str, str]] = [{"text_name": "gender", "id_name": "gender_id", "values": {'Male': 1, 'Female': 2}}]
+        expected: list[dict[str, str]] = [
+            {"text_name": "gender", "id_name": "gender_id", "values": {'Male': 1, 'Female': 2}}
+        ]
         assert specs == expected
 
     def test_is_decoded_true(self, sample_specification, sample_store):
