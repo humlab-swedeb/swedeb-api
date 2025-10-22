@@ -28,6 +28,43 @@ except ImportError:
 # pylint: disable=missing-timeout
 
 
+class Registry:
+    items: dict = {}
+
+    @classmethod
+    def get(cls, key: str) -> Any | None:
+        if key not in cls.items:
+            raise KeyError(f"preprocessor {key} is not registered")
+        return cls.items.get(key)
+
+    @classmethod
+    def register(cls, **args) -> Callable[..., Any]:
+        def decorator(fn_or_class):
+            key: str = args.get("key") or fn_or_class.__name__
+            if args.get("type") == "function":
+                fn_or_class = fn_or_class()
+            else:
+                setattr(fn_or_class, "_registry_key", key)
+                fn_or_class = _ensure_key_property(fn_or_class)
+
+            cls.items[key] = fn_or_class
+            return fn_or_class
+
+        return decorator
+
+    @classmethod
+    def is_registered(cls, key: str) -> bool:
+        return key in cls.items
+    
+def _ensure_key_property(cls):
+    if not hasattr(cls, "key"):
+
+        def key(self) -> str:
+            return getattr(self, "_registry_key", "unknown")
+
+        cls.key = property(key)
+    return cls
+
 def flatten(lst: list[list[Any]]) -> list[Any]:
     """Flatten a list of lists."""
     if not lst:
@@ -118,10 +155,30 @@ def load_tables(
     """Loads tables as pandas dataframes, slims types, fills NaN, sets pandas index"""
     data: dict[str, pd.DataFrame] = read_sql_tables(list(tables.keys()), db)
     slim_table_types(data.values(), defaults=defaults, dtypes=dtypes)
-    for table_name, table in data.items():
-        if tables.get(table_name):
-            table.set_index(tables.get(table_name), drop=True, inplace=True)
+    assign_primary_key(tables, data)
     return data
+
+def assign_primary_key(schema: dict[str, str], data: dict[str, pd.DataFrame]) -> None:
+    """Assigns primary key as pandas index for tables in data."""
+    
+    for table_name in data:
+        table: pd.DataFrame = data[table_name]
+
+        if table_name not in schema:
+            raise KeyError(f"Table {table_name} not found in tables definition")
+        
+        pk_name: str = schema[table_name]
+
+        if table.index.name == pk_name:
+            continue
+
+        if pk_name not in table.columns:
+            """Assume current index is pk"""
+            table.index.name = pk_name
+            continue
+
+        table.set_index(pk_name, drop=True, inplace=True)
+        table.index.name = pk_name
 
 
 def slim_table_types(

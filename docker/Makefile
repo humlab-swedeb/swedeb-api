@@ -44,7 +44,7 @@ export
 ###################################################################################################
 # Publish the image to the GHCR registry
 ###################################################################################################
-.PHONY: publish
+.PHONY: ghcr-image
 ghcr-image: backend
 	@echo "Building image $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) for GHCR…"
 	@$(CONTAINER_CMD) build \

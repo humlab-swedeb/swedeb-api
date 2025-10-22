@@ -1,6 +1,5 @@
 from typing import Any, Iterable, Literal
 
-from loguru import logger
 import pandas as pd
 from ccc import Corpus, SubCorpus
 
@@ -138,9 +137,9 @@ def query_keyword_windows(
 
 def n_grams(
     corpus: Corpus,
-    opts: str | dict[str, Any],
+    query_or_opts: str | dict[str, Any] | list[dict[str, Any]],
     *,
-    n: int | tuple[int, int] = 2,
+    n: int = 2,
     p_show: Literal["word", "lemma"] = "word",
     threshold: int = None,
     mode: Literal['sliding', 'left-aligned', 'right-aligned'] = 'sliding',

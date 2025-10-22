@@ -186,7 +186,7 @@ def test_speeches_zip(fastapi_client: TestClient, api_corpus: Corpus):
 
 
 def test_get_speeches_corpus(api_corpus: Corpus):
-    fx = api_corpus.person_codecs.party_abbrev2id.get
+    fx = api_corpus.person_codecs.get_mapping('party_abbrev', 'party_id').get
     df_filtered: pd.DataFrame = api_corpus.get_anforanden(
         selections={'party_id': [fx(x) for x in ('L', 'S')], 'gender_id': [1, 2], 'year': (1970, 1980)}
     )

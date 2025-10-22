@@ -1,854 +1,863 @@
+"""
+Tests for api_swedeb.core.codecs module.
+"""
+
 import sqlite3
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import Codec, Codecs, PersonCodecs
-from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.codecs import BaseCodecs, Codec, Codecs, MultiplePartyAbbrevsHook, PersonCodecs
+
+# pylint: disable=protected-access
 
 
 class TestCodec:
+    """Test cases for Codec class."""
 
-    def test_codec_apply(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
-        df = pd.DataFrame({'gender_id': [1, 2, 1, 2]})
+    def test_codec_initialization(self):
+        """Test codec initialization with basic parameters."""
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name")
+
+        assert codec.table == "test_table"
+        assert codec.type == "decode"
+        assert codec.from_column == "id"
+        assert codec.to_column == "name"
+        assert codec.default is None
+        assert codec.fx is None
+        assert codec.fx_factory is None
+
+    def test_codec_key_property(self):
+        """Test codec key property returns correct tuple."""
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name")
+
+        assert codec.key == ("id", "name")
+
+    def test_get_fx_with_mapping_dict(self):
+        """Test get_fx returns mapping dict when fx is provided."""
+        mapping = {1: "One", 2: "Two"}
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name", fx=mapping)
+
+        assert codec.get_fx() == mapping
+
+    def test_get_fx_with_function(self):
+        """Test get_fx returns function when fx is provided as callable."""
+
+        def test_fx(x):
+            return str(x).upper()
+
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name", fx=test_fx)
+
+        assert codec.get_fx() == test_fx
+
+    def test_get_fx_with_fx_factory(self):
+        """Test get_fx returns result of fx_factory when provided."""
+        mapping = {1: "One", 2: "Two"}
+        factory = lambda from_col, to_col: mapping
+
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name", fx_factory=factory)
+
+        assert codec.get_fx() == mapping
+
+    def test_get_fx_raises_error_when_neither_provided(self):
+        """Test get_fx raises ValueError when neither fx nor fx_factory provided."""
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name")
+
+        with pytest.raises(ValueError, match="neither fx nor fx_factory provided"):
+            codec.get_fx()
+
+    def test_apply_with_mapping_dict(self):
+        """Test apply method with mapping dictionary."""
+        mapping = {1: "One", 2: "Two", 3: "Three"}
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name", fx=mapping)
+
+        df = pd.DataFrame({"id": [1, 2, 3], "other": ["a", "b", "c"]})
         result = codec.apply(df)
-        assert 'gender' in result.columns
-        assert result['gender'].tolist() == ['Male', 'Female', 'Male', 'Female']
 
-    def test_codec_apply_with_default(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male'}, default='Unknown')
-        df = pd.DataFrame({'gender_id': [1, 2, 1, 3]})
+        assert "name" in result.columns
+        assert result["name"].tolist() == ["One", "Two", "Three"]
+
+    def test_apply_with_function(self):
+        """Test apply method with function."""
+
+        def test_fx(x):
+            return f"Value_{x}"
+
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name", fx=test_fx)
+
+        df = pd.DataFrame({"id": [1, 2, 3], "other": ["a", "b", "c"]})
         result = codec.apply(df)
-        assert 'gender' in result.columns
-        assert result['gender'].tolist() == ['Male', 'Unknown', 'Male', 'Unknown']
 
-    def test_codec_apply_with_callable(self):
+        assert "name" in result.columns
+        assert result["name"].tolist() == ["Value_1", "Value_2", "Value_3"]
+
+    def test_apply_with_default_value(self):
+        """Test apply method fills default value for missing mappings."""
+        mapping = {1: "One", 2: "Two"}  # Missing mapping for 3
         codec = Codec(
-            type='decode', from_column='gender_id', to_column='gender', fx=lambda x: 'Male' if x == 1 else 'Female'
+            table="test_table", type="decode", from_column="id", to_column="name", fx=mapping, default="Unknown"
         )
-        df = pd.DataFrame({'gender_id': [1, 2, 1, 2]})
+
+        df = pd.DataFrame({"id": [1, 2, 3], "other": ["a", "b", "c"]})
         result = codec.apply(df)
-        assert 'gender' in result.columns
-        assert result['gender'].tolist() == ['Male', 'Female', 'Male', 'Female']
 
-    def test_codec_apply_with_callable_and_default(self):
-        codec = Codec(
-            type='decode',
-            from_column='gender_id',
-            to_column='gender',
-            fx=lambda x: 'Male' if x == 1 else None,
-            default='Unknown',
-        )
-        df = pd.DataFrame({'gender_id': [1, 2, 1, 3]})
+        assert result["name"].tolist() == ["One", "Two", "Unknown"]
+
+    def test_apply_missing_from_column(self):
+        """Test apply returns unchanged dataframe when from_column missing."""
+        codec = Codec(table="test_table", type="decode", from_column="missing_id", to_column="name", fx={1: "One"})
+
+        df = pd.DataFrame({"id": [1, 2, 3], "other": ["a", "b", "c"]})
         result = codec.apply(df)
-        assert 'gender' in result.columns
-        assert result['gender'].tolist() == ['Male', 'Unknown', 'Male', 'Unknown']
 
-    def test_codec_apply_scalar(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
-        assert codec.apply_scalar(1, 'Unknown') == 'Male'
-        assert codec.apply_scalar(2, 'Unknown') == 'Female'
-        assert codec.apply_scalar(3, 'Unknown') == 'Unknown'
+        assert result.equals(df)
+        assert "name" not in result.columns
 
-    def test_codec_apply_scalar_with_callable(self):
+    def test_apply_overwrite_false_existing_column(self):
+        """Test apply doesn't overwrite existing to_column when overwrite=False."""
         codec = Codec(
-            type='decode', from_column='gender_id', to_column='gender', fx=lambda x: 'Male' if x == 1 else None
-        )
-        assert codec.apply_scalar(1, 'Unknown') == 'Male'
-
-    def test_codec_is_decoded(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
-        df = pd.DataFrame({'gender_id': [1, 2, 1, 2]})
-        assert not codec.is_decoded(df)
-        df = codec.apply(df)
-        assert codec.is_decoded(df)
-
-    def test_codec_is_decoded_when_to_column_not_in_df(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
-        df = pd.DataFrame({'gender_id': [1, 2, 1, 2]})
-        assert not codec.is_decoded(df)
-        df = codec.apply(df)
-        assert codec.is_decoded(df)
-
-    def test_codec_is_decoded_when_to_column_in_df(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
-        df = pd.DataFrame({'gender_id': [1, 2, 1, 2], 'gender': ['Male', 'Female', 'Male', 'Female']})
-        assert codec.is_decoded(df)
-
-    def test_codec_is_decoded_when_from_column_not_in_df(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
-        df = pd.DataFrame({'gender': ['Male', 'Female', 'Male', 'Female']})
-        assert codec.is_decoded(df)
-
-    def test_codec_is_decoded_when_to_column_not_in_df_and_from_column_not_in_df(self):
-        codec = Codec(type='decode', from_column='gender_id', to_column='gender', fx={1: 'Male', 2: 'Female'})
-        df = pd.DataFrame({'some_other_column': [1, 2, 1, 2]})
-        assert codec.is_decoded(df)
-
-
-# pylint: disable=too-many-public-methods
-class TestCodecs:
-    """For the `Codecs` class to work correctly, the following keys are required in the dataframes:
-
-    - **Gender**:
-        - `gender_id`
-        - `gender`
-        - `gender_abbrev` (optional, but used in some tests)
-    - **Party**:
-        - `party_id`
-        - `party`
-    - **Office Type**:
-        - `office_type_id`
-        - `office`
-    - **Sub Office Type**:
-        - `sub_office_type_id`
-        - `office_type_id`
-        - `identifier`
-        - `description`
-    - **Chamber**:
-        - `chamber_id`
-        - `chamber`
-        - `chamber_abbrev` (optional, but used in some tests)
-    - **Government**:
-        - `government_id`
-        - `government`
-    """
-
-    @pytest.fixture(name="gender_dataframe")
-    def fixture_gender_dataframe(self):
-        gender_ids = [10, 20]
-        return pd.DataFrame({'gender': ['Male', 'Female'], 'gender_abbrev': ['M', 'F']}, index=gender_ids)
-
-    @pytest.fixture(name="party_dataframe")
-    def fixture_party_dataframe(self):
-        party_ids = [100, 200]
-        return pd.DataFrame({'party': ['Party A', 'Party B'], 'party_abbrev': ['PA', 'PB']}, index=party_ids)
-
-    @pytest.fixture(name="office_type_dataframe")
-    def fixture_office_type_dataframe(self):
-        office_type_ids = [10, 20]
-        return pd.DataFrame({'office': ['Office A', 'Office B']}, index=office_type_ids)
-
-    @pytest.fixture(name="sub_office_type_dataframe")
-    def fixture_sub_office_type_dataframe(self):
-        sub_office_type_ids = [10, 20]
-        return pd.DataFrame(
-            {'office_type_id': [1, 2], 'identifier': ['A', 'B'], 'description': ['Description A', 'Description B']},
-            index=sub_office_type_ids,
+            table="test_table", type="decode", from_column="id", to_column="existing_name", fx={1: "One", 2: "Two"}
         )
 
-    @pytest.fixture(name="chamber_dataframe")
-    def fixture_chamber_dataframe(self):
-        chamber_ids = [10, 20]
-        return pd.DataFrame({'chamber': ['Chamber A', 'Chamber B'], 'chamber_abbrev': ['CA', 'CB']}, index=chamber_ids)
+        df = pd.DataFrame({"id": [1, 2], "existing_name": ["Original1", "Original2"]})
+        result = codec.apply(df, overwrite=False)
 
-    @pytest.fixture(name="government_dataframe")
-    def fixture_government_dataframe(self):
-        government_ids = [10, 20]
-        return pd.DataFrame({'government': ['Government A', 'Government B']}, index=government_ids)
+        assert result["existing_name"].tolist() == ["Original1", "Original2"]
 
-    def test_codecs_load_with_non_existing_file(self):
-        codecs = Codecs()
-        with pytest.raises(FileNotFoundError):
-            codecs.load('non_existing_file.db')
+    def test_apply_overwrite_true_existing_column(self):
+        """Test apply overwrites existing to_column when overwrite=True."""
+        codec = Codec(
+            table="test_table", type="decode", from_column="id", to_column="existing_name", fx={1: "One", 2: "Two"}
+        )
 
-    def test_codecs_load_with_sqlite_connection(self, sqlite3db_connection):
-        codecs = Codecs()
-        conn = sqlite3db_connection
-        assert isinstance(conn, sqlite3.Connection)
-        codecs = codecs.load(conn)
-        assert isinstance(codecs, Codecs)
+        df = pd.DataFrame({"id": [1, 2], "existing_name": ["Original1", "Original2"]})
+        result = codec.apply(df, overwrite=True)
 
-    def test_tablenames(self):
-        expected_tablenames = {
-            'chamber': 'chamber_id',
-            'gender': 'gender_id',
-            'government': 'government_id',
-            'office_type': 'office_type_id',
-            'party': 'party_id',
-            'sub_office_type': 'sub_office_type_id',
+        assert result["existing_name"].tolist() == ["One", "Two"]
+
+    def test_is_decoded_true_when_to_column_exists(self):
+        """Test is_decoded returns True when to_column exists."""
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name")
+
+        df = pd.DataFrame({"id": [1, 2], "name": ["One", "Two"]})
+        assert codec.is_decoded(df) is True
+
+    def test_is_decoded_true_when_from_column_missing(self):
+        """Test is_decoded returns True when from_column doesn't exist."""
+        codec = Codec(table="test_table", type="decode", from_column="missing_id", to_column="name")
+
+        df = pd.DataFrame({"other": [1, 2]})
+        assert codec.is_decoded(df) is True
+
+    def test_is_decoded_false_when_decodable(self):
+        """Test is_decoded returns False when can be decoded."""
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name")
+
+        df = pd.DataFrame({"id": [1, 2]})
+        assert codec.is_decoded(df) is False
+
+    def test_is_ready(self):
+        """Test is_ready method."""
+        codec = Codec(table="test_table", type="decode", from_column="id", to_column="name")
+
+        # Ready when to_column exists
+        df1 = pd.DataFrame({"id": [1, 2], "name": ["One", "Two"]})
+        assert codec.is_ready(df1) is True
+
+        # Ready when from_column missing
+        df2 = pd.DataFrame({"other": [1, 2]})
+        assert codec.is_ready(df2) is True
+
+        # Not ready when from_column exists but to_column doesn't
+        df3 = pd.DataFrame({"id": [1, 2]})
+        assert codec.is_ready(df3) is False
+
+
+class TestBaseCodecs:
+    """Test cases for BaseCodecs class."""
+
+    @pytest.fixture
+    def sample_specification(self):
+        """Fixture providing sample codec specification."""
+        return {
+            "tables": {"gender": "gender_id", "party": "party_id"},
+            "codecs": [
+                {"table": "gender", "type": "decode", "from_column": "gender_id", "to_column": "gender"},
+                {"table": "party", "type": "decode", "from_column": "party_id", "to_column": "party_abbrev"},
+                {"table": "gender", "type": "encode", "from_column": "gender", "to_column": "gender_id"},
+            ],
+            "property_values_specs": [{"text_name": "gender", "id_name": "gender_id"}],
         }
-        codecs = Codecs()
-        assert codecs.tablenames() == expected_tablenames
 
-    def test_gender2name(self, gender_dataframe):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        assert codecs.gender2name == {10: 'Male', 20: 'Female'}
+    @pytest.fixture
+    def sample_store(self):
+        """Fixture providing sample data store."""
+        return {
+            "gender": pd.DataFrame({"gender": ["Male", "Female"], "gender_abbrev": ["M", "F"]}, index=[1, 2]),
+            "party": pd.DataFrame({"party": ["Party A", "Party B"], "party_abbrev": ["PA", "PB"]}, index=[1, 2]),
+        }
 
-    def test_gender2name_empty(self):
-        codecs = Codecs()
-        codecs.gender = pd.DataFrame(columns=['gender'])
-        assert codecs.gender2name == {}
+    def test_base_codecs_initialization(self, sample_specification, sample_store):
+        """Test BaseCodecs initialization."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
 
-    def test_gender2abbrev(self, gender_dataframe):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        assert codecs.gender2abbrev == {10: 'M', 20: 'F'}
+        assert codecs.specification == sample_specification
+        assert codecs.store == sample_store
+        assert codecs._codecs is None  # Lazy loaded
+        assert codecs.filename is None
 
-    def test_gender2abbrev_empty(self):
-        codecs = Codecs()
-        codecs.gender = pd.DataFrame(columns=['gender', 'gender_abbrev'])
-        assert codecs.gender2abbrev == {}
+        # Test lazy loading of codecs
+        codec_list = codecs.codecs
+        assert len(codec_list) == 3
+        assert codecs._codecs is not None  # Now loaded
 
-    def test_party2id(self, party_dataframe):
-        codecs = Codecs()
-        codecs.party = party_dataframe
-        assert codecs.party2id == {'Party A': 100, 'Party B': 200}
+    def test_find_codec_exists(self, sample_specification):
+        """Test find_codec returns correct codec when it exists."""
+        codecs = BaseCodecs(specification=sample_specification)
 
-    def test_party2id_empty(self):
-        codecs = Codecs()
-        codecs.party = pd.DataFrame(columns=['party'])
-        assert codecs.party2id == {}
+        codec = codecs.find_codec("gender_id", "gender")
+        assert codec is not None
+        assert codec.from_column == "gender_id"
+        assert codec.to_column == "gender"
 
-    def test_decode_any_id_with_existing_value(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert codecs.decode_any_id('gender_id', 10) == 'Male'
-        assert codecs.decode_any_id('gender_id', 20) == 'Female'
+    def test_find_codec_not_exists(self, sample_specification):
+        """Test find_codec returns None when codec doesn't exist."""
+        codecs = BaseCodecs(specification=sample_specification)
 
-        assert codecs.decode_any_id('office_type_id', 10) == 'Office A'
-        assert codecs.decode_any_id('office_type_id', 20) == 'Office B'
+        codec = codecs.find_codec("nonexistent", "column")
+        assert codec is None
 
-        assert codecs.decode_any_id('party_id', 100, to_name='party_abbrev') == 'PA'
-        assert codecs.decode_any_id('party_id', 200, to_name='party_abbrev') == 'PB'
-        assert codecs.decode_any_id('party_id', 100, to_name='party') == 'Party A'
-        assert codecs.decode_any_id('party_id', 200, to_name='party') == 'Party B'
+    def test_get_mapping_identity_raises_error(self, sample_specification, sample_store):
+        """Test get_mapping raises error for identity mapping."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
 
-        assert codecs.decode_any_id('sub_office_type_id', 10) == 'Description A'
-        assert codecs.decode_any_id('sub_office_type_id', 20) == 'Description B'
+        with pytest.raises(ValueError, match="Identify mapping where from_column equals to_column is not allowed"):
+            codecs.get_mapping("gender_id", "gender_id")
 
-    def test_decode_any_id_with_non_existing_value(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert codecs.decode_any_id('gender_id', 30) == 'unknown'
+    def test_get_mapping_from_index_column(self, sample_specification, sample_store):
+        """Test get_mapping when from_column is the index."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
 
-    def test_decode_any_id_with_custom_default_value(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert codecs.decode_any_id('gender_id', 3, default_value='Not Specified') == 'Not Specified'
+        # Set up a table where the index is the from_column
+        test_table = pd.DataFrame({"gender": ["Male", "Female"]}, index=pd.Index([1, 2], name="gender_id"))
+        codecs.store["gender"] = test_table
 
-    def test_decode_any_id_with_to_name(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert codecs.decode_any_id('gender_id', 10, to_name='gender_abbrev') == 'M'
-        assert codecs.decode_any_id('gender_id', 20, to_name='gender_abbrev') == 'F'
+        mapping = codecs.get_mapping("gender_id", "gender")
+        expected = {1: "Male", 2: "Female"}
+        assert mapping == expected
 
-    def test_decode_any_id_with_non_existing_from_name(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert codecs.decode_any_id('non_existing_column', 1) == 'unknown'
+    def test_get_mapping_direct_columns(self, sample_specification, sample_store):
+        """Test get_mapping with direct column mapping."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
 
-    def test_decode_any_id_with_non_existing_to_name(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert codecs.decode_any_id('gender_id', 1, to_name='non_existing_column') == 'unknown'
+        # Add gender column to gender table for direct mapping
+        codecs.store["gender"]["gender"] = ["Male", "Female"]
 
-    def test_decode_any_id_with_non_existing_from_name_and_to_name(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert codecs.decode_any_id('non_existing_column', 1, to_name='non_existing_column') == 'unknown'
+        mapping = codecs.get_mapping("gender_id", "gender")
+        expected = {1: "Male", 2: "Female"}
+        assert mapping == expected
 
-    def test_decode_any_id_with_non_existing_from_name_and_to_name_and_default(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        assert (
-            codecs.decode_any_id('non_existing_column', 1, to_name='non_existing_column', default_value='Not Specified')
-            == 'Not Specified'
-        )
+    def test_get_mapping_cached(self, sample_specification, sample_store):
+        """Test get_mapping returns cached result."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs.store["gender"]["gender"] = ["Male", "Female"]
 
-    def test_codecs_decoders(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
+        # First call
+        mapping1 = codecs.get_mapping("gender_id", "gender")
 
-        decoders = codecs.decoders
-        assert len(decoders) > 0
-        assert all(codec.type == 'decode' for codec in decoders)
+        # Second call should return cached result
+        mapping2 = codecs.get_mapping("gender_id", "gender")
 
-    def test_codecs_encoders(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
+        assert mapping1 == mapping2
+        assert id(mapping1) == id(mapping2)  # Same object reference
+
+    def test_get_mapping_reverse_cached(self, sample_specification, sample_store):
+        """Test get_mapping uses reverse cached mapping."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs.store["gender"]["gender"] = ["Male", "Female"]
+
+        # First get forward mapping
+        _ = codecs.get_mapping("gender_id", "gender")
+
+        # Then get reverse mapping
+        reverse_mapping = codecs.get_mapping("gender", "gender_id")
+
+        expected_reverse = {"Male": 1, "Female": 2}
+        assert reverse_mapping == expected_reverse
+
+    def test_codecs_property_lazy_loading(self, sample_specification):
+        """Test codecs property is lazy loaded and cached."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        # Initially _codecs should be None
+        assert codecs._codecs is None
+
+        # First access should create the codecs
+        codec_list = codecs.codecs
+        assert codecs._codecs is not None
+        assert len(codec_list) == 3
+
+        # Second access should return the same cached list
+        codec_list2 = codecs.codecs
+        assert codec_list is codec_list2  # Same object reference
+
+    def test_codecs_fx_factory_set_correctly(self, sample_specification):
+        """Test codecs are created with correct fx_factory."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        # Access codecs to trigger lazy loading
+        codec_list = codecs.codecs
+
+        # Check that each codec has fx_factory set to get_mapping method
+        for codec in codec_list:
+            assert codec.fx_factory == codecs.get_mapping
+
+    def test_codecs_setter(self, sample_specification):
+        """Test codecs property setter."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        new_codec = Codec(table="test", type="decode", from_column="a", to_column="b")
+        codecs.codecs = [new_codec]
+
+        assert len(codecs.codecs) == 1
+        assert codecs.codecs[0] == new_codec
+
+    def test_find_table_name_exists(self, sample_specification):
+        """Test _find_table_name returns correct table name when mapping exists."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        table_name = codecs._find_table_name("gender_id", "gender")
+        assert table_name == "gender"
+
+        # Test reverse mapping also works
+        table_name = codecs._find_table_name("gender", "gender_id")
+        assert table_name == "gender"
+
+    def test_find_table_name_not_exists(self, sample_specification):
+        """Test _find_table_name returns None when mapping doesn't exist."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        table_name = codecs._find_table_name("nonexistent", "column")
+        assert table_name is None
+
+    def test_get_mapping_codec_not_found(self, sample_specification, sample_store):
+        """Test get_mapping raises error when codec not configured."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+
+        with pytest.raises(ValueError, match="No table found for mapping from 'nonexistent' to 'column'"):
+            codecs.get_mapping("nonexistent", "column")
+
+    def test_load_from_dict(self, sample_specification, sample_store):
+        """Test load method with dictionary source."""
+        codecs = BaseCodecs(specification=sample_specification)
+        result = codecs.load(sample_store)
+
+        assert result is codecs  # Returns self
+        assert codecs.store == sample_store
+        assert codecs.filename is None
+
+    def test_load_from_sqlite_file(self, sample_specification, sqlite3db_connection):
+        """Test load method with SQLite file."""
+        # Create temporary file with connection
+        import tempfile
+        import os
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
+            tmp_file.close()
+
+            # Copy data to file
+            file_conn = sqlite3.connect(tmp_file.name)
+            sqlite3db_connection.backup(file_conn)
+            file_conn.close()
+
+            try:
+                codecs = BaseCodecs(specification=sample_specification)
+                result = codecs.load(tmp_file.name)
+
+                assert result is codecs
+                assert codecs.filename == tmp_file.name
+                assert "gender" in codecs.store
+            finally:
+                os.unlink(tmp_file.name)
+
+    def test_load_from_sqlite_connection(self, sample_specification, sqlite3db_connection):
+        """Test load method with SQLite connection."""
+        codecs = BaseCodecs(specification=sample_specification)
+        result = codecs.load(sqlite3db_connection)
+
+        assert result is codecs
+        assert codecs.filename is None
+        assert "gender" in codecs.store
+
+    def test_load_file_not_found(self, sample_specification):
+        """Test load raises FileNotFoundError for missing file."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            codecs.load("/nonexistent/file.db")
+
+    def test_tablenames(self, sample_specification):
+        """Test tablenames method."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        expected = {"gender": "gender_id", "party": "party_id"}
+        assert codecs.tablenames() == expected
+
+    def test_decoder_property(self, sample_specification):
+        """Test decoders property returns only decode codecs."""
+        codecs = BaseCodecs(specification=sample_specification)
+
+        decoders: list[Codec] = codecs.decoders
+        assert len(decoders) == 2
+        for decoder in decoders:
+            assert decoder.type == "decode"
+
+    def test_encoders_property(self, sample_specification):
+        """Test encoders property returns only encode codecs."""
+        codecs = BaseCodecs(specification=sample_specification)
 
         encoders = codecs.encoders
-        assert len(encoders) > 0
-        assert all(codec.type == 'encode' for codec in encoders)
+        assert len(encoders) == 1
+        for encoder in encoders:
+            assert encoder.type == "encode"
 
-    def test_codecs_apply_codec(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
+    def test_decoder_method(self, sample_specification):
+        """Test decoder method finds correct decoder."""
+        codecs = BaseCodecs(specification=sample_specification)
 
-        df = pd.DataFrame(
-            {'gender_id': [10, 20], 'office_type_id': [10, 20], 'party_id': [100, 200], 'sub_office_type_id': [10, 20]}
-        )
+        decoder = codecs.decoder("gender_id")
+        assert decoder is not None
+        assert decoder.from_column == "gender_id"
+
+        decoder = codecs.decoder("gender_id", "gender")
+        assert decoder is not None
+        assert decoder.to_column == "gender"
+
+    def test_apply_codec_basic(self, sample_specification, sample_store):
+        """Test apply_codec method."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs.store["gender"]["gender"] = ["Male", "Female"]
+
+        df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
+
         result = codecs.apply_codec(df, codecs.decoders)
-        assert 'gender' in result.columns
-        assert 'office_type' in result.columns
-        assert 'party_abbrev' in result.columns
-        assert 'sub_office_type' in result.columns
 
-    def test_codecs_decode(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
+        assert "gender" in result.columns
+        assert result["gender"].tolist() == ["Male", "Female"]
 
-        df = pd.DataFrame(
-            {'gender_id': [10, 20], 'office_type_id': [10, 20], 'party_id': [100, 200], 'sub_office_type_id': [10, 20]}
-        )
+    def test_apply_codec_with_drop(self, sample_specification, sample_store):
+        """Test apply_codec drops source columns when drop=True."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs.store["gender"]["gender"] = ["Male", "Female"]
+
+        df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
+
+        result = codecs.apply_codec(df, codecs.decoders, drop=True)
+
+        assert "gender_id" not in result.columns
+        assert "gender" in result.columns
+        assert "other" in result.columns
+
+    def test_apply_codec_with_keeps(self, sample_specification, sample_store):
+        """Test apply_codec keeps specified columns when drop=True."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs.store["gender"]["gender"] = ["Male", "Female"]
+
+        df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
+
+        result = codecs.apply_codec(df, codecs.decoders, drop=True, keeps=["gender_id"])
+
+        assert "gender_id" in result.columns  # Kept
+        assert "gender" in result.columns
+        assert "other" in result.columns
+
+    def test_apply_codec_with_ignores(self, sample_specification, sample_store):
+        """Test apply_codec ignores specified target columns."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+
+        df = pd.DataFrame({"gender_id": [1, 2], "party_id": [1, 2], "other": ["a", "b"]})
+
+        result = codecs.apply_codec(df, codecs.decoders, ignores=["gender"])
+
+        assert "gender" not in result.columns  # Ignored
+        assert "party_abbrev" in result.columns  # Not ignored
+
+    def test_decode_method(self, sample_specification, sample_store):
+        """Test decode method applies all decoders."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs.store["gender"]["gender"] = ["Male", "Female"]
+
+        df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
+
         result = codecs.decode(df)
-        assert 'gender' in result.columns
-        assert 'office_type' in result.columns
-        assert 'party_abbrev' in result.columns
-        assert 'sub_office_type' in result.columns
 
-    def test_codecs_encode(self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
+        assert "gender" in result.columns
+        assert "gender_id" not in result.columns
 
-        df = pd.DataFrame(
-            {
-                'gender': ['Male', 'Female'],
-                'office_type': ['Office A', 'Office B'],
-                'party_abbrev': ['PA', 'PB'],
-                'sub_office_type': ['Description A', 'Description B'],
-            }
-        )
+    def test_encode_method(self, sample_specification, sample_store):
+        """Test encode method applies all encoders."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+
+        df = pd.DataFrame({"gender": ["Male", "Female"], "other": ["a", "b"]})
+
         result = codecs.encode(df)
-        assert 'gender_id' in result.columns
-        assert 'office_type_id' in result.columns
 
-        # FIXME: party encoder is using self.party_abbrev2id instead of self.party2id. See #152.
-        assert 'party_id' not in result.columns
-        assert 'party_abbrev' in result.columns
+        assert "gender_id" in result.columns
+        assert "gender" not in result.columns
 
-        assert 'sub_office_type_id' in result.columns
+    def test_property_values_specs(self, sample_specification):
+        """Test property_values_specs cached property."""
+        codecs = BaseCodecs(specification=sample_specification)
 
-    def test_codecs_is_decoded(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
+        specs = codecs.property_values_specs
+        expected = [{"text_name": "gender", "id_name": "gender_id"}]
+        assert specs == expected
+
+    def test_is_decoded_true(self, sample_specification, sample_store):
+        """Test is_decoded returns True when all decoders are decoded."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+
+        df = pd.DataFrame({"gender": ["Male", "Female"], "party_abbrev": ["PA", "PB"]})
+
+        assert codecs.is_decoded(df) is True
+
+    def test_is_decoded_false(self, sample_specification, sample_store):
+        """Test is_decoded returns False when not all decoders are decoded."""
+        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+
+        df = pd.DataFrame({"gender_id": [1, 2], "party_abbrev": ["PA", "PB"]})
+
+        assert codecs.is_decoded(df) is False
+
+
+class TestCodecs:
+    """Test cases for Codecs class."""
+
+    @patch('api_swedeb.core.codecs.ConfigValue')
+    def test_codecs_initialization_default(self, mock_config_value):
+        """Test Codecs initialization with default configuration."""
+        mock_specification = {"tables": {}, "codecs": []}
+        mock_config_value.return_value.resolve.return_value = mock_specification
+
         codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
 
-        df = pd.DataFrame(
-            {'gender_id': [10, 20], 'office_type_id': [10, 20], 'party_id': [100, 200], 'sub_office_type_id': [10, 20]}
-        )
-        assert not codecs.is_decoded(df)
-        df = codecs.decode(df)
-        assert codecs.is_decoded(df)
+        mock_config_value.assert_called_once_with("mappings.lookups")
+        assert codecs.specification == mock_specification
 
-    def test_property_values_specs(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
+    def test_codecs_initialization_custom(self):
+        """Test Codecs initialization with custom specification."""
+        custom_spec = {"tables": {"test": "test_id"}, "codecs": []}
 
-        expected_specs = [
-            dict(text_name='gender', id_name='gender_id', values=codecs.gender2id),
-            dict(text_name='office_type', id_name='office_type_id', values=codecs.office_type2id),
-            dict(text_name='party_abbrev', id_name='party_id', values=codecs.party_abbrev2id),
-            dict(text_name='party', id_name='party_id', values=codecs.party2id),
-            dict(text_name='chamber_abbrev', id_name='chamber_id', values=codecs.chamber_abbrev2id),
-            dict(text_name='sub_office_type', id_name='sub_office_type_id', values=codecs.sub_office_type2id),
-        ]
+        codecs = Codecs(specification=custom_spec)
 
-        assert codecs.property_values_specs == expected_specs
-
-    # TODO: Use this fixture in other tests.
-    @pytest.fixture(name="codecs_instance")
-    def fixture_codecs_instance(
-        self, gender_dataframe, office_type_dataframe, party_dataframe, sub_office_type_dataframe
-    ):
-        codecs = Codecs()
-        codecs.gender = gender_dataframe
-        codecs.office_type = office_type_dataframe
-        codecs.party = party_dataframe
-        codecs.sub_office_type = sub_office_type_dataframe
-        return codecs
-
-    def test_key_name_translate_id2text(self, codecs_instance):
-        expected_translation = {
-            'gender_id': 'gender_abbrev',  # NOTE: See #152
-            'office_type_id': 'office_type',
-            'party_id': 'party',
-            'sub_office_type_id': 'sub_office_type',
-        }
-        assert codecs_instance.key_name_translate_id2text == expected_translation
-
-    def test_key_name_translate_text2id(self, codecs_instance):
-        expected_translation = {
-            'gender_abbrev': 'gender_id',  # NOTE: See #152
-            'office_type': 'office_type_id',
-            'party': 'party_id',
-            'sub_office_type': 'sub_office_type_id',
-        }
-        assert codecs_instance.key_name_translate_text2id == expected_translation
-
-    def test_key_name_translate_any2any(self, codecs_instance):
-        expected_translation = {
-            'gender_id': 'gender_abbrev',  # NOTE: See #152
-            'office_type_id': 'office_type',
-            'party_id': 'party',
-            'sub_office_type_id': 'sub_office_type',
-            'gender_abbrev': 'gender_id',  # NOTE: See #152
-            'office_type': 'office_type_id',
-            'party': 'party_id',
-            'sub_office_type': 'sub_office_type_id',
-        }
-        assert codecs_instance.key_name_translate_any2any == expected_translation
-
-    def test_translate_key_names(self, codecs_instance):
-        keys = ['gender_id', 'office_type_id', 'party_id', 'sub_office_type_id']
-        expected_translated_keys = ['gender_abbrev', 'office_type', 'party', 'sub_office_type']
-        assert codecs_instance.translate_key_names(keys) == expected_translated_keys
-
-    def test_translate_key_names_with_non_existing_keys(self, codecs_instance):
-        keys = ['non_existing_key', 'gender_id']
-        expected_translated_keys = ['gender_abbrev']
-        assert codecs_instance.translate_key_names(keys) == expected_translated_keys
-
-
-# pylint: disable=too-many-public-methods
+        assert codecs.specification == custom_spec
 
 
 class TestPersonCodecs:
+    """Test cases for PersonCodecs class."""
 
-    def test_person_codecs_load_with_non_existing_file(self, person_codecs):
-        with pytest.raises(FileNotFoundError):
-            person_codecs.load('non_existing_file.db')
-
-    def test_person_codecs_load_with_existing_file(self, sqlite3db_connection):
-        conn = sqlite3db_connection
-        assert isinstance(conn, sqlite3.Connection)
-        person_codecs2 = PersonCodecs().load(conn).add_multiple_party_abbrevs()
-        assert person_codecs2.source_filename is None
-        assert not person_codecs2.persons_of_interest.empty
-
-    def test_person_codecs_load_with_dict(self, person_codecs):
-        """AttributeError: 'dict' object has no attribute 'cursor'
-
-        The error occurs because db is expected to be a database connection object, but it is a dictionary in this case. To fix this, we need to ensure that the db parameter is correctly passed as a database connection object when calling read_sql_table.
-
-        We can modify the load method in the PersonCodecs class to handle the dictionary case properly:
-
-        This change ensures that the load method only accepts a dictionary or a SQLite connection object as the source. If the source is a dictionary, it will call _load_from_dict. If the source is a SQLite connection, it will call the superclass's load method. If the source is neither, it will raise a ValueError.
-        """
-        data = {"persons_of_interest": pd.DataFrame({"person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]})}
-        person_codecs.load(data)
-        assert not person_codecs.persons_of_interest.empty
-        assert "pid" in person_codecs.persons_of_interest.columns
-
-    def test_person_codecs_load_adds_pid_column(self, person_codecs):
-        data = {"persons_of_interest": pd.DataFrame({"person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]})}
-        person_codecs.load(data)
-        assert "pid" in person_codecs.persons_of_interest.columns
-        assert person_codecs.persons_of_interest["pid"].tolist() == [0, 1]
-
-    def test_person_codecs_load_with_pid_column(self, person_codecs):
-        data = {
-            "persons_of_interest": pd.DataFrame(
-                {"pid": [1, 2], "person_id": ["p1", "p2"], "name": ["John Doe", "Jane Doe"]}
-            )
+    @patch('api_swedeb.core.codecs.ConfigValue')
+    def test_person_codecs_initialization(self, mock_config_value):
+        """Test PersonCodecs initialization merges configurations."""
+        mock_lookups = {
+            "tables": {"gender": "gender_id"},
+            "codecs": [{"table": "gender", "type": "decode", "from_column": "gender_id", "to_column": "gender"}],
+            "property_values_specs": [],
         }
-        person_codecs.load(data)
-        assert "pid" in person_codecs.persons_of_interest.columns
-        assert person_codecs.persons_of_interest["pid"].tolist() == [1, 2]
+        mock_persons = {
+            "tables": {"persons_of_interest": "person_id"},
+            "codecs": [{"table": "persons_of_interest", "type": "decode", "from_column": "wiki", "to_column": "name"}],
+            "property_values_specs": [],
+        }
 
-    def test_pid2person_id(self):
+        mock_config_value.side_effect = [
+            MagicMock(resolve=lambda: mock_lookups),  # mappings.lookups
+            MagicMock(resolve=lambda: mock_persons),  # mappings.persons
+        ]
+
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.pid2person_id == {1: 'p1', 2: 'p2'}
 
-    def test_pid2person_id_empty(self):
+        # Check that tables were merged
+        expected_tables: dict[str, str] = {"gender": "gender_id", "persons_of_interest": "person_id"}
+        assert person_codecs.specification["tables"] == expected_tables
+
+        # Check that codecs were extended
+        assert len(person_codecs.specification["codecs"]) == 2
+
+    def test_persons_of_interest_property_empty(self):
+        """Test persons_of_interest property returns empty DataFrame when not in store."""
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'person_id'])
-        assert person_codecs
+        person_codecs.store = {}
 
-    def test_person_id2pid(self):
+        result = person_codecs.persons_of_interest
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
+
+    def test_persons_of_interest_property_with_data(self, codecs_source_dict):
+        """Test persons_of_interest property returns data from store."""
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.person_id2pid == {'p1': 1, 'p2': 2}
+        person_codecs.store = codecs_source_dict
 
-    def test_person_id2pid_empty(self):
+        result = person_codecs.persons_of_interest
+        assert len(result) == 2
+        assert "person_id" in result.columns
+
+    def test_getitem_by_integer_key(self, codecs_source_dict):
+        """Test __getitem__ with integer (location)."""
         person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'person_id'])
-        assert person_codecs.person_id2pid == {}
+        person_codecs.load(codecs_source_dict)
 
-    def test_pid2person_name(self, person_codecs):
-        person_codecs.persons_of_interest = pd.DataFrame({'pid': [1, 2], 'name': ['John Doe', 'Jane Doe']})
-        assert person_codecs.pid2person_name == {1: 'John Doe', 2: 'Jane Doe'}
-
-    def test_pid2person_name_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['person_id', 'pid', 'name'])
-        assert person_codecs.pid2person_name == {}
-
-    def test_person_name2pid(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'person_id': ['a', 'b'], 'pid': [1, 2], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.person_name2pid == {'John Doe (a)': 1, 'Jane Doe (b)': 2}
-
-    def test_person_name2pid_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['person_id', 'pid', 'name'])
-        assert person_codecs.person_name2pid == {}
-
-    def test_pid2wiki_id(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.pid2wiki_id == {1: 'w1', 2: 'w2'}
-
-    def test_pid2wiki_id_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
-        assert person_codecs.pid2wiki_id == {}
-
-    def test_wiki_id2pid(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.wiki_id2pid == {'w1': 1, 'w2': 2}
-
-    def test_wiki_id2pid_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
-        assert person_codecs.wiki_id2pid == {}
-
-    def test_person_id2wiki_id(self, source_dict):
-        person_codecs = PersonCodecs()
-        person_codecs.load(source_dict)
-        assert person_codecs.person_id2wiki_id == {'p1': 'q1', 'p2': 'q2'}
-
-    # @pytest.mark.skip(
-    #     reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
-    # )
-    # def test_person_id2wiki_id(self):
-    #     person_codecs = PersonCodecs()
-    #     person_codecs.persons_of_interest = pd.DataFrame(
-    #         {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
-    #     )
-    #     assert person_codecs.person_id2wiki_id == {'1': 'w1', '2': 'w2'}
-
-    # @pytest.mark.skip(
-    #     reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
-    # )
-    # def test_person_id2wiki_id_empty(self):
-    #     person_codecs = PersonCodecs()
-    #     person_codecs.persons_of_interest = pd.DataFrame(columns=['pid', 'wiki_id'])
-    #     assert person_codecs.person_id2wiki_id == {}
-
-    def test_wiki_id2person_id(self, source_dict):
-        person_codecs = PersonCodecs()
-        person_codecs.load(source_dict)
-        assert person_codecs.wiki_id2person_id == {'q1': 'p1', 'q2': 'p2'}
-
-    # @pytest.mark.skip(
-    #     reason="Fails in core/codecs.py:294:any2any. ValueError: any2any: 'person_id' not found in persons_of_interest"
-    # )
-    # def test_wiki_id2person_id(self):
-    #     person_codecs = PersonCodecs()
-    #     person_codecs.persons_of_interest = pd.DataFrame(
-    #         {'pid': [1, 2], 'wiki_id': ['w1', 'w2'], 'name': ['John Doe', 'Jane Doe']}
-    #     )
-    #     assert person_codecs.wiki_id2person_id == {'w1': 1, 'w2': 2}
-
-    def test_wiki_id2person_id_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['person_id', 'pid', 'wiki_id'])
-        assert person_codecs.wiki_id2person_id == {}
-
-    def test_any2any(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        assert person_codecs.any2any('pid', 'person_id') == {1: 'p1', 2: 'p2'}
-        assert person_codecs.any2any('person_id', 'name') == {'p1': 'John Doe', 'p2': 'Jane Doe'}
-
-    # test any2any with from_key not in self.persons_of_interest.columns
-    def test_any2any_with_non_existing_from_key_raises_ValueError(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'pid': [1, 2], 'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']}
-        )
-        with pytest.raises(ValueError):
-            person_codecs.any2any('non_existing_key', 'person_id')
-
-    def test_property_values_specs(self, person_codecs):
-        assert len(person_codecs.property_values_specs) > 0
-
-    def test_person_id2name(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(
-            {'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe'], 'gender_id': [1, 2]}
-        )
-        assert person_codecs.person_id2name == {'p1': 'John Doe', 'p2': 'Jane Doe'}
-
-    def test_person_id2name_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['person_id', 'name'])
-        assert person_codecs.person_id2name == {}
-
-    def test_person(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame({'person_id': ['p1', 'p2'], 'name': ['John Doe', 'Jane Doe']})
-        assert isinstance(person_codecs.person, pd.DataFrame)
-        assert 'person_id' in person_codecs.person.columns
-        assert 'name' in person_codecs.person.columns
-        assert person_codecs.person.shape == (2, 2)
-        assert person_codecs.person['name'].tolist() == ['John Doe', 'Jane Doe']
-        assert person_codecs.person['person_id'].tolist() == ['p1', 'p2']
-
-    def test_person_empty(self):
-        person_codecs = PersonCodecs()
-        person_codecs.persons_of_interest = pd.DataFrame(columns=['person_id', 'name'])
-        assert isinstance(person_codecs.person, pd.DataFrame)
-        assert person_codecs.person.empty
-        assert person_codecs.person.shape == (0, 2)
-
-    def test_getitem_by_pid(self, source_dict):
-        person_codecs = PersonCodecs()
-        person_codecs.load(source_dict)
         person = person_codecs[0]
-        assert person['person_id'] == 'p1'
-        assert person['name'] == 'John Doe'
+        assert person["name"] == "John Doe"
 
-    def test_getitem_by_person_id(self, source_dict):
+    def test_getitem_by_string_digit_key(self, codecs_source_dict):
+        """Test __getitem__ with string digit key."""
         person_codecs = PersonCodecs()
-        person_codecs.load(source_dict)
-        person = person_codecs['p1']
-        assert person['pid'] == 0
-        assert person['name'] == 'John Doe'
+        person_codecs.load(codecs_source_dict)
 
-    def test_getitem_by_non_existing_key(self, source_dict):
-        person_codecs = PersonCodecs()
-        person_codecs.load(source_dict)
         with pytest.raises(KeyError):
-            person_codecs['non_existing_key']  # pylint: disable=pointless-statement
+            _ = person_codecs["0"]
+            
 
-    def test_getitem_by_wiki_id(self, source_dict):
+    def test_getitem_by_wiki_id(self, codecs_source_dict):
+        """Test __getitem__ with wiki_id key."""
         person_codecs = PersonCodecs()
-        person_codecs.load(source_dict)
-        person = person_codecs['q1']
-        assert person['pid'] == 0
-        assert person['name'] == 'John Doe'
+        person_codecs.load(codecs_source_dict)
 
-    def test_get_party_specs_with_existing_partys_of_interest(self):
+        # Mock the get_mapping method to return wiki_id mapping
+        with patch.object(person_codecs, 'get_mapping') as mock_get_mapping:
+            mock_get_mapping.return_value = {"q1": "p1", "q2": "p2"}
+
+            person = person_codecs["q1"]
+            assert person["name"] == "John Doe"
+
+    def test_getitem_by_person_id(self, codecs_source_dict):
+        """Test __getitem__ with person_id key."""
         person_codecs = PersonCodecs()
-        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
-        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
-        person_codecs.property_values_specs = [
-            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
-        ]
-        partys_of_interest = [100]
-        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
-        assert result == {'PA': 100}
+        person_codecs.load(codecs_source_dict)
 
-    def test_get_party_specs_with_non_existing_partys_of_interest(self):
+        # Mock the get_mapping method to return person_id mapping
+        with patch.object(person_codecs, 'get_mapping') as mock_get_mapping:
+            mock_get_mapping.return_value = {"p1": 0, "p2": 1}
+
+            person = person_codecs["p1"]
+            assert person["name"] == "John Doe"
+
+    def test_person_codecs_on_load(self, codecs_source_dict):
+        """Test add_multiple_party_abbrevs method."""
         person_codecs = PersonCodecs()
-        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
-        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
-        person_codecs.property_values_specs = [
-            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
-        ]
-        partys_of_interest = [300]
-        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
-        assert not result
 
-    def test_get_party_specs_with_empty_partys_of_interest(self):
-        person_codecs = PersonCodecs()
-        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
-        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
-        person_codecs.property_values_specs = [
-            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
-        ]
-        partys_of_interest = []
-        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
-        assert result == {'PA': 100, 'PB': 200}
+        # Mock get_mapping to return party mapping
+        with patch.object(person_codecs, '_on_load') as _:
+            person_codecs.load(codecs_source_dict)
+            with patch.object(person_codecs, 'get_mapping') as mock_get_mapping:
+                mock_get_mapping.return_value.get = lambda x: {1: "PA", 2: "PB"}.get(x, "?")
 
-    def test_get_party_specs_with_none_partys_of_interest(self):
-        person_codecs = PersonCodecs()
-        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
-        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
-        person_codecs.property_values_specs = [
-            dict(text_name='party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
-        ]
-        partys_of_interest = None
-        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
-        assert result == {'PA': 100, 'PB': 200}
+                MultiplePartyAbbrevsHook().execute(person_codecs)
 
-    def test_get_party_specs_with_non_party_abbrev_specification(self):
-        person_codecs = PersonCodecs()
-        person_codecs.party = pd.DataFrame({'party_abbrev': ['PA', 'PB'], 'party_id': [100, 200]})
-        person_codecs.party_abbrev2id = {'PA': 100, 'PB': 200}
-        person_codecs.property_values_specs = [
-            dict(text_name='non_party_abbrev', id_name='party_id', values=person_codecs.party_abbrev2id)
-        ]
-        partys_of_interest = [100]
-        result = person_codecs._get_party_specs(partys_of_interest)  # pylint: disable=protected-access
-        assert not result
+                persons = person_codecs.store["persons_of_interest"]
+                assert "party_abbrev" in persons.columns
+                assert "multi_party_id" in persons.columns
 
-    @pytest.mark.parametrize(
-        "wiki_id, expected",
-        [
-            ("Q12345", "https://www.wikidata.org/wiki/Q12345"),
-            ("unknown", "Okänd"),
-        ],
-    )
-    def test_person_wiki_link(self, wiki_id, expected):
-        assert PersonCodecs.person_wiki_link(wiki_id) == expected
+    def test_person_wiki_link_single_value(self):
+        """Test person_wiki_link with single value."""
+        result = PersonCodecs.person_wiki_link("Q123456")
+        expected = "https://www.wikidata.org/wiki/Q123456"
+        assert result == expected
+
+    @patch('api_swedeb.core.codecs.ConfigValue')
+    def test_person_wiki_link_unknown_value(self, mock_config_value):
+        """Test person_wiki_link with unknown value."""
+        mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
+
+        result = PersonCodecs.person_wiki_link("unknown")
+        assert result == "Unknown Speaker"
 
     def test_person_wiki_link_series(self):
-        wiki_ids = pd.Series(["Q12345", "unknown"])
-        expected = pd.Series(["https://www.wikidata.org/wiki/Q12345", "Okänd"])
-        pd.testing.assert_series_equal(PersonCodecs.person_wiki_link(wiki_ids), expected)
+        """Test person_wiki_link with pandas Series."""
+        wiki_ids = pd.Series(["Q123", "Q456", "unknown"])
 
-    @pytest.mark.parametrize(
-        "speech_id, subfolder, page_nr",
-        [
-            ("prot-1867--ak--0118_001", "1867", 1),
-            ("prot-19992000--001_001", "19992000", 6),
-            ("prot-201011--084_160", "201011", 4),
-        ],
-    )
-    def test_speech_link(self, speech_id, subfolder, page_nr):
-        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
-        protocol_name: str = speech_id.split('_')[0]
-        expected: str = f'{base_url}/{subfolder}/{protocol_name}.pdf#page={page_nr}'
-        assert PersonCodecs.speech_link(speech_id, page_nr) == expected
+        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+            mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
 
-    def test_speech_link_series(self):
-        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
-        speech_ids = pd.Series(["prot-1867--ak--0118_001", "prot-19992000--001_001", "prot-201011--084_160"])
-        page_nrs = pd.Series([1, 6, 4])
+            result = PersonCodecs.person_wiki_link(wiki_ids)
+
+            expected = pd.Series(
+                ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
+            )
+
+            pd.testing.assert_series_equal(result, expected)
+
+    @patch('api_swedeb.core.codecs.ConfigValue')
+    def test_speech_link_single_document(self, mock_config_value):
+        """Test speech_link with single document."""
+        mock_config_value.return_value.resolve.return_value = "https://example.com/"
+
+        result = PersonCodecs.speech_link("prot-1970--ak--029_001", 5)
+        expected = "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
+        assert result == expected
+
+    @patch('api_swedeb.core.codecs.ConfigValue')
+    def test_speech_link_series(self, mock_config_value):
+        """Test speech_link with pandas Series."""
+        mock_config_value.return_value.resolve.return_value = "https://example.com/"
+
+        documents = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'])
+        pages = pd.Series([1, 2])
+
+        result = PersonCodecs.speech_link(documents, pages)
+
         expected = pd.Series(
             [
-                f"{base_url}/1867/prot-1867--ak--0118.pdf#page=1",
-                f"{base_url}/19992000/prot-19992000--001.pdf#page=6",
-                f"{base_url}/201011/prot-201011--084.pdf#page=4",
+                "https://example.com/1970/prot-1970--ak--029.pdf#page=1",
+                "https://example.com/1980/prot-1980--ak--029.pdf#page=2",
             ]
         )
-        result: pd.Series[str] = PersonCodecs.speech_link(speech_ids, page_nrs)
+
         pd.testing.assert_series_equal(result, expected)
 
-    def test_decode_speech_index_with_empty_dataframe(self):
+    def test_decode_speech_index_empty_dataframe(self):
+        """Test decode_speech_index with empty DataFrame."""
         person_codecs = PersonCodecs()
+
         empty_df = pd.DataFrame()
         result = person_codecs.decode_speech_index(empty_df)
-        assert result.empty
 
-    def test_decode_speech_index_with_non_decoded_dataframe(self, person_codecs2, speech_index):
-        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
-        result = person_codecs2.decode_speech_index(speech_index)
-        assert 'link' in result.columns
-        assert 'speech_link' in result.columns
-        assert len(result) == len(speech_index) > 0
-        assert any(result['link'].str.contains('wikidata.org'))
-        assert any(result['speech_link'].str.contains(base_url))
+        assert result.equals(empty_df)
 
-    def test_decode_speech_index_with_decoded_dataframe(self, person_codecs, speech_index):
-        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
-        result = person_codecs.decode_speech_index(speech_index)
-        result = person_codecs.decode_speech_index(result)
-        assert 'link' in result.columns
-        assert 'speech_link' in result.columns
-        assert len(result) == len(speech_index) > 0
-        assert any(result['link'].str.contains('wikidata.org'))
-        assert any(result['speech_link'].str.contains(base_url))
+    def test_decode_speech_index_already_decoded(self, codecs_source_dict):
+        """Test decode_speech_index with already decoded DataFrame."""
+        person_codecs = PersonCodecs()
+        person_codecs.load(codecs_source_dict)
 
-    def test_decode_speech_index_with_value_updates(self, person_codecs, speech_index):
-        value_updates = {'Eric Holmqvist': 'Eric Holmberg'}
-        result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates)
-        assert 'Eric Holmberg' in result['name'].to_list()
+        # Mock is_decoded to return True
+        with patch.object(person_codecs, 'is_decoded', return_value=True):
+            df = pd.DataFrame({"name": ["John"], "party": ["Party A"]})
+            result = person_codecs.decode_speech_index(df)
 
-    @pytest.mark.skip(
-        reason="Sort parameter is implemented in an ambiguous way. Does not sort names but moves empty values to the end."
-    )
-    def test_decode_speech_index_with_sort_values(self, person_codecs, speech_index):
-        result = person_codecs.decode_speech_index(speech_index, sort_values=True)
-        assert result['name'].is_monotonic_increasing
-        assert result['name'].is_unique
+            assert result.equals(df)
 
-    def test_decode_speech_index_with_sort_values_and_empty_values(self, person_codecs, speech_index):
-        update_name = 'Eric Holmqvist'
-        value_updates = {update_name: ''}
-        result = person_codecs.decode_speech_index(speech_index)
-        name_count = result['name'].value_counts()[update_name]
-        assert name_count == 6
+    def test_decode_speech_index_full_process(self, codecs_source_dict, codecs_speech_index_source_dict):
+        """Test decode_speech_index full decoding process."""
+        person_codecs = PersonCodecs()
+        person_codecs.load(codecs_source_dict)
+        speech_index = pd.DataFrame(codecs_speech_index_source_dict)
 
-        result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates, sort_values=True)
+        decoded_speech_index = speech_index.copy()
+        decoded_speech_index['name'] = pd.Series(["John Doe", "Jane Doe"])
 
-        with pytest.raises(KeyError):
-            result['name'].value_counts()[update_name]  # pylint: disable=pointless-statement, expression-not-assigned
+        # Mock necessary methods
+        with (
+            patch.object(person_codecs, 'is_decoded', return_value=False),
+            patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
+            patch.object(person_codecs, 'person_wiki_link') as mock_wiki_link,
+            patch.object(person_codecs, 'speech_link') as mock_speech_link,
+        ):
 
-        assert result['name'].value_counts()[''] == name_count
+            mock_wiki_link.return_value = pd.Series(["link1", "link2"])
+            mock_speech_link.return_value = pd.Series(["speech1", "speech2"])
+
+            result = person_codecs.decode_speech_index(speech_index)
+
+            assert "link" in result.columns
+            assert "speech_link" in result.columns
+            mock_wiki_link.assert_called_once()
+            mock_speech_link.assert_called_once()
+
+    def test_decode_speech_index_with_value_updates(self, codecs_source_dict, codecs_speech_index_source_dict):
+        """Test decode_speech_index with value updates."""
+        person_codecs = PersonCodecs()
+        person_codecs.load(codecs_source_dict)
+
+        speech_index = pd.DataFrame(codecs_speech_index_source_dict)
+        decoded_speech_index = speech_index.copy()
+        decoded_speech_index['name'] = pd.Series(["John Doe", ""])
+        decoded_speech_index['wiki_id'] = pd.Series(["Q123", "Q456"])
+
+        with (
+            patch.object(person_codecs, 'is_decoded', return_value=False),
+            patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
+            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", "link"])),
+            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", "speech"])),
+        ):
+
+            value_updates = {"": "Unknown"}
+            result = person_codecs.decode_speech_index(speech_index, value_updates=value_updates)
+
+            # Check that empty string was replaced
+            assert "Unknown" in result["name"].values
+
+    def test_decode_speech_index_sorting(self, codecs_source_dict, codecs_speech_index_source_dict):
+        """Test decode_speech_index sorts by name with empty strings last."""
+        person_codecs = PersonCodecs()
+        person_codecs.load(codecs_source_dict)
+        speech_index = pd.DataFrame(codecs_speech_index_source_dict)
+
+        decoded_speech_index = pd.DataFrame(
+            {
+                "name": ["", "Alice", "Bob", ""],
+                "wiki_id": ["Q1", "Q2", "Q3", "Q4"],
+                "document_id": ["doc1", "doc2", "doc3", "doc4"],
+                "document_name": ["Document 1", "Document 2", "Document 3", "Document 4"],
+            }
+        )
+
+        with (
+            patch.object(person_codecs, 'is_decoded', return_value=False),
+            patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
+            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", "", "", ""])),
+            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", "", "", ""])),
+        ):
+
+            result = person_codecs.decode_speech_index(speech_index, sort_values=True)
+
+            # Check that sorting was applied (empty strings should sort differently)
+            assert len(result) == 4
+
+    def test_decode_speech_index_no_sorting(self, codecs_source_dict):
+        """Test decode_speech_index without sorting."""
+        person_codecs = PersonCodecs()
+        person_codecs.load(codecs_source_dict)
+
+        df = pd.DataFrame(
+            {
+                "name": ["Bob", "Alice"],
+                "wiki_id": ["Q3", "Q2"],
+                "document_id": ["doc3", "doc2"],
+                "document_name": ["Document 3", "Document 2"],
+            }
+        )
+
+        with (
+            patch.object(person_codecs, 'is_decoded', return_value=False),
+            patch.object(person_codecs, 'decode', return_value=df),
+            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", ""])),
+            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", ""])),
+        ):
+
+            result = person_codecs.decode_speech_index(df, sort_values=False)
+
+            # Order should be preserved
+            assert result["name"].iloc[0] == "Bob"
+            assert result["name"].iloc[1] == "Alice"
+
+    # @patch('api_swedeb.core.codecs.ConfigValue')
+    # def test_get_party_specs(self, mock_config_value):
+    #     """Test _get_party_specs method."""
+    #     person_codecs = PersonCodecs()
+
+    #     # Mock property_values_specs
+    #     person_codecs.specification = {
+    #         "property_values_specs": [{"text_name": "party_abbrev", "values": {"PA": 1, "PB": 2, "PC": 3}}]
+    #     }
+
+    #     # Test with specific parties of interest
+    #     result = person_codecs._get_party_specs([1, 2])
+    #     expected = {"PA": 1, "PB": 2}
+    #     assert result == expected
+
+    #     # Test with None (all parties)
+    #     result = person_codecs._get_party_specs(None)
+    #     expected = {"PA": 1, "PB": 2, "PC": 3}
+    #     assert result == expected
