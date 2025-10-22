@@ -126,7 +126,7 @@ class Codecs:
         self._codecs: list[Codec] = None
         self._lock = threading.Lock()
 
-    def Clone(self) -> Self:
+    def clone(self) -> Self:
         """Create a (somewhat) deep copy of this Codecs instance.
         The specification and codecs list are shared, but the store and mappings are copied."""
         store: dict[str, pd.DataFrame] = {k: v.copy() for k, v in self.store.items()}
@@ -289,6 +289,11 @@ class Codecs:
         return all(decoder.is_decoded(df) for decoder in self.decoders)
 
     def _on_load(self) -> Self:
+        """
+        Executes all registered OnLoadHooks after loading code tables.
+        This method is called at the end of the `load` method to allow hooks to perform additional setup or data augmentation.
+        Hooks are expected to implement an `execute(codecs: PersonCodecs)` method and may modify the codecs instance or its data store.
+        """
         for hook in OnLoadHooks.items.values():
             hook().execute(self)
         return self

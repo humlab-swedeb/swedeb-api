@@ -62,7 +62,6 @@ def test_bug_with_get_word_trends():
 
 def test_bug_with_corpus__get_word_trend_results():
     """Test the api_swedeb.api.utils.corpus.Corpus.get_word_trend_results function for the bug."""
-    query: str = 'sverige'
     filter_opts: dict[str, Any] = {'party_id': [5, 6], 'year': (1867, 2022)}
     api_corpus: Corpus = get_shared_corpus()
     normalize = False

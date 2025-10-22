@@ -29,6 +29,19 @@ except ImportError:
 
 
 class Registry:
+    """
+    A generic registry for storing and retrieving items (functions or classes) by key.
+
+    Usage:
+        - Register an item using the @Registry.register decorator.
+        - Retrieve an item using Registry.get(key).
+        - Check if an item is registered using Registry.is_registered(key).
+
+    Methods:
+        get(key): Retrieve a registered item by key.
+        register(**args): Decorator to register a function or class with an optional key and type.
+        is_registered(key): Check if a key is registered.
+    """
     items: dict = {}
 
     @classmethod

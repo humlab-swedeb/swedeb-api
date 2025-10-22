@@ -62,7 +62,7 @@ def _person_codecs_cached(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
 
 @pytest.fixture
 def person_codecs(_person_codecs_cached: PersonCodecs) -> PersonCodecs:
-    return _person_codecs_cached.Clone()
+    return _person_codecs_cached.clone()
 
 
 @pytest.fixture(scope='session')
