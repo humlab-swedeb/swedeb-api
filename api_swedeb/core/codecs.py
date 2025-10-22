@@ -358,6 +358,9 @@ class MultiplePartyAbbrevsHook:
 
         persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
 
+        if persons_of_interest is None:
+            return
+
         if not persons_of_interest.index.name == "person_id":
             raise ValueError("persons_of_interest is NOT indexed by person_id after loading codecs")
 
