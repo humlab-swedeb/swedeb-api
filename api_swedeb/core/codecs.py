@@ -281,7 +281,10 @@ class Codecs:
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
-        return [dict(**d) for d in self.specification.get("property_values_specs", [])]
+        return [
+            dict(text_name=d["text_name"], id_name=d["id_name"], values=self.get_mapping(d["text_name"], d["id_name"]))
+            for d in self.specification.get("property_values_specs", [])
+        ]
 
     def is_decoded(self, df: pd.DataFrame) -> bool:
         return all(decoder.is_decoded(df) for decoder in self.decoders)

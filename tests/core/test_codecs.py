@@ -506,12 +506,12 @@ class TestBaseCodecs:
         assert "gender_id" in result.columns
         assert "gender" not in result.columns
 
-    def test_property_values_specs(self, sample_specification):
+    def test_property_values_specs(self, sample_specification, sample_store):
         """Test property_values_specs cached property."""
         codecs: PersonCodecs = PersonCodecs(specification=sample_specification).load(sample_store)
 
-        specs = codecs.property_values_specs
-        expected = [{"text_name": "gender", "id_name": "gender_id"}]
+        specs: list[dict[str, str | dict[str, int]]] = codecs.property_values_specs
+        expected: list[dict[str, str]] = [{"text_name": "gender", "id_name": "gender_id", "values": {'Male': 1, 'Female': 2}}]
         assert specs == expected
 
     def test_is_decoded_true(self, sample_specification, sample_store):
