@@ -36,18 +36,46 @@ class Codec:
     type: Literal['encode', 'decode']
     from_column: str
     to_column: str
-    fx: Callable[[int], str] | Callable[[str], int] | dict[str, int] | dict[int, str]
+    fx_factory: Callable[[str, str], MapFx] = None
+    fx: MapFx = None
+
     default: str = None
 
-    def apply(self, df: pd.DataFrame) -> pd.DataFrame:
-        if self.from_column in df.columns:
-            if self.to_column not in df:
-                if isinstance(self.fx, dict):
-                    df = df.assign(**{self.to_column: df[self.from_column].map(self.fx)})
-                else:
-                    df = df.assign(**{self.to_column: df[self.from_column].apply(self.fx)})
-            if self.default is not None:
-                df = df.assign(**{self.to_column: df[self.to_column].fillna(self.default)})
+    @property
+    def key(self) -> tuple[str, str]:
+        return (self.from_column, self.to_column)
+
+    def get_fx(self) -> MapFx:
+        """Get mapping function or dict from fx_factory if provided."""
+        if self.fx is not None:
+            return self.fx
+        if self.fx_factory is not None:
+            self.fx = self.fx_factory(self.from_column, self.to_column)
+            return self.fx
+        raise ValueError("Codec: neither fx nor fx_factory provided")
+
+    def apply(self, df: pd.DataFrame, *, overwrite: bool = False) -> pd.DataFrame:
+        """Create the decoded column if `from_column` exists; fill default if provided."""
+        if self.from_column not in df.columns:
+            return df
+
+        if not overwrite and self.to_column in df.columns:
+            # Idempotent: do nothing if already present
+            return df
+
+        fx: MapFx = self.get_fx()
+
+        src: pd.Series[Any] = df[self.from_column]
+
+        if isinstance(fx, Mapping):
+            out: pd.Series[Any] = src.map(fx)
+        else:
+            out = src.apply(fx)
+
+        if self.default is not None:
+            out = out.fillna(self.default)
+
+        df[self.to_column] = out
         return df
 
     def is_decoded(self, df: pd.DataFrame) -> bool:
@@ -277,7 +305,9 @@ class PersonCodecs(Codecs):
         return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
-    def speech_link(document_name: str | pd.Series, page_nr: str | int | pd.Series[int|str] = 1) -> str | pd.Series[str]:
+    def speech_link(
+        document_name: str | pd.Series, page_nr: str | int | pd.Series[int | str] = 1
+    ) -> str | pd.Series[str]:
         base_url: str = ConfigValue("pdf_server.base_url").resolve()
         if isinstance(document_name, pd.Series):
             return PersonCodecs._speech_links(document_name, base_url, page_nr)
