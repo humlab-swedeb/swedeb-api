@@ -28,6 +28,43 @@ except ImportError:
 # pylint: disable=missing-timeout
 
 
+class Registry:
+    items: dict = {}
+
+    @classmethod
+    def get(cls, key: str) -> Any | None:
+        if key not in cls.items:
+            raise KeyError(f"preprocessor {key} is not registered")
+        return cls.items.get(key)
+
+    @classmethod
+    def register(cls, **args) -> Callable[..., Any]:
+        def decorator(fn_or_class):
+            key: str = args.get("key") or fn_or_class.__name__
+            if args.get("type") == "function":
+                fn_or_class = fn_or_class()
+            else:
+                setattr(fn_or_class, "_registry_key", key)
+                fn_or_class = _ensure_key_property(fn_or_class)
+
+            cls.items[key] = fn_or_class
+            return fn_or_class
+
+        return decorator
+
+    @classmethod
+    def is_registered(cls, key: str) -> bool:
+        return key in cls.items
+    
+def _ensure_key_property(cls):
+    if not hasattr(cls, "key"):
+
+        def key(self) -> str:
+            return getattr(self, "_registry_key", "unknown")
+
+        cls.key = property(key)
+    return cls
+
 def flatten(lst: list[list[Any]]) -> list[Any]:
     """Flatten a list of lists."""
     if not lst:

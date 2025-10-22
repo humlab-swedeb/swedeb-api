@@ -10,11 +10,24 @@ from typing import Any, Callable, Literal, Mapping, Self, Union
 import pandas as pd
 
 from api_swedeb.core.configuration.inject import ConfigValue
-from api_swedeb.core.utility import load_tables, revdict
+from api_swedeb.core.utility import Registry, assign_primary_key, load_tables, revdict
 
 # pylint: disable=too-many-public-methods
 
 
+MapFx = Callable[[Any], Any] | dict[Any, Any]
+
+
+class OnLoadHook(Protocol):
+    def execute(self, codecs: PersonCodecs) -> None: ...
+
+
+class OnLoadHookRegistry(Registry):
+
+    items: dict[str, OnLoadHook] = {}
+
+
+OnLoadHooks: OnLoadHookRegistry = OnLoadHookRegistry()
 
 
 @dataclass
@@ -210,6 +223,9 @@ class BaseCodecs:
     def is_decoded(self, df: pd.DataFrame) -> bool:
         return all(decoder.is_decoded(df) for decoder in self.decoders)
 
+    def _on_load(self) -> Self:
+        return self
+
 
 class Codecs(BaseCodecs):
     def __init__(self, specification: dict[str, str] = None):
@@ -232,40 +248,19 @@ class PersonCodecs(Codecs):
 
     def load(self, source: str | sqlite3.Connection | dict) -> Self:
         super().load(source)
-        if "pid" not in self.persons_of_interest.columns:
-            self.persons_of_interest["pid"] = self.persons_of_interest.reset_index().index
+        self._on_load()
         return self
 
     def __getitem__(self, key: int | str) -> dict:
-        """Get person by key (pid, person_id or wiki_id)"""
-        if isinstance(key, int) or key.isdigit():
-            idx_key: int = int(key)
-        elif key.lower().startswith('q'):
-            idx_key = self.wiki_id2pid[key]
-        else:
-            idx_key = self.person_id2pid[key]
-        return self.persons_of_interest.loc[idx_key]
+        """Get person by key (person_id or wiki_id)"""
+        if isinstance(key, int):
+            return self.persons_of_interest.iloc[key]
 
+        if key.lower().startswith('q'):
+            key = self.get_mapping("wiki_id", "person_id")[key]
 
-    def add_multiple_party_abbrevs(self) -> Self:
-        party_data: pd.DataFrame = getattr(self, "person_party")
-        party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev).fillna("?")
+        return self.persons_of_interest.loc[key]
 
-        grouped_party_abbrevs: pd.DataFrame = (
-            party_data.groupby("person_id")
-            .agg(
-                {
-                    "party_abbrev": lambda x: ", ".join(set(x)),
-                    "party_id": lambda x: ",".join(set(map(str, x))),
-                }
-            )
-            .reset_index()
-        )
-        grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
-
-        self.persons_of_interest = self.persons_of_interest.merge(grouped_party_abbrevs, on="person_id", how="left")
-        self.persons_of_interest["party_abbrev"] = self.persons_of_interest["party_abbrev"].fillna("?")
-        return self
 
 
     @staticmethod
@@ -320,3 +315,39 @@ class PersonCodecs(Codecs):
             speech_index.replace(value_updates, inplace=True)
 
         return speech_index
+
+
+@OnLoadHooks.register(key="multiple_party_abbrevs")
+class MultiplePartyAbbrevsHook:
+    """Adds a 'multi_party_id' column to persons_of_interest with all party abbreviations for the person."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
+
+        if not persons_of_interest.index.name == "person_id":
+            raise ValueError("persons_of_interest is NOT indexed by person_id after loading codecs")
+
+        if "multi_party_id" in persons_of_interest.columns:
+            return
+
+        grouped_party_abbrevs = self._get_multi_party_abbrevs(codecs)
+
+        persons_of_interest = persons_of_interest.merge(
+            grouped_party_abbrevs, left_index=True, right_index=True, how="left"
+        )
+        persons_of_interest["party_abbrev"] = persons_of_interest["party_abbrev"].fillna("?")
+        codecs.store["persons_of_interest"] = persons_of_interest
+
+    def _get_multi_party_abbrevs(self, codecs: PersonCodecs) -> pd.DataFrame:
+        fx: dict[int, str] = codecs.get_mapping('party_id', 'party_abbrev').get
+        person_party: pd.DataFrame = codecs.store.get("person_party")
+        person_party["party_abbrev"] = person_party["party_id"].map(fx).fillna("?")
+        multi_party_abbrevs: pd.DataFrame = person_party.groupby("person_id").agg(
+            {
+                "party_abbrev": lambda x: ", ".join(set(x)),
+                "party_id": lambda x: ",".join(set(map(str, x))),
+            }
+        )
+        multi_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
+        return multi_party_abbrevs
