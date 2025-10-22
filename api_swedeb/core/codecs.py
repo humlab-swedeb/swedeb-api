@@ -408,3 +408,23 @@ def _merge_specifications(spec1: dict[Any, Any], spec2: dict[Any, Any]) -> dict[
     spec1["codecs"].extend(spec2.get("codecs", []))
     spec1["property_values_specs"].extend(spec2.get("property_values_specs", []))
     return spec1
+
+@OnLoadHooks.register(key="rename_sub_office_type")
+class SubOfficeRenameHook:
+    """Renames column `description` to `sub_office_type` in sub_office_type."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        if "sub_office_type" not in codecs.store:
+            return
+
+        sub_office_type: pd.DataFrame = codecs.store.get("sub_office_type")
+
+        if not sub_office_type.index.name == "sub_office_type_id":
+            raise ValueError("sub_office_type is NOT indexed by sub_office_type_id after loading codecs")
+
+        if "sub_office_type" in sub_office_type.columns:
+            return
+
+        sub_office_type.rename(columns={"description": "sub_office_type"}, inplace=True)
+        codecs.store["sub_office_type"] = sub_office_type

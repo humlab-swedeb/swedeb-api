@@ -176,7 +176,7 @@ class SpeechTextRepository:
             speech["office_type"] = self.person_codecs.get_mapping("office_type_id", "office").get(
                 speech["office_type_id"], "Okänt"
             )
-            speech["sub_office_type"] = self.person_codecs.get_mapping("sub_office_type_id", "description").get(
+            speech["sub_office_type"] = self.person_codecs.get_mapping("sub_office_type_id", "sub_office_type").get(
                 speech["sub_office_type_id"], "Okänt"
             )
             speech["gender"] = self.person_codecs.get_mapping("gender_id", "gender").get(speech["gender_id"], "Okänt")
