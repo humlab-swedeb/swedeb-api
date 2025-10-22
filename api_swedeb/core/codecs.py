@@ -90,6 +90,19 @@ class Codec:
         """True if either already decoded or not decodable (missing source)."""
         return self.to_column in df.columns or self.from_column not in df.columns
 
+    def reverse(self) -> Codec:
+        """Get a reversed codec."""
+        reversed_fx_factory: Callable[[], dict] = lambda x, y: {v: k for k, v in self.get_fx().items()}
+        return Codec(
+            table=self.table,
+            type='encode' if self.type == 'decode' else 'decode',
+            from_column=self.to_column,
+            to_column=self.from_column,
+            fx_factory=reversed_fx_factory if self.fx is None else None,
+            fx={v: k for k, v in self.fx.items()} if self.fx is not None else None,
+            default=self.default,
+        )
+
 
 null_frame: pd.DataFrame = pd.DataFrame()
 
