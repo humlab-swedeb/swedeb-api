@@ -112,12 +112,37 @@ def query_keyword_windows(
             för en propaganda och som                 3 ['i-8f7d43d10fec79c5-5', 'i-20935836147b9bcb-0', 'i-93cd7ea6d9946b3f-64']
             gjorde god propaganda samt hade           1 ['i-41e168abca4a1b3e-0']
     """
-    query: str = query_or_opts if isinstance(query_or_opts, str) else to_cqp_exprs(query_or_opts, within="speech")
+    query: str
 
-    if isinstance(context_width, int):
-        context_width = (context_width - len(query_or_opts), context_width - len(query_or_opts))
+    if query_or_opts is None:
+        raise ValueError("query_or_opts cannot be None")
 
-    subcorpus: SubCorpus | str = corpus.query(query, context_left=context_width[0], context_right=context_width[1])
+    if not isinstance(query_or_opts, (str, dict, list)):
+        raise TypeError("query_or_opts must be a string, a dictionary or a list of dictionaries")
+
+    # FIXME: If query_or_opts is a list of dicts, we need to count the number of words in the query
+    # to adjust context width accordingly, that is, unless CWB/CQP can handle that internally.
+    # n_words_in_query: int = 1 if not isinstance(query_or_opts, list) else len(query_or_opts)
+
+    if isinstance(query_or_opts, str):
+        query = query_or_opts
+    else:
+        query = to_cqp_exprs(query_or_opts, within="speech")
+
+    # FIXME: Handle of context_size must be verified! Should we divide context_size by two if an integer?
+    # Example where w_k is the keyword
+    # context_size = 2
+    #   w_1 w_k w_2 => n-grams [(w_1, w_k), (w_k, w_2)]
+    # context_size = 3
+    # w_1 w_2 w_k w_3 w_4 => n-grams [(w_1, w_2, w_k), (w_2, w_k, w_3), (w_k, w_3, w_4)]
+
+    context: dict[str, int] = (
+        {'context': context_size // 2}
+        if isinstance(context_size, int)
+        else dict(zip(['context_left', 'context_right'], context_size))
+    )
+
+    subcorpus: SubCorpus | str = corpus.query(query, **context)
 
     windows: pd.DataFrame = subcorpus.concordance(
         form="simple", p_show=[p_show], s_show=['speech_id'], order="first", cut_off=None
@@ -157,8 +182,17 @@ def n_grams(
         pd.DataFrame: n-grams with number of occurences and speech_ids
     """
 
+    if not isinstance(query_or_opts, (str, dict, list)):
+        raise TypeError("query_or_opts must be a string, a dictionary or a list of dictionaries")
+
+    n_words_in_query: int = 1 if not isinstance(query_or_opts, list) else len(query_or_opts)
     n_gram_mode: str = 'locked' if mode.endswith('aligned') else 'sliding'
-    n = (0, n - len(opts)) if mode.startswith('left') else (n - len(opts), 0) if mode.startswith('right') else n
+
+    n = (
+        (0, n - n_words_in_query)
+        if mode.startswith('left')
+        else (n - n_words_in_query, 0) if mode.startswith('right') else n
+    )
 
     windows: pd.DataFrame = query_keyword_windows(corpus, query_or_opts, context_size=n, p_show=p_show)
     n_grams: pd.DataFrame = compile_n_grams(windows, n=n, threshold=threshold, mode=n_gram_mode)
