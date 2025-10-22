@@ -254,3 +254,23 @@ def fixture_source_dict():
         ),
         'person_party': pd.DataFrame({'person_id': ['p1', 'p2'], 'party_id': [1, 2]}),
     }
+
+
+@pytest.fixture(name='codecs_speech_index_source_dict')
+def fixture_codecs_speech_index_source_dict():
+    return {
+        'document_id': {0: 0, 1: 1},
+        'year': {0: 1970, 1: 1970},
+        'document_name': {0: 'prot-1970--ak--029_001', 1: 'prot-1970--ak--029_002'},
+        'filename': {0: 'prot-1970--ak--029_001.csv', 1: 'prot-1970--ak--029_002.csv'},
+        'speech_id': {0: 's1', 1: 's2'},
+        'person_id': {0: 'p1', 1: 'p2'},
+        'wiki_id': {0: 'q1', 1: 'q2'},
+        'chamber_abbrev': {0: 'ak', 1: 'ak'},
+        'speech_index': {0: 1, 1: 2},
+        'gender_id': {0: 1, 1: 1},
+        'party_id': {0: 2, 1: 1},
+        'office_type_id': {0: 1, 1: 1},
+        'sub_office_type_id': {0: 1, 1: 2},
+        'protocol_name': {0: 'prot-1970--ak--029', 1: 'prot-1970--ak--029'},
+    }
