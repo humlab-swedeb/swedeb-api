@@ -44,19 +44,24 @@ def api_corpus() -> api_swedeb.Corpus:
 
 
 @pytest.fixture(scope="module")
-def speech_index(api_corpus: api_swedeb.Corpus) -> pd.DataFrame:
-    return api_corpus.vectorized_corpus.document_index
+def _speech_index_cached() -> pd.DataFrame:
+    """Cached speech index - internal use only."""
+    return api_swedeb.Corpus().vectorized_corpus.document_index
+
+
+@pytest.fixture
+def speech_index(_speech_index_cached: pd.DataFrame) -> pd.DataFrame:
+    """Function-scoped copy of speech_index for test isolation."""
+    return _speech_index_cached.copy(deep=True)
 
 
 @pytest.fixture(scope="module")
-def person_codecs(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
+def _person_codecs_cached(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
     return api_corpus.person_codecs
 
-
-@pytest.fixture(scope="session")
-def person_codecs2() -> PersonCodecs:
-    metadata_filename: str = ConfigValue("metadata.filename").value
-    return PersonCodecs().load(source=metadata_filename)
+@pytest.fixture
+def person_codecs(_person_codecs_cached: PersonCodecs, api_corpus: api_swedeb.Corpus) -> PersonCodecs:
+    return _person_codecs_cached.Clone()
 
 
 @pytest.fixture(scope='session')
