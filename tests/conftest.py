@@ -233,7 +233,7 @@ def fixture_sqlite3db(tmp_path):
     return conn
 
 
-@pytest.fixture(name='source_dict')
+@pytest.fixture(name='codecs_source_dict')
 def fixture_source_dict():
     return {
         'gender': pd.DataFrame({'gender': ['Male', 'Female'], 'gender_abbrev': ['M', 'F']}, index=[1, 2]),
