@@ -19,6 +19,7 @@ from api_swedeb.core.utility import load_tables, revdict
 
 @dataclass
 class Codec:
+    table: str = None
     type: Literal['encode', 'decode']
     from_column: str
     to_column: str
