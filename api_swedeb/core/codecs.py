@@ -94,7 +94,7 @@ class Codec:
 null_frame: pd.DataFrame = pd.DataFrame()
 
 
-class BaseCodecs:
+class Codecs:
     def __init__(
         self,
         specification: dict[str, str] = None,
@@ -260,20 +260,9 @@ class BaseCodecs:
         return self
 
 
-class Codecs(BaseCodecs):
-    def __init__(self, specification: dict[str, str] = None):
-        specification: dict[str, dict[str, str]] = specification or ConfigValue("mappings.lookups").resolve()
-        super().__init__(specification)
-
-
 class PersonCodecs(Codecs):
-    def __init__(self):
-        super().__init__(
-            _merge_specifications(
-                ConfigValue("mappings.lookups").resolve(),
-                ConfigValue("mappings.persons").resolve(),
-            )
-        )
+    def __init__(self, specification: dict[str, str] = None) -> None:
+        super().__init__(specification or ConfigValue("mappings").resolve())
 
     @property
     def persons_of_interest(self) -> pd.DataFrame:

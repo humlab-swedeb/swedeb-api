@@ -175,7 +175,7 @@ class TestCodec:
 
 
 class TestBaseCodecs:
-    """Test cases for BaseCodecs class."""
+    """Test cases for Codecs class."""
 
     @pytest.fixture
     def sample_specification(self):
@@ -199,8 +199,8 @@ class TestBaseCodecs:
         }
 
     def test_base_codecs_initialization(self, sample_specification, sample_store):
-        """Test BaseCodecs initialization."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        """Test Codecs initialization."""
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         assert codecs.specification == sample_specification
         assert codecs.store == sample_store
@@ -214,7 +214,7 @@ class TestBaseCodecs:
 
     def test_find_codec_exists(self, sample_specification):
         """Test find_codec returns correct codec when it exists."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         codec = codecs.find_codec("gender_id", "gender")
         assert codec is not None
@@ -223,21 +223,21 @@ class TestBaseCodecs:
 
     def test_find_codec_not_exists(self, sample_specification):
         """Test find_codec returns None when codec doesn't exist."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         codec = codecs.find_codec("nonexistent", "column")
         assert codec is None
 
     def test_get_mapping_identity_raises_error(self, sample_specification, sample_store):
         """Test get_mapping raises error for identity mapping."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         with pytest.raises(ValueError, match="Identify mapping where from_column equals to_column is not allowed"):
             codecs.get_mapping("gender_id", "gender_id")
 
     def test_get_mapping_from_index_column(self, sample_specification, sample_store):
         """Test get_mapping when from_column is the index."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         # Set up a table where the index is the from_column
         test_table = pd.DataFrame({"gender": ["Male", "Female"]}, index=pd.Index([1, 2], name="gender_id"))
@@ -249,7 +249,7 @@ class TestBaseCodecs:
 
     def test_get_mapping_direct_columns(self, sample_specification, sample_store):
         """Test get_mapping with direct column mapping."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         # Add gender column to gender table for direct mapping
         codecs.store["gender"]["gender"] = ["Male", "Female"]
@@ -260,7 +260,7 @@ class TestBaseCodecs:
 
     def test_get_mapping_cached(self, sample_specification, sample_store):
         """Test get_mapping returns cached result."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
         codecs.store["gender"]["gender"] = ["Male", "Female"]
 
         # First call
@@ -274,7 +274,7 @@ class TestBaseCodecs:
 
     def test_get_mapping_reverse_cached(self, sample_specification, sample_store):
         """Test get_mapping uses reverse cached mapping."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
         codecs.store["gender"]["gender"] = ["Male", "Female"]
 
         # First get forward mapping
@@ -288,7 +288,7 @@ class TestBaseCodecs:
 
     def test_codecs_property_lazy_loading(self, sample_specification):
         """Test codecs property is lazy loaded and cached."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         # Initially _codecs should be None
         assert codecs._codecs is None
@@ -304,7 +304,7 @@ class TestBaseCodecs:
 
     def test_codecs_fx_factory_set_correctly(self, sample_specification):
         """Test codecs are created with correct fx_factory."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         # Access codecs to trigger lazy loading
         codec_list = codecs.codecs
@@ -315,7 +315,7 @@ class TestBaseCodecs:
 
     def test_codecs_setter(self, sample_specification):
         """Test codecs property setter."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         new_codec = Codec(table="test", type="decode", from_column="a", to_column="b")
         codecs.codecs = [new_codec]
@@ -325,7 +325,7 @@ class TestBaseCodecs:
 
     def test_find_table_name_exists(self, sample_specification):
         """Test _find_table_name returns correct table name when mapping exists."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         table_name = codecs._find_table_name("gender_id", "gender")
         assert table_name == "gender"
@@ -336,21 +336,21 @@ class TestBaseCodecs:
 
     def test_find_table_name_not_exists(self, sample_specification):
         """Test _find_table_name returns None when mapping doesn't exist."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         table_name = codecs._find_table_name("nonexistent", "column")
         assert table_name is None
 
     def test_get_mapping_codec_not_found(self, sample_specification, sample_store):
         """Test get_mapping raises error when codec not configured."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         with pytest.raises(ValueError, match="No table found for mapping from 'nonexistent' to 'column'"):
             codecs.get_mapping("nonexistent", "column")
 
     def test_load_from_dict(self, sample_specification, sample_store):
         """Test load method with dictionary source."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
         result = codecs.load(sample_store)
 
         assert result is codecs  # Returns self
@@ -372,7 +372,7 @@ class TestBaseCodecs:
             file_conn.close()
 
             try:
-                codecs = BaseCodecs(specification=sample_specification)
+                codecs = Codecs(specification=sample_specification)
                 result = codecs.load(tmp_file.name)
 
                 assert result is codecs
@@ -383,7 +383,7 @@ class TestBaseCodecs:
 
     def test_load_from_sqlite_connection(self, sample_specification, sqlite3db_connection):
         """Test load method with SQLite connection."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
         result = codecs.load(sqlite3db_connection)
 
         assert result is codecs
@@ -392,21 +392,21 @@ class TestBaseCodecs:
 
     def test_load_file_not_found(self, sample_specification):
         """Test load raises FileNotFoundError for missing file."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         with pytest.raises(FileNotFoundError, match="File not found"):
             codecs.load("/nonexistent/file.db")
 
     def test_tablenames(self, sample_specification):
         """Test tablenames method."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         expected = {"gender": "gender_id", "party": "party_id"}
         assert codecs.tablenames() == expected
 
     def test_decoder_property(self, sample_specification):
         """Test decoders property returns only decode codecs."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         decoders: list[Codec] = codecs.decoders
         assert len(decoders) == 2
@@ -415,7 +415,7 @@ class TestBaseCodecs:
 
     def test_encoders_property(self, sample_specification):
         """Test encoders property returns only encode codecs."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         encoders = codecs.encoders
         assert len(encoders) == 1
@@ -424,7 +424,7 @@ class TestBaseCodecs:
 
     def test_decoder_method(self, sample_specification):
         """Test decoder method finds correct decoder."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs = Codecs(specification=sample_specification)
 
         decoder = codecs.decoder("gender_id")
         assert decoder is not None
@@ -436,7 +436,7 @@ class TestBaseCodecs:
 
     def test_apply_codec_basic(self, sample_specification, sample_store):
         """Test apply_codec method."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
         codecs.store["gender"]["gender"] = ["Male", "Female"]
 
         df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
@@ -448,7 +448,7 @@ class TestBaseCodecs:
 
     def test_apply_codec_with_drop(self, sample_specification, sample_store):
         """Test apply_codec drops source columns when drop=True."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
         codecs.store["gender"]["gender"] = ["Male", "Female"]
 
         df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
@@ -461,7 +461,7 @@ class TestBaseCodecs:
 
     def test_apply_codec_with_keeps(self, sample_specification, sample_store):
         """Test apply_codec keeps specified columns when drop=True."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
         codecs.store["gender"]["gender"] = ["Male", "Female"]
 
         df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
@@ -474,7 +474,7 @@ class TestBaseCodecs:
 
     def test_apply_codec_with_ignores(self, sample_specification, sample_store):
         """Test apply_codec ignores specified target columns."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         df = pd.DataFrame({"gender_id": [1, 2], "party_id": [1, 2], "other": ["a", "b"]})
 
@@ -485,7 +485,7 @@ class TestBaseCodecs:
 
     def test_decode_method(self, sample_specification, sample_store):
         """Test decode method applies all decoders."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
         codecs.store["gender"]["gender"] = ["Male", "Female"]
 
         df = pd.DataFrame({"gender_id": [1, 2], "other": ["a", "b"]})
@@ -497,7 +497,7 @@ class TestBaseCodecs:
 
     def test_encode_method(self, sample_specification, sample_store):
         """Test encode method applies all encoders."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         df = pd.DataFrame({"gender": ["Male", "Female"], "other": ["a", "b"]})
 
@@ -508,7 +508,7 @@ class TestBaseCodecs:
 
     def test_property_values_specs(self, sample_specification):
         """Test property_values_specs cached property."""
-        codecs = BaseCodecs(specification=sample_specification)
+        codecs: PersonCodecs = PersonCodecs(specification=sample_specification).load(sample_store)
 
         specs = codecs.property_values_specs
         expected = [{"text_name": "gender", "id_name": "gender_id"}]
@@ -516,7 +516,7 @@ class TestBaseCodecs:
 
     def test_is_decoded_true(self, sample_specification, sample_store):
         """Test is_decoded returns True when all decoders are decoded."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         df = pd.DataFrame({"gender": ["Male", "Female"], "party_abbrev": ["PA", "PB"]})
 
@@ -524,7 +524,7 @@ class TestBaseCodecs:
 
     def test_is_decoded_false(self, sample_specification, sample_store):
         """Test is_decoded returns False when not all decoders are decoded."""
-        codecs = BaseCodecs(specification=sample_specification, store=sample_store)
+        codecs = Codecs(specification=sample_specification, store=sample_store)
 
         df = pd.DataFrame({"gender_id": [1, 2], "party_abbrev": ["PA", "PB"]})
 
@@ -536,20 +536,20 @@ class TestCodecs:
 
     @patch('api_swedeb.core.codecs.ConfigValue')
     def test_codecs_initialization_default(self, mock_config_value):
-        """Test Codecs initialization with default configuration."""
+        """Test PersonCodecs initialization with default configuration."""
         mock_specification = {"tables": {}, "codecs": []}
         mock_config_value.return_value.resolve.return_value = mock_specification
 
-        codecs = Codecs()
+        codecs = PersonCodecs()
 
-        mock_config_value.assert_called_once_with("mappings.lookups")
+        mock_config_value.assert_called_once_with("mappings")
         assert codecs.specification == mock_specification
 
     def test_codecs_initialization_custom(self):
-        """Test Codecs initialization with custom specification."""
+        """Test PersonCodecs initialization with custom specification."""
         custom_spec = {"tables": {"test": "test_id"}, "codecs": []}
 
-        codecs = Codecs(specification=custom_spec)
+        codecs = PersonCodecs(specification=custom_spec)
 
         assert codecs.specification == custom_spec
 
@@ -560,20 +560,17 @@ class TestPersonCodecs:
     @patch('api_swedeb.core.codecs.ConfigValue')
     def test_person_codecs_initialization(self, mock_config_value):
         """Test PersonCodecs initialization merges configurations."""
-        mock_lookups = {
-            "tables": {"gender": "gender_id"},
-            "codecs": [{"table": "gender", "type": "decode", "from_column": "gender_id", "to_column": "gender"}],
-            "property_values_specs": [],
-        }
-        mock_persons = {
-            "tables": {"persons_of_interest": "person_id"},
-            "codecs": [{"table": "persons_of_interest", "type": "decode", "from_column": "wiki", "to_column": "name"}],
+        mock_mappings = {
+            "tables": {"gender": "gender_id", "persons_of_interest": "person_id"},
+            "codecs": [
+                {"table": "gender", "type": "decode", "from_column": "gender_id", "to_column": "gender"},
+                {"table": "persons_of_interest", "type": "decode", "from_column": "wiki", "to_column": "name"},
+            ],
             "property_values_specs": [],
         }
 
         mock_config_value.side_effect = [
-            MagicMock(resolve=lambda: mock_lookups),  # mappings.lookups
-            MagicMock(resolve=lambda: mock_persons),  # mappings.persons
+            MagicMock(resolve=lambda: mock_mappings),  # mappings.lookups
         ]
 
         person_codecs = PersonCodecs()

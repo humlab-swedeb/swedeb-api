@@ -53,7 +53,7 @@ def kwic(  # pylint: disable=too-many-arguments
         words_after (int, optional): Number of words right of keyword.
         p_show (Literal['word', 'lemma'], optional): Target type to display. Defaults to "word".
         s_show (list[str], optional): Structural attributes to show. Defaults to "None".
-        decoder (Codecs, optional): Decoder to use. Defaults to None.
+        decoder (PersonCodecs, optional): Decoder to use. Defaults to None.
         dtype (dict[str, Any], optional): Data columns to cast. Defaults to None.
         strip_s_tags (bool, optional): Strip structural tags from column name. Defaults to True.
         cut_off (int, optional): Threshold of number of hits. Defaults to a big numbere.
