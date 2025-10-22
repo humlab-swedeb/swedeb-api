@@ -152,17 +152,21 @@ class BaseCodecs:
         raise ValueError(f"Unable to create mapping from '{from_column}' to '{to_column}' for table '{table_name}'")
 
     def load(self, source: str | sqlite3.Connection | dict) -> Self:
-        self.source_filename = source if isinstance(source, str) else None
-        if isinstance(source, str) and not isfile(source):
-            raise FileNotFoundError(f"File not found: {source}")
-        if isinstance(source, dict):
-            tables = source
-        else:
-            with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
-                tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
-        for table_name, table in tables.items():
-            setattr(self, table_name, table)
-        return self
+        """Load code tables from SQLite database file, connection or dict of DataFrames."""
+        with self._lock:
+            self.filename = source if isinstance(source, str) else None
+            if isinstance(source, str) and not isfile(source):
+                raise FileNotFoundError(f"File not found: {source}")
+            if isinstance(source, dict):
+                self.store = source
+                assign_primary_key(self.tablenames(), self.store)
+            else:
+                with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
+                    self.store = load_tables(self.tablenames(), db=db)
+            for table_name, table in self.store.items():
+                if not hasattr(self, table_name):
+                    setattr(self, table_name, table)
+            return self
 
     def tablenames(self) -> dict[str, str]:
         """Returns a mapping from code table name to id column name"""
