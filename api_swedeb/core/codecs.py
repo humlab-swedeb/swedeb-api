@@ -90,11 +90,24 @@ class Codec:
         """True if either already decoded or not decodable (missing source)."""
         return self.to_column in df.columns or self.from_column not in df.columns
 
+    def reverse(self) -> Codec:
+        """Get a reversed codec."""
+        reversed_fx_factory: Callable[[], dict] = lambda x, y: {v: k for k, v in self.get_fx().items()}
+        return Codec(
+            table=self.table,
+            type='encode' if self.type == 'decode' else 'decode',
+            from_column=self.to_column,
+            to_column=self.from_column,
+            fx_factory=reversed_fx_factory if self.fx is None else None,
+            fx={v: k for k, v in self.fx.items()} if self.fx is not None else None,
+            default=self.default,
+        )
+
 
 null_frame: pd.DataFrame = pd.DataFrame()
 
 
-class BaseCodecs:
+class Codecs:
     def __init__(
         self,
         specification: dict[str, str] = None,
@@ -113,6 +126,20 @@ class BaseCodecs:
         self._codecs: list[Codec] = None
         self._lock = threading.Lock()
 
+    def Clone(self) -> Self:
+        """Create a (somewhat) deep copy of this Codecs instance.
+        The specification and codecs list are shared, but the store and mappings are copied."""
+        store: dict[str, pd.DataFrame] = {k: v.copy() for k, v in self.store.items()}
+        mappings: dict[tuple[str, str], dict[Any, Any]] = {k: v.copy() for k, v in self.mappings.items()}
+
+        clone: Self = self.__class__(specification=self.specification)
+        clone.mappings = mappings
+        clone.store = store
+        clone.filename = self.filename
+        clone.codecs = [c for c in self.codecs]
+        return clone
+ 
+    
     @property
     def codecs(self) -> list[Codec]:
         """List of Codec objects from specification, actual mapping lazy loaded."""
@@ -173,7 +200,7 @@ class BaseCodecs:
             return self.mappings[key]
 
         if to_column == key_column:
-            rev_mapping = table[from_column].to_dict()
+            rev_mapping: dict[Any, Any] = table[from_column].to_dict()
             self.mappings[(to_column, from_column)] = rev_mapping
             self.mappings[key] = revdict(rev_mapping)
             return self.mappings[key]
@@ -195,7 +222,10 @@ class BaseCodecs:
             for table_name, table in self.store.items():
                 if not hasattr(self, table_name):
                     setattr(self, table_name, table)
-            return self
+
+        self._on_load()
+
+        return self
 
     def tablenames(self) -> dict[str, str]:
         """Returns a mapping from code table name to id column name"""
@@ -251,50 +281,37 @@ class BaseCodecs:
 
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
-        return [dict(**d) for d in self.specification.get("property_values_specs", [])]
+        return [
+            dict(text_name=d["text_name"], id_name=d["id_name"], values=self.get_mapping(d["text_name"], d["id_name"]))
+            for d in self.specification.get("property_values_specs", [])
+        ]
 
     def is_decoded(self, df: pd.DataFrame) -> bool:
         return all(decoder.is_decoded(df) for decoder in self.decoders)
 
     def _on_load(self) -> Self:
+        for hook in OnLoadHooks.items.values():
+            hook().execute(self)
         return self
 
 
-class Codecs(BaseCodecs):
-    def __init__(self, specification: dict[str, str] = None):
-        specification: dict[str, dict[str, str]] = specification or ConfigValue("mappings.lookups").resolve()
-        super().__init__(specification)
-
-
 class PersonCodecs(Codecs):
-    def __init__(self):
-        super().__init__(
-            _merge_specifications(
-                ConfigValue("mappings.lookups").resolve(),
-                ConfigValue("mappings.persons").resolve(),
-            )
-        )
+    def __init__(self, specification: dict[str, str] = None) -> None:
+        super().__init__(specification or ConfigValue("mappings").resolve())
 
     @property
     def persons_of_interest(self) -> pd.DataFrame:
         return self.store.get("persons_of_interest", pd.DataFrame())
 
-    def load(self, source: str | sqlite3.Connection | dict) -> Self:
-        super().load(source)
-        self._on_load()
-        return self
-
     def __getitem__(self, key: int | str) -> dict:
         """Get person by key (person_id or wiki_id)"""
-        if isinstance(key, int):
-            return self.persons_of_interest.iloc[key]
+        if isinstance(key, int) or key.isdigit():
+            return self.persons_of_interest.iloc[int(key)]
 
         if key.lower().startswith('q'):
             key = self.get_mapping("wiki_id", "person_id")[key]
 
         return self.persons_of_interest.loc[key]
-
-
 
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
@@ -369,6 +386,9 @@ class MultiplePartyAbbrevsHook:
 
         persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
 
+        if persons_of_interest is None:
+            return
+
         if not persons_of_interest.index.name == "person_id":
             raise ValueError("persons_of_interest is NOT indexed by person_id after loading codecs")
 
@@ -397,8 +417,46 @@ class MultiplePartyAbbrevsHook:
         return multi_party_abbrevs
 
 
+@OnLoadHooks.register(key="add_person_pid")
+class AddPersonPidHook:
+    """Adds a 'pid' column to persons_of_interest, used as integer ID for persons."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
+
+        if persons_of_interest is None:
+            return
+
+        if "pid" in persons_of_interest.columns:
+            return
+
+        persons_of_interest["pid"] = persons_of_interest.reset_index().index
+        codecs.store["persons_of_interest"] = persons_of_interest
+
+
 def _merge_specifications(spec1: dict[Any, Any], spec2: dict[Any, Any]) -> dict[Any, Any]:
     spec1["tables"].update(spec2.get("tables", {}))
     spec1["codecs"].extend(spec2.get("codecs", []))
     spec1["property_values_specs"].extend(spec2.get("property_values_specs", []))
     return spec1
+
+@OnLoadHooks.register(key="rename_sub_office_type")
+class SubOfficeRenameHook:
+    """Renames column `description` to `sub_office_type` in sub_office_type."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        if "sub_office_type" not in codecs.store:
+            return
+
+        sub_office_type: pd.DataFrame = codecs.store.get("sub_office_type")
+
+        if not sub_office_type.index.name == "sub_office_type_id":
+            raise ValueError("sub_office_type is NOT indexed by sub_office_type_id after loading codecs")
+
+        if "sub_office_type" in sub_office_type.columns:
+            return
+
+        sub_office_type.rename(columns={"description": "sub_office_type"}, inplace=True)
+        codecs.store["sub_office_type"] = sub_office_type
