@@ -641,7 +641,7 @@ class TestPersonCodecs:
             assert person["name"] == "John Doe"
 
     def test_person_codecs_on_load(self, codecs_source_dict):
-        """Test add_multiple_party_abbrevs method."""
+        """Test add multiple party abbrevs hook."""
         person_codecs = PersonCodecs()
 
         # Mock get_mapping to return party mapping
@@ -837,23 +837,3 @@ class TestPersonCodecs:
             # Order should be preserved
             assert result["name"].iloc[0] == "Bob"
             assert result["name"].iloc[1] == "Alice"
-
-    # @patch('api_swedeb.core.codecs.ConfigValue')
-    # def test_get_party_specs(self, mock_config_value):
-    #     """Test _get_party_specs method."""
-    #     person_codecs = PersonCodecs()
-
-    #     # Mock property_values_specs
-    #     person_codecs.specification = {
-    #         "property_values_specs": [{"text_name": "party_abbrev", "values": {"PA": 1, "PB": 2, "PC": 3}}]
-    #     }
-
-    #     # Test with specific parties of interest
-    #     result = person_codecs._get_party_specs([1, 2])
-    #     expected = {"PA": 1, "PB": 2}
-    #     assert result == expected
-
-    #     # Test with None (all parties)
-    #     result = person_codecs._get_party_specs(None)
-    #     expected = {"PA": 1, "PB": 2, "PC": 3}
-    #     assert result == expected

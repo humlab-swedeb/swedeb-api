@@ -200,7 +200,7 @@ class Codecs:
             return self.mappings[key]
 
         if to_column == key_column:
-            rev_mapping = table[from_column].to_dict()
+            rev_mapping: dict[Any, Any] = table[from_column].to_dict()
             self.mappings[(to_column, from_column)] = rev_mapping
             self.mappings[key] = revdict(rev_mapping)
             return self.mappings[key]
@@ -309,8 +309,6 @@ class PersonCodecs(Codecs):
             key = self.get_mapping("wiki_id", "person_id")[key]
 
         return self.persons_of_interest.loc[key]
-
-
 
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
