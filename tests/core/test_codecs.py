@@ -613,9 +613,8 @@ class TestPersonCodecs:
         person_codecs = PersonCodecs()
         person_codecs.load(codecs_source_dict)
 
-        with pytest.raises(KeyError):
-            _ = person_codecs["0"]
-            
+        person = person_codecs["0"]
+        assert person["name"] == "John Doe"
 
     def test_getitem_by_wiki_id(self, codecs_source_dict):
         """Test __getitem__ with wiki_id key."""

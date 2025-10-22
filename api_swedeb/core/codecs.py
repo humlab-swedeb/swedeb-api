@@ -289,8 +289,8 @@ class PersonCodecs(Codecs):
 
     def __getitem__(self, key: int | str) -> dict:
         """Get person by key (person_id or wiki_id)"""
-        if isinstance(key, int):
-            return self.persons_of_interest.iloc[key]
+        if isinstance(key, int) or key.isdigit():
+            return self.persons_of_interest.iloc[int(key)]
 
         if key.lower().startswith('q'):
             key = self.get_mapping("wiki_id", "person_id")[key]
@@ -401,6 +401,24 @@ class MultiplePartyAbbrevsHook:
         )
         multi_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
         return multi_party_abbrevs
+
+
+@OnLoadHooks.register(key="add_person_pid")
+class AddPersonPidHook:
+    """Adds a 'pid' column to persons_of_interest, used as integer ID for persons."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
+
+        if persons_of_interest is None:
+            return
+
+        if "pid" in persons_of_interest.columns:
+            return
+
+        persons_of_interest["pid"] = persons_of_interest.reset_index().index
+        codecs.store["persons_of_interest"] = persons_of_interest
 
 
 def _merge_specifications(spec1: dict[Any, Any], spec2: dict[Any, Any]) -> dict[Any, Any]:
