@@ -56,7 +56,7 @@ def person_codecs(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
 @pytest.fixture(scope="session")
 def person_codecs2() -> PersonCodecs:
     metadata_filename: str = ConfigValue("metadata.filename").value
-    return PersonCodecs().load(source=metadata_filename).add_multiple_party_abbrevs()
+    return PersonCodecs().load(source=metadata_filename)
 
 
 @pytest.fixture(scope='session')
@@ -239,7 +239,6 @@ def fixture_source_dict():
         'gender': pd.DataFrame({'gender': ['Male', 'Female'], 'gender_abbrev': ['M', 'F']}, index=[1, 2]),
         'persons_of_interest': pd.DataFrame(
             {
-                # 'pid': [1, 2],
                 'person_id': ['p1', 'p2'],
                 'name': ['John Doe', 'Jane Doe'],
                 'wiki_id': ['q1', 'q2'],
