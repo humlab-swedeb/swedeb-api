@@ -155,10 +155,30 @@ def load_tables(
     """Loads tables as pandas dataframes, slims types, fills NaN, sets pandas index"""
     data: dict[str, pd.DataFrame] = read_sql_tables(list(tables.keys()), db)
     slim_table_types(data.values(), defaults=defaults, dtypes=dtypes)
-    for table_name, table in data.items():
-        if tables.get(table_name):
-            table.set_index(tables.get(table_name), drop=True, inplace=True)
+    assign_primary_key(tables, data)
     return data
+
+def assign_primary_key(schema: dict[str, str], data: dict[str, pd.DataFrame]) -> None:
+    """Assigns primary key as pandas index for tables in data."""
+    
+    for table_name in data:
+        table: pd.DataFrame = data[table_name]
+
+        if table_name not in schema:
+            raise KeyError(f"Table {table_name} not found in tables definition")
+        
+        pk_name: str = schema[table_name]
+
+        if table.index.name == pk_name:
+            continue
+
+        if pk_name not in table.columns:
+            """Assume current index is pk"""
+            table.index.name = pk_name
+            continue
+
+        table.set_index(pk_name, drop=True, inplace=True)
+        table.index.name = pk_name
 
 
 def slim_table_types(
