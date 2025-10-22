@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import cached_property
 from os.path import isfile
-from typing import Any, Callable, Literal, Mapping, Self, Union
+from typing import Any, Callable, Literal, Mapping, Protocol, Self
 
 import pandas as pd
 
@@ -30,7 +31,7 @@ class OnLoadHookRegistry(Registry):
 OnLoadHooks: OnLoadHookRegistry = OnLoadHookRegistry()
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Codec:
     table: str = None
     type: Literal['encode', 'decode']
@@ -320,7 +321,16 @@ class PersonCodecs(Codecs):
         return f"{base_url}{year}/{base_filename}#page={page_nr}"
 
     @staticmethod
-    def _speech_links(document_names: pd.Series[str], base_url: str, page_nrs: int | str |pd.Series[int|str] = 1) -> pd.Series:
+    def _speech_links(
+        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int | str] = 1
+    ) -> pd.Series:
+        """Create a series of speech links from document names and page numbers.
+        The document has the following format: 'prot-YYYY--KK--NNN_MMM'
+        where YYYY is the year as YYYY (i.e. 2010) or YYYYYY (i.e. 202021).
+           KK is the chamber code ('fk', ak', etc).
+           NNN is the protocol number as zero-padded integer.
+           MMM is the page number as zero-padded integer.
+        """
         year: pd.Series[str] = document_names.str.split('-').str[1]
         base_filename: pd.Series[str] = document_names.str.split('_').str[0] + ".pdf"
         page_nrs = page_nrs.astype(str) if isinstance(page_nrs, pd.Series) else str(page_nrs)
@@ -385,3 +395,10 @@ class MultiplePartyAbbrevsHook:
         )
         multi_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
         return multi_party_abbrevs
+
+
+def _merge_specifications(spec1: dict[Any, Any], spec2: dict[Any, Any]) -> dict[Any, Any]:
+    spec1["tables"].update(spec2.get("tables", {}))
+    spec1["codecs"].extend(spec2.get("codecs", []))
+    spec1["property_values_specs"].extend(spec2.get("property_values_specs", []))
+    return spec1
