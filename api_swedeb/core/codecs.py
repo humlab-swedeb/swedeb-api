@@ -1,52 +1,83 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import cached_property
 from os.path import isfile
-from typing import Any, Callable, Literal, Mapping, Self, Union
+from typing import Any, Callable, Literal, Mapping, Protocol, Self
 
 import pandas as pd
 
 from api_swedeb.core.configuration.inject import ConfigValue
-from api_swedeb.core.utility import load_tables, revdict
+from api_swedeb.core.utility import Registry, assign_primary_key, load_tables, revdict
 
 # pylint: disable=too-many-public-methods
 
-CODE_TABLES: dict[str, str] = {
-    'chamber': 'chamber_id',
-    'gender': 'gender_id',
-    'government': 'government_id',
-    'office_type': 'office_type_id',
-    'party': 'party_id',
-    'sub_office_type': 'sub_office_type_id',
-}
+
+MapFx = Callable[[Any], Any] | dict[Any, Any]
 
 
-@dataclass
+class OnLoadHook(Protocol):
+    def execute(self, codecs: PersonCodecs) -> None: ...
+
+
+class OnLoadHookRegistry(Registry):
+
+    items: dict[str, OnLoadHook] = {}
+
+
+OnLoadHooks: OnLoadHookRegistry = OnLoadHookRegistry()
+
+
+@dataclass(kw_only=True)
 class Codec:
+    table: str = None
     type: Literal['encode', 'decode']
     from_column: str
     to_column: str
-    fx: Callable[[int], str] | Callable[[str], int] | dict[str, int] | dict[int, str]
+    fx_factory: Callable[[str, str], MapFx] = None
+    fx: MapFx = None
+
     default: str = None
 
-    def apply(self, df: pd.DataFrame) -> pd.DataFrame:
-        if self.from_column in df.columns:
-            if self.to_column not in df:
-                if isinstance(self.fx, dict):
-                    df = df.assign(**{self.to_column: df[self.from_column].map(self.fx)})
-                else:
-                    df = df.assign(**{self.to_column: df[self.from_column].apply(self.fx)})
-            if self.default is not None:
-                df = df.assign(**{self.to_column: df[self.to_column].fillna(self.default)})
-        return df
+    @property
+    def key(self) -> tuple[str, str]:
+        return (self.from_column, self.to_column)
 
-    def apply_scalar(self, value: int | str, default: Any) -> str | int:
-        if isinstance(self.fx, dict):
-            return self.fx.get(value, default or self.default)  # type: ignore
-        return self.fx(value)
+    def get_fx(self) -> MapFx:
+        """Get mapping function or dict from fx_factory if provided."""
+        if self.fx is not None:
+            return self.fx
+        if self.fx_factory is not None:
+            self.fx = self.fx_factory(self.from_column, self.to_column)
+            return self.fx
+        raise ValueError("Codec: neither fx nor fx_factory provided")
+
+    def apply(self, df: pd.DataFrame, *, overwrite: bool = False) -> pd.DataFrame:
+        """Create the decoded column if `from_column` exists; fill default if provided."""
+        if self.from_column not in df.columns:
+            return df
+
+        if not overwrite and self.to_column in df.columns:
+            # Idempotent: do nothing if already present
+            return df
+
+        fx: MapFx = self.get_fx()
+
+        src: pd.Series[Any] = df[self.from_column]
+
+        if isinstance(fx, Mapping):
+            out: pd.Series[Any] = src.map(fx)
+        else:
+            out = src.apply(fx)
+
+        if self.default is not None:
+            out = out.fillna(self.default)
+
+        df[self.to_column] = out
+        return df
 
     def is_decoded(self, df: pd.DataFrame) -> bool:
         if self.to_column in df.columns:
@@ -55,121 +86,155 @@ class Codec:
             return True
         return False
 
+    def is_ready(self, df: pd.DataFrame) -> bool:
+        """True if either already decoded or not decodable (missing source)."""
+        return self.to_column in df.columns or self.from_column not in df.columns
+
+    def reverse(self) -> Codec:
+        """Get a reversed codec."""
+        reversed_fx_factory: Callable[[], dict] = lambda x, y: {v: k for k, v in self.get_fx().items()}
+        return Codec(
+            table=self.table,
+            type='encode' if self.type == 'decode' else 'decode',
+            from_column=self.to_column,
+            to_column=self.from_column,
+            fx_factory=reversed_fx_factory if self.fx is None else None,
+            fx={v: k for k, v in self.fx.items()} if self.fx is not None else None,
+            default=self.default,
+        )
+
 
 null_frame: pd.DataFrame = pd.DataFrame()
 
 
 class Codecs:
-    def __init__(self):
-        self.chamber: pd.DataFrame = null_frame
-        self.gender: pd.DataFrame = null_frame
-        self.government: pd.DataFrame = null_frame
-        self.office_type: pd.DataFrame = null_frame
-        self.party: pd.DataFrame = null_frame
-        self.sub_office_type: pd.DataFrame = null_frame
-        self.extra_codecs: list[Codec] = []
-        self.source_filename: str | None = None
-        self.code_tables: dict[str, str] = CODE_TABLES
+    def __init__(
+        self,
+        specification: dict[str, str] = None,
+        store: dict[str, pd.DataFrame] = None,
+    ) -> None:
+        """Mapping specifications from configuration."""
+        self.specification: dict[str, dict[str, str]] = specification
+
+        """Holds all loaded data tables by name."""
+        self.store: dict[str, pd.DataFrame] = store or {}
+        self.filename: str | None = None
+
+        """Cache of generated mappings."""
+        self.mappings: dict[tuple[str, str], dict[Any, Any]] = {}
+
+        self._codecs: list[Codec] = None
+        self._lock = threading.Lock()
+
+    def clone(self) -> Self:
+        """Create a (somewhat) deep copy of this Codecs instance.
+        The specification and codecs list are shared, but the store and mappings are copied."""
+        store: dict[str, pd.DataFrame] = {k: v.copy() for k, v in self.store.items()}
+        mappings: dict[tuple[str, str], dict[Any, Any]] = {k: v.copy() for k, v in self.mappings.items()}
+
+        clone: Self = self.__class__(specification=self.specification)
+        clone.mappings = mappings
+        clone.store = store
+        clone.filename = self.filename
+        clone.codecs = [c for c in self.codecs]
+        return clone
+
+    @property
+    def codecs(self) -> list[Codec]:
+        """List of Codec objects from specification, actual mapping lazy loaded."""
+        with self._lock:
+            if self._codecs is None:
+                self._codecs = [Codec(**d, fx_factory=self.get_mapping) for d in self.specification.get("codecs", [])]
+        return self._codecs
+
+    @codecs.setter
+    def codecs(self, value: list[Codec]) -> None:
+        self._codecs = value
+
+    def find_codec(self, from_column: str, to_column: str) -> Codec | None:
+        """Get codec by column names."""
+        for codec in self.codecs:
+            if codec.key == (from_column, to_column):
+                return codec
+        return None
+
+    def _find_table_name(self, from_column: str, to_column: str) -> str | None:
+        """Get table name for a specific mapping."""
+        for d in self.specification.get("codecs", []):
+            if set((d['from_column'], d['to_column'])) == {from_column, to_column}:
+                return d['table']
+        return None
+
+    def get_mapping(self, from_column: str, to_column: str) -> dict[Any, Any]:
+        """Get mapping dict from `from_column` to `to_column` in `tablename`."""
+        key: tuple[str, str] = (from_column, to_column)
+
+        if from_column == to_column:
+            raise ValueError("Identify mapping where from_column equals to_column is not allowed")
+
+        if key in self.mappings:
+            return self.mappings[key]
+
+        """Check if reverse mapping exists"""
+        rev_key: tuple[str, str] = (to_column, from_column)
+        if rev_key in self.mappings:
+            self.mappings[key] = {v: k for k, v in self.mappings[rev_key].items()}
+            return self.mappings[key]
+
+        table_name: str = self._find_table_name(from_column, to_column)
+        if table_name is None:
+            raise ValueError(f"No table found for mapping from '{from_column}' to '{to_column}'")
+
+        table: pd.DataFrame = self.store.get(table_name)
+
+        """If both columns are present in table columns, then use them directly"""
+        if from_column in table.columns and to_column in table.columns:
+            self.mappings[key] = table.set_index(from_column)[to_column].to_dict()
+            return self.mappings[key]
+
+        """Check if from column is index"""
+        key_column: str | None = self.tablenames().get(table_name, table.index.name or None)
+        if from_column in (key_column, table.index.name):
+            self.mappings[key] = table[to_column].to_dict()
+            return self.mappings[key]
+
+        if to_column == key_column:
+            rev_mapping: dict[Any, Any] = table[from_column].to_dict()
+            self.mappings[(to_column, from_column)] = rev_mapping
+            self.mappings[key] = revdict(rev_mapping)
+            return self.mappings[key]
+
+        raise ValueError(f"Unable to create mapping from '{from_column}' to '{to_column}' for table '{table_name}'")
 
     def load(self, source: str | sqlite3.Connection | dict) -> Self:
-        self.source_filename = source if isinstance(source, str) else None
-        if isinstance(source, str) and not isfile(source):
-            raise FileNotFoundError(f"File not found: {source}")
-        if isinstance(source, dict):
-            tables = source
-        else:
-            with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
-                tables: dict[str, pd.DataFrame] = load_tables(self.tablenames(), db=db)
-        for table_name, table in tables.items():
-            setattr(self, table_name, table)
+        """Load code tables from SQLite database file, connection or dict of DataFrames."""
+        with self._lock:
+            self.filename = source if isinstance(source, str) else None
+            if isinstance(source, str) and not isfile(source):
+                raise FileNotFoundError(f"File not found: {source}")
+            if isinstance(source, dict):
+                self.store = source
+                assign_primary_key(self.tablenames(), self.store)
+            else:
+                with sqlite3.connect(database=source) if isinstance(source, str) else nullcontext(source) as db:
+                    self.store = load_tables(self.tablenames(), db=db)
+            for table_name, table in self.store.items():
+                if not hasattr(self, table_name):
+                    setattr(self, table_name, table)
+
+        self._on_load()
+
         return self
 
     def tablenames(self) -> dict[str, str]:
         """Returns a mapping from code table name to id column name"""
-        return CODE_TABLES
-
-    @cached_property
-    def gender2name(self) -> dict:
-        return self.gender['gender'].to_dict()
-
-    @cached_property
-    def gender2abbrev(self) -> dict:
-        return self.gender['gender_abbrev'].to_dict()
-
-    @cached_property
-    def gender2id(self) -> dict:
-        return revdict(self.gender2name)
-
-    @cached_property
-    def office_type2name(self) -> dict:
-        return self.office_type['office'].to_dict()
-
-    @cached_property
-    def office_type2id(self) -> dict:
-        return revdict(self.office_type2name)
-
-    @cached_property
-    def sub_office_type2name(self) -> dict:
-        return self.sub_office_type['description'].to_dict()
-
-    @cached_property
-    def sub_office_type2id(self) -> dict:
-        return revdict(self.sub_office_type2name)
-
-    @cached_property
-    def party_id2abbrev(self) -> dict:
-        return self.party['party_abbrev'].to_dict()
-
-    @cached_property
-    def party_abbrev2id(self) -> dict:
-        return revdict(self.party_id2abbrev)
-
-    @cached_property
-    def party_id2party(self) -> dict:
-        return self.party['party'].to_dict()
-
-    @cached_property
-    def party2id(self) -> dict:
-        return revdict(self.party_id2party)
-
-    @cached_property
-    def chamber_id2abbrev(self) -> dict:
-        """Not implemented"""
-        return {}
-
-    @cached_property
-    def chamber_abbrev2id(self) -> dict:
-        return revdict(self.chamber_id2abbrev)
-
-    @property
-    def codecs(self) -> list[Codec]:
-        return self.extra_codecs + [
-            Codec("decode", "gender_id", "gender", self.gender2name),
-            Codec("decode", "gender_id", "gender_abbrev", self.gender2abbrev),
-            Codec("decode", "office_type_id", "office_type", self.office_type2name),
-            Codec("decode", "party_id", "party_abbrev", self.party_id2abbrev),
-            Codec("decode", "party_id", "party", self.party_id2party),
-            Codec("decode", "sub_office_type_id", "sub_office_type", self.sub_office_type2name),
-            Codec("encode", "gender", "gender_id", self.gender2id),
-            Codec("encode", "office_type", "office_type_id", self.office_type2id),
-            Codec("encode", "party", "party_id", self.party_abbrev2id),
-            Codec("encode", "sub_office_type", "sub_office_type_id", self.sub_office_type2id),
-        ]
-
-    def decode_any_id(self, from_name: str, value: int, *, default_value: str = "unknown", to_name: str = None) -> str:
-        codec: Codec | None = self.decoder(from_name, to_name)
-        if codec is None:
-            return default_value
-        return str(codec.apply_scalar(value, default_value))
+        return self.specification.get("tables", {})
 
     def decoder(self, from_name: str, to_name: str = None) -> Codec | None:
         for codec in self.decoders:
             if codec.from_column == from_name and (to_name is None or codec.to_column == to_name):
                 return codec
         return None
-
-    # def encoder(self, key: str) -> Codec | None:
-    #     return next((x for x in self.encoders if x.from_column == key), lambda _: 0)
 
     @property
     def decoders(self) -> list[Codec]:
@@ -216,162 +281,41 @@ class Codecs:
     @cached_property
     def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
         return [
-            dict(text_name='gender', id_name='gender_id', values=self.gender2id),
-            dict(text_name='office_type', id_name='office_type_id', values=self.office_type2id),
-            dict(text_name='party_abbrev', id_name='party_id', values=self.party_abbrev2id),
-            dict(text_name='party', id_name='party_id', values=self.party2id),
-            dict(text_name='chamber_abbrev', id_name='chamber_id', values=self.chamber_abbrev2id),
-            dict(text_name='sub_office_type', id_name='sub_office_type_id', values=self.sub_office_type2id),
+            dict(text_name=d["text_name"], id_name=d["id_name"], values=self.get_mapping(d["text_name"], d["id_name"]))
+            for d in self.specification.get("property_values_specs", [])
         ]
-
-    @cached_property
-    def key_name_translate_id2text(self) -> dict:
-        return {codec.from_column: codec.to_column for codec in self.codecs if codec.type == "decode"}
-
-    @cached_property
-    def key_name_translate_text2id(self) -> dict:
-        return revdict(self.key_name_translate_id2text)
-
-    @cached_property
-    def key_name_translate_any2any(self) -> dict:
-        """Translates key's id/text name to corresponding text (id) name e.g. `gender_id` => `gender`"""
-        translation: dict = {}
-        translation.update(self.key_name_translate_id2text)
-        translation.update(self.key_name_translate_text2id)
-        return translation
-
-    def translate_key_names(self, keys: list[str]) -> list[str]:
-        """Translates keys' id/text name to corresponding text (id) name e.g. `gender_id` => `gender`"""
-        fg = self.key_name_translate_any2any.get
-        return [fg(key) for key in keys if fg(key) is not None]
 
     def is_decoded(self, df: pd.DataFrame) -> bool:
         return all(decoder.is_decoded(df) for decoder in self.decoders)
 
+    def _on_load(self) -> Self:
+        """
+        Executes all registered OnLoadHooks after loading code tables.
+        This method is called at the end of the `load` method to allow hooks to perform additional setup or data augmentation.
+        Hooks are expected to implement an `execute(codecs: PersonCodecs)` method and may modify the codecs instance or its data store.
+        """
+        for hook in OnLoadHooks.items.values():
+            hook().execute(self)
+        return self
+
 
 class PersonCodecs(Codecs):
-    def __init__(self):
-        super().__init__()
-        self.persons_of_interest: pd.DataFrame = null_frame
-
-    def tablenames(self) -> dict[str, str]:
-        tables: dict[str, str] = dict(CODE_TABLES)
-        tables["persons_of_interest"] = "person_id"
-        tables["person_party"] = "person_party_id"
-        return tables
-
-    def load(self, source: str | sqlite3.Connection | dict) -> Self:
-        super().load(source)
-        if "pid" not in self.persons_of_interest.columns:
-            self.persons_of_interest["pid"] = self.persons_of_interest.reset_index().index
-        return self
-
-    @cached_property
-    def pid2person_id(self) -> dict:
-        return self.any2any('pid', 'person_id')
-
-    @cached_property
-    def person_id2pid(self) -> dict:
-        return revdict(self.pid2person_id)
-
-    @cached_property
-    def pid2person_name(self) -> dict:
-        return self.any2any('pid', 'name')
-
-    @cached_property
-    def person_name2pid(self) -> dict:
-        fg = self.person_id2pid.get
-        return {f"{name} ({person_id})": fg(person_id) for person_id, name in self.person_id2name.items()}
-
-    @cached_property
-    def pid2wiki_id(self) -> dict[int, str]:
-        return self.any2any('pid', 'wiki_id')
-
-    @cached_property
-    def wiki_id2pid(self) -> dict[str, int]:
-        return revdict(self.pid2wiki_id)
-
-    @cached_property
-    def person_id2wiki_id(self) -> dict[str, str]:
-        return self.any2any('person_id', 'wiki_id')
-
-    @cached_property
-    def wiki_id2person_id(self) -> dict[str, str]:
-        return revdict(self.person_id2wiki_id)
-
-    def any2any(self, from_key: str, to_key: str) -> int | str:
-        if self.persons_of_interest.index.name == from_key:
-            return self.persons_of_interest[to_key].to_dict()
-        if from_key not in self.persons_of_interest.columns:
-            raise ValueError(f"any2any: '{from_key}' not found in persons_of_interest")
-        return self.persons_of_interest.reset_index().set_index(from_key)[to_key].to_dict()
-
-    @cached_property
-    def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
-        return super().property_values_specs + [
-            dict(text_name="name", id_name="pid", values=self.person_name2pid),
-        ]
-
-    @cached_property
-    def person_id2name(self) -> dict[str, str]:
-        return self.any2any('person_id', 'name')
+    def __init__(self, specification: dict[str, str] = None) -> None:
+        super().__init__(specification or ConfigValue("mappings").resolve())
 
     @property
-    def person(self) -> pd.DataFrame:
-        return self.persons_of_interest
+    def persons_of_interest(self) -> pd.DataFrame:
+        return self.store.get("persons_of_interest", pd.DataFrame())
 
     def __getitem__(self, key: int | str) -> dict:
-        """Get person by key (pid, person_id or wiki_id)"""
+        """Get person by key (person_id or wiki_id)"""
         if isinstance(key, int) or key.isdigit():
-            idx_key: int = int(key)
-        elif key.lower().startswith('q'):
-            idx_key = self.wiki_id2pid[key]
-        else:
-            idx_key = self.person_id2pid[key]
-        return self.persons_of_interest.loc[idx_key]
+            return self.persons_of_interest.iloc[int(key)]
 
-    @property
-    def codecs(self) -> list[Codec]:
-        return (
-            self.extra_codecs
-            + super().codecs
-            + [
-                Codec("decode", "person_id", "name", self.person_id2name),
-                Codec("decode", "person_id", "wiki_id", self.person_id2wiki_id),
-                Codec("decode", "pid", "person_id", self.pid2person_id),
-                Codec("encode", "person_id", "pid", self.person_id2pid),
-            ]
-        )
+        if key.lower().startswith('q'):
+            key = self.get_mapping("wiki_id", "person_id")[key]
 
-    def add_multiple_party_abbrevs(self) -> Self:
-        party_data: pd.DataFrame = getattr(self, "person_party")
-        party_data["party_abbrev"] = party_data["party_id"].map(self.party_id2abbrev).fillna("?")
-
-        grouped_party_abbrevs: pd.DataFrame = (
-            party_data.groupby("person_id")
-            .agg(
-                {
-                    "party_abbrev": lambda x: ", ".join(set(x)),
-                    "party_id": lambda x: ",".join(set(map(str, x))),
-                }
-            )
-            .reset_index()
-        )
-        grouped_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
-
-        self.persons_of_interest = self.persons_of_interest.merge(grouped_party_abbrevs, on="person_id", how="left")
-        self.persons_of_interest["party_abbrev"] = self.persons_of_interest["party_abbrev"].fillna("?")
-        return self
-
-    def _get_party_specs(self, partys_of_interest: list[int]) -> Union[str, Mapping[str, int]]:
-        selected = {}
-        for specification in self.property_values_specs:
-            if specification["text_name"] == "party_abbrev":
-                specs: str | Mapping[str, int] = specification["values"]
-                for k, v in specs.items():
-                    if v in (partys_of_interest or [v]):
-                        selected[k] = v
-        return selected
+        return self.persons_of_interest.loc[key]
 
     @staticmethod
     def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
@@ -383,17 +327,35 @@ class PersonCodecs(Codecs):
         return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
-    def speech_link(document_name: str | pd.Series, page: int = 1) -> str | pd.Series:
-        base_url = "https://pdf.swedeb.se/riksdagen-records-pdf/"
-        page_nr = f"#page={page}"
+    def speech_link(
+        document_name: str | pd.Series, page_nr: str | int | pd.Series[int | str] = 1
+    ) -> str | pd.Series[str]:
+        base_url: str = ConfigValue("pdf_server.base_url").resolve()
         if isinstance(document_name, pd.Series):
-            year = document_name.str.split('-').str[1]
-            base_filename = document_name.str.split('_').str[0] + ".pdf"
-            return base_url + year + "/" + base_filename + page_nr
-        else:
-            year = document_name.split('-')[1]
-            base_filename = document_name.split('_')[0] + ".pdf"
-            return f"{base_url}{year}/{base_filename}{page_nr}"
+            return PersonCodecs._speech_links(document_name, base_url, page_nr)
+        return PersonCodecs._speech_link(document_name, base_url, page_nr)
+
+    @staticmethod
+    def _speech_link(document_name: str, base_url: str, page_nr: Any) -> str:
+        year: str = document_name.split('-')[1]
+        base_filename: str = document_name.split('_')[0] + ".pdf"
+        return f"{base_url}{year}/{base_filename}#page={page_nr}"
+
+    @staticmethod
+    def _speech_links(
+        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int | str] = 1
+    ) -> pd.Series:
+        """Create a series of speech links from document names and page numbers.
+        The document has the following format: 'prot-YYYY--KK--NNN_MMM'
+        where YYYY is the year as YYYY (i.e. 2010) or YYYYYY (i.e. 202021).
+           KK is the chamber code ('fk', ak', etc).
+           NNN is the protocol number as zero-padded integer.
+           MMM is the page number as zero-padded integer.
+        """
+        year: pd.Series[str] = document_names.str.split('-').str[1]
+        base_filename: pd.Series[str] = document_names.str.split('_').str[0] + ".pdf"
+        page_nrs = page_nrs.astype(str) if isinstance(page_nrs, pd.Series) else str(page_nrs)
+        return base_url + year + "/" + base_filename + "#page=" + page_nrs
 
     def decode_speech_index(
         self, speech_index: pd.DataFrame, value_updates: dict = None, sort_values: bool = True
@@ -418,3 +380,88 @@ class PersonCodecs(Codecs):
             speech_index.replace(value_updates, inplace=True)
 
         return speech_index
+
+
+@OnLoadHooks.register(key="multiple_party_abbrevs")
+class MultiplePartyAbbrevsHook:
+    """Adds a 'multi_party_id' column to persons_of_interest with all party abbreviations for the person."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
+
+        if persons_of_interest is None:
+            return
+
+        if not persons_of_interest.index.name == "person_id":
+            raise ValueError("persons_of_interest is NOT indexed by person_id after loading codecs")
+
+        if "multi_party_id" in persons_of_interest.columns:
+            return
+
+        grouped_party_abbrevs = self._get_multi_party_abbrevs(codecs)
+
+        persons_of_interest = persons_of_interest.merge(
+            grouped_party_abbrevs, left_index=True, right_index=True, how="left"
+        )
+        persons_of_interest["party_abbrev"] = persons_of_interest["party_abbrev"].fillna("?")
+        codecs.store["persons_of_interest"] = persons_of_interest
+
+    def _get_multi_party_abbrevs(self, codecs: PersonCodecs) -> pd.DataFrame:
+        fx: dict[int, str] = codecs.get_mapping('party_id', 'party_abbrev').get
+        person_party: pd.DataFrame = codecs.store.get("person_party")
+        person_party["party_abbrev"] = person_party["party_id"].map(fx).fillna("?")
+        multi_party_abbrevs: pd.DataFrame = person_party.groupby("person_id").agg(
+            {
+                "party_abbrev": lambda x: ", ".join(set(x)),
+                "party_id": lambda x: ",".join(set(map(str, x))),
+            }
+        )
+        multi_party_abbrevs.rename(columns={"party_id": "multi_party_id"}, inplace=True)
+        return multi_party_abbrevs
+
+
+@OnLoadHooks.register(key="add_person_pid")
+class AddPersonPidHook:
+    """Adds a 'pid' column to persons_of_interest, used as integer ID for persons."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
+
+        if persons_of_interest is None:
+            return
+
+        if "pid" in persons_of_interest.columns:
+            return
+
+        persons_of_interest["pid"] = persons_of_interest.reset_index().index
+        codecs.store["persons_of_interest"] = persons_of_interest
+
+
+def _merge_specifications(spec1: dict[Any, Any], spec2: dict[Any, Any]) -> dict[Any, Any]:
+    spec1["tables"].update(spec2.get("tables", {}))
+    spec1["codecs"].extend(spec2.get("codecs", []))
+    spec1["property_values_specs"].extend(spec2.get("property_values_specs", []))
+    return spec1
+
+
+@OnLoadHooks.register(key="rename_sub_office_type")
+class SubOfficeRenameHook:
+    """Renames column `description` to `sub_office_type` in sub_office_type."""
+
+    def execute(self, codecs: PersonCodecs) -> None:
+
+        if "sub_office_type" not in codecs.store:
+            return
+
+        sub_office_type: pd.DataFrame = codecs.store.get("sub_office_type")
+
+        if not sub_office_type.index.name == "sub_office_type_id":
+            raise ValueError("sub_office_type is NOT indexed by sub_office_type_id after loading codecs")
+
+        if "sub_office_type" in sub_office_type.columns:
+            return
+
+        sub_office_type.rename(columns={"description": "sub_office_type"}, inplace=True)
+        codecs.store["sub_office_type"] = sub_office_type

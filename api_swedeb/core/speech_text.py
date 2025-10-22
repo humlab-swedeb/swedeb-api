@@ -144,9 +144,9 @@ class SpeechTextRepository:
     @cached_property
     def speaker_note_id2note(self) -> dict:
         try:
-            if not self.person_codecs.source_filename:
+            if not self.person_codecs.filename:
                 return {}
-            with sqlite3.connect(database=self.person_codecs.source_filename) as db:
+            with sqlite3.connect(database=self.person_codecs.filename) as db:
                 speaker_notes: pd.DataFrame = read_sql_table("speaker_notes", db)
                 speaker_notes.set_index(self.service.id_name, inplace=True)
                 return speaker_notes["speaker_note"].to_dict()
@@ -173,13 +173,19 @@ class SpeechTextRepository:
             speech.update(protocol_name=protocol_name)
             speech.update(page_number=speech.get("page_number", 1) if utterances else None)
 
-            speech["office_type"] = self.person_codecs.office_type2name.get(speech["office_type_id"], "Okänt")
-            speech["sub_office_type"] = self.person_codecs.sub_office_type2name.get(
+            speech["office_type"] = self.person_codecs.get_mapping("office_type_id", "office").get(
+                speech["office_type_id"], "Okänt"
+            )
+            speech["sub_office_type"] = self.person_codecs.get_mapping("sub_office_type_id", "sub_office_type").get(
                 speech["sub_office_type_id"], "Okänt"
             )
-            speech["gender"] = self.person_codecs.gender2name.get(speech["gender_id"], "Okänt")
-            speech["gender_abbrev"] = self.person_codecs.gender2abbrev.get(speech["gender_id"], "Okänt")
-            speech["party_abbrev"] = self.person_codecs.party_id2abbrev.get(speech["party_id"], "Okänt")
+            speech["gender"] = self.person_codecs.get_mapping("gender_id", "gender").get(speech["gender_id"], "Okänt")
+            speech["gender_abbrev"] = self.person_codecs.get_mapping("gender_id", "gender_abbrev").get(
+                speech["gender_id"], "Okänt"
+            )
+            speech["party_abbrev"] = self.person_codecs.get_mapping("party_id", "party_abbrev").get(
+                speech["party_id"], "Okänt"
+            )
 
         except FileNotFoundError as ex:
             speech = {"name": f"speech {speech_name} not found", "error": str(ex)}

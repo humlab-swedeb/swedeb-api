@@ -1,3 +1,4 @@
+
 metadata:
   version: v1.1.0
   filename: /data/swedeb/v1.1.0/riksprot_metadata.db
@@ -12,6 +13,7 @@ corpus:
     user: swerik-project
     repository: riksdagen-records
     path: data
+
 
 cwb:
   registry_dir: /usr/local/share/cwb/registry
@@ -30,8 +32,102 @@ fastapi:
     - http://localhost:8080
     - http://localhost:9002
 
-github:
-  access_token:
+pdf_server:
+  base_url: "https://pdf.swedeb.se/riksdagen-records-pdf/"
+
+mappings:
+
+  tables:
+    chamber: "chamber_id"
+    gender: "gender_id"
+    government: "government_id"
+    office_type: "office_type_id"
+    party: "party_id"
+    sub_office_type: "sub_office_type_id"
+
+    persons_of_interest: "person_id"
+    person_party: "person_party_id"
+
+
+  codecs:
+    - table: "gender"
+      type: "decode"
+      from_column: "gender_id"
+      to_column: "gender"
+    - table: "gender"
+      type: "decode"
+      from_column: "gender_id"
+      to_column: "gender_abbrev"
+    - table: "office_type"
+      type: "decode"
+      from_column: "office_type_id"
+      to_column: "office"
+    - table: "party"
+      type: "decode"
+      from_column: "party_id"
+      to_column: "party"
+    - table: "party"
+      type: "decode"
+      from_column: "party_id"
+      to_column: "party_abbrev"
+    - table: "chamber"
+      type: "decode"
+      from_column: "chamber_id"
+      to_column: "chamber"
+    - table: "chamber"
+      type: "decode"
+      from_column: "chamber_id"
+      to_column: "chamber_abbrev"
+    - table: "sub_office_type"
+      type: "decode"
+      from_column: "sub_office_type_id"
+      to_column: "sub_office_type"
+
+    - table: "persons_of_interest"
+      type: "decode"
+      from_column: "person_id"
+      to_column: "name"
+    - table: "persons_of_interest"
+      type: "decode"
+      from_column: "person_id"
+      to_column: "wiki_id"
+    - table: "persons_of_interest"
+      type: "decode"
+      from_column: "person_id"
+      to_column: "pid"
+    - table: "persons_of_interest"
+      type: "decode"
+      from_column: "pid"
+      to_column: "name"
+    
+    - table: "gender"
+      type: "encode"
+      from_column: "gender"
+      to_column: "gender_id"
+    - table: "gender"
+      type: "encode"
+      from_column: "gender_abbrev"
+      to_column: "gender_id"
+    - table: "sub_office_type"
+      type: "encode"
+      from_column: "sub_office_type"
+      to_column: "sub_office_type_id"
+
+  property_values_specs:
+    - text_name: "gender"
+      id_name: "gender_id"
+    - text_name: "office"
+      id_name: "office_type_id"
+    - text_name: "party_abbrev"
+      id_name: "party_id"
+    - text_name: "party"
+      id_name: "party_id"
+    - text_name: "chamber_abbrev"
+      id_name: "chamber_id"
+    - text_name: "sub_office_type"
+      id_name: "sub_office_type_id"
+    - text_name: "name"
+      id_name: "pid"
 
 
 display:

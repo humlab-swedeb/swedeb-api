@@ -55,7 +55,7 @@ class SweDebTrendsData(wt.TrendsService):
         """Decodes ID columns (keeps ID) and updates document index with filename, time_period and document_name."""
         if not opts.pivot_keys_id_names:
             return document_index
-        di: pd.DataFrame = self.person_codecs.decode(document_index, drop=False, ignores=['wiki_id', 'pid'])
+        di: pd.DataFrame = self.person_codecs.decode(document_index, drop=False, ignores=['wiki_id'])
         di["document_name"] = self._generate_pivot_document_name(di, opts.pivot_keys_id_names, opts.temporal_key)
         di["filename"] = di.document_name
         di["time_period"] = di[opts.temporal_key]
@@ -125,7 +125,7 @@ def compute_word_trends(
         trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]
 
     trends.rename(columns={"who": "person_id"}, inplace=True)
-    trends = trends_data.person_codecs.decode(trends, ignores=["wiki_id", "pid"], drop=True)
+    trends = trends_data.person_codecs.decode(trends, ignores=["wiki_id", "party"], drop=True)
     trends["year"] = trends["year"].astype(str)
 
     if not pivot_keys:

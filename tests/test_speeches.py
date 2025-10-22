@@ -1,10 +1,10 @@
 import pandas as pd
 import pytest
+import requests
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 from loguru import logger
-import requests
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
@@ -20,6 +20,7 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult
 # pylint: disable=redefined-outer-name
 
 version = "v1"
+
 
 def check_url_availability(url):
     try:
@@ -44,6 +45,7 @@ def test_pdf_link(api_corpus: Corpus):
         assert check_url_availability(test_link)
         print(f"Link {test_link} is available.")
 
+
 def test_pdf_link_with_series(api_corpus: Corpus):
     """
     Test that the pdf link points to available pdf"""
@@ -59,9 +61,6 @@ def test_pdf_link_with_series(api_corpus: Corpus):
     for test_link in test_links:
         assert check_url_availability(test_link)
         print(f"Link {test_link} is available.")
-
-
-
 
 
 def test_speeches_get(fastapi_client: TestClient):
@@ -136,7 +135,7 @@ def test_get_speech_by_id_page_number(fastapi_client: TestClient):
     assert data['page_number'] == 38
 
 
-def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):
+def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):  # pylint: disable=unused-argument
     document_name, speech_id = ('prot-197576--087_018', 'i-34625fce7c35cf80-3')
     # find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
@@ -154,7 +153,9 @@ def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus)
     assert data_by_id == data_by_name
 
 
-def test_get_speech_by_id_page_number_byclient(fastapi_client: TestClient, api_corpus: Corpus):
+def test_get_speech_by_id_page_number_byclient(
+    fastapi_client: TestClient, api_corpus: Corpus  # pylint: disable=unused-argument
+):
     speech_id = 'i-34625fce7c35cf80-3'
     response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
     assert response.status_code == status.HTTP_200_OK
@@ -185,7 +186,7 @@ def test_speeches_zip(fastapi_client: TestClient, api_corpus: Corpus):
 
 
 def test_get_speeches_corpus(api_corpus: Corpus):
-    fx = api_corpus.person_codecs.party_abbrev2id.get
+    fx = api_corpus.person_codecs.get_mapping('party_abbrev', 'party_id').get
     df_filtered: pd.DataFrame = api_corpus.get_anforanden(
         selections={'party_id': [fx(x) for x in ('L', 'S')], 'gender_id': [1, 2], 'year': (1970, 1980)}
     )

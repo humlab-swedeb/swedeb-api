@@ -27,7 +27,7 @@ class Corpus:
             lambda: load_dtm_corpus(folder=self.dtm_folder, tag=self.dtm_tag)
         )
         self.__lazy_person_codecs: md.PersonCodecs = Lazy(
-            lambda: md.PersonCodecs().load(source=self.metadata_filename).add_multiple_party_abbrevs(),
+            lambda: md.PersonCodecs().load(source=self.metadata_filename),
         )
         self.__lazy_repository: sr.SpeechTextRepository = Lazy(
             lambda: sr.SpeechTextRepository(
@@ -129,13 +129,18 @@ class Corpus:
                 value: list[int] = [int(v) for v in value] if isinstance(value, list) else [int(value)]
                 person_party = getattr(self.metadata, 'person_party')
                 party_person_ids: set[str] = set(person_party[person_party.party_id.isin(value)].person_id)
-                df = df[df["person_id"].isin(party_person_ids)]
+                df = df[df.index.isin(party_person_ids)]
             elif key == "chamber_abbrev" and value:
                 value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [value.lower()]
                 di: pd.DataFrame = self.vectorized_corpus.document_index
-                df = df[df["person_id"].isin(set(di[di.chamber_abbrev.isin(value)].person_id.unique()))]
+                df = df[df.index.isin(set(di[di.chamber_abbrev.isin(value)].person_id.unique()))]
             else:
-                df = df[df[key].isin(value)]
+                if key in df.columns:
+                    df = df[df[key].isin(value)]
+                elif df.index.name == key:
+                    df = df[df.index.isin(value)]
+                else:
+                    raise KeyError(f"Unknown filter key: {key}")
         return df
 
     def get_speakers(self, selections):

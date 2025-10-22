@@ -43,7 +43,9 @@ def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str
 
             criteria['key'] = 'a.speech_party_id'
             party_abbrev: str = criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
-            criteria['values'] = [person_codecs.party_abbrev2id.get(party, 0) for party in party_abbrev]
+            criteria['values'] = [
+                person_codecs.get_mapping('party_abbrev', 'party_id').get(party, 0) for party in party_abbrev
+            ]
 
     return criterias
 
@@ -171,7 +173,7 @@ def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person
     party_abbrev: str = 'S'
     gender_id: int = 2
 
-    party_id: int = person_codecs.party_abbrev2id.get(party_abbrev, 0)
+    party_id: int = person_codecs.get_mapping('party_abbrev', 'party_id').get(party_abbrev, 0)
 
     search_opts: dict[str, Any] = [
         {

@@ -38,14 +38,17 @@ else
 BUILD_ENV:=staging
 endif
 
--include ./.env
+include ./compose/$(BUILD_ENV)/.env
+export
+
+include .env-ghcr
 export
 
 ###################################################################################################
 # Publish the image to the GHCR registry
 ###################################################################################################
-.PHONY: ghcr-image
-ghcr-image: backend
+.PHONY: publish
+ghcr-image:
 	@echo "Building image $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) for GHCR…"
 	@$(CONTAINER_CMD) build \
 		--build-arg SWEDEB_PORT=$(SWEDEB_PORT) \
@@ -53,31 +56,15 @@ ghcr-image: backend
 		--build-arg SWEDEB_FRONTEND_TAG=$(SWEDEB_FRONTEND_TAG) \
 		-t $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) \
 		-f ./Dockerfile .
+apa:
+	@echo "Publishing image $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) to GHCR…"
+	@cat ~/.ghcr_token | $(CONTAINER_CMD) login ghcr.io --username "$(GHCR_USERNAME)" --password-stdin
 
-###################################################################################################
-# Backend build target (development target)
-###################################################################################################
-.ONESHELL: backend
-.PHONY: backend
-backend:
-	@echo "Determining backend build method for $(SWEDEB_BACKEND_TAG)..."
-	@if [ "$(SWEDEB_BACKEND_SOURCE)" == "workdir" ]; then \
-		echo "Building backend API using $(SWEDEB_BACKEND_TAG) from workdir..."; \
-		poetry build --directory .. --output docker/dist ; \
-	elif [ "$(SWEDEB_BACKEND_SOURCE)" == "pypi" ]; then \
-		echo "Using backend from PyPi api_swedeb-$(SWEDEB_BACKEND_TAG)-py3-none-any.whl"; \
-	elif [ "$(SWEDEB_BACKEND_SOURCE)" == "git" ]; then \
-		echo "Building backend API using git tag $(SWEDEB_BACKEND_TAG)..."; \
-		pushd . > /dev/null && \
-		mkdir -p $(TMPDIR_BUILD) && cd $(TMPDIR_BUILD) && \
-		git clone $(BACKEND_REPO) --branch $(SWEDEB_BACKEND_TAG) --depth 1 && \
-		cd swedeb-api && \
-		poetry build && \
-		popd > /dev/null && \
-		rm -rf dist && \
-		mv -f $(TMPDIR_BUILD)/swedeb-api/dist dist && \
-		rm -rf $(TMPDIR_BUILD); \
-	fi
+apa: ghcr-login
+
+# @$(CONTAINER_CMD) tag $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) ghcr.io/humlab-swedeb/$(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG)
+# @$(CONTAINER_CMD) push ghcr.io/humlab-swedeb/$(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG)
+# @echo "Image published successfully."
 
 ###################################################################################################
 # Help target
@@ -135,6 +122,76 @@ help:
 
 
 ###################################################################################################
+# Temporary build directory for frontend/backend
+###################################################################################################
+SHA_FILE        := public/.frontend_last_built_sha
+FRONTEND_REPO   := https://github.com/humlab-swedeb/swedeb_frontend.git
+BACKEND_REPO    := https://github.com/humlab-swedeb/swedeb-api.git
+TMPDIR_BUILD    := /tmp/swedeb-build-${USER}
+
+###################################################################################################
+# Frontend build target
+###################################################################################################
+.ONESHELL: frontend
+.PHONY: frontend
+frontend: create-tmpdir
+	@echo "Checking for updates on branch $(SWEDEB_FRONTEND_TAG)..."
+	@LATEST_SHA=$$(git ls-remote $(FRONTEND_REPO) refs/heads/$(SWEDEB_FRONTEND_TAG) | awk '{print $$1}'); \
+	if [ "$(SWEDEB_FRONTEND_TAG)" == "workdir-dist" ]; then \
+		echo "Using existing swedeb_frontend dist in local public folder"; \
+	elif [ "$(SWEDEB_FRONTEND_TAG)" == "workdir" ]; then \
+		frontend_folder=$$(find "$$HOME" -type d -path '*/swedeb_frontend/.git' -printf '%h\n' 2>/dev/null); \
+		echo "Using local swedeb_frontend at $$frontend_folder"; \
+		pushd "$$frontend_folder" > /dev/null \
+			&& pnpm install \
+			&& pnpm build \
+			&& popd > /dev/null \
+			&& rm -rf public \
+			&& mv -f $$frontend_folder/dist/spa public \
+			&& rm -rf $(TMPDIR_BUILD); \
+	elif [ ! -f $(SHA_FILE) ] || [ "$$(cat $(SHA_FILE))" != "$$LATEST_SHA" ]; then \
+		echo "Changes detected on branch $(SWEDEB_FRONTEND_TAG). Building frontend..."; \
+		pushd . > /dev/null && \
+		cd $(TMPDIR_BUILD) && \
+		git clone $(FRONTEND_REPO) --branch $(SWEDEB_FRONTEND_TAG) --depth 1 && \
+		cd swedeb_frontend && \
+		pnpm install && \
+		pnpm build && \
+		popd > /dev/null && \
+		rm -rf public && \
+		mv -f $(TMPDIR_BUILD)/swedeb_frontend/dist/spa public && \
+		rm -rf $(TMPDIR_BUILD); \
+		echo "$$LATEST_SHA" > $(SHA_FILE); \
+	else \
+		echo "No changes detected on branch $(SWEDEB_FRONTEND_TAG). Skipping frontend build."; \
+	fi
+
+###################################################################################################
+# Backend build target
+###################################################################################################
+.ONESHELL: backend
+.PHONY: backend
+backend:
+	@echo "Determining backend build method for $(SWEDEB_BACKEND_TAG)..."
+	@if [ "$(SWEDEB_BACKEND_SOURCE)" == "workdir" ]; then \
+		echo "Building backend API using $(SWEDEB_BACKEND_TAG) from workdir..."; \
+		poetry build --directory .. --output docker/dist ; \
+	elif [ "$(SWEDEB_BACKEND_SOURCE)" == "pypi" ]; then \
+		echo "Using backend from PyPi api_swedeb-$(SWEDEB_BACKEND_TAG)-py3-none-any.whl"; \
+	elif [ "$(SWEDEB_BACKEND_SOURCE)" == "git" ]; then \
+		echo "Building backend API using git tag $(SWEDEB_BACKEND_TAG)..."; \
+		pushd . > /dev/null && \
+		mkdir -p $(TMPDIR_BUILD) && cd $(TMPDIR_BUILD) && \
+		git clone $(BACKEND_REPO) --branch $(SWEDEB_BACKEND_TAG) --depth 1 && \
+		cd swedeb-api && \
+		poetry build && \
+		popd > /dev/null && \
+		rm -rf dist && \
+		mv -f $(TMPDIR_BUILD)/swedeb-api/dist dist && \
+		rm -rf $(TMPDIR_BUILD); \
+	fi
+
+###################################################################################################
 # Guard against production without confirmation
 ###################################################################################################
 .PHONY: guard-production
@@ -148,6 +205,23 @@ guard-production:
 			exit 1; \
 		fi \
 	fi
+
+###################################################################################################
+# Build & tag the container image
+###################################################################################################
+.PHONY: image
+.ONESHELL: image
+image: guard-production backend frontend
+	@echo "Building $${SWEDEB_ENVIRONMENT^^} image using $(SWEDEB_BACKEND_TAG)..."
+	@$(CONTAINER_CMD) build \
+		--build-arg SWEDEB_PORT=$(SWEDEB_PORT) \
+		--build-arg SWEDEB_BACKEND_TAG=$(SWEDEB_BACKEND_TAG) \
+		--build-arg SWEDEB_FRONTEND_TAG=$(SWEDEB_FRONTEND_TAG) \
+		--build-arg NODE_VERSION=24 \
+		-t $(SWEDEB_IMAGE_NAME):$(SWEDEB_IMAGE_TAG) \
+		-t $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG) \
+		-f ./Dockerfile .
+	@echo "Done building image $(SWEDEB_IMAGE_NAME):$(SWEDEB_BACKEND_TAG)"
 
 ###################################################################################################
 # Create temporary build directory

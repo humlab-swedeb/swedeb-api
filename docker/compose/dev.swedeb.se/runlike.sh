@@ -1,0 +1,34 @@
+docker run --name=swedeb-api-staging \
+        --hostname=787f9ca25011 \
+        --volume /data/swedeb/metadata/riksprot_metadata.v1.1.3.db:/data/riksprot_metadata.v1.1.3.db \
+        --volume /data/swedeb/v1.4.1:/data \
+        --env=SWEDEB_CONTAINER_NAME=swedeb-api \
+        --env=SWEDEB_METADATA_FILENAME=/data/swedeb/metadata/riksprot_metadata.v1.1.3.db \
+        --env=SWEDEB_CONFIG_PATH=/app/config/config_v1.4.1_v1.1.3.yml \
+        --env=NODE_VERSION=24 \
+        --env=SWEDEB_IMAGE_TAG=staging \
+        --env=SWEDEB_IMAGE_NAME=swedeb-api-staging \
+        --env=METADATA_VERSION=v1.1.3 \
+        --env=SWEDEB_HOST_PORT=10443 \
+        --env=SWEDEB_FRONTEND_TAG=workdir \
+        --env=SWEDEB_ENVIRONMENT=staging \
+        --env=SWEDEB_DATA_FOLDER=/data/swedeb/v1.4.1 \
+        --env=SWEDEB_BACKEND_SOURCE=workdir \
+        --env=SWEDEB_BACKEND_TAG=0.2.12 \
+        --env=CORPUS_VERSION=v1.4.1 \
+        --network=staging_swedeb_staging_network \
+        --workdir=/app \
+        -p 10443:8092 \
+        --restart=always \
+        --label='com.docker.compose.config-hash=dc3d0ca10235565f6976a9792e031df3f1f7de21368782be08adaf49979a80a6' \
+        --label='com.docker.compose.oneoff=False' \
+        --label='com.docker.compose.version=2.35.1' \
+        --label='com.docker.compose.project=staging' \
+        --label='com.docker.compose.project.config_files=/home/roger/source/swedeb/swedeb-api/docker/compose/staging/compose.yml' \
+        --label='com.docker.compose.project.working_dir=/home/roger/source/swedeb/swedeb-api/docker/compose/staging' \
+        --label='com.docker.compose.depends_on=' \
+        --label='com.docker.compose.service=swedeb_api_staging' \
+        --label='com.docker.compose.image=sha256:2e68f0b8bd70c5676a7012abcc8651d31f06d2c805d24a23d74b3169e13af992' \
+        --label='com.docker.compose.container-number=1' \
+        --runtime=runc \
+        swedeb-api-staging:staging

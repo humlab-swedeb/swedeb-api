@@ -1,4 +1,5 @@
 import sqlite3
+import sys
 import uuid
 
 import ccc
@@ -7,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
+from loguru import logger
 
 from api_swedeb.api import metadata_router, tool_router
 from api_swedeb.api.utils import corpus as api_swedeb
@@ -16,6 +18,10 @@ from api_swedeb.core.configuration import ConfigStore, ConfigValue
 ConfigStore.configure_context(source='tests/config.yml')
 
 # pylint: disable=redefined-outer-name
+
+
+logger.remove()
+logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 
 @pytest.fixture(scope='module')
@@ -38,19 +44,25 @@ def api_corpus() -> api_swedeb.Corpus:
 
 
 @pytest.fixture(scope="module")
-def speech_index(api_corpus: api_swedeb.Corpus) -> pd.DataFrame:
-    return api_corpus.vectorized_corpus.document_index
+def _speech_index_cached() -> pd.DataFrame:
+    """Cached speech index - internal use only."""
+    return api_swedeb.Corpus().vectorized_corpus.document_index
+
+
+@pytest.fixture
+def speech_index(_speech_index_cached: pd.DataFrame) -> pd.DataFrame:
+    """Function-scoped copy of speech_index for test isolation."""
+    return _speech_index_cached.copy(deep=True)
 
 
 @pytest.fixture(scope="module")
-def person_codecs(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
+def _person_codecs_cached(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
     return api_corpus.person_codecs
 
 
-@pytest.fixture(scope="session")
-def person_codecs2() -> PersonCodecs:
-    metadata_filename: str = ConfigValue("metadata.filename").value
-    return PersonCodecs().load(source=metadata_filename).add_multiple_party_abbrevs()
+@pytest.fixture
+def person_codecs(_person_codecs_cached: PersonCodecs) -> PersonCodecs:
+    return _person_codecs_cached.clone()
 
 
 @pytest.fixture(scope='session')
@@ -227,13 +239,12 @@ def fixture_sqlite3db(tmp_path):
     return conn
 
 
-@pytest.fixture(name='source_dict')
+@pytest.fixture(name='codecs_source_dict')
 def fixture_source_dict():
     return {
         'gender': pd.DataFrame({'gender': ['Male', 'Female'], 'gender_abbrev': ['M', 'F']}, index=[1, 2]),
         'persons_of_interest': pd.DataFrame(
             {
-                # 'pid': [1, 2],
                 'person_id': ['p1', 'p2'],
                 'name': ['John Doe', 'Jane Doe'],
                 'wiki_id': ['q1', 'q2'],
@@ -248,4 +259,24 @@ def fixture_source_dict():
             index=[1, 2],
         ),
         'person_party': pd.DataFrame({'person_id': ['p1', 'p2'], 'party_id': [1, 2]}),
+    }
+
+
+@pytest.fixture(name='codecs_speech_index_source_dict')
+def fixture_codecs_speech_index_source_dict():
+    return {
+        'document_id': {0: 0, 1: 1},
+        'year': {0: 1970, 1: 1970},
+        'document_name': {0: 'prot-1970--ak--029_001', 1: 'prot-1970--ak--029_002'},
+        'filename': {0: 'prot-1970--ak--029_001.csv', 1: 'prot-1970--ak--029_002.csv'},
+        'speech_id': {0: 's1', 1: 's2'},
+        'person_id': {0: 'p1', 1: 'p2'},
+        'wiki_id': {0: 'q1', 1: 'q2'},
+        'chamber_abbrev': {0: 'ak', 1: 'ak'},
+        'speech_index': {0: 1, 1: 2},
+        'gender_id': {0: 1, 1: 1},
+        'party_id': {0: 2, 1: 1},
+        'office_type_id': {0: 1, 1: 1},
+        'sub_office_type_id': {0: 1, 1: 2},
+        'protocol_name': {0: 'prot-1970--ak--029', 1: 'prot-1970--ak--029'},
     }
