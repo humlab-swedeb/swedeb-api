@@ -11,9 +11,11 @@ jobs:
     name: Build, Version, and Release
     runs-on: ubuntu-latest
     permissions:
-      contents: write      # to push tags and update changelog/pyproject.toml
+      contents: write      # to push tags and update changelog
       packages: write      # to push to ghcr.io
-
+      issues: write        # to comment on issues
+      pull-requests: write # to comment on PRs
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,14 +23,6 @@ jobs:
           # Required for semantic-release to analyze history and push back
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-  
-      - name: Install Python build tools
-        run: pipx install poetry
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

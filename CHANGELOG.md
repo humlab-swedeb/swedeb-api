@@ -1,3 +1,57 @@
+# 📦 Changelog 
+[![conventional commits](https://img.shields.io/badge/conventional%20commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
+[![semantic versioning](https://img.shields.io/badge/semantic%20versioning-2.0.0-green.svg)](https://semver.org)
+> All notable changes to this project will be documented in this file
+
+
+## [0.4.0](https://github.com/humlab-swedeb/swedeb-api/compare/v0.3.0...v0.4.0) (2025-06-10)
+
+### 🍕 Features
+
+* add initial configuration file for version 1.1.0 ([8a0cba9](https://github.com/humlab-swedeb/swedeb-api/commit/8a0cba92b7ff0e847817a87cdb9c824dca61424a))
+* added Speech DTO class to API/core (dict-like class) ([fbdaf0c](https://github.com/humlab-swedeb/swedeb-api/commit/fbdaf0ce2ef00839976502d29ccbb7e5d26cd1a0))
+* restructure Docker Compose files for production and staging environments ([7908005](https://github.com/humlab-swedeb/swedeb-api/commit/7908005752fcff99bef19b6be2f37386e3b5eec9))
+
+### 🐛 Bug Fixes
+
+* add logging for registry directory in get_cwb_corpus function ([33fcc13](https://github.com/humlab-swedeb/swedeb-api/commit/33fcc137048900130546922e8d85e755098e105f))
+* address FIXME regarding HTTPException handling in speech download endpoint. Ref [#106](https://github.com/humlab-swedeb/swedeb-api/issues/106) ([3418f4e](https://github.com/humlab-swedeb/swedeb-api/commit/3418f4e146e94f7f71c9af15098c025b90ce6a15))
+* correcting pdf links with tests ([47c54e5](https://github.com/humlab-swedeb/swedeb-api/commit/47c54e53cc389a14a1c7db51871aae5a2708f5c6))
+* ensure create-tmpdir is a prerequisite for frontend target ([626a0d3](https://github.com/humlab-swedeb/swedeb-api/commit/626a0d3383f91b0cb6a847d98c2fbcaf7a539cf3))
+* fetch page number from speech instead of from first utterance in protocol ([142bd71](https://github.com/humlab-swedeb/swedeb-api/commit/142bd717245bd670279724d12b4dc29d6450df91))
+* fix for too many ngrams windows with phrases ([ee29f6b](https://github.com/humlab-swedeb/swedeb-api/commit/ee29f6baa6d39db9a0d226839492fce5e3773a85))
+* fix test failures caused by lazy fixture ([559215f](https://github.com/humlab-swedeb/swedeb-api/commit/559215f135295185f2984cd4718829298c7d72c4))
+* fixed release workflow permissions ([8dc7a25](https://github.com/humlab-swedeb/swedeb-api/commit/8dc7a2582b9183a8a392ddf4216b0ef7d66a74f2))
+* fixed tests that failed due to lazy fixture initialization ([ae5e6f4](https://github.com/humlab-swedeb/swedeb-api/commit/ae5e6f405ef83ced97b214475bfb86c7324524fe))
+* introduce SWEDEB_BACKEND_SOURCE enabling build from git, pypi or workdir ([13f6d9e](https://github.com/humlab-swedeb/swedeb-api/commit/13f6d9eb0f4583547e37063eb8218254237e00b4))
+* remove commented-out code for streamify_source and PropsMixIn class ([923b80b](https://github.com/humlab-swedeb/swedeb-api/commit/923b80b061debc581eae428753713fd3ede86327))
+* remove redundant target from frontend and clean up create-tmpdir ([6cc742b](https://github.com/humlab-swedeb/swedeb-api/commit/6cc742bfa61839e0f845fb26b105286b626dd427))
+* return kwic results for non-party data ([58e6869](https://github.com/humlab-swedeb/swedeb-api/commit/58e6869a204309244ee2b539aa8ab186e55e50ff))
+* simplify Dockerfile by removing unnecessary symlink for registry ([b4abf4c](https://github.com/humlab-swedeb/swedeb-api/commit/b4abf4cecb8a4d96466a1d6390a8d9caf3d89831))
+* update backend installation logic to support pypi source ([76e0bac](https://github.com/humlab-swedeb/swedeb-api/commit/76e0bac0f28dc6c05b7f6ba0204dffff25134f04))
+* update Docker Compose configuration for production and add new compose file for riksdagsdebatter.se ([2502a50](https://github.com/humlab-swedeb/swedeb-api/commit/2502a502eabad08ba19307112758865830636a55))
+* update docker compose file references in Makefile (renamed compose file) ([40e02bc](https://github.com/humlab-swedeb/swedeb-api/commit/40e02bca392c13a0164fcdff427cdbb733fc0edc))
+* update fillna usage to avoid future warnings in codecs and utility modules ([99a240e](https://github.com/humlab-swedeb/swedeb-api/commit/99a240ec37075a5b2c2e3895b28b441290f0d93b))
+* update frontend tag check to include 'workdir-dist' option ([603d7e1](https://github.com/humlab-swedeb/swedeb-api/commit/603d7e1f8e0ab4f76457386b3f0107f8dafd634c))
+* update HOME path in riksprot_corpus registry entry ([77b228b](https://github.com/humlab-swedeb/swedeb-api/commit/77b228bb0b1bcffaac4dd2ab02e6445e48ce8a6f))
+* update test data caused by regressions in expected ([17b8df3](https://github.com/humlab-swedeb/swedeb-api/commit/17b8df38a5fda2759e2f298293c246b9225139f7))
+* update version and dependencies in pyproject.toml ([f9282dc](https://github.com/humlab-swedeb/swedeb-api/commit/f9282dc75999f03e5d2bac39fe63428d4593d987))
+
+### 🧑‍💻 Code Refactoring
+
+* remove unused Registry class from penelope utility ([80f7d1a](https://github.com/humlab-swedeb/swedeb-api/commit/80f7d1aa0490b2c8bfa7fa3fa9dce8822be9a021))
+* removed additional penelope related files not used by swedeb. ([256745e](https://github.com/humlab-swedeb/swedeb-api/commit/256745ee2ce3e4cc486b1270a7e09ff745957d5b))
+* update folder structure and metadata versions in config.yml ([a1c2eb7](https://github.com/humlab-swedeb/swedeb-api/commit/a1c2eb7608f9e3bcf5530973745f5d67274daf64))
+
+### ✅ Tests
+
+* add comprehensive tests for tool router endpoints. Ref [#105](https://github.com/humlab-swedeb/swedeb-api/issues/105) ([3655e36](https://github.com/humlab-swedeb/swedeb-api/commit/3655e3666a66c53131300177e190191479c75fcd))
+* add speech index test ([049e14f](https://github.com/humlab-swedeb/swedeb-api/commit/049e14f4eccb2cdea8806b3bddacf568b1c20d7f))
+* added unit test for get_speech ([3d0a9ea](https://github.com/humlab-swedeb/swedeb-api/commit/3d0a9ea9474d2a59d7ca485f4bfa576942c8e05e))
+* de-skipped working tests ([e0e7eec](https://github.com/humlab-swedeb/swedeb-api/commit/e0e7eec002ec711f5c36af4dd91d10f564b0f199))
+* enhance tool router tests with additional fixtures and cleanup. Ref [#105](https://github.com/humlab-swedeb/swedeb-api/issues/105) ([f468958](https://github.com/humlab-swedeb/swedeb-api/commit/f468958b25b1662178491a1690ecbb746601786f))
+* implement tests for speech download endpoint with valid and invalid speech IDs. Ref [#105](https://github.com/humlab-swedeb/swedeb-api/issues/105) ([4a3842a](https://github.com/humlab-swedeb/swedeb-api/commit/4a3842a519a7f8c146ddeff84f80c650c4f99cf8))
+
 ##  (2025-04-19)
 
 ### Features
