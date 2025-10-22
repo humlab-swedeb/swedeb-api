@@ -1,6 +1,7 @@
-root_folder: .
-data_folder: .
-version: v1.4.1
+
+metadata:
+  version: v1.1.3
+  filename: tests/test_data/metadata/riksprot_metadata.v1.1.3.db
 
 corpus:
   version: v1.4.1
@@ -13,65 +14,143 @@ corpus:
     local_folder: tests/test_data/v1.4.1/riksdagen-records
     url: https://github.com/swerik-project/riksdagen-records.git
 
-metadata:
-  version: v1.1.3
-  filename: tests/test_data/metadata/riksprot_metadata.v1.1.3.db
+cwb:
+  registry_dir: /data/swedeb/random_sample_10files/v1.1.0/registry
+  corpus_name: RIKSPROT_RANDOM_SAMPLE_10FILES_V110
 
-tagged_frames:
-  folder: tests/test_data/v1.4.1/tagged_frames/
-  file_pattern: "prot-*.zip"
-  pattern: tests/test_data/v1.4.1/tagged_frames/**/prot-*.zip
+dtm:
+  folder: tests/test_data/v1.4.1/dtm/text
+  tag: text
 
-tagged_speeches:
-  folder: tests/test_data/v1.4.1/tagged_frames_speeches.feather
-
-dehyphen:
-  folder: tests/test_data/v1.4.1/dehyphen
-  tf_filename: tests/test_data/v1.4.1/dehyphen/word-frequencies.pkl
+vrt:
+  folder: tests/test_data/v1.4.1/tagged_frames
+  tag: text
 
 fastapi:
   origins:
     - http://localhost:8080
     - http://localhost:9002
-    
+
 pdf_server:
   base_url: "https://pdf.swedeb.se/riksdagen-records-pdf/"
 
-vrt:
-  folder: tests/test_data/v1.4.1/tagged_frames
-  tag: text
-  
-dtm:
-  folder: tests/test_data/v1.4.1/dtm/text
-  tag: text
+mappings:
 
-cwb:
-  registry_dir: /data/swedeb/random_sample_10files/v1.1.0/registry
-  corpus_name: RIKSPROT_RANDOM_SAMPLE_10FILES_V110
+  lookups:
 
-tagger:
-  module: pyriksprot_tagger.taggers.stanza_tagger
-  stanza_datadir: /data/sparv/models/stanza
-  preprocessors: dedent,dehyphen,strip,pretokenize
-  lang: "sv"
-  processors: tokenize,lemma,pos
-  tokenize_pretokenized: true
-  tokenize_no_ssplit: true
-  use_gpu: true
-  num_threads: 1
+    tables:
+      chamber: "chamber_id"
+      gender: "gender_id"
+      government: "government_id"
+      office_type: "office_type_id"
+      party: "party_id"
+      sub_office_type: "sub_office_type_id"
 
-global:
-  corpus:
-    folder: /data/riksdagen_corpus_data/riksdagen-records/data
-  metadata:
-    folder: /data/riksdagen_corpus_data/riksdagen-persons/data
+    codecs:
+      - table: "gender"
+        type: "decode"
+        from_column: "gender_id"
+        to_column: "gender"
+      - table: "gender"
+        type: "decode"
+        from_column: "gender_id"
+        to_column: "gender_abbrev"
+      - table: "office_type"
+        type: "decode"
+        from_column: "office_type_id"
+        to_column: "office"
+      - table: "party"
+        type: "decode"
+        from_column: "party_id"
+        to_column: "party"
+      - table: "party"
+        type: "decode"
+        from_column: "party_id"
+        to_column: "party_abbrev"
+      - table: "chamber"
+        type: "decode"
+        from_column: "chamber_id"
+        to_column: "chamber"
+      - table: "sub_office_type"
+        type: "decode"
+        from_column: "sub_office_type_id"
+        to_column: "description"
+      - table: "gender"
+        type: "encode"
+        from_column: "gender"
+        to_column: "gender_id"
+      - table: "gender"
+        type: "encode"
+        from_column: "gender_abbrev"
+        to_column: "gender_id"
+      - table: "sub_office_type"
+        type: "encode"
+        from_column: "description"
+        to_column: "sub_office_type_id"
+
+    property_values_specs:
+      - text_name: "gender"
+        id_name: "gender_id"
+      - text_name: "office"
+        id_name: "office_type_id"
+      - text_name: "party_abbrev"
+        id_name: "party_id"
+      - text_name: "party"
+        id_name: "party_id"
+      - text_name: "chamber_abbrev"
+        id_name: "chamber_id"
+      - text_name: "sub_office_type"
+        id_name: "sub_office_type_id"
+
+  persons:
+    tables:
+      persons_of_interest: "person_id"
+      person_party: "person_party_id"
+    specs:
+      chamber:
+          type: "decode"
+          from_column: "sub_office_type_id"
+          to_column: "sub_office_type"
+
+    codecs:
+      - table: "persons_of_interest"
+        type: "decode"
+        from_column: "pid"
+        to_column: "name"
+      - table: "persons_of_interest"
+        type: "decode"
+        from_column: "pid"
+        to_column: "wiki_id"
+      - table: "persons_of_interest"
+        type: "decode"
+        from_column: "person_id"
+        to_column: "name"
+      - table: "persons_of_interest"
+        type: "decode"
+        from_column: "person_id"
+        to_column: "wiki_id"
+      - table: "persons_of_interest"
+        type: "decode"
+        from_column: "pid"
+        to_column: "person_id"
+      - table: "persons_of_interest"
+        type: "encode"
+        from_column: "person_id"
+        to_column: "pid"
+
+    property_values_specs:
+      - text_name: "name"
+        id_name: "pid"
 
 display:
   speech_index:
     updates:
-      party_abbrev: { "?": "metadata saknas", "X": "partilös" }
+      party_abbrev: {
+        "?": "metadata saknas",
+        "X": "partilös"
+      }
       name: { "": "metadata saknas" }
-
+      
   labels:
     speaker:
       unknown: Okänd
@@ -80,5 +159,11 @@ display:
     translations: {
       " man": " Män",
       "woman": "Kvinnor",
-      "unknown": "Okänt"
+      "unknown": "metadata saknas"
     }
+
+global:
+  corpus:
+    folder: /data/riksdagen_corpus_data/riksdagen-records/data
+  metadata:
+    folder: /data/riksdagen_corpus_data/riksdagen-persons/data
