@@ -359,6 +359,23 @@ def test_word_trends_for_speaker(fastapi_client: TestClient, api_corpus: Corpus)
     assert response_wt.status_code == status.HTTP_200_OK
     word_res = response_wt.json()['wt_list']
 
+    # Format should be like this:
+    # {
+    #   "wt_list": [
+    #     {
+    #         "year": 1960,
+    #         "count": {
+    #             "och Åke Larsson": 6
+    #         }
+    #     },
+    #     {
+    #         "year": 1961,
+    #         "count": {
+    #             "och Åke Larsson": 34
+    #         }
+    #     },
+    # ....
+
     assert len(word_res) > 0  # no count in word trends for the test person saying "och" har snabbmeny
 
 
