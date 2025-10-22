@@ -113,6 +113,20 @@ class Codecs:
         self._codecs: list[Codec] = None
         self._lock = threading.Lock()
 
+    def Clone(self) -> Self:
+        """Create a (somewhat) deep copy of this Codecs instance.
+        The specification and codecs list are shared, but the store and mappings are copied."""
+        store: dict[str, pd.DataFrame] = {k: v.copy() for k, v in self.store.items()}
+        mappings: dict[tuple[str, str], dict[Any, Any]] = {k: v.copy() for k, v in self.mappings.items()}
+
+        clone: Self = self.__class__(specification=self.specification)
+        clone.mappings = mappings
+        clone.store = store
+        clone.filename = self.filename
+        clone.codecs = [c for c in self.codecs]
+        return clone
+ 
+    
     @property
     def codecs(self) -> list[Codec]:
         """List of Codec objects from specification, actual mapping lazy loaded."""
