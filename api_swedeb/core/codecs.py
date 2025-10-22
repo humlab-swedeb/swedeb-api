@@ -209,7 +209,10 @@ class Codecs:
             for table_name, table in self.store.items():
                 if not hasattr(self, table_name):
                     setattr(self, table_name, table)
-            return self
+
+        self._on_load()
+
+        return self
 
     def tablenames(self) -> dict[str, str]:
         """Returns a mapping from code table name to id column name"""
@@ -271,6 +274,8 @@ class Codecs:
         return all(decoder.is_decoded(df) for decoder in self.decoders)
 
     def _on_load(self) -> Self:
+        for hook in OnLoadHooks.items.values():
+            hook().execute(self)
         return self
 
 
@@ -281,11 +286,6 @@ class PersonCodecs(Codecs):
     @property
     def persons_of_interest(self) -> pd.DataFrame:
         return self.store.get("persons_of_interest", pd.DataFrame())
-
-    def load(self, source: str | sqlite3.Connection | dict) -> Self:
-        super().load(source)
-        self._on_load()
-        return self
 
     def __getitem__(self, key: int | str) -> dict:
         """Get person by key (person_id or wiki_id)"""
