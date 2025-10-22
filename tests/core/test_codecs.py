@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import BaseCodecs, Codec, Codecs, MultiplePartyAbbrevsHook, PersonCodecs
+from api_swedeb.core.codecs import Codecs, Codec, MultiplePartyAbbrevsHook, PersonCodecs
 
 # pylint: disable=protected-access
 
