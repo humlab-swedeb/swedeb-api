@@ -80,7 +80,7 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
     search_term = 'att,och'
     gender_id: str = 2
     party_abbrev: str = 'S'
-    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
+    party_id: int = api_corpus.person_codecs.get_mapping('party_abbrev', 'party_id').get(party_abbrev, 0)
 
     # FIXME: #146 Input should be a valid integer, unable to parse string as an integer
     response = fastapi_client.get(
@@ -100,7 +100,7 @@ def test_word_trends_api_with_gender_filter(fastapi_client: TestClient, api_corp
 def test_temp(fastapi_client: TestClient, api_corpus: Corpus):
     search_term: str = 'sverige'
     party_abbrev: str = 'S'
-    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
+    party_id: int = api_corpus.person_codecs.get_mapping('party_abbrev', 'party_id').get(party_abbrev, 0)
     response = fastapi_client.get(
         f"{version}/tools/word_trends/{search_term}?party_id={party_id}&from_year=1900&to_year=3000"
     )
@@ -164,7 +164,7 @@ def test_word_trend_corpus(api_corpus: Corpus):
 
 def test_word_trend_corpus_with_filters(api_corpus: Corpus):
     party_abbrev: str = 'S'
-    party_id: int = api_corpus.person_codecs.party_abbrev2id.get(party_abbrev, 0)
+    party_id: int = api_corpus.person_codecs.get_mapping('party_abbrev', 'party_id').get(party_abbrev, 0)
 
     wt: pd.DataFrame = api_corpus.get_word_trend_results(
         search_terms=['sverige'], filter_opts={'party_id': [party_id], 'year': (1900, 2000)}

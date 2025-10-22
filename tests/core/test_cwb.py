@@ -216,7 +216,7 @@ def test_compile_complex():
 
 
 def test_cqp_execute_query(corpus: Corpus, person_codecs: PersonCodecs):
-    party_id = person_codecs.party_abbrev2id.get("M")
+    party_id = person_codecs.get_mapping('party_abbrev', 'party_id').get("M")
     query: str = compiler.to_cqp_exprs(
         {
             "prefix": "a",
