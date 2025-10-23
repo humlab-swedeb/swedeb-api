@@ -17,6 +17,10 @@ semantic-release-dryrun-verbose:
 prepare-release-assets:
 	@./.github/scripts/prepare-release-assets.sh 0.5.0-test
 
+force-release-action:
+	@git commit --amend -m "fix: force trigger release action"
+	@git push --force-with-lease
+
 .PHONY: lint tidy isort black test pylint
 
 run:       
