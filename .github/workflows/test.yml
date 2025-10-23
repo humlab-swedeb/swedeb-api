@@ -1,19 +1,19 @@
-name: Deploy to Staging
+name: Deploy to Test
 
 on:
   push:
     branches:
-      - staging
+      - test
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to deploy (leave empty for latest staging build)'
+        description: 'Version to deploy (leave empty for latest test build)'
         required: false
         type: string
 
 jobs:
-  build-staging:
-    name: Build and Tag Staging Image
+  build-test:
+    name: Build and Tag Test Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,7 +40,7 @@ jobs:
             VERSION=$(poetry version -s)
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Building staging image for version: ${VERSION} from staging branch"
+          echo "Building test image for version: ${VERSION} from test branch"
 
       - name: Login to GitHub Container Registry
         run: |
@@ -50,7 +50,7 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           fi
 
-      - name: Build and push staging image
+      - name: Build and push test image
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_USERNAME: ${{ github.actor }}
@@ -58,4 +58,4 @@ jobs:
           CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
           VERSION: ${{ steps.get_version.outputs.version }}
           FRONTEND_VERSION_TAG: latest
-        run: ./.github/scripts/build-and-push-image.sh "${VERSION}" staging
+        run: ./.github/scripts/build-and-push-image.sh "${VERSION}" test
