@@ -12,6 +12,17 @@
 
 ### 🐛 Bug Fixes
 
+* added force release recipi ([7f30e38](https://github.com/humlab-swedeb/swedeb-api/commit/7f30e389f9d8233d17c25961e2d7520125853fce))
+* force trigger release action ([d9e0276](https://github.com/humlab-swedeb/swedeb-api/commit/d9e027615a5538a00e75c607e9781429e1dcbd50))
+
+## [0.6.0](https://github.com/humlab-swedeb/swedeb-api/compare/v0.5.1...v0.6.0) (2025-10-23)
+
+### 🍕 Features
+
+* add support for CWB_REGISTRY_TOKEN in Docker login process ([8bfb87d](https://github.com/humlab-swedeb/swedeb-api/commit/8bfb87df9ba70765bcdd8fe5034ae61174ff8122))
+
+### 🐛 Bug Fixes
+
 * force trigger release action ([d9e0276](https://github.com/humlab-swedeb/swedeb-api/commit/d9e027615a5538a00e75c607e9781429e1dcbd50))
 
 ## [0.6.0](https://github.com/humlab-swedeb/swedeb-api/compare/v0.5.1...v0.6.0) (2025-10-23)
