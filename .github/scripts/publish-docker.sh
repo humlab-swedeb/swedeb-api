@@ -1,9 +1,13 @@
 #!/bin/bash
-set -ex
+set -euo pipefail
+
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" >&2
+}
 
 VERSION=$1
 if [ -z "$VERSION" ]; then
-  echo "Version argument is missing!"
+  log "ERROR: Version argument is missing!"
   exit 1
 fi
 
@@ -12,19 +16,19 @@ IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY}"
 FRONTEND_IMAGE_BASE="ghcr.io/humlab-swedeb/swedeb_frontend"
 FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-latest}
 
-echo "Logging into GitHub Container Registry..."
+log "Logging into GitHub Container Registry..."
 
 # Use CWB_REGISTRY_TOKEN if available (has cross-org read access), otherwise use DOCKER_PASSWORD
 if [ -n "${CWB_REGISTRY_TOKEN}" ]; then
-  echo "Using cross-org registry token for build and push..."
+  log "Using cross-org registry token for build and push..."
   echo "${CWB_REGISTRY_TOKEN}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
 else
-  echo "Using standard GitHub token..."
+  log "Using standard GitHub token..."
   echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
 fi
 
-echo "Building and pushing Docker image for version ${VERSION}..."
-echo "Using frontend image: ${FRONTEND_IMAGE_BASE}:${FRONTEND_VERSION}"
+log "Building and pushing Docker image for version ${VERSION}..."
+log "Using frontend image: ${FRONTEND_IMAGE_BASE}:${FRONTEND_VERSION}"
 
 pushd docker > /dev/null
 
@@ -40,4 +44,4 @@ popd > /dev/null
 
 docker push --all-tags "${IMAGE_NAME}"
 
-echo "Docker image published successfully."
+log "Successfully pushed tags: ${VERSION}, ${MAJOR_VERSION}, ${MINOR_VERSION}, latest, production"
