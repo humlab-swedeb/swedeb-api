@@ -5,6 +5,17 @@ PACKAGE_FOLDER=api_swedeb penelope
 PYTEST_ARGS=--durations=0 tests 
 
 #--cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html tests
+semantic-release-dryrun:
+	@npx semantic-release --dry-run
+
+act-release-dryrun:
+	@act push -j release --dryrun
+
+semantic-release-dryrun-verbose:
+	@DEBUG=semantic-release:* npx semantic-release --dry-run --no-ci
+
+prepare-release-assets:
+	@./.github/scripts/prepare-release-assets.sh 0.5.0-test
 
 .PHONY: lint tidy isort black test pylint
 
