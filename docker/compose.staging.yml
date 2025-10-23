@@ -1,0 +1,19 @@
+services:
+  swedeb-api:
+    image: ghcr.io/humlab-swedeb/swedeb-api:staging
+    container_name: swedeb-api-staging
+    restart: unless-stopped
+    ports:
+      - "8093:8092"  # Different port for staging
+    environment:
+      - SWEDEB_PORT=8092
+      - ENVIRONMENT=staging
+    volumes:
+      - ./data:/data
+      - ./config:/app/config:ro
+    networks:
+      - swedeb-staging
+
+networks:
+  swedeb-staging:
+    driver: bridge
