@@ -1,7 +1,7 @@
 ARG FRONTEND_VERSION=latest
 
 FROM ghcr.io/humlab-swedeb/swedeb_frontend:${FRONTEND_VERSION} AS frontend-dist
-FROM ghcr.io/humlab/cwb-container:latest as final
+FROM ghcr.io/humlab/cwb-container:latest AS final
 
 LABEL maintainer="Roger Mähler <roger dot mahler at umu dot se>"
 
@@ -21,11 +21,8 @@ COPY --chown=${APP_USER}:${APP_USER} main.py .
 COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh .
 COPY --chown=${APP_USER}:${APP_USER} config ./config/
 COPY --chown=${APP_USER}:${APP_USER} --from=frontend-dist /app/public ./public
-COPY --chown=${APP_USER}:${APP_USER} dist/*.whl /dist/
 
 RUN set -ex; \
-    pip install --no-cache-dir /wheels/*.whl; \
-    pip install --no-cache-dir /dist/*.whl; \
     chown -R ${APP_USER}:${APP_USER} /data; \
     chmod +x entrypoint.sh; \
     rm -rf /dist /wheels
