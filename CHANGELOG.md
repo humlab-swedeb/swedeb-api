@@ -4,6 +4,12 @@
 > All notable changes to this project will be documented in this file
 
 
+## [0.5.1](https://github.com/humlab-swedeb/swedeb-api/compare/v0.5.0...v0.5.1) (2025-10-23)
+
+### 🐛 Bug Fixes
+
+* add a trigger commit to kick GitHub Actions ([776df9d](https://github.com/humlab-swedeb/swedeb-api/commit/776df9d0ac56769c0587888a0561d3a69060430e))
+
 ## [0.5.0](https://github.com/humlab-swedeb/swedeb-api/compare/v0.4.0...v0.5.0) (2025-10-23)
 
 ### 🍕 Features

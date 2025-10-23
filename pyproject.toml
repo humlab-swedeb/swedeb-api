@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "api-swedeb"
-version = "0.5.0"
+version = "0.5.1"
 description = ""
 authors = ["rebeckaw <rebecka.weegar@umu.se>"]
 readme = "README.md"
