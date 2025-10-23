@@ -13,7 +13,15 @@ FRONTEND_IMAGE_BASE="ghcr.io/humlab-swedeb/swedeb_frontend"
 FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-latest}
 
 echo "Logging into GitHub Container Registry..."
-echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
+
+# Use CWB_REGISTRY_TOKEN if available (has cross-org read access), otherwise use DOCKER_PASSWORD
+if [ -n "${CWB_REGISTRY_TOKEN}" ]; then
+  echo "Using cross-org registry token for build and push..."
+  echo "${CWB_REGISTRY_TOKEN}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
+else
+  echo "Using standard GitHub token..."
+  echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
+fi
 
 echo "Building and pushing Docker image for version ${VERSION}..."
 echo "Using frontend image: ${FRONTEND_IMAGE_BASE}:${FRONTEND_VERSION}"

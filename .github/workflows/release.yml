@@ -50,4 +50,6 @@ jobs:
           # These are used by the publish-docker.sh script
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          # PAT with read:packages for cross-org access to humlab/cwb-container
+          CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
         run: npx semantic-release
