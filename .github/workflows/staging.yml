@@ -1,0 +1,61 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (leave empty for latest staging build)'
+        required: false
+        type: string
+
+jobs:
+  build-staging:
+    name: Build and Tag Staging Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+  
+      - name: Install Python build tools
+        run: pipx install poetry
+
+      - name: Get version from pyproject.toml
+        id: get_version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(poetry version -s)
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Building staging image for version: ${VERSION} from staging branch"
+
+      - name: Login to GitHub Container Registry
+        run: |
+          if [ -n "${{ secrets.CWB_REGISTRY_TOKEN }}" ]; then
+            echo "${{ secrets.CWB_REGISTRY_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          else
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          fi
+
+      - name: Build and push staging image
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+          FRONTEND_VERSION_TAG: latest
+        run: ./.github/scripts/build-and-push-image.sh "${VERSION}" staging

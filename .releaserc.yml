@@ -86,7 +86,7 @@ plugins:
 
   # Builds and pushes the final application Docker image to GHCR.
   - - "@semantic-release/exec"
-    - publishCmd: "./.github/scripts/publish-docker.sh ${nextRelease.version}"
+    - publishCmd: "./.github/scripts/build-and-push-image.sh ${nextRelease.version} production"
 
   # Commits the version bump in pyproject.toml and the updated CHANGELOG.md.
   - - "@semantic-release/git"

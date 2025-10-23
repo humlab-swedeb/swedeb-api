@@ -1,0 +1,23 @@
+services:
+  swedeb-api-test:
+    image: ghcr.io/humlab-swedeb/swedeb-api:test
+    container_name: swedeb-api-test
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - ENVIRONMENT=test
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./config/config.yml:/app/config/config.yml:ro
+      - api-data-test:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  api-data-test:
+    name: swedeb-api-data-test

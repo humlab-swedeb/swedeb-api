@@ -1,0 +1,19 @@
+services:
+  swedeb-api:
+    image: ghcr.io/humlab-swedeb/swedeb-api:production  # or pin to specific version like :0.6.1
+    container_name: swedeb-api-production
+    restart: unless-stopped
+    ports:
+      - "8092:8092"
+    environment:
+      - SWEDEB_PORT=8092
+      - ENVIRONMENT=production
+    volumes:
+      - ./data:/data
+      - ./config:/app/config:ro
+    networks:
+      - swedeb-production
+
+networks:
+  swedeb-production:
+    driver: bridge
