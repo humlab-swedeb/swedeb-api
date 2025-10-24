@@ -9,13 +9,16 @@ This document provides complete instructions for deploying the Swedeb API system
 - [Image Tagging Strategy](#image-tagging-strategy)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Deployment Prerequisites](#deployment-prerequisites)
+- [Container Runtime Options](#container-runtime-options)
 - [Test Environment Deployment](#test-environment-deployment)
 - [Staging Environment Deployment](#staging-environment-deployment)
 - [Production Environment Deployment](#production-environment-deployment)
 - [Promotion Workflows](#promotion-workflows)
 - [Rollback Procedures](#rollback-procedures)
 - [Monitoring & Maintenance](#monitoring--maintenance)
+- [Frontend Versioning](#frontend-versioning)
 - [Troubleshooting](#troubleshooting)
+- [Best Practices](#best-practices)
 - [Build Scripts Reference](#build-scripts-reference)
 
 ## Branch Strategy & Workflows
@@ -193,8 +196,8 @@ The application requires corpus data and metadata on the host system:
 ```bash
 # Required directory structure on host
 /data/swedeb/
-├── v1.4.1/                          # Corpus version
-│   ├── registry/                    # CWB registry
+├── v1.4.1/                         # Corpus version
+│   ├── registry/                   # CWB registry
 │   ├── dtm/                        # Document-term matrices
 │   ├── tagged_frames/              # Processed corpus files
 │   └── ...
@@ -205,6 +208,7 @@ The application requires corpus data and metadata on the host system:
 
 ### Authentication Setup
 
+#### Docker
 ```bash
 # Login to GitHub Container Registry
 echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin
@@ -214,6 +218,133 @@ docker login ghcr.io -u your-username
 # Enter PAT when prompted
 ```
 
+#### Podman
+```bash
+# Login to GitHub Container Registry
+echo $GITHUB_TOKEN | podman login ghcr.io -u $GITHUB_USERNAME --password-stdin
+
+# Or using Personal Access Token
+podman login ghcr.io -u your-username
+# Enter PAT when prompted
+
+# Store credentials for systemd services (if using Quadlet)
+# Credentials are stored in ${XDG_RUNTIME_DIR}/containers/auth.json
+# or /run/user/$(id -u)/containers/auth.json
+```
+
+**Note**: For cross-organization access to `ghcr.io/humlab/cwb-container`, the `CWB_REGISTRY_TOKEN` secret must be configured in GitHub Actions.
+
+## Container Runtime Options
+
+You can deploy using either **Docker Compose** (traditional) or **Podman with Quadlet** (recommended for production). This guide covers both approaches.
+
+### Docker Compose (Traditional Approach)
+
+**Pros**:
+- Well-established, widely documented
+- Rich ecosystem of tools
+- docker-compose.yml files are portable
+
+**Cons**:
+- Requires Docker daemon running as root
+- No native systemd integration
+- Separate service management
+
+### Podman with Quadlet (Recommended for Production)
+
+**Pros**:
+- **Rootless by default** - Better security
+- **Native systemd integration** - Automatic startup, logging, resource control
+- **Declarative configuration** - Quadlet `.container` files
+- **Drop-in Docker replacement** - Compatible with Docker images
+- **Better resource isolation** - cgroups v2 support
+- **Auto-updates** - Can be configured with systemd timers
+
+**Cons**:
+- Requires systemd (Linux only)
+- Slightly different configuration syntax
+- Less familiar to Docker-only users
+
+### When to Use Each
+
+| Scenario | Recommended |
+|----------|-------------|
+| Production deployments | **Podman + Quadlet** |
+| Development environments | Either (preference) |
+| CI/CD pipelines | Docker (wider support) |
+| Rootless containers | **Podman** |
+| Windows/macOS | Docker |
+| systemd integration | **Podman + Quadlet** |
+
+---
+
+## Podman Quadlet Setup
+
+Quadlet is Podman's systemd integration that converts `.container` files into systemd services. This provides automatic startup, dependency management, and native logging.
+
+### Installation
+
+```bash
+# Install Podman (RHEL/Fedora/CentOS)
+sudo dnf install podman
+
+# Install Podman (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install podman
+
+# Verify installation
+podman --version
+podman info
+
+# Enable user lingering (keeps user services running after logout)
+sudo loginctl enable-linger $USER
+```
+
+### Quadlet File Locations
+
+Quadlet files can be placed in different locations depending on scope:
+
+```bash
+# System-wide (requires root)
+/etc/containers/systemd/
+
+# User-specific (rootless, recommended)
+~/.config/containers/systemd/
+
+# Runtime directory
+${XDG_RUNTIME_DIR}/containers/systemd/
+```
+
+For this guide, we'll use **user-specific rootless deployments**.
+
+### Quadlet File Format
+
+Quadlet uses `.container` files that look similar to systemd units:
+
+```ini
+# Example: swedeb-api-production.container
+[Unit]
+Description=Swedeb API Production Container
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+ContainerName=swedeb-api-production
+PublishPort=8092:8000
+Volume=/data/swedeb/v1.4.1:/data/swedeb:Z
+Volume=/data/swedeb/metadata:/data/metadata:Z
+Environment=ENVIRONMENT=production
+Environment=LOG_LEVEL=INFO
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target
+```
+
 **Note**: For cross-organization access to `ghcr.io/humlab/cwb-container`, the `CWB_REGISTRY_TOKEN` secret must be configured in GitHub Actions.
 
 ## Test Environment Deployment
@@ -221,7 +352,11 @@ docker login ghcr.io -u your-username
 ### Purpose
 Test environment for QA validation and integration testing before promoting to staging.
 
-### Step 1: Prepare Test Server
+---
+
+### Docker Compose Method
+
+#### Step 1: Prepare Test Server
 
 ```bash
 # Create deployment directory
@@ -279,7 +414,7 @@ docker compose -f compose.test.yml ps
 docker compose -f compose.test.yml logs -f
 ```
 
-### Step 5: Validate
+#### Step 5: Validate
 
 ```bash
 # Check API health
@@ -290,12 +425,129 @@ curl http://localhost:8001/health
 # ... your test commands ...
 ```
 
+---
+
+### Podman Quadlet Method
+
+#### Step 1: Create Quadlet Directory
+
+```bash
+# Create user systemd directory
+mkdir -p ~/.config/containers/systemd
+cd ~/.config/containers/systemd
+```
+
+#### Step 2: Create Container File
+
+Create `swedeb-api-test.container`:
+
+```ini
+[Unit]
+Description=Swedeb API Test Environment
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/humlab-swedeb/swedeb-api:test
+ContainerName=swedeb-api-test
+PublishPort=8001:8000
+
+# Volume mounts (use :Z for SELinux compatibility)
+Volume=/data/swedeb/v1.4.1:/data/swedeb:Z
+Volume=/data/swedeb/metadata/riksprot_metadata.v1.1.3.db:/data/metadata/riksprot_metadata.v1.1.3.db:Z,ro
+
+# Environment variables
+Environment=ENVIRONMENT=test
+Environment=LOG_LEVEL=DEBUG
+Environment=METADATA_VERSION=v1.1.3
+Environment=CORPUS_VERSION=v1.4.1
+
+# Health check (optional)
+HealthCmd=/usr/bin/curl -f http://localhost:8000/health || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=40s
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+TimeoutStopSec=70
+
+[Install]
+WantedBy=default.target
+```
+
+#### Step 3: Verify Data Permissions
+
+```bash
+# Ensure corpus data exists
+ls -la /data/swedeb/v1.4.1/
+ls -la /data/swedeb/metadata/riksprot_metadata.v1.1.3.db
+
+# Verify permissions (important for rootless Podman)
+# For rootless, ensure your user can read the data
+chmod -R u+rX /data/swedeb/
+```
+
+#### Step 4: Reload systemd and Start Service
+
+```bash
+# Reload systemd to pick up the new Quadlet file
+systemctl --user daemon-reload
+
+# Enable and start the service
+systemctl --user enable --now swedeb-api-test.service
+
+# Check status
+systemctl --user status swedeb-api-test.service
+
+# View logs
+journalctl --user -u swedeb-api-test.service -f
+```
+
+#### Step 5: Validate
+
+```bash
+# Check API health
+curl http://localhost:8001/docs
+
+# Check container status
+podman ps
+
+# Check logs
+podman logs swedeb-api-test
+# Or via journalctl:
+journalctl --user -u swedeb-api-test.service --since "1 hour ago"
+```
+
+#### Step 6: Manage Service
+
+```bash
+# Stop service
+systemctl --user stop swedeb-api-test.service
+
+# Restart service
+systemctl --user restart swedeb-api-test.service
+
+# Update image and restart
+podman pull ghcr.io/humlab-swedeb/swedeb-api:test
+systemctl --user restart swedeb-api-test.service
+
+# Disable service
+systemctl --user disable swedeb-api-test.service
+```
+
 ## Staging Environment Deployment
 
 ### Purpose
 Pre-production environment mirroring production configuration for final validation.
 
-### Step 1: Prepare Staging Server
+---
+
+### Docker Compose Method
+
+#### Step 1: Prepare Staging Server
 
 ```bash
 # Create deployment directory
@@ -342,7 +594,7 @@ docker compose -f compose.staging.yml ps
 docker compose -f compose.staging.yml logs -f
 ```
 
-### Step 4: Validate
+#### Step 4: Validate
 
 ```bash
 # Acceptance testing
@@ -352,12 +604,91 @@ curl http://localhost:8002/docs
 # ... load testing commands ...
 ```
 
+---
+
+### Podman Quadlet Method
+
+#### Step 1: Create Container File
+
+Create `~/.config/containers/systemd/swedeb-api-staging.container`:
+
+```ini
+[Unit]
+Description=Swedeb API Staging Environment
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/humlab-swedeb/swedeb-api:staging
+ContainerName=swedeb-api-staging
+PublishPort=8002:8000
+
+# Volume mounts
+Volume=/data/swedeb/v1.4.1:/data/swedeb:Z
+Volume=/data/swedeb/metadata/riksprot_metadata.v1.1.3.db:/data/metadata/riksprot_metadata.v1.1.3.db:Z,ro
+
+# Environment variables
+Environment=ENVIRONMENT=staging
+Environment=LOG_LEVEL=INFO
+Environment=METADATA_VERSION=v1.1.3
+Environment=CORPUS_VERSION=v1.4.1
+
+# Resource limits (optional)
+Memory=8G
+MemorySwap=8G
+CPUQuota=400%
+
+# Health check
+HealthCmd=/usr/bin/curl -f http://localhost:8000/health || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+TimeoutStopSec=70
+
+[Install]
+WantedBy=default.target
+```
+
+#### Step 2: Deploy
+
+```bash
+# Reload systemd
+systemctl --user daemon-reload
+
+# Enable and start
+systemctl --user enable --now swedeb-api-staging.service
+
+# Check status
+systemctl --user status swedeb-api-staging.service
+
+# View logs
+journalctl --user -u swedeb-api-staging.service -f
+```
+
+#### Step 3: Validate
+
+```bash
+# Check API
+curl http://localhost:8002/docs
+
+# Monitor resource usage
+podman stats swedeb-api-staging
+```
+
 ## Production Environment Deployment
 
 ### Purpose
 Production deployment serving end users.
 
-### Step 1: Prepare Production Server
+---
+
+### Docker Compose Method
+
+#### Step 1: Prepare Production Server
 
 ```bash
 # Create deployment directory
@@ -463,6 +794,180 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+---
+
+### Podman Quadlet Method (Recommended for Production)
+
+#### Step 1: Create Container File
+
+Create `~/.config/containers/systemd/swedeb-api-production.container`:
+
+```ini
+[Unit]
+Description=Swedeb API Production
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+# Pin specific version for production (CRITICAL)
+Image=ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+ContainerName=swedeb-api-production
+PublishPort=8092:8000
+
+# Volume mounts
+Volume=/data/swedeb/v1.4.1:/data/swedeb:Z,ro
+Volume=/data/swedeb/metadata/riksprot_metadata.v1.1.3.db:/data/metadata/riksprot_metadata.v1.1.3.db:Z,ro
+Volume=/opt/swedeb-api/config/config.yml:/app/config/config.yml:Z,ro
+
+# Environment variables
+Environment=ENVIRONMENT=production
+Environment=LOG_LEVEL=WARNING
+Environment=METADATA_VERSION=v1.1.3
+Environment=CORPUS_VERSION=v1.4.1
+
+# Production resource limits
+Memory=16G
+MemorySwap=16G
+CPUQuota=800%
+PidsLimit=4096
+
+# Security options
+SecurityLabelDisable=false
+ReadOnlyTmpfs=true
+NoNewPrivileges=true
+
+# Health check
+HealthCmd=/usr/bin/curl -f http://localhost:8000/health || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=60s
+
+[Service]
+Restart=always
+RestartSec=10s
+TimeoutStartSec=900
+TimeoutStopSec=70
+
+# Ensure service restarts on failure
+StartLimitInterval=0
+
+[Install]
+WantedBy=default.target
+```
+
+#### Step 2: Create Environment File (Optional)
+
+For easier version management, create `~/.config/containers/systemd/swedeb-api-production.env`:
+
+```bash
+# Production Configuration
+ENVIRONMENT=production
+LOG_LEVEL=WARNING
+METADATA_VERSION=v1.1.3
+CORPUS_VERSION=v1.4.1
+```
+
+Then reference it in the container file:
+```ini
+[Container]
+EnvironmentFile=/home/username/.config/containers/systemd/swedeb-api-production.env
+```
+
+#### Step 3: Verify Data and Permissions
+
+```bash
+# Ensure data exists
+ls -la /data/swedeb/v1.4.1/
+ls -la /data/swedeb/metadata/
+
+# For rootless Podman, ensure user has read access
+chmod -R u+rX /data/swedeb/
+
+# Create config directory if needed
+mkdir -p /opt/swedeb-api/config
+```
+
+#### Step 4: Deploy Production Service
+
+```bash
+# Reload systemd to discover new Quadlet
+systemctl --user daemon-reload
+
+# Enable service (auto-start on boot)
+systemctl --user enable swedeb-api-production.service
+
+# Start service
+systemctl --user start swedeb-api-production.service
+
+# Check status
+systemctl --user status swedeb-api-production.service
+
+# View logs
+journalctl --user -u swedeb-api-production.service -f
+```
+
+#### Step 5: Configure Reverse Proxy
+
+Same nginx configuration as Docker Compose method above.
+
+#### Step 6: Production Monitoring
+
+```bash
+# Check service status
+systemctl --user status swedeb-api-production.service
+
+# View recent logs
+journalctl --user -u swedeb-api-production.service --since "1 hour ago"
+
+# Follow logs in real-time
+journalctl --user -u swedeb-api-production.service -f
+
+# Check resource usage
+podman stats swedeb-api-production
+
+# Inspect container
+podman inspect swedeb-api-production
+```
+
+#### Step 7: Auto-Update Configuration (Optional)
+
+Create a systemd timer to automatically check for and pull new images:
+
+Create `~/.config/systemd/user/swedeb-api-update.service`:
+```ini
+[Unit]
+Description=Update Swedeb API Production Image
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/podman pull ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+ExecStartPost=/usr/bin/systemctl --user try-restart swedeb-api-production.service
+```
+
+Create `~/.config/systemd/user/swedeb-api-update.timer`:
+```ini
+[Unit]
+Description=Check for Swedeb API updates daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable the timer:
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now swedeb-api-update.timer
+
+# Check timer status
+systemctl --user list-timers
+```
+
 ## Deployment Workflows
 
 ### Triggering Builds
@@ -491,6 +996,8 @@ gh workflow run staging.yml -f version=0.6.1
 
 ### Updating Deployments
 
+#### Docker Compose
+
 **Test/Staging (auto-update tags):**
 ```bash
 cd /opt/swedeb-api-test  # or staging
@@ -502,15 +1009,51 @@ docker compose -f compose.test.yml up -d
 ```bash
 cd /opt/swedeb-api
 
-# Option 1: Update .env with new version
+# Update .env with new version
 sed -i 's/SWEDEB_IMAGE_TAG=0.6.0/SWEDEB_IMAGE_TAG=0.6.1/' .env
-
-# Option 2: Edit compose file directly
-sed -i 's/:0.6.0/:0.6.1/' compose.production.yml
 
 # Pull and deploy
 docker compose -f compose.production.yml pull
 docker compose -f compose.production.yml up -d
+```
+
+#### Podman Quadlet
+
+**Test/Staging (auto-update tags):**
+```bash
+# Pull new image
+podman pull ghcr.io/humlab-swedeb/swedeb-api:test
+
+# Restart service (systemd will use new image)
+systemctl --user restart swedeb-api-test.service
+
+# Or for staging
+podman pull ghcr.io/humlab-swedeb/swedeb-api:staging
+systemctl --user restart swedeb-api-staging.service
+```
+
+**Production (pinned version):**
+```bash
+# Method 1: Update Quadlet file
+cd ~/.config/containers/systemd
+
+# Edit swedeb-api-production.container
+# Change: Image=ghcr.io/humlab-swedeb/swedeb-api:0.6.0
+# To:     Image=ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+
+# Reload systemd and restart
+systemctl --user daemon-reload
+systemctl --user restart swedeb-api-production.service
+
+# Method 2: Pull specific version and restart
+podman pull ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+# Update Quadlet file as above
+systemctl --user daemon-reload
+systemctl --user restart swedeb-api-production.service
+
+# Verify new version
+podman inspect swedeb-api-production | grep -A 5 "Image"
+journalctl --user -u swedeb-api-production.service --since "5 minutes ago"
 ```
 
 ## Promotion Workflows
@@ -622,7 +1165,9 @@ git checkout dev && git cherry-pick <commit-hash> && git push
 
 ## Rollback Procedures
 
-### Test Environment Rollback
+### Docker Compose Rollback
+
+#### Test Environment Rollback
 
 ```bash
 cd /opt/swedeb-api-test
@@ -705,9 +1250,87 @@ git reset --hard <commit-hash>
 git push origin main --force
 ```
 
+---
+
+### Podman Quadlet Rollback
+
+#### Test/Staging Rollback
+
+```bash
+# Stop service
+systemctl --user stop swedeb-api-test.service
+
+# Pull specific older version
+podman pull ghcr.io/humlab-swedeb/swedeb-api:0.6.0-test
+
+# Edit Quadlet file to pin version
+nano ~/.config/containers/systemd/swedeb-api-test.container
+# Change: Image=ghcr.io/humlab-swedeb/swedeb-api:test
+# To:     Image=ghcr.io/humlab-swedeb/swedeb-api:0.6.0-test
+
+# Reload and restart
+systemctl --user daemon-reload
+systemctl --user start swedeb-api-test.service
+
+# Verify
+systemctl --user status swedeb-api-test.service
+podman inspect swedeb-api-test | grep Image
+```
+
+#### Production Rollback
+
+```bash
+# Quick rollback to previous version
+systemctl --user stop swedeb-api-production.service
+
+# Edit Quadlet file
+nano ~/.config/containers/systemd/swedeb-api-production.container
+# Change: Image=ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+# To:     Image=ghcr.io/humlab-swedeb/swedeb-api:0.6.0
+
+# Pull old version
+podman pull ghcr.io/humlab-swedeb/swedeb-api:0.6.0
+
+# Reload and restart
+systemctl --user daemon-reload
+systemctl --user start swedeb-api-production.service
+
+# Verify rollback
+systemctl --user status swedeb-api-production.service
+journalctl --user -u swedeb-api-production.service --since "5 minutes ago"
+podman ps
+```
+
+#### Emergency Rollback (Keep Running)
+
+```bash
+# Create new container with old version
+podman run -d \
+  --name swedeb-api-production-rollback \
+  -p 8092:8000 \
+  -v /data/swedeb/v1.4.1:/data/swedeb:Z,ro \
+  -v /data/swedeb/metadata/riksprot_metadata.v1.1.3.db:/data/metadata/riksprot_metadata.v1.1.3.db:Z,ro \
+  -e ENVIRONMENT=production \
+  ghcr.io/humlab-swedeb/swedeb-api:0.6.0
+
+# Stop systemd service
+systemctl --user stop swedeb-api-production.service
+
+# Update Quadlet to match emergency container
+# Then reload systemd
+systemctl --user daemon-reload
+systemctl --user start swedeb-api-production.service
+
+# Remove emergency container
+podman stop swedeb-api-production-rollback
+podman rm swedeb-api-production-rollback
+```
+
 ## Monitoring & Maintenance
 
-### Health Checks
+### Docker Compose Monitoring
+
+#### Health Checks
 
 ```bash
 # Check container status
@@ -840,227 +1463,240 @@ docker compose -f compose.production.yml ps
 docker compose -f compose.production.yml logs --tail=50
 ```
 
+---
+
+### Podman Quadlet Monitoring
+
+#### Health Checks
+
+```bash
+# Check service status
+systemctl --user status swedeb-api-production.service
+
+# Check container status
+podman ps
+podman inspect swedeb-api-production
+
+# Health check status (if configured in Quadlet)
+podman healthcheck run swedeb-api-production
+```
+
+#### Logs
+
+```bash
+# View logs via journald (recommended)
+journalctl --user -u swedeb-api-production.service
+
+# Recent logs
+journalctl --user -u swedeb-api-production.service --since "1 hour ago"
+
+# Follow logs
+journalctl --user -u swedeb-api-production.service -f
+
+# Filter by priority
+journalctl --user -u swedeb-api-production.service -p err
+
+# Export logs
+journalctl --user -u swedeb-api-production.service --since "2024-01-01" > production-logs.txt
+
+# Or view Podman logs directly
+podman logs swedeb-api-production
+podman logs -f --since 1h swedeb-api-production
+```
+
+#### Resource Monitoring
+
+```bash
+# Real-time stats
+podman stats swedeb-api-production
+
+# All containers
+podman stats
+
+# Resource usage details
+podman inspect swedeb-api-production | jq '.[0].HostConfig | {Memory, MemorySwap, CpuQuota}'
+
+# Check systemd resource control
+systemctl --user show swedeb-api-production.service | grep -E "Memory|CPU"
+```
+
+#### Application Health
+
+```bash
+# Check API endpoints
+curl http://localhost:8092/docs
+curl http://localhost:8092/health
+
+# Test specific endpoint
+curl http://localhost:8092/api/v1/your-endpoint
+
+# Using podman exec
+podman exec swedeb-api-production curl -f http://localhost:8000/health
+```
+
+#### Image Management
+
+```bash
+# List images
+podman images ghcr.io/humlab-swedeb/swedeb-api
+
+# Check image details
+podman inspect ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+
+# Clean up old images
+podman image prune -a
+
+# Remove specific image
+podman rmi ghcr.io/humlab-swedeb/swedeb-api:0.6.0
+```
+
+#### Log Management (journald)
+
+```bash
+# journald automatically manages logs, but you can configure retention
+
+# Check journal size
+journalctl --disk-usage
+
+# Configure retention
+sudo mkdir -p /etc/systemd/journald.conf.d/
+sudo tee /etc/systemd/journald.conf.d/retention.conf <<EOF
+[Journal]
+SystemMaxUse=1G
+SystemMaxFileSize=100M
+MaxRetentionSec=7day
+EOF
+
+# Restart journald
+sudo systemctl restart systemd-journald
+
+# Vacuum old logs
+journalctl --vacuum-time=7d
+journalctl --vacuum-size=500M
+```
+
+#### Automated Monitoring with systemd
+
+Create a monitoring service that checks health:
+
+`~/.config/systemd/user/swedeb-api-healthcheck.service`:
+```ini
+[Unit]
+Description=Swedeb API Health Check
+After=swedeb-api-production.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl -f http://localhost:8092/health
+```
+
+`~/.config/systemd/user/swedeb-api-healthcheck.timer`:
+```ini
+[Unit]
+Description=Run Swedeb API Health Check Every 5 Minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable:
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now swedeb-api-healthcheck.timer
+systemctl --user list-timers
+```
+
+#### Backup Procedures
+
+```bash
+# Backup Quadlet configuration
+tar -czf swedeb-quadlet-backup-$(date +%Y%m%d).tar.gz \
+  ~/.config/containers/systemd/swedeb-api-*.container \
+  ~/.config/containers/systemd/swedeb-api-*.env
+
+# Backup container volume data (if any local volumes)
+podman volume ls
+podman volume export <volume-name> > volume-backup.tar
+
+# Backup to remote
+scp swedeb-quadlet-backup-*.tar.gz backup-server:/backups/
+```
+
+#### Updates
+
+```bash
+# Update to new version
+cd ~/.config/containers/systemd
+
+# Edit Quadlet file
+nano swedeb-api-production.container
+# Update Image= line with new version
+
+# Pull new image
+podman pull ghcr.io/humlab-swedeb/swedeb-api:0.6.2
+
+# Reload and restart
+systemctl --user daemon-reload
+systemctl --user restart swedeb-api-production.service
+
+# Verify update
+systemctl --user status swedeb-api-production.service
+podman ps
+journalctl --user -u swedeb-api-production.service --since "2 minutes ago"
+```
+
+#### Automated Updates (Optional)
+
+Create `~/.config/systemd/user/swedeb-api-update.service`:
+```ini
+[Unit]
+Description=Update Swedeb API Production
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/podman pull ghcr.io/humlab-swedeb/swedeb-api:0.6.1
+ExecStartPost=/usr/bin/systemctl --user restart swedeb-api-production.service
+
+# Optional: Send notification on failure
+OnFailure=status-email@%n.service
+```
+
+Create timer `~/.config/systemd/user/swedeb-api-update.timer`:
+```ini
+[Unit]
+Description=Check for Swedeb API updates
+
+[Timer]
+# Check daily at 3 AM
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable:
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now swedeb-api-update.timer
+```
+
+
 ## Troubleshooting
 
-### Common Issues
+For troubleshooting common deployment issues, see the dedicated [Troubleshooting Guide](./TROUBLESHOOTING.md).
 
-#### 1. Image Pull Errors
-
-```bash
-# Error: pull access denied
-# Solution: Ensure proper authentication
-docker login ghcr.io -u username
-# Enter PAT when prompted
-
-# Verify login
-docker pull ghcr.io/humlab-swedeb/swedeb-api:latest
-
-# Check if image exists
-docker manifest inspect ghcr.io/humlab-swedeb/swedeb-api:0.6.1
-```
-
-#### 2. Cross-Organization Access Issues
-
-```bash
-# Error: Failed to pull ghcr.io/humlab/cwb-container
-# Solution: Ensure CWB_REGISTRY_TOKEN is configured in GitHub Actions
-
-# For local builds, login with appropriate PAT:
-echo $CWB_TOKEN | docker login ghcr.io -u username --password-stdin
-```
-
-#### 3. Data Mount Issues
-
-```bash
-# Error: Permission denied or file not found
-# Solution: Check data paths and permissions
-
-# Verify data exists
-ls -la /data/swedeb/v1.4.1/
-ls -la /data/swedeb/metadata/riksprot_metadata.v1.1.3.db
-
-# Fix permissions
-sudo chown -R 1021:1021 /data/swedeb/
-
-# Check mount paths in compose file match actual data location
-docker compose config | grep volumes
-```
-
-#### 4. Port Conflicts
-
-```bash
-# Error: Port already in use
-# Solution: Check for conflicting services
-
-# Find process using port
-netstat -tulpn | grep :8092
-lsof -i :8092
-
-# Check Docker containers
-docker ps --filter "publish=8092"
-
-# Change port in .env
-# Edit: SWEDEB_HOST_PORT=8093
-```
-
-#### 5. Container Won't Start
-
-```bash
-# Check container logs
-docker compose -f compose.production.yml logs swedeb_api
-
-# Check resource usage
-docker stats
-df -h
-free -m
-
-# Verify configuration
-docker compose -f compose.production.yml config
-
-# Check for errors in entrypoint
-docker compose -f compose.production.yml logs | grep -i error
-
-# Try running interactively
-docker compose -f compose.production.yml run --rm swedeb_api /bin/bash
-```
-
-#### 6. Application Not Responding
-
-```bash
-# Check if container is running
-docker compose -f compose.production.yml ps
-
-# Check internal connectivity
-docker compose -f compose.production.yml exec swedeb_api curl localhost:8092/docs
-
-# Check configuration loading
-docker compose -f compose.production.yml exec swedeb_api cat /app/config/config.yml
-
-# Check environment variables
-docker compose -f compose.production.yml exec swedeb_api env | grep SWEDEB
-
-# Check if data is mounted
-docker compose -f compose.production.yml exec swedeb_api ls -la /data/
-```
-
-#### 7. Out of Memory
-
-```bash
-# Check memory usage
-docker stats swedeb-api
-
-# Increase container memory limits
-# Add to compose file:
-services:
-  swedeb_api:
-    deploy:
-      resources:
-        limits:
-          memory: 8G
-          cpus: '4'
-        reservations:
-          memory: 4G
-          cpus: '2'
-
-# Check host memory
-free -m
-```
-
-### Debug Commands
-
-```bash
-# Enter container for debugging
-docker compose -f compose.production.yml exec swedeb_api /bin/bash
-
-# Check Python environment
-docker compose -f compose.production.yml exec swedeb_api python --version
-docker compose -f compose.production.yml exec swedeb_api pip list
-
-# Test configuration loading
-docker compose -f compose.production.yml exec swedeb_api python -c \
-  "from api_swedeb.core.configuration import ConfigStore; print(ConfigStore.default())"
-
-# Check file permissions
-docker compose -f compose.production.yml exec swedeb_api ls -la /app/
-docker compose -f compose.production.yml exec swedeb_api ls -la /data/
-
-# Check network connectivity
-docker compose -f compose.production.yml exec swedeb_api ping -c 3 ghcr.io
-docker compose -f compose.production.yml exec swedeb_api curl -I https://ghcr.io
-
-# Test CWB tools
-docker compose -f compose.production.yml exec swedeb_api cwb-describe-corpus
-```
-
-### Performance Tuning
-
-```bash
-# Optimize Docker daemon
-# Edit /etc/docker/daemon.json:
-{
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3"
-  },
-  "storage-driver": "overlay2",
-  "default-ulimits": {
-    "nofile": {
-      "Name": "nofile",
-      "Hard": 64000,
-      "Soft": 64000
-    }
-  }
-}
-
-# Increase resource limits in compose file
-services:
-  swedeb_api:
-    deploy:
-      resources:
-        limits:
-          memory: 16G
-          cpus: '8'
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-
-# Monitor performance
-docker stats --no-stream
-docker compose -f compose.production.yml top
-```
-
-## Frontend Versioning
-
-The API Docker build includes the frontend as a base image:
-
-```dockerfile
-ARG FRONTEND_VERSION=latest
-FROM ghcr.io/humlab-swedeb/swedeb_frontend:${FRONTEND_VERSION} AS frontend-dist
-```
-
-### Pin Frontend Version
-
-For production builds with a specific frontend version:
-
-```bash
-# Modify .releaserc.yml or staging.yml workflow to set FRONTEND_VERSION_TAG
-export FRONTEND_VERSION_TAG=0.10.0
-
-# Or build locally with specific frontend
-cd docker
-docker build --build-arg FRONTEND_VERSION=0.10.0 -t custom-build .
-```
-
-### Frontend Compatibility
-
-Ensure compatible frontend and backend versions:
-
-| Backend Version | Compatible Frontend | Notes |
-|----------------|---------------------|-------|
-| 0.6.x | 0.10.x | Current stable |
-| 0.5.x | 0.9.x | Legacy |
+Common topics covered:
+- **Docker-specific issues**: Image pull errors, data mounts, port conflicts, container startup
+- **Podman-specific issues**: Rootless port binding, SELinux permissions, systemd service management
+- **Debug commands**: Comprehensive debugging steps for both Docker and Podman
+- **Performance tuning**: Optimization tips and resource limit configuration
 
 ## Best Practices
 
@@ -1078,11 +1714,25 @@ Ensure compatible frontend and backend versions:
 5. **Monitor after deployment** - Watch logs and metrics
 
 ### Operations
+
+#### Docker Compose
 1. **Regular backups** - Backup configuration files
 2. **Log rotation** - Configure log management
 3. **Resource monitoring** - Track CPU, memory, disk usage
 4. **Security updates** - Keep Docker and base images updated
 5. **Disaster recovery plan** - Document rollback procedures
+
+#### Podman Quadlet
+1. **Use rootless mode** - Better security isolation
+2. **Enable lingering** - Ensure services survive logout (`loginctl enable-linger`)
+3. **Pin versions in Quadlet** - Explicitly set image tags
+4. **Use SELinux** - Add `:Z` to volume mounts for proper labeling
+5. **Monitor via journald** - Centralized logging with `journalctl`
+6. **Test Quadlet changes** - Validate with `systemctl --user daemon-reload`
+7. **Auto-update carefully** - Use systemd timers with notification on failure
+8. **Resource limits** - Set Memory, CPU limits in Quadlet files
+9. **Health checks** - Configure health checks in container definitions
+10. **Backup Quadlet files** - Keep versioned copies of `.container` files
 
 ## Build Scripts Reference
 
@@ -1239,13 +1889,18 @@ docker/
 
 - [WORKFLOW_GUIDE.md](./WORKFLOW_GUIDE.md) - Developer workflow and branching strategy
 - [WORKFLOW_ARCHITECTURE.md](./WORKFLOW_ARCHITECTURE.md) - CI/CD architecture diagrams
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Troubleshooting common deployment issues
+- [README.md](../README.md) - Project overview and quick start
 - [Docker Documentation](https://docs.docker.com/)
 - [Docker Compose Reference](https://docs.docker.com/compose/)
+- [Podman Documentation](https://docs.podman.io/)
+- [Quadlet Documentation](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
+- [systemd.unit Manual](https://www.freedesktop.org/software/systemd/man/systemd.unit.html)
 - [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
 - [Semantic Release](https://semantic-release.gitbook.io/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 
 ---
 
-*Last updated: Following 4-branch workflow implementation (dev → test → staging → main)*
+*Last updated: Following 4-branch workflow implementation with Podman Quadlet support (dev → test → staging → main)*
 
