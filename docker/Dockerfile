@@ -22,7 +22,9 @@ COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh .
 COPY --chown=${APP_USER}:${APP_USER} config ./config/
 COPY --chown=${APP_USER}:${APP_USER} --from=frontend-dist /app/public ./public
 
+COPY requirements.txt .
 RUN set -ex; \
+    pip install --no-cache-dir -r requirements.txt; \
     chown -R ${APP_USER}:${APP_USER} /data; \
     chmod +x entrypoint.sh; \
     rm -rf /dist /wheels
