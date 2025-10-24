@@ -606,18 +606,6 @@ colors = ["colorama"]
 plugins = ["setuptools"]
 
 [[package]]
-name = "iter-tools"
-version = "0.0.2"
-description = "Tool for iterations."
-optional = false
-python-versions = ">=3.6"
-groups = ["main"]
-files = [
-    {file = "iter_tools-0.0.2-py3-none-any.whl", hash = "sha256:12e978fd41024f6e9df9ec00b675d3b82fa4e736528623f5022781d9c05664ef"},
-    {file = "iter_tools-0.0.2.tar.gz", hash = "sha256:f85c5389a4257c5725d7e6b6dcbadb03e7b4a0cf532a375a04dbe895c84da8a7"},
-]
-
-[[package]]
 name = "loguru"
 version = "0.7.3"
 description = "Python logging made (stupidly) simple"
@@ -1937,4 +1925,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "85fa6599a3285cf773cd8f1ee367a5513d4d72b9664feeb85ed99bf31e7d12ac"
+content-hash = "e767cd0f53efd50c53d5d66aa0fa1555fe0c6d5bbbb72e2df125214a19174a76"
