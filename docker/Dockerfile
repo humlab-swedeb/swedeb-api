@@ -17,23 +17,28 @@ RUN mkdir -p /app /data/cwb/data /data/corpus/tagged_frames /data/corpus/dtm /da
 
 WORKDIR /app
 
+# Install the application from pre-built wheel
+COPY wheels/*.whl /tmp/
+RUN set -ex; \
+    pip install --no-cache-dir /tmp/*.whl; \
+    rm -rf /tmp/*.whl
+
+# Copy additional runtime files
 COPY --chown=${APP_USER}:${APP_USER} main.py .
 COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh .
 COPY --chown=${APP_USER}:${APP_USER} config ./config/
 COPY --chown=${APP_USER}:${APP_USER} --from=frontend-dist /app/public ./public
 
-COPY requirements.txt .
+# Set permissions
 RUN set -ex; \
-    pip install --no-cache-dir -r requirements.txt; \
     chown -R ${APP_USER}:${APP_USER} /data; \
-    chmod +x entrypoint.sh; \
-    rm -rf /dist /wheels
+    chmod +x entrypoint.sh
 
 USER ${APP_USER}
 
 ENV SHELL=/bin/bash
 ENV HOME=/app
 ENV CORPUS_REGISTRY=/data/registry
-ENV SWEDEB_PORT=${SWEDEB_PORT:-8092}
+ENV SWEDEB_PORT=8092
 
 ENTRYPOINT ["./entrypoint.sh"]
