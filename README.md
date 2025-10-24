@@ -5,7 +5,9 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 
 ## 📚 Documentation
 
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment instructions for all environments (Docker Compose & Podman)
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Overview of deployment strategy, CI/CD pipeline, and workflow
+  - **[Docker Compose Deployment](docs/DEPLOY_DOCKER.md)** - Complete Docker Compose deployment procedures
+  - **[Podman Quadlet Deployment](docs/DEPLOY_PODMAN.md)** - Complete Podman systemd deployment procedures (recommended for production)
 - **[Workflow Guide](docs/WORKFLOW_GUIDE.md)** - Developer workflow, branching strategy, and commit conventions
 - **[Workflow Architecture](docs/WORKFLOW_ARCHITECTURE.md)** - CI/CD pipeline architecture and technical details
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions for deployment problems
