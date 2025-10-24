@@ -39,11 +39,13 @@ log "Building Python wheel..."
 mkdir -p docker/wheels
 poetry build --format wheel --output docker/wheels
 
+pushd docker > /dev/null
+
 # Extract version components
 MAJOR_VERSION=$(echo ${VERSION} | cut -d. -f1)
 MINOR_VERSION=$(echo ${VERSION} | cut -d. -f1-2)
 
-# Build with environment-specific tags (from root directory)
+# Build with environment-specific tags
 if [ "$ENVIRONMENT" = "test" ]; then
   log "Building test image with tags: ${VERSION}-test, test, test-latest"
   docker build \
@@ -51,7 +53,7 @@ if [ "$ENVIRONMENT" = "test" ]; then
     --tag "${IMAGE_NAME}:${VERSION}-test" \
     --tag "${IMAGE_NAME}:test" \
     --tag "${IMAGE_NAME}:test-latest" \
-    -f docker/Dockerfile .
+    -f ./Dockerfile .
   
   TAGS="${VERSION}-test, test, test-latest"
 elif [ "$ENVIRONMENT" = "staging" ]; then
@@ -60,7 +62,7 @@ elif [ "$ENVIRONMENT" = "staging" ]; then
     --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
     --tag "${IMAGE_NAME}:${VERSION}-staging" \
     --tag "${IMAGE_NAME}:staging" \
-    -f docker/Dockerfile .
+    -f ./Dockerfile .
   
   TAGS="${VERSION}-staging, staging"
 else
@@ -72,10 +74,15 @@ else
     --tag "${IMAGE_NAME}:${MINOR_VERSION}" \
     --tag "${IMAGE_NAME}:latest" \
     --tag "${IMAGE_NAME}:production" \
-    -f docker/Dockerfile .
+    -f ./Dockerfile .
   
   TAGS="${VERSION}, ${MAJOR_VERSION}, ${MINOR_VERSION}, latest, production"
 fi
+
+popd > /dev/null
+
+# Clean up wheel directory
+rm -rf docker/wheels
 
 # Push all tags
 docker push --all-tags "${IMAGE_NAME}"
