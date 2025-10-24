@@ -18,7 +18,6 @@ numpy = "*"
 pyarrow = "*"
 loguru = "*"
 requests = "*"
-iter-tools = "*"
 more-itertools = "*"
 
 [tool.poetry.group.dev.dependencies]
