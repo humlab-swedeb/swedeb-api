@@ -34,6 +34,9 @@ fi
 
 log "Using frontend image: ${FRONTEND_IMAGE_BASE}:${FRONTEND_VERSION}"
 
+# Copy requirements.txt into docker directory
+cp requirements.txt docker/
+
 pushd docker > /dev/null
 
 # Extract version components
@@ -75,6 +78,9 @@ else
 fi
 
 popd > /dev/null
+
+# Clean up copied requirements.txt
+rm docker/requirements.txt
 
 # Push all tags
 docker push --all-tags "${IMAGE_NAME}"
