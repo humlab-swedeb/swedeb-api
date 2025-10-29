@@ -24,7 +24,7 @@ class SpeakerQueryParams:
         self.chamber_abbrev: List[str] = chamber_abbrev
 
     def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:  # pylint: disable=unused-argument
-        opts: dict[str, list[int]] = {
+        opts: dict[str, list[int]] = {  # type: ignore
             # **({"office_id": self.office_types} if self.office_types else {}),
             # **({"sub_office_type_id": self.sub_office_types} if self.sub_office_types else {}),
             **({"party_id": self.party_id} if self.party_id else {}),
@@ -68,7 +68,7 @@ class CommonQueryParams(SpeakerQueryParams):
         year_opts: dict = {}
         if include_year and (self.from_year or self.to_year):
             year_opts = {'year': (self.from_year or 0, self.to_year or 3000)}
-        opts: dict[str, list[int]] = {
+        opts: dict[str, list[int]] = {  # type: ignore
             **super().get_filter_opts(include_year),
             **({"person_id": self.who} if self.who else {}),
             **({"speech_id": self.speech_id} if self.speech_id else {}),
