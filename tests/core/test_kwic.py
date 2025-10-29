@@ -33,6 +33,12 @@ EXPECTED_COLUMNS: set[str] = {
 }
 
 
+@pytest.fixture(scope="module")
+def corpus_opts(corpus: ccc.Corpus) -> CorpusCreateOpts:
+    """Create CorpusCreateOpts from corpus for multiprocessing tests."""
+    return CorpusCreateOpts.to_opts(corpus)
+
+
 def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Helper function that encodes party abbreviations to party ids (simplifies designing test cases)"""
 
