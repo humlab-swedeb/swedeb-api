@@ -257,7 +257,7 @@ def to_cqp_criteria_expr(criterias: None | list[dict[str, Any]]) -> str:
         [
             f"({x})"
             for x in [
-                f'{criteria.get("key")}="{_to_value_expr(criteria.get("values"))}"{fx_case(criteria)}'
+                f'{criteria.get("key")}="{_to_value_expr(criteria.get("values"))}"{fx_case(criteria)}'  # type: ignore
                 for criteria in criterias
                 if criteria.get("values")
             ]
@@ -275,7 +275,7 @@ def get_criteria_opts(args: list[dict[str, Any]]) -> list[str]:
     return items
 
 
-def to_cqp_exprs(args: list[dict[str, Any]], within: str | None = None) -> str:
+def to_cqp_exprs(args: dict[str, Any] | list[dict[str, Any]], within: str | None = None) -> str:
     """Compile a CQP sequence query from a list of pattern options."""
     if not args:
         return ""

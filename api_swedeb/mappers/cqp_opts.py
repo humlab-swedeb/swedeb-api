@@ -20,9 +20,9 @@ FIND_ATTRIBS = {
 }
 
 
-def query_params_to_CQP_criterias(params: CommonQueryParams = None) -> list[dict]:
+def query_params_to_CQP_criterias(params: CommonQueryParams | None = None) -> list[dict]:
     """Maps `params` to a CQP query opts dictionary (as specified in core/cwm/compiler.py)"""
-    criterias: dict[str, list[str] | str] = []
+    criterias: list[dict[str, Any]] = []
 
     if not params:
         return criterias
@@ -58,7 +58,7 @@ def query_params_to_CQP_opts(
     params: CommonQueryParams,
     word_targets: str | tuple[str, str] | list[str | tuple[str, str]],
     search_target: None | Literal["word", "lemma"] = None,
-) -> dict:
+) -> list[dict[str, Any]]:
     """Maps a QueryParams to CQP options
 
     Parameters
