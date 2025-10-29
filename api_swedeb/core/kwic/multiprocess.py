@@ -4,14 +4,15 @@ import multiprocessing as mp
 from datetime import datetime
 from typing import Any, Literal
 
-import pandas as pd
 import ccc
+import pandas as pd
 
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.cwb.utility import CorpusCreateOpts
 
 from .singleprocess import execute_kwic_singleprocess
 from .utility import create_year_chunks, empty_kwic, extract_year_range, inject_year_filter
+
 
 def kwic_worker(args: tuple) -> pd.DataFrame:
     """Worker function for multiprocessing kwic queries.

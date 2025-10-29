@@ -42,6 +42,7 @@ class Registry:
         register(**args): Decorator to register a function or class with an optional key and type.
         is_registered(key): Check if a key is registered.
     """
+
     items: dict = {}
 
     @classmethod

@@ -5,7 +5,7 @@ from typing import Any, Literal
 import pandas as pd
 from ccc import Corpus, SubCorpus
 
-from api_swedeb.core.cwb import to_cqp_exprs, CorpusCreateOpts
+from api_swedeb.core.cwb import CorpusCreateOpts, to_cqp_exprs
 
 from .utility import empty_kwic
 

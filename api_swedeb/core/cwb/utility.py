@@ -1,10 +1,10 @@
+import os
 from dataclasses import dataclass
 from functools import cached_property
-import os
 from typing import Self
 
-import pandas as pd
 import ccc
+import pandas as pd
 
 
 @dataclass
@@ -45,6 +45,7 @@ class CorpusCreateOpts:
             corpus_name=corpus.corpus_name,
             data_dir=corpus.data_dir,
         )
+
 
 class CorpusAttribs:
     def __init__(self, attributes: pd.DataFrame | ccc.Corpus | dict) -> None:

@@ -471,12 +471,12 @@ def test_corpus_create_opts_serialization(corpus: ccc.Corpus):
     """Test that CorpusCreateOpts can be created from corpus and reconstructed."""
     # Create opts from corpus
     corpus_opts = CorpusCreateOpts.to_opts(corpus)
-    
+
     assert isinstance(corpus_opts, CorpusCreateOpts)
     assert corpus_opts.registry_dir == corpus.registry_dir
     assert corpus_opts.corpus_name == corpus.corpus_name
     assert corpus_opts.data_dir == corpus.data_dir
-    
+
     # Test that it can be used to create a new corpus
     new_corpus = corpus_opts.create_corpus()
     assert isinstance(new_corpus, ccc.Corpus)
@@ -487,11 +487,11 @@ def test_corpus_create_opts_serialization(corpus: ccc.Corpus):
 def test_corpus_create_opts_resolve(corpus: ccc.Corpus):
     """Test CorpusCreateOpts.resolve() method."""
     corpus_opts = CorpusCreateOpts.to_opts(corpus)
-    
+
     # Test resolve with CorpusCreateOpts
     resolved = CorpusCreateOpts.resolve(corpus_opts)
     assert isinstance(resolved, ccc.Corpus)
-    
+
     # Test resolve with already a Corpus
     resolved2 = CorpusCreateOpts.resolve(corpus)
     assert resolved2 is corpus
@@ -803,4 +803,3 @@ def test_kwic_processing_modes(
 
     assert isinstance(result, pd.DataFrame)
     assert result.index.name == "speech_id"
-
