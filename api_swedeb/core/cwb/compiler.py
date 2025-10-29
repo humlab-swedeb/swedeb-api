@@ -165,11 +165,11 @@ def to_cqp_pattern(opts: dict | str | None) -> str:
 
         value = value.strip('"')
 
-    prefix: str | list = opts.get("prefix", "")
+    prefix: str = opts.get("prefix", "")
     if prefix and not prefix.endswith(":"):
         prefix = f"{prefix}:"
 
-    postfix: bool = "%c" if ignore_case else ""
+    postfix: str = "%c" if ignore_case else ""
 
     if value is not None:
         pattern: str = f'[{target}="{_to_value_expr(value)}"{postfix}]'
@@ -179,7 +179,7 @@ def to_cqp_pattern(opts: dict | str | None) -> str:
     return f"{prefix or ''}{pattern}"
 
 
-def to_cqp_patterns(args: None | str | list[dict[str, Any]]) -> str:
+def to_cqp_patterns(args: None | str | list[dict[str, Any]] | dict[str, Any]) -> str:
     """Compile a CQP query from a list of tokens and a dictionary of criterias.
 
     Args:
@@ -233,7 +233,7 @@ def to_cqp_patterns(args: None | str | list[dict[str, Any]]) -> str:
     return " ".join(to_cqp_pattern(arg) for arg in args).strip()
 
 
-def to_cqp_criteria_expr(criterias: None | str | list[dict[str, Any]]) -> str:
+def to_cqp_criteria_expr(criterias: None | list[dict[str, Any]]) -> str:
     """Compile a CQP criteria expression from a list of criteria options.
     Args:
         criterias (list[dict[str, Any]]): List of criteria options.
@@ -269,13 +269,13 @@ def to_cqp_criteria_expr(criterias: None | str | list[dict[str, Any]]) -> str:
 
 def get_criteria_opts(args: list[dict[str, Any]]) -> list[str]:
     """Get a list of criteria expressions from a list of pattern options."""
-    items: list[Any | None] = [arg.get("criterias") for arg in args if arg.get("criterias")]
+    items: list[Any] = [arg.get("criterias") for arg in args if arg.get("criterias")]
     if len(items) > 0 and isinstance(items[0], list):
         items = [item for row in items for item in row]
     return items
 
 
-def to_cqp_exprs(args: list[dict[str, Any]], within: str = None) -> str:
+def to_cqp_exprs(args: list[dict[str, Any]], within: str | None = None) -> str:
     """Compile a CQP sequence query from a list of pattern options."""
     if not args:
         return ""
