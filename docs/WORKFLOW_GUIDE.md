@@ -116,6 +116,71 @@ git push origin main
 - ✅ Builds and pushes production Docker images
 - ✅ Commits version changes back to main
 
+## Complete Promotion Pipeline
+
+Here's the full end-to-end workflow from feature development to production deployment:
+
+```bash
+# 1. Feature Development
+git checkout dev
+git pull origin dev
+git checkout -b feature/my-feature
+
+# Make changes with conventional commits
+git add .
+git commit -m "feat: add new API endpoint"
+git push origin feature/my-feature
+
+# Create PR to dev branch
+# After review and approval, merge to dev
+
+# 2. Promote to Test
+git checkout test
+git pull origin test
+git merge dev
+git push origin test
+# ✅ Automatic build triggered → creates test images
+
+# 3. Test in Test Environment
+# Visit test environment and run integration tests
+# URL: http://test-server:8001/docs
+
+# 4. Promote to Staging
+git checkout staging
+git pull origin staging
+git merge test
+git push origin staging
+# ✅ Automatic build triggered → creates staging images
+
+# 5. Validate in Staging
+# Visit staging environment and run acceptance tests
+# URL: http://staging-server:8002/docs
+
+# 6. Promote to Production
+git checkout main
+git pull origin main
+git merge staging
+git push origin main
+# ✅ Semantic-release triggered → creates production images, tags, changelog
+
+# 7. Deploy to Production Server
+ssh production-server
+cd /opt/swedeb-api
+
+# Check new version from GitHub releases
+NEW_VERSION=$(curl -s https://api.github.com/repos/humlab-swedeb/swedeb-api/releases/latest | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')
+
+# Update to new version
+sed -i "s/SWEDEB_IMAGE_TAG=.*/SWEDEB_IMAGE_TAG=${NEW_VERSION}/" .env
+docker compose -f compose.production.yml pull
+docker compose -f compose.production.yml up -d
+
+# 8. Verify Production Deployment
+docker compose -f compose.production.yml ps
+docker compose -f compose.production.yml logs --tail=100
+curl https://your-domain.com/docs
+```
+
 ## Commit Message Guidelines
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) format:
@@ -186,45 +251,46 @@ docker pull ghcr.io/humlab-swedeb/swedeb-api:{previous-version}
 docker-compose -f compose.production.yml up -d
 ```
 
-## Hotfix Procedure
+## Hotfix Workflow
 
 For urgent production fixes:
 
 ```bash
-# Option 1: Fast-track through pipeline
+# Option 1: Fast-track through pipeline (RECOMMENDED)
 git checkout dev
-git pull origin dev
-git checkout -b hotfix/urgent-fix
+git checkout -b hotfix/critical-fix
 
 # Make fix with conventional commit
 git commit -m "fix: resolve critical security issue"
+git push origin hotfix/critical-fix
 
-# Fast-track: PR to dev → merge → PR to test → merge → PR to staging → merge → PR to main
+# Fast-track PRs:
+# 1. PR hotfix → dev → merge
+# 2. PR dev → test → merge → test in test environment
+# 3. PR test → staging → merge → validate in staging
+# 4. PR staging → main → merge → deploys to production
+
+# Backport to all branches
+git checkout test && git cherry-pick <commit-hash> && git push
+git checkout staging && git cherry-pick <commit-hash> && git push
 ```
 
 ```bash
-# Option 2: Direct to main (emergency only)
+# Option 2: Direct to main (EMERGENCY ONLY)
 git checkout main
-git pull origin main
-git checkout -b hotfix/critical-fix
+git checkout -b hotfix/emergency
 
 # Make fix
-git commit -m "fix: resolve critical production issue"
-git push origin hotfix/critical-fix
+git commit -m "fix: critical production issue"
+git push origin hotfix/emergency
 
 # Create PR to main
-# After merge, backport to test, staging and dev
-git checkout test
-git cherry-pick <commit-hash>
-git push origin test
+# After merge, semantic-release creates new version
 
-git checkout staging
-git cherry-pick <commit-hash>
-git push origin staging
-
-git checkout dev
-git cherry-pick <commit-hash>
-git push origin dev
+# Backport to all branches
+git checkout staging && git cherry-pick <commit-hash> && git push
+git checkout test && git cherry-pick <commit-hash> && git push
+git checkout dev && git cherry-pick <commit-hash> && git push
 ```
 
 ## Manual Deployments
