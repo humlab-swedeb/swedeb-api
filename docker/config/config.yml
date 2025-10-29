@@ -73,6 +73,10 @@ vrt:
   folder: /data/tagged_frames
   tag: text
 
+kwic:
+  use_multiprocessing: true
+  num_processes: 8
+
 fastapi:
   origins:
     - http://localhost:8080
