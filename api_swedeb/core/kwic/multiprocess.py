@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import os
+import tempfile
 from datetime import datetime
 from typing import Any, Literal
 
@@ -18,10 +20,10 @@ def kwic_worker(args: tuple) -> pd.DataFrame:
     """Worker function for multiprocessing kwic queries.
 
     This function is designed to be called by multiprocessing.Pool.map().
-    It imports the kwic function locally to avoid circular imports.
+    Each worker creates its own isolated work directory to avoid file locking conflicts.
 
     Args:
-        args: Tuple of (corpus, opts, year_range, words_before, words_after, p_show, cut_off)
+        args: Tuple of (corpus_opts, opts, year_range, words_before, words_after, p_show, cut_off)
 
     Returns:
         DataFrame with kwic results for the specified year range
@@ -31,16 +33,41 @@ def kwic_worker(args: tuple) -> pd.DataFrame:
 
     opts_with_year_range: list[dict[str, Any]] = inject_year_filter(opts, year_range)
 
-    corpus: ccc.Corpus = CorpusCreateOpts.create_corpus(corpus_opts)
-
-    return execute_kwic_singleprocess(
-        corpus=corpus,
-        opts=opts_with_year_range,
-        words_before=words_before,
-        words_after=words_after,
-        p_show=p_show,
-        cut_off=cut_off,
+    # Create a unique work_dir for this worker process to avoid GDBM file locking conflicts
+    # Each process gets its own temporary directory with the process ID in the name
+    process_id = os.getpid()
+    unique_data_dir = tempfile.mkdtemp(
+        prefix=f"ccc-{ccc.__version__}-swedeb-worker-{process_id}-",
+        dir=tempfile.gettempdir()
     )
+
+    # Create a new CorpusCreateOpts with the unique data_dir
+    corpus_opts_isolated = CorpusCreateOpts(
+        registry_dir=corpus_opts.registry_dir,
+        corpus_name=corpus_opts.corpus_name,
+        data_dir=unique_data_dir,
+    )
+
+    corpus: ccc.Corpus = corpus_opts_isolated.create_corpus()
+
+    try:
+        result = execute_kwic_singleprocess(
+            corpus=corpus,
+            opts=opts_with_year_range,
+            words_before=words_before,
+            words_after=words_after,
+            p_show=p_show,
+            cut_off=cut_off,
+        )
+        return result
+    finally:
+        # Clean up the temporary directory after processing
+        # Note: We leave cleanup to the OS in case of crashes, but try to clean up on success
+        try:
+            import shutil
+            shutil.rmtree(unique_data_dir, ignore_errors=True)
+        except Exception:
+            pass  # Best effort cleanup
 
 
 def execute_kwic_multiprocess(
