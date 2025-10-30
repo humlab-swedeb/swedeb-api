@@ -1,6 +1,5 @@
 import sqlite3
 import sys
-import uuid
 
 import ccc
 import pandas as pd
@@ -26,7 +25,9 @@ logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 @pytest.fixture(scope='module')
 def corpus() -> ccc.Corpus:
-    data_dir: str = f'/tmp/{str(uuid.uuid4())[:8]}'
+    # Use shared data_dir for better performance and disk efficiency.
+    # CWB-CCC creates corpus-specific subdirectories, so multiple processes can safely share.
+    data_dir: str = '/tmp/ccc-swedeb-test'
     corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
     registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
     return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)

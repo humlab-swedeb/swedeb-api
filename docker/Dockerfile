@@ -13,7 +13,7 @@ ENV PYTHONUNBUFFERED 1
 
 USER root
 
-RUN mkdir -p /app /data/cwb/data /data/corpus/tagged_frames /data/corpus/dtm /data/corpus/metadata
+RUN mkdir -p /app /app/config /data/cwb/data /data/corpus/tagged_frames /data/corpus/dtm /data/corpus/metadata
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN set -ex; \
 # Copy additional runtime files
 COPY --chown=${APP_USER}:${APP_USER} main.py .
 COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh .
-COPY --chown=${APP_USER}:${APP_USER} config ./config/
+# COPY --chown=${APP_USER}:${APP_USER} config ./config/
 COPY --chown=${APP_USER}:${APP_USER} --from=frontend-dist /app/public ./public
 
 # Set permissions
@@ -38,7 +38,14 @@ USER ${APP_USER}
 
 ENV SHELL=/bin/bash
 ENV HOME=/app
-ENV CORPUS_REGISTRY=/data/registry
-ENV SWEDEB_PORT=8092
+
+ARG CORPUS_REGISTRY=/data/registry
+ENV CORPUS_REGISTRY=${CORPUS_REGISTRY}
+
+ARG SWEDEB_PORT=8092
+ENV SWEDEB_PORT=${SWEDEB_PORT}
+
+ARG CONFIG_FILE=config/config.yml
+ENV CONFIG_FILE=${CONFIG_FILE}
 
 ENTRYPOINT ["./entrypoint.sh"]

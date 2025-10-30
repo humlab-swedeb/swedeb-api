@@ -5,6 +5,7 @@ import pandas as pd
 from api_swedeb import mappers
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.core.codecs import PersonCodecs
+from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.kwic import simple
 from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
 
@@ -51,6 +52,8 @@ def get_kwic_data(
         words_after=words_after,
         p_show=p_show,
         cut_off=cut_off,
+        use_multiprocessing=ConfigValue("kwic.use_multiprocessing", default=False).resolve(),
+        num_processes=ConfigValue("kwic.num_processes", default=8).resolve()
     )
 
     rows: list[KeywordInContextItem] = [KeywordInContextItem(**row) for row in data.to_dict(orient="records")]
