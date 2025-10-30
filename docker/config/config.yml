@@ -44,7 +44,8 @@
 #          ├── 1867.vrt.gz
 #          ├── ...
 #          └── 202223.vrt.gz
-     
+# Note! Mount /data/v1.4.1 into the container as :/data to make this work
+
 metadata:
   version: v1.1.3
   filename: /data/riksprot_metadata.v1.1.3.db
@@ -71,6 +72,10 @@ dtm:
 vrt:
   folder: /data/tagged_frames
   tag: text
+
+kwic:
+  use_multiprocessing: true
+  num_processes: 8
 
 fastapi:
   origins:

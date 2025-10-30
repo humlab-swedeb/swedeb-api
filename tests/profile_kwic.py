@@ -1,4 +1,3 @@
-import uuid
 from time import time
 
 import pandas as pd
@@ -49,8 +48,9 @@ def run_kwic() -> None:
     metadata_filename: str = ConfigValue("metadata.filename").resolve('profile')
 
     logger.info(f"loading corpus_name: {corpus_name}")
+    # Use shared data_dir for better performance and disk efficiency
     corpus: Corpus = Corpora(registry_dir=corpus_registry).corpus(
-        corpus_name=corpus_name, data_dir=f'/tmp/{str(uuid.uuid4())[:8]}'
+        corpus_name=corpus_name, data_dir='/tmp/ccc-swedeb-profile'
     )
     logger.info(f"loading speech index: {corpus_name}")
     speech_index: pd.DataFrame = load_speech_index(dtm_folder, dtm_tag)
