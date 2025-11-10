@@ -45,11 +45,19 @@ jobs:
       #   run: npm install semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/git @semantic-release/github @semantic-release/exec
 
       - name: Run semantic-release
+        id: semantic_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # These are used by the publish-docker.sh script
+        run: npx semantic-release
+
+      - name: Build and push production Docker image
+        if: steps.semantic_release.outputs.new_release_published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           # PAT with read:packages for cross-org access to humlab/cwb-container
           CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
-        run: npx semantic-release
+          # Use the same semantic version for frontend as backend
+          FRONTEND_VERSION_TAG: ${{ steps.semantic_release.outputs.new_release_version }}
+        run: ./.github/scripts/build-and-push-image.sh "${{ steps.semantic_release.outputs.new_release_version }}" production
