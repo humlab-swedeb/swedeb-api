@@ -19,7 +19,18 @@ fi
 
 IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY}"
 FRONTEND_IMAGE_BASE="ghcr.io/humlab-swedeb/swedeb_frontend"
-FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-latest}
+
+# Determine frontend version based on environment and provided tag
+if [ "$ENVIRONMENT" = "production" ] && [ -n "${FRONTEND_VERSION_TAG:-}" ]; then
+  # For production releases, use the provided semantic version tag
+  FRONTEND_VERSION=${FRONTEND_VERSION_TAG}
+elif [ "$ENVIRONMENT" = "staging" ]; then
+  # For staging, use the staging tag (set via FRONTEND_VERSION_TAG)
+  FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-staging}
+else
+  # Fallback to latest for other cases
+  FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-latest}
+fi
 
 log "Building ${ENVIRONMENT} image for version ${VERSION}"
 log "Logging into GitHub Container Registry..."
