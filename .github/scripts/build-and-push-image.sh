@@ -18,21 +18,9 @@ if [[ ! "$ENVIRONMENT" =~ ^(test|staging|production)$ ]]; then
 fi
 
 IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY}"
-FRONTEND_IMAGE_BASE="ghcr.io/humlab-swedeb/swedeb_frontend"
-
-# Determine frontend version based on environment and provided tag
-if [ "$ENVIRONMENT" = "production" ] && [ -n "${FRONTEND_VERSION_TAG:-}" ]; then
-  # For production releases, use the provided semantic version tag
-  FRONTEND_VERSION=${FRONTEND_VERSION_TAG}
-elif [ "$ENVIRONMENT" = "staging" ]; then
-  # For staging, use the staging tag (set via FRONTEND_VERSION_TAG)
-  FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-staging}
-else
-  # Fallback to latest for other cases
-  FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-latest}
-fi
 
 log "Building ${ENVIRONMENT} image for version ${VERSION}"
+log "Note: Frontend assets will be downloaded at container runtime from GitHub releases"
 log "Logging into GitHub Container Registry..."
 
 if [ -n "${CWB_REGISTRY_TOKEN:-}" ]; then
@@ -42,8 +30,6 @@ else
   log "Using standard GitHub token..."
   echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
 fi
-
-log "Using frontend image: ${FRONTEND_IMAGE_BASE}:${FRONTEND_VERSION}"
 
 # Build wheel in docker/wheels directory
 log "Building Python wheel..."
@@ -60,7 +46,6 @@ MINOR_VERSION=$(echo ${VERSION} | cut -d. -f1-2)
 if [ "$ENVIRONMENT" = "test" ]; then
   log "Building test image with tags: ${VERSION}-test, test, test-latest"
   docker build \
-    --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
     --tag "${IMAGE_NAME}:${VERSION}-test" \
     --tag "${IMAGE_NAME}:test" \
     --tag "${IMAGE_NAME}:test-latest" \
@@ -70,7 +55,6 @@ if [ "$ENVIRONMENT" = "test" ]; then
 elif [ "$ENVIRONMENT" = "staging" ]; then
   log "Building staging image with tags: ${VERSION}-staging, staging"
   docker build \
-    --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
     --tag "${IMAGE_NAME}:${VERSION}-staging" \
     --tag "${IMAGE_NAME}:staging" \
     -f ./Dockerfile .
@@ -79,7 +63,6 @@ elif [ "$ENVIRONMENT" = "staging" ]; then
 else
   log "Building production image with tags: ${VERSION}, ${MAJOR_VERSION}, ${MINOR_VERSION}, latest, production"
   docker build \
-    --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
     --tag "${IMAGE_NAME}:${VERSION}" \
     --tag "${IMAGE_NAME}:${MAJOR_VERSION}" \
     --tag "${IMAGE_NAME}:${MINOR_VERSION}" \

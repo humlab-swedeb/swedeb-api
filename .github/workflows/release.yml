@@ -58,6 +58,4 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           # PAT with read:packages for cross-org access to humlab/cwb-container
           CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
-          # Use the same semantic version for frontend as backend
-          FRONTEND_VERSION_TAG: ${{ steps.semantic_release.outputs.new_release_version }}
         run: ./.github/scripts/build-and-push-image.sh "${{ steps.semantic_release.outputs.new_release_version }}" production

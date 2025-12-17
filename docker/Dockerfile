@@ -1,6 +1,4 @@
-ARG FRONTEND_VERSION=latest
-
-FROM ghcr.io/humlab-swedeb/swedeb_frontend:${FRONTEND_VERSION} AS frontend-dist
+# Remove the frontend container dependency
 FROM ghcr.io/humlab/cwb-container:latest AS final
 
 LABEL maintainer="Roger Mähler <roger dot mahler at umu dot se>"
@@ -23,16 +21,19 @@ RUN set -ex; \
     pip install --no-cache-dir /tmp/*.whl; \
     rm -rf /tmp/*.whl
 
-# Copy additional runtime files
+# Copy runtime files including frontend download script
 COPY --chown=${APP_USER}:${APP_USER} main.py .
 COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh .
+COPY --chown=${APP_USER}:${APP_USER} download-frontend.sh .
 # COPY --chown=${APP_USER}:${APP_USER} config ./config/
-COPY --chown=${APP_USER}:${APP_USER} --from=frontend-dist /app/public ./public
+
+# Create public directory for frontend assets (will be populated at runtime)
+RUN mkdir -p public
 
 # Set permissions
 RUN set -ex; \
-    chown -R ${APP_USER}:${APP_USER} /data; \
-    chmod +x entrypoint.sh
+    chown -R ${APP_USER}:${APP_USER} /data public; \
+    chmod +x entrypoint.sh download-frontend.sh
 
 USER ${APP_USER}
 
@@ -47,5 +48,9 @@ ENV SWEDEB_PORT=${SWEDEB_PORT}
 
 ARG CONFIG_FILE=config/config.yml
 ENV CONFIG_FILE=${CONFIG_FILE}
+
+# Make frontend version available at runtime
+ARG FRONTEND_VERSION=latest
+ENV FRONTEND_VERSION=${FRONTEND_VERSION}
 
 ENTRYPOINT ["./entrypoint.sh"]
