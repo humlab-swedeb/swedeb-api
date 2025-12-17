@@ -84,7 +84,7 @@ make profile-kwic-pyinstrument  # Profile KWIC queries, outputs to tests/output/
 
 ### Docker Build Pipeline
 - Single unified build script: `.github/scripts/build-and-push-image.sh`
-- Frontend assets embedded at build time (downloaded via `download-frontend.sh`)
+- Frontend assets downloaded at runtime (via )`download-frontend.sh`)
 - Images pushed to GitHub Container Registry: `ghcr.io/humlab-swedeb/swedeb-api`
 - Environment-specific compose files: `compose.test.yml`, `compose.staging.yml`, `docker-compose.yml`
 

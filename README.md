@@ -99,7 +99,8 @@ make coverage                    # Run tests with coverage report
 
 # Performance profiling
 make profile-kwic-pyinstrument  # Profile KWIC queries
-``p --reload
+```
+poetry run uvicorn main:app --reload
     ```
     The API will be available at `http://127.0.0.1:8000`.
 
