@@ -56,6 +56,9 @@ SWEDEB_METADATA_FILENAME=/data/swedeb/metadata/riksprot_metadata.v1.1.3.db
 METADATA_VERSION=v1.1.3
 CORPUS_VERSION=v1.4.1
 
+# Frontend Configuration
+FRONTEND_VERSION=latest                        # or specific version like 'v0.10.1'
+
 # Container Configuration
 SWEDEB_CONTAINER_NAME=swedeb-api-test
 ```
@@ -132,6 +135,9 @@ SWEDEB_METADATA_FILENAME=/data/swedeb/metadata/riksprot_metadata.v1.1.3.db
 METADATA_VERSION=v1.1.3
 CORPUS_VERSION=v1.4.1
 
+# Frontend Configuration
+FRONTEND_VERSION=latest                        # or specific version like 'v0.10.1'
+
 # Container Configuration
 SWEDEB_CONTAINER_NAME=swedeb-api-staging
 ```
@@ -197,6 +203,9 @@ SWEDEB_DATA_FOLDER=/data/swedeb/v1.4.1
 SWEDEB_METADATA_FILENAME=/data/swedeb/metadata/riksprot_metadata.v1.1.3.db
 METADATA_VERSION=v1.1.3
 CORPUS_VERSION=v1.4.1
+
+# Frontend Configuration
+FRONTEND_VERSION=v0.10.1                       # Pin specific version in production
 
 # Container Configuration
 SWEDEB_CONTAINER_NAME=swedeb-api
@@ -346,6 +355,76 @@ docker compose -f compose.production.yml up -d
 # Verify rollback
 docker compose -f compose.production.yml ps
 docker compose -f compose.production.yml logs --tail=50
+```
+
+---
+
+## Frontend Asset Management
+
+The backend container automatically downloads frontend assets from GitHub releases at startup.
+
+### How It Works
+
+1. **At Container Startup**: The entrypoint script checks for frontend assets
+2. **Version Check**: Compares existing version with `FRONTEND_VERSION` environment variable
+3. **Download**: If needed, downloads `frontend-{version}.tar.gz` from GitHub releases
+4. **Extract**: Extracts assets to `/app/public`
+5. **Serve**: API serves frontend from `/app/public` directory
+
+### Version Control
+
+```bash
+# Use latest production version (default)
+FRONTEND_VERSION=latest
+
+# Use staging pre-release (floating, always latest staging build)
+FRONTEND_VERSION=staging
+
+# Pin specific production version (recommended for production)
+FRONTEND_VERSION=v0.10.1
+
+# Use specific version
+FRONTEND_VERSION=v0.9.0
+```
+
+### Release Types
+
+| Version | Type | Description | Use Case |
+|---------|------|-------------|----------|
+| `latest` | Production | Latest stable release | Testing latest production features |
+| `staging` | Pre-release | Latest staging build (floating) | Staging environment validation |
+| `v0.10.1` | Production | Specific stable version | Production (recommended) |
+
+### Updating Frontend Version
+
+To update the frontend without rebuilding the backend:
+
+```bash
+# Update environment variable
+sed -i 's/FRONTEND_VERSION=v0.10.0/FRONTEND_VERSION=v0.10.1/' .env
+
+# Restart container (triggers re-download)
+docker compose -f compose.production.yml restart
+
+# Verify new version
+docker compose -f compose.production.yml logs | grep "Frontend"
+```
+
+### Troubleshooting Frontend Assets
+
+```bash
+# Check frontend version in container
+docker compose exec swedeb_api cat /app/public/.frontend_version
+
+# Verify assets exist
+docker compose exec swedeb_api ls -la /app/public/
+
+# Force re-download by removing version file
+docker compose exec swedeb_api rm /app/public/.frontend_version
+docker compose restart
+
+# Check download logs
+docker compose logs | grep "download-frontend"
 ```
 
 ---
