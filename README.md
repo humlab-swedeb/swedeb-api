@@ -5,11 +5,15 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 
 ## 📚 Documentation
 
+### For Developers
+- **[AI Coding Agent Instructions](.github/copilot-instructions.md)** - Essential guide for AI assistants working with this codebase
+- **[Workflow Guide](docs/WORKFLOW_GUIDE.md)** - Developer workflow, branching strategy, and commit conventions
+- **[Workflow Architecture](docs/WORKFLOW_ARCHITECTURE.md)** - CI/CD pipeline architecture and technical details
+
+### For Deployment
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Overview of deployment strategy, CI/CD pipeline, and workflow
   - **[Docker Compose Deployment](docs/DEPLOY_DOCKER.md)** - Complete Docker Compose deployment procedures
   - **[Podman Quadlet Deployment](docs/DEPLOY_PODMAN.md)** - Complete Podman systemd deployment procedures (recommended for production)
-- **[Workflow Guide](docs/WORKFLOW_GUIDE.md)** - Developer workflow, branching strategy, and commit conventions
-- **[Workflow Architecture](docs/WORKFLOW_ARCHITECTURE.md)** - CI/CD pipeline architecture and technical details
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions for deployment problems
 
 ## Technology Stack
@@ -44,9 +48,10 @@ The backend is built on a containerized architecture, leveraging modern Python t
 ## Quick Start
 
 ### Prerequisites
-- Python 3.12+
-- Poetry
+- Python 3.11+ (3.12 recommended)
+- Poetry (dependency management)
 - Docker (optional, for containerized development)
+- CWB (Corpus Workbench) data files (see [sample-data repository](https://github.com/humlab-swedeb/sample-data))
 
 ### Local Development Setup
 
@@ -63,10 +68,38 @@ The backend is built on a containerized architecture, leveraging modern Python t
     ```bash
     poetry install
     ```
-
-4.  **Run the Development Server:**
+4. **Configure Environment:**
     ```bash
-    poetry run uvicorn api_swedeb.main:app --reload
+    cp .env_example .env
+    # Edit .env with your data paths
+    ```
+
+5.  **Run the Development Server:**
+6.  **View API Documentation:**
+    - Swagger UI: `http://127.0.0.1:8000/docs`
+    - ReDoc: `http://127.0.0.1:8000/redoc`
+
+### Common Development Commands
+
+```bash
+# Run tests
+poetry run pytest tests/
+
+# Code formatting (required before commits)
+make tidy                        # Format with black + isort
+make black                       # Format with black only
+make isort                       # Sort imports only
+
+# Code quality
+make pylint                      # Lint code
+make notes                       # Find FIXME/TODO comments
+
+# Coverage
+make coverage                    # Run tests with coverage report
+
+# Performance profiling
+make profile-kwic-pyinstrument  # Profile KWIC queries
+``p --reload
     ```
     The API will be available at `http://127.0.0.1:8000`.
 
