@@ -57,5 +57,4 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
           VERSION: ${{ steps.get_version.outputs.version }}
-          FRONTEND_VERSION_TAG: latest
         run: ./.github/scripts/build-and-push-image.sh "${VERSION}" test

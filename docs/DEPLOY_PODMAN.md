@@ -132,6 +132,7 @@ Environment=ENVIRONMENT=test
 Environment=LOG_LEVEL=DEBUG
 Environment=METADATA_VERSION=v1.1.3
 Environment=CORPUS_VERSION=v1.4.1
+Environment=FRONTEND_VERSION=latest
 
 # Health check (optional)
 HealthCmd=/usr/bin/curl -f http://localhost:8000/health || exit 1
@@ -240,6 +241,7 @@ Environment=ENVIRONMENT=staging
 Environment=LOG_LEVEL=INFO
 Environment=METADATA_VERSION=v1.1.3
 Environment=CORPUS_VERSION=v1.4.1
+Environment=FRONTEND_VERSION=latest
 
 # Resource limits (optional)
 Memory=8G
@@ -320,6 +322,7 @@ Environment=ENVIRONMENT=production
 Environment=LOG_LEVEL=WARNING
 Environment=METADATA_VERSION=v1.1.3
 Environment=CORPUS_VERSION=v1.4.1
+Environment=FRONTEND_VERSION=v0.10.1
 
 # Production resource limits
 Memory=16G

@@ -56,6 +56,4 @@ jobs:
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
-          # Use staging tag for frontend in staging environment
-          FRONTEND_VERSION_TAG: staging
         run: ./.github/scripts/build-and-push-image.sh "${{ steps.get_version.outputs.version }}" staging
