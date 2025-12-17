@@ -78,6 +78,7 @@ if [ -f "$ASSETS_DIR/.frontend_version" ]; then
     else
         log "Version mismatch detected (current: $CURRENT_VERSION, requested: $VERSION)"
         log "Cleaning existing assets before downloading new version..."
+        if [ -z "$ASSETS_DIR" ] || [ "$ASSETS_DIR" = "/" ]; then error_exit "Invalid ASSETS_DIR"; fi
         rm -rf "${ASSETS_DIR:?}"/*
     fi
 fi
