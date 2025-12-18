@@ -1,4 +1,3 @@
-import keyword
 from typing import Annotated, Any, Literal
 
 import fastapi

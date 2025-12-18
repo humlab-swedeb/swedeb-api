@@ -1,7 +1,6 @@
 import os
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Self
 
 import ccc
 import pandas as pd

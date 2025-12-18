@@ -63,7 +63,7 @@ def kwic_worker(args: tuple) -> pd.DataFrame:
         # Clean up the temporary directory after processing
         # Note: We leave cleanup to the OS in case of crashes, but try to clean up on success
         try:
-            import shutil
+            import shutil  # pylint: disable=import-outside-toplevel
 
             shutil.rmtree(unique_data_dir, ignore_errors=True)
         except Exception:

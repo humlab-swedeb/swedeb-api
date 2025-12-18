@@ -4,7 +4,7 @@ import functools
 import inspect
 from dataclasses import dataclass, field, fields
 from inspect import isclass
-from typing import Any, Callable, Generic, Self, Type, TypeVar
+from typing import Any, Callable, Generic, Type, TypeVar
 
 from ..utility import dget
 from .config import Config
