@@ -38,7 +38,7 @@ class Codec:
     from_column: str
     to_column: str
     fx_factory: Callable[[str, str], MapFx] | None = None
-    fx: MapFx | None= None
+    fx: MapFx | None = None
 
     default: str | None = None
 

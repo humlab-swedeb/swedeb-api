@@ -41,7 +41,7 @@ class ConfigValue(Generic[T]):
         """Resolve the value from the current store (configuration file)"""
         return self.resolve()
 
-    def resolve(self, context: str | None= None) -> T:
+    def resolve(self, context: str | None = None) -> T:
         """Resolve the value from the current store (configuration file)"""
         if isinstance(self.key, Config):
             return ConfigStore.config(context)  # type: ignore
@@ -71,13 +71,13 @@ class ConfigStore:
     context: str = "default"
 
     @classmethod
-    def config(cls, context: str | None= None) -> Config | None:
+    def config(cls, context: str | None = None) -> Config | None:
         if not isinstance(cls.store.get(cls.context), Config):
             raise ValueError(f"Config context {cls.context} not properly initialized")
         return cls.store.get(context or cls.context)
 
     @classmethod
-    def resolve(cls, value: T | ConfigValue, context: str | None= None) -> T:
+    def resolve(cls, value: T | ConfigValue, context: str | None = None) -> T:
         if not isinstance(value, ConfigValue):
             return value
         return dget(cls.config(context), value.key)

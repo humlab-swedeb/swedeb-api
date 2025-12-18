@@ -53,7 +53,7 @@ def get_kwic_data(
         p_show=p_show,
         cut_off=cut_off,
         use_multiprocessing=bool(ConfigValue("kwic.use_multiprocessing", default=False).resolve()),
-        num_processes=ConfigValue("kwic.num_processes", default=8).resolve()
+        num_processes=ConfigValue("kwic.num_processes", default=8).resolve(),
     )
 
     rows: list[KeywordInContextItem] = [KeywordInContextItem(**row) for row in data.to_dict(orient="records")]  # type: ignore

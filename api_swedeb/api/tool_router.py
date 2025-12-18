@@ -90,7 +90,9 @@ async def get_ngram_results(
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
     target: Literal["word", "lemma"] = Query(default="word", description="Target for n-gram (word/lemma)"),
-    mode: Literal["sliding", "left-aligned", "right-aligned"] = Query(default="sliding", description="Mode for n-gram (sliding/left-aligned/right-aligned)"),
+    mode: Literal["sliding", "left-aligned", "right-aligned"] = Query(
+        default="sliding", description="Mode for n-gram (sliding/left-aligned/right-aligned)"
+    ),
     corpus: Any = Depends(get_cwb_corpus),
 ) -> NGramResult:
     """Get ngrams"""

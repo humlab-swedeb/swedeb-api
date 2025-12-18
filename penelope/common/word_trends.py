@@ -118,7 +118,7 @@ class TrendsServiceBase(abc.ABC):
 
     def find_word_indices(
         self,
-        opts: TrendsComputeOpts | None  = None,
+        opts: TrendsComputeOpts | None = None,
         words: list[str] | None = None,
         top_count: int | None = None,
         descending: bool | None = None,
@@ -159,7 +159,11 @@ class TrendsServiceBase(abc.ABC):
     def find_words(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
 
     def find_words(
-        self, opts: TrendsComputeOpts  | None = None, words: list[str] | None = None, top_count: int | None = None, descending: bool | None = None
+        self,
+        opts: TrendsComputeOpts | None = None,
+        words: list[str] | None = None,
+        top_count: int | None = None,
+        descending: bool | None = None,
     ) -> list[str]:
         """Find matching words. If `opts` is provided, it will be used to transform the corpus before finding matches.
             Otherwise the already transformed corpus will be used.

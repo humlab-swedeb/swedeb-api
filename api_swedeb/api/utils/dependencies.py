@@ -8,7 +8,7 @@ from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.configuration import ConfigValue
 
-__shared_corpus: Corpus | None= None
+__shared_corpus: Corpus | None = None
 
 
 def get_shared_corpus() -> Corpus:
@@ -31,7 +31,7 @@ def get_cwb_corpus_opts() -> dict[str, str | None]:
     }
 
 
-def get_cwb_corpus(opts: dict|None = None) -> ccc.Corpus:
+def get_cwb_corpus(opts: dict | None = None) -> ccc.Corpus:
     opts = opts or get_cwb_corpus_opts()
     registry_dir: str = opts.get("registry_dir") or ""
     logger.info(f"Registry dir is {registry_dir}")

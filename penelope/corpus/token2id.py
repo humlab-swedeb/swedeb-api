@@ -31,7 +31,11 @@ class Token2Id(MutableMapping):
     """A token-to-id mapping (dictionary)"""
 
     def __init__(
-        self, data: Optional[Union[dict, defaultdict]] = None, tf: dict | None = None, fallback_token: str | None = None, **kwargs
+        self,
+        data: Optional[Union[dict, defaultdict]] = None,
+        tf: dict | None = None,
+        fallback_token: str | None = None,
+        **kwargs,
     ):
         self._data: defaultdict | None = None
         self._tf: dict | None = None
