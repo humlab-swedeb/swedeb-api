@@ -121,6 +121,13 @@ def query_keyword_windows(
     if not isinstance(query_or_opts, (str, dict, list)):
         raise TypeError("query_or_opts must be a string, a dictionary or a list of dictionaries")
 
+    if not isinstance(context_size, (int, tuple)):
+        raise TypeError("context_size must be an integer or a tuple of two integers")
+
+    if isinstance(context_size, tuple):
+        if len(context_size) != 2 or not all(isinstance(x, int) for x in context_size):
+            raise ValueError("context_size tuple must have exactly two integer elements")
+
     # FIXME: If query_or_opts is a list of dicts, we need to count the number of words in the query
     # to adjust context width accordingly, that is, unless CWB/CQP can handle that internally.
     # n_words_in_query: int = 1 if not isinstance(query_or_opts, list) else len(query_or_opts)
@@ -137,16 +144,20 @@ def query_keyword_windows(
     # context_size = 3
     # w_1 w_2 w_k w_3 w_4 => n-grams [(w_1, w_2, w_k), (w_2, w_k, w_3), (w_k, w_3, w_4)]
 
-    context: dict[str, int] = (
-        {'context': context_size // 2}
+    subcorpus: SubCorpus | str = (
+        corpus.query(cqp_query=query, context=context_size // 2)
         if isinstance(context_size, int)
-        else dict(zip(['context_left', 'context_right'], context_size))
+        else corpus.query(cqp_query=query, context_left=context_size[0], context_right=context_size[1])
     )
 
-    subcorpus: SubCorpus | str = corpus.query(query, **context)
+    assert isinstance(subcorpus, SubCorpus)
 
     windows: pd.DataFrame = subcorpus.concordance(
-        form="simple", p_show=[p_show], s_show=['speech_id'], order="first", cut_off=None
+        form="simple",
+        p_show=[p_show],
+        s_show=['speech_id'],
+        order="first",
+        cut_off=None,  # type: ignore
     ).reset_index(drop=True)
 
     if len(windows) == 0:
@@ -189,13 +200,13 @@ def n_grams(
     n_words_in_query: int = 1 if not isinstance(query_or_opts, list) else len(query_or_opts)
     n_gram_mode: str = 'locked' if mode.endswith('aligned') else 'sliding'
 
-    n = (
+    n_left_right: tuple[int, int] | int = (
         (0, n - n_words_in_query)
         if mode.startswith('left')
         else (n - n_words_in_query, 0) if mode.startswith('right') else n
     )
 
-    windows: pd.DataFrame = query_keyword_windows(corpus, query_or_opts, context_size=n, p_show=p_show)
+    windows: pd.DataFrame = query_keyword_windows(corpus, query_or_opts, context_size=n_left_right, p_show=p_show)
     n_grams: pd.DataFrame = compile_n_grams(windows, n=n, threshold=threshold, mode=n_gram_mode)
 
     return n_grams

@@ -18,13 +18,13 @@ class TrendsComputeOpts:
     temporal_key: str
     pivot_keys_id_names: list[str] = field(default_factory=list)
     # FIXME: Decide if it is best to apply filter in `transform` (reduce corpus) or extract (slice corpus)
-    filter_opts: pu.PropertyValueMaskingOpts = None
+    filter_opts: pu.PropertyValueMaskingOpts | None = None
     unstack_tabular: bool = False
 
     fill_gaps: bool = False
-    smooth: bool = None
-    top_count: int = None
-    words: list[str] = None
+    smooth: bool | None = None
+    top_count: int | None = None
+    words: list[str] | None = None
     descending: bool = False
     keyness_source: pk.KeynessMetricSource = pk.KeynessMetricSource.Full
 
