@@ -21,7 +21,7 @@ def get_word_trends(search: str, commons: CommonQueryParams, corpus: Corpus, nor
     df = df.loc[:, ~df.columns.str.contains('gender_abbrev')]
     df = df.loc[:, ~df.columns.str.contains('chamber_abbrev')]
 
-    counts_list: list[WordTrendsItem] = [WordTrendsItem(year=year, count=row.to_dict()) for year, row in df.iterrows()]
+    counts_list: list[WordTrendsItem] = [WordTrendsItem(year=year, count=row.to_dict()) for year, row in df.iterrows()] # type: ignore
     return WordTrendsResult(wt_list=counts_list)
 
 
@@ -29,5 +29,5 @@ def get_word_trend_speeches(search: str, commons: CommonQueryParams, corpus: Cor
     df: DataFrame = corpus.get_anforanden_for_word_trends(search.split(','), commons.get_filter_opts(include_year=True))
 
     data: list[dict[Hashable, Any]] = df.to_dict(orient="records")
-    rows: list[SpeechesResultItemWT] = [SpeechesResultItemWT(**row) for row in data]
+    rows: list[SpeechesResultItemWT] = [SpeechesResultItemWT(**row) for row in data]  # type: ignore
     return SpeechesResultWT(speech_list=rows)

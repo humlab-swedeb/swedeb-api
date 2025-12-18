@@ -33,14 +33,14 @@ OnLoadHooks: OnLoadHookRegistry = OnLoadHookRegistry()
 
 @dataclass(kw_only=True)
 class Codec:
-    table: str = None
+    table: str | None = None
     type: Literal['encode', 'decode']
     from_column: str
     to_column: str
-    fx_factory: Callable[[str, str], MapFx] = None
-    fx: MapFx = None
+    fx_factory: Callable[[str, str], MapFx] | None = None
+    fx: MapFx | None= None
 
-    default: str = None
+    default: str | None = None
 
     @property
     def key(self) -> tuple[str, str]:
@@ -110,8 +110,8 @@ null_frame: pd.DataFrame = pd.DataFrame()
 class Codecs:
     def __init__(
         self,
-        specification: dict[str, str] = None,
-        store: dict[str, pd.DataFrame] = None,
+        specification: dict[str, str] | None = None,
+        store: dict[str, pd.DataFrame] | None = None,
     ) -> None:
         """Mapping specifications from configuration."""
         self.specification: dict[str, dict[str, str]] = specification
@@ -123,7 +123,7 @@ class Codecs:
         """Cache of generated mappings."""
         self.mappings: dict[tuple[str, str], dict[Any, Any]] = {}
 
-        self._codecs: list[Codec] = None
+        self._codecs: list[Codec] | None = None
         self._lock = threading.Lock()
 
     def clone(self) -> Self:
@@ -181,11 +181,11 @@ class Codecs:
             self.mappings[key] = {v: k for k, v in self.mappings[rev_key].items()}
             return self.mappings[key]
 
-        table_name: str = self._find_table_name(from_column, to_column)
+        table_name: str | None = self._find_table_name(from_column, to_column)
         if table_name is None:
             raise ValueError(f"No table found for mapping from '{from_column}' to '{to_column}'")
 
-        table: pd.DataFrame = self.store.get(table_name)
+        table: pd.DataFrame = self.store[table_name]
 
         """If both columns are present in table columns, then use them directly"""
         if from_column in table.columns and to_column in table.columns:
@@ -230,7 +230,7 @@ class Codecs:
         """Returns a mapping from code table name to id column name"""
         return self.specification.get("tables", {})
 
-    def decoder(self, from_name: str, to_name: str = None) -> Codec | None:
+    def decoder(self, from_name: str, to_name: str | None = None) -> Codec | None:
         for codec in self.decoders:
             if codec.from_column == from_name and (to_name is None or codec.to_column == to_name):
                 return codec
@@ -249,8 +249,8 @@ class Codecs:
         df: pd.DataFrame,
         codecs: list[Codec],
         drop: bool = True,
-        keeps: list[str] = None,
-        ignores: list[str] = None,
+        keeps: list[str] | None = None,
+        ignores: list[str] | None = None,
     ) -> pd.DataFrame:
         """Applies codecs to DataFrame. Ignores target columns in `ignores` and keeps columns in `keeps`."""
         for codec in codecs:
@@ -269,12 +269,12 @@ class Codecs:
         return df
 
     def decode(
-        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] | None = None, ignores: list[str] | None = None
     ) -> pd.DataFrame:
         return self.apply_codec(df, self.decoders, drop=drop, keeps=keeps, ignores=ignores)
 
     def encode(
-        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] = None, ignores: list[str] = None
+        self, df: pd.DataFrame, drop: bool = True, keeps: list[str] | None = None, ignores: list[str] | None = None
     ) -> pd.DataFrame:
         return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps, ignores=ignores)
 
@@ -300,14 +300,14 @@ class Codecs:
 
 
 class PersonCodecs(Codecs):
-    def __init__(self, specification: dict[str, str] = None) -> None:
+    def __init__(self, specification: dict[str, str] | None = None) -> None:
         super().__init__(specification or ConfigValue("mappings").resolve())
 
     @property
     def persons_of_interest(self) -> pd.DataFrame:
         return self.store.get("persons_of_interest", pd.DataFrame())
 
-    def __getitem__(self, key: int | str) -> dict:
+    def __getitem__(self, key: int | str) -> pd.Series[str] | pd.DataFrame:
         """Get person by key (person_id or wiki_id)"""
         if isinstance(key, int) or key.isdigit():
             return self.persons_of_interest.iloc[int(key)]
@@ -358,7 +358,7 @@ class PersonCodecs(Codecs):
         return base_url + year + "/" + base_filename + "#page=" + page_nrs
 
     def decode_speech_index(
-        self, speech_index: pd.DataFrame, value_updates: dict = None, sort_values: bool = True
+        self, speech_index: pd.DataFrame, value_updates: dict | None = None, sort_values: bool = True
     ) -> pd.DataFrame | Any:
         """Setup speech index with decoded columns and standarized column values"""
 
@@ -388,7 +388,7 @@ class MultiplePartyAbbrevsHook:
 
     def execute(self, codecs: PersonCodecs) -> None:
 
-        persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
+        persons_of_interest: pd.DataFrame | None = codecs.store.get("persons_of_interest")
 
         if persons_of_interest is None:
             return
@@ -427,7 +427,7 @@ class AddPersonPidHook:
 
     def execute(self, codecs: PersonCodecs) -> None:
 
-        persons_of_interest: pd.DataFrame = codecs.store.get("persons_of_interest")
+        persons_of_interest: pd.DataFrame | None = codecs.store.get("persons_of_interest")
 
         if persons_of_interest is None:
             return
@@ -455,7 +455,7 @@ class SubOfficeRenameHook:
         if "sub_office_type" not in codecs.store:
             return
 
-        sub_office_type: pd.DataFrame = codecs.store.get("sub_office_type")
+        sub_office_type: pd.DataFrame = codecs.store["sub_office_type"]
 
         if not sub_office_type.index.name == "sub_office_type_id":
             raise ValueError("sub_office_type is NOT indexed by sub_office_type_id after loading codecs")

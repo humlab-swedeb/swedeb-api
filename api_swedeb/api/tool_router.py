@@ -47,7 +47,7 @@ async def get_kwic_results(
         corpus,
         commons,
         speech_index=get_shared_corpus().document_index,
-        query_keywords=keywords,
+        keywords=keywords,
         lemmatized=lemmatized,
         words_before=words_before,
         words_after=words_after,

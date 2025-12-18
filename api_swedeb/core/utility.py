@@ -8,7 +8,7 @@ import time
 import types
 from functools import wraps
 from os.path import basename, dirname, splitext
-from typing import Any, Callable, ItemsView, Iterator, KeysView, Type, TypeVar, ValuesView
+from typing import Any, Callable, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
 
 import numpy as np
 import pandas as pd
@@ -24,6 +24,7 @@ except ImportError:
     def Github(_) -> types.SimpleNamespace:
         return types.SimpleNamespace()
 
+    gh = types.SimpleNamespace(Github=Github)
 
 # pylint: disable=missing-timeout
 
@@ -165,8 +166,8 @@ def load_tables(
     tables: dict[str, str],
     *,
     db: sqlite3.Connection,
-    defaults: dict[str, Any] = None,
-    dtypes: dict[str, Any] = None,
+    defaults: dict[str, Any] | None = None,
+    dtypes: dict[str, Any] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Loads tables as pandas dataframes, slims types, fills NaN, sets pandas index"""
     data: dict[str, pd.DataFrame] = read_sql_tables(list(tables.keys()), db)
@@ -200,16 +201,16 @@ def assign_primary_key(schema: dict[str, str], data: dict[str, pd.DataFrame]) ->
 
 def slim_table_types(
     tables: list[pd.DataFrame] | pd.DataFrame,
-    defaults: dict[str, Any] = None,
-    dtypes: dict[str, Any] = None,
+    defaults: dict[str, Any] | None = None,
+    dtypes: dict[str, Any] | None = None,
 ) -> None:
     """Slims types and sets default value for NaN entries"""
 
     if isinstance(tables, pd.DataFrame):
         tables = [tables]
 
-    defaults: dict[str, Any] = COLUMN_DEFAULTS if defaults is None else defaults
-    dtypes: dict[str, Any] = COLUMN_TYPES if dtypes is None else dtypes
+    defaults = COLUMN_DEFAULTS if defaults is None else defaults
+    dtypes = COLUMN_TYPES if dtypes is None else dtypes
 
     for table in tables:
         for column_name, value in defaults.items():
@@ -226,11 +227,11 @@ def slim_table_types(
 
 def group_to_list_of_records2(df: pd.DataFrame, key: str) -> dict[str | int, list[dict]]:
     """Groups `df` by `key` and aggregates each group to list of row records (dicts)"""
-    return {q: df.loc[ds].to_dict(orient="records") for q, ds in df.groupby(key).groups.items()}
+    return {q: df.loc[ds].to_dict(orient="records") for q, ds in df.groupby(key).groups.items()}  # type: ignore
 
 
 def group_to_list_of_records(
-    df: pd.DataFrame, key: str, properties: list[str] = None, ctor: Type = None
+    df: pd.DataFrame, key: str, properties: list[str] | None = None, ctor: Type | None = None
 ) -> dict[str | int, list[dict]]:
     """Groups `df` by `key` and aggregates each group to list of row records (dicts)"""
     key_rows: pd.DataFrame = pd.DataFrame(
@@ -258,10 +259,11 @@ def download_url_to_file(url: str, target_name: str, force: bool = False) -> Non
         fp.write(data)
 
 
-def probe_filename(filename: list[str], exts: list[str] = None) -> str | None:
+def probe_filename(filename: list[str], exts: list[str] | None = None) -> str | None:
     """Probes existence of filename with any of given extensions in folder"""
-    for probe_name in set([filename] + ([replace_extension(filename, ext) for ext in exts] if exts else [])):
-        if os.path.isfile(probe_name):
+    probe_names: set[str] = {filename} | {replace_extension(f, ext) for f in filename for ext in (exts or [])}  # type: ignore
+    for probe_name in probe_names:
+        if probe_name and os.path.isfile(probe_name):
             return probe_name
     raise FileNotFoundError(filename)
 
@@ -273,7 +275,7 @@ def replace_extension(filename: str, extension: str) -> str:
     return f"{base}{'' if extension.startswith('.') else '.'}{extension}"
 
 
-def path_add_suffix(path: str, suffix: str, new_extension: str = None) -> str:
+def path_add_suffix(path: str, suffix: str, new_extension: str | None = None) -> str:
     base, ext = splitext(path)
     return f'{base}{suffix}{ext if new_extension is None else new_extension}'
 
@@ -297,7 +299,7 @@ def dget(data: dict, *path: str | list[str], default: Any = None) -> Any:
     if path is None or not data:
         return default
 
-    ps: list[str] = path if isinstance(path, (list, tuple)) else [path]
+    ps: Sequence[str] = path if isinstance(path, (list, tuple)) else [path]
 
     d = None
 
@@ -450,7 +452,7 @@ def time_call(func):
     return timeit_wrapper
 
 
-def replace_by_patterns(names: list[str], cfg: dict[str, str]) -> pd.DataFrame:
+def replace_by_patterns(names: list[str], cfg: dict[str, str]) -> list[str]:
     """Replaces patterns in names using old-pattern to new-pattern mapping in cfg."""
 
     def fx(name: str) -> str:

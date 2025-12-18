@@ -197,7 +197,7 @@ class GroupByMixIn:
         document_index: pd.DataFrame,
         category_indices: Mapping[int, List[int]],
         aggregate: str = 'sum',
-        dtype: np.dtype = None,
+        dtype: np.dtype | None = None,
     ) -> IVectorizedCorpus:
         """Groups corpus by index mapping
 
@@ -235,7 +235,7 @@ class GroupByMixIn:
         aggregate: str = 'sum',
         fill_gaps: bool = False,
         drop_group_ids: bool = True,
-        dtype: np.dtype = None,
+        dtype: np.dtype | None = None,
     ):
         """Groups corpus by a temporal key and zero to many pivot keys
 
@@ -417,7 +417,7 @@ def group_DTM_by_indices_mapping(
     n_docs: int,
     category_indices: Mapping[int, List[int]],
     aggregate: str = 'sum',
-    dtype: np.dtype = None,
+    dtype: np.dtype | None = None,
 ):
     shape: Tuple[int, int] = (n_docs, dtm.shape[1])
 

@@ -118,8 +118,10 @@ def isint(s: Any) -> bool:
         return False
 
 
-def filter_dict(d: dict[str, Any], keys: list[str] = None, filter_out: bool = False) -> dict[str, Any]:
-    keys = set(d.keys()) - set(keys or []) if filter_out else (keys or [])  # type: ignore
+def filter_dict(d: dict[str, Any], keys: list[str] | None = None, filter_out: bool = False) -> dict[str, Any]:
+    keys = keys or []
+    keys = set(d.keys()) - set(keys or []) if filter_out else keys  # type: ignore
+    assert keys is not None
     return {k: v for k, v in d.items() if k in keys}
 
 

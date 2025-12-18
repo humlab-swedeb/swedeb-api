@@ -44,7 +44,7 @@ SafeLoaderIgnoreUnknown.add_constructor('!path_join', yaml_path_join)
 class Config:
     """Container for configuration elements."""
 
-    def __init__(self, *, data: dict = None, context: str = "default", filename: str | None = None):
+    def __init__(self, *, data: dict | None = None, context: str = "default", filename: str | None = None):
         self.data: dict = data
         self.context: str = context
         self.filename: str | None = filename
@@ -53,7 +53,7 @@ class Config:
     # def data_folder(self) -> str:
     #     return self.get("data_folder", "root_folder")
 
-    def get(self, *keys: str, default: Any | Type[Any] = None, mandatory: bool = False) -> Any:
+    def get(self, *keys: str, default: Any | Type[Any] | None = None, mandatory: bool = False) -> Any:
         if self.data is None:
             raise ValueError("Configuration not initialized")
 

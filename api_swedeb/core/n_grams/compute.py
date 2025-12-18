@@ -21,7 +21,7 @@ def to_ngrams_dataframe(df: pd.DataFrame, n: int, key: str = 'window') -> pd.Dat
 
 
 def compile_n_grams(
-    windows: pd.DataFrame, *, n: int = 2, threshold: int = None, mode: Literal['sliding', 'locked'] = 'sliding'
+    windows: pd.DataFrame, *, n: int = 2, threshold: int | None = None, mode: Literal['sliding', 'locked'] = 'sliding'
 ) -> pd.DataFrame:
     """_summary_
 
@@ -167,7 +167,7 @@ def n_grams(
     *,
     n: int = 2,
     p_show: Literal["word", "lemma"] = "word",
-    threshold: int = None,
+    threshold: int | None = None,
     mode: Literal['sliding', 'left-aligned', 'right-aligned'] = 'sliding',
 ) -> pd.DataFrame:
     """Computes n-grams from a corpus segments that contains a keyword specified in opts.

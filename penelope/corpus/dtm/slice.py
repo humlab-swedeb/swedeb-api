@@ -25,13 +25,13 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
 
     @staticmethod
     def where_is_above_threshold_with_keeps(
-        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] = None
+        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] | None = None
     ) -> np.ndarray: ...
 
     def term_frequencies_greater_than_or_equal_to_threshold(self, threshold: Union[int, float]) -> np.ndarray: ...
 
     def compress(
-        self, tf_threshold: int = 1, extra_keep_ids: List[int] = None, inplace: bool = False
+        self, tf_threshold: int = 1, extra_keep_ids: List[int] | None = None, inplace: bool = False
     ) -> Tuple[IVectorizedCorpus, Mapping[int, int], Sequence[int]]: ...
 
     @property
@@ -201,7 +201,7 @@ class SliceMixIn:
 
     @staticmethod
     def where_is_above_threshold_with_keeps(
-        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] = None
+        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] | None = None
     ) -> np.ndarray:
         """Returns indices for values above threshold or in keeps"""
         mask = values >= threshold
@@ -222,7 +222,7 @@ class SliceMixIn:
     def compress(
         self: ISlicedCorpusProtocol,
         tf_threshold: int = 1,
-        extra_keep_ids: List[int] = None,
+        extra_keep_ids: List[int] | None = None,
         inplace=False,
     ) -> Tuple[IVectorizedCorpus, Mapping[int, int], Sequence[int]]:
         """Compresses corpus by eliminating zero-TF terms.

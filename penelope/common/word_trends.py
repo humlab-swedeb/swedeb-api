@@ -72,7 +72,7 @@ class TabularCompiler:
 
 
 class TrendsServiceBase(abc.ABC):
-    def __init__(self, corpus: pc.VectorizedCorpus = None, n_top: int = 100000):
+    def __init__(self, corpus: pc.VectorizedCorpus | None = None, n_top: int = 100000) -> None:
         self.n_top: int = n_top
 
         self._transform_opts: TrendsComputeOpts = TrendsComputeOpts(
@@ -80,15 +80,15 @@ class TrendsServiceBase(abc.ABC):
         )
         self.tabular_compiler: TabularCompiler = TabularCompiler()
 
-        self._corpus: pc.VectorizedCorpus = None
+        self._corpus: pc.VectorizedCorpus | None = None
         self.corpus = corpus
 
     @property
-    def corpus(self) -> pc.VectorizedCorpus:
+    def corpus(self) -> pc.VectorizedCorpus | None:
         return self._corpus
 
     @corpus.setter
-    def corpus(self, corpus: pc.VectorizedCorpus):
+    def corpus(self, corpus: pc.VectorizedCorpus | None):
         self._corpus = corpus
         self._transformed_corpus = None
         self._gof_data = None
@@ -97,7 +97,7 @@ class TrendsServiceBase(abc.ABC):
     def _transform_corpus(self, opts: TrendsComputeOpts) -> pc.VectorizedCorpus: ...
 
     @property
-    def transformed_corpus(self) -> pc.VectorizedCorpus:
+    def transformed_corpus(self) -> pc.VectorizedCorpus | None:
         return self._transformed_corpus
 
     @property
@@ -118,10 +118,10 @@ class TrendsServiceBase(abc.ABC):
 
     def find_word_indices(
         self,
-        opts: TrendsComputeOpts = None,
-        words: list[str] = None,
-        top_count: int = None,
-        descending: bool = None,
+        opts: TrendsComputeOpts | None  = None,
+        words: list[str] | None = None,
+        top_count: int | None = None,
+        descending: bool | None = None,
     ) -> list[int]:
         """Find matching word indices. If `opts` is provided, it will be used to transform the corpus before finding matches.
             Otherwise the already transformed corpus will be used.
@@ -159,7 +159,7 @@ class TrendsServiceBase(abc.ABC):
     def find_words(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
 
     def find_words(
-        self, opts: TrendsComputeOpts = None, words: list[str] = None, top_count: int = None, descending: bool = None
+        self, opts: TrendsComputeOpts  | None = None, words: list[str] | None = None, top_count: int | None = None, descending: bool | None = None
     ) -> list[str]:
         """Find matching words. If `opts` is provided, it will be used to transform the corpus before finding matches.
             Otherwise the already transformed corpus will be used.
@@ -212,9 +212,9 @@ class TrendsServiceBase(abc.ABC):
     def extract(
         self,
         indices: Sequence[int | str],
-        top_count: int = None,
-        descending: bool = None,
-        filter_opts: pu.PropertyValueMaskingOpts = None,
+        top_count: int | None = None,
+        descending: bool | None = None,
+        filter_opts: pu.PropertyValueMaskingOpts | None = None,
     ) -> pd.DataFrame:
         if len(indices) > 0:
             if isinstance(indices[0], str):
@@ -238,7 +238,7 @@ class TrendsServiceBase(abc.ABC):
 
 
 class TrendsService(TrendsServiceBase):
-    def __init__(self, corpus: pc.VectorizedCorpus = None, n_top: int = 100000):
+    def __init__(self, corpus: pc.VectorizedCorpus | None = None, n_top: int = 100000) -> None:
         super().__init__(corpus=corpus, n_top=n_top)
 
     def _transform_corpus(self, opts: TrendsComputeOpts) -> pc.VectorizedCorpus:

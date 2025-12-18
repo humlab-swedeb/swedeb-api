@@ -41,7 +41,7 @@ class SearchHits(BaseModel):
 class ChamberItem(BaseModel):
     chamber_id: int
     chamber: str
-    chamber_abbrev: str = None
+    chamber_abbrev: str | None = None
 
 
 class ChamberList(BaseModel):
@@ -74,9 +74,9 @@ class Genders(BaseModel):
 class SpeakerItem(BaseModel):
     name: str
     party_abbrev: str  # TODO change to List[str] or otherwise handle multiple parties
-    year_of_birth: int = None
-    year_of_death: int = None
-    person_id: str = None
+    year_of_birth: int | None = None
+    year_of_death: int | None = None
+    person_id: str | None = None
 
 
 class SpeakerResult(BaseModel):
