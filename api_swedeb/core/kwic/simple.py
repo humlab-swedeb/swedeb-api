@@ -74,7 +74,7 @@ def kwic(  # pylint: disable=too-many-arguments
 
 def kwic_with_decode(  # pylint: disable=too-many-arguments
     corpus: ccc.Corpus | CorpusCreateOpts,
-    opts: dict[str, Any],
+    opts: dict[str, Any] | list[dict[str, Any]],
     *,
     speech_index: pd.DataFrame,
     codecs: PersonCodecs,

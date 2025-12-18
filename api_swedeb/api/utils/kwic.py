@@ -30,7 +30,7 @@ def get_kwic_data(
     Args:
         corpus (ccc.Corpus): A CWB corpus object.
         commons (CommonQueryParams): Common query parameters.
-        search (str | list[str]): Search term(s).
+        keywords (str | list[str]): Search term(s).
         lemmatized (bool): Search for lemmatized words.
         words_before (int, optional): Number of words before search term(s). Defaults to 3.
         words_after (int, optional): Number of words after search term(s). Defaults to 3.
@@ -40,8 +40,8 @@ def get_kwic_data(
         KeywordInContextResult: _description_
     """
     target: str = "lemma" if lemmatized else "word"
-    keywords = [keywords] if isinstance(keywords, str) else keywords
-    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(commons, [(w, target) for w in keywords])
+    query_keywords: list[str] = [keywords] if isinstance(keywords, str) else keywords
+    opts: list[dict[str, Any]] = mappers.query_params_to_CQP_opts(commons, [(w, target) for w in query_keywords])
 
     data: pd.DataFrame = simple.kwic_with_decode(
         corpus,
@@ -52,9 +52,9 @@ def get_kwic_data(
         words_after=words_after,
         p_show=p_show,
         cut_off=cut_off,
-        use_multiprocessing=ConfigValue("kwic.use_multiprocessing", default=False).resolve(),
+        use_multiprocessing=bool(ConfigValue("kwic.use_multiprocessing", default=False).resolve()),
         num_processes=ConfigValue("kwic.num_processes", default=8).resolve()
     )
 
-    rows: list[KeywordInContextItem] = [KeywordInContextItem(**row) for row in data.to_dict(orient="records")]
+    rows: list[KeywordInContextItem] = [KeywordInContextItem(**row) for row in data.to_dict(orient="records")]  # type: ignore
     return KeywordInContextResult(kwic_list=rows)

@@ -8,7 +8,7 @@ from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.configuration import ConfigValue
 
-__shared_corpus: Corpus = None
+__shared_corpus: Corpus | None= None
 
 
 def get_shared_corpus() -> Corpus:
@@ -31,9 +31,9 @@ def get_cwb_corpus_opts() -> dict[str, str | None]:
     }
 
 
-def get_cwb_corpus(opts: dict = None) -> ccc.Corpus:
-    opts: dict = opts or get_cwb_corpus_opts()
-    registry_dir = opts.get("registry_dir")
+def get_cwb_corpus(opts: dict|None = None) -> ccc.Corpus:
+    opts = opts or get_cwb_corpus_opts()
+    registry_dir: str = opts.get("registry_dir") or ""
     logger.info(f"Registry dir is {registry_dir}")
     logger.info(f"Exists on disk? {os.path.isdir(registry_dir)}")
     return ccc.Corpora(registry_dir=registry_dir).corpus(
@@ -47,11 +47,11 @@ def get_decoder_opts() -> dict[str, str | None]:
     }
 
 
-_corpus_codecs: md.Codecs = None
+_corpus_codecs: md.PersonCodecs | md.Codecs | None = None
 
 
-async def get_corpus_decoder(opts: dict = Depends(get_decoder_opts)) -> ccc.Corpus:
+async def get_corpus_decoder(opts: dict = Depends(get_decoder_opts)) -> md.PersonCodecs | md.Codecs:
     global _corpus_codecs
     if _corpus_codecs is None:
-        _corpus_codecs = md.PersonCodecs().load(source=opts.get("metadata_filename"))
+        _corpus_codecs = md.PersonCodecs().load(source=opts.get("metadata_filename", ""))
     return _corpus_codecs

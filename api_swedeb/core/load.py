@@ -93,7 +93,7 @@ def is_invalidated(source_path: str, target_path: str) -> bool:
 
 @time_call
 def load_speech_index(folder: str, tag: str, write_feather: bool = True) -> pd.DataFrame:
-    document_index: pd.DataFrame = None
+    document_index: pd.DataFrame | None = None
 
     prepped_feather_path: str = join(folder, f"{tag}_document_index.prepped.feather")
     feather_path: str = join(folder, f"{tag}_document_index.feather")
@@ -124,7 +124,7 @@ def load_speech_index(folder: str, tag: str, write_feather: bool = True) -> pd.D
 @time_call
 def load_dtm_corpus(folder: str, tag: str) -> VectorizedCorpus:
     """Load DTM corpus"""
-    corpus: VectorizedCorpus = VectorizedCorpus.load(folder=folder, tag=tag)
+    corpus: VectorizedCorpus = VectorizedCorpus.load(folder=folder, tag=tag)  # type: ignore
     slim_speech_index(corpus.document_index)
     return corpus
 
@@ -160,11 +160,11 @@ class ZipLoader(Loader):
             if not os.path.isfile(filename):
                 continue
             with zipfile.ZipFile(filename, "r") as fp:
-                json_str: str = fp.read(f"{protocol_name}.json")
-                metadata_str: str = fp.read("metadata.json")
+                json_str: bytes = fp.read(f"{protocol_name}.json")
+                metadata_str: bytes = fp.read("metadata.json")
             metadata: dict = json.loads(metadata_str)
             # FIXME: This is a hack to fix the filename sequence number bug, later versions of the corpus should have this fixed
-            metadata['name'] = zero_fill_filename_sequence(metadata.get("name"))
+            metadata['name'] = zero_fill_filename_sequence(metadata.get("name"))  # type: ignore
             utterances: list[dict] = json.loads(json_str)
             return metadata, utterances
         raise FileNotFoundError(protocol_name)

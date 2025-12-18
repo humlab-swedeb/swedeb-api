@@ -1,4 +1,5 @@
-from typing import Annotated, Any
+import keyword
+from typing import Annotated, Any, Literal
 
 import fastapi
 from fastapi import Body, Depends, HTTPException, Query
@@ -37,14 +38,16 @@ async def get_kwic_results(
 ) -> KeywordInContextResult:
     """Get keyword in context"""
 
-    if " " in search:
-        search = search.split(" ")
+    keywords: str | list[str] = search
+
+    if " " in keywords:
+        keywords = keywords.split(" ")
 
     return get_kwic_data(
         corpus,
         commons,
         speech_index=get_shared_corpus().document_index,
-        keywords=search,
+        query_keywords=keywords,
         lemmatized=lemmatized,
         words_before=words_before,
         words_after=words_after,
@@ -86,15 +89,16 @@ async def get_ngram_results(
     search: str,
     commons: CommonParams,
     width: int = Query(default=3, description="Width of n-gram"),
-    target: str = Query(default="word", description="Target for n-gram (word/lemma)"),
-    mode: str = Query(default="sliding", description="Mode for n-gram (sliding/left-aligned/right-aligned)"),
+    target: Literal["word", "lemma"] = Query(default="word", description="Target for n-gram (word/lemma)"),
+    mode: Literal["sliding", "left-aligned", "right-aligned"] = Query(default="sliding", description="Mode for n-gram (sliding/left-aligned/right-aligned)"),
     corpus: Any = Depends(get_cwb_corpus),
 ) -> NGramResult:
     """Get ngrams"""
-    if isinstance(search, str):
-        search = search.split()
+    keywords: str | list[str] = search
+    if isinstance(keywords, str):
+        keywords = keywords.split()
     return get_ngrams(
-        search_term=search,
+        search_term=keywords,
         commons=commons,
         corpus=corpus,
         n_gram_width=width,
