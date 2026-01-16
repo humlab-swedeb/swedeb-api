@@ -19,7 +19,7 @@ def get_ngrams(
     mode: Literal['sliding', 'left-aligned', 'right-aligned'] = 'sliding',
 ) -> schemas.NGramResult:
     """Get n-grams from a corpus"""
-
+    
     if isinstance(search_term, str):
         search_term = [search_term]
     if len(search_term) == 0:

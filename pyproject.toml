@@ -1,34 +1,35 @@
-[tool.poetry]
+[project]
 name = "api-swedeb"
 version = "0.6.0"
 description = ""
-authors = ["rebeckaw <rebecka.weegar@umu.se>"]
+authors = [{name = "rebeckaw", email = "rebecka.weegar@umu.se"}]
 readme = "README.md"
-packages = [{include = "api_swedeb"},  {include = "penelope"}]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-dotenv",
+    "cwb-ccc",
+    "pydantic",
+    "scipy",
+    "numpy",
+    "pyarrow",
+    "loguru",
+    "requests",
+    "more-itertools",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.13"
-fastapi = "*"
-uvicorn = {extras = ["standard"], version = "*"}
-python-dotenv = "*"
-cwb-ccc = "*"
-pydantic = "*"
-scipy = "*"
-numpy = "*"
-pyarrow = "*"
-loguru = "*"
-requests = "*"
-more-itertools = "*"
-
-[tool.poetry.group.dev.dependencies]
-black = "*"
-httpx = "*"
-pytest = "*"
-pylint = "*"
-ruff = "*"
-pyinstrument = "*"
-pytest-cov = "*"
-isort = "*"
+[project.optional-dependencies]
+dev = [
+    "black",
+    "httpx",
+    "pytest",
+    "pylint",
+    "ruff",
+    "pyinstrument",
+    "pytest-cov",
+    "isort",
+]
 
 [tool.black]
 line-length = 120
@@ -68,9 +69,8 @@ testpaths = ["tests"]
 addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::DeprecationWarning"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-# [tool.poetry.requires-plugins]
-# poetry-plugin-export = ">=1.8"
-# poetry-plugin-shell = ">=1.0"
+[tool.hatch.build.targets.wheel]
+packages = ["api_swedeb", "penelope"]

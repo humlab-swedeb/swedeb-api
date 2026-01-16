@@ -26,7 +26,7 @@
 - Route all CWB access through validated registry/data directories and keep `/tmp/ccc-*` isolated per test to avoid shared-state pollution.
 
 ## Testing & Tooling
-- Run `poetry run uvicorn main:app --reload` for local dev, `poetry run pytest tests/` for test suites, and `make tidy` (Black + isort) before every commit; `make black` and `make isort` remain available when partial formatting is needed.
+- Run `uv run uvicorn main:app --reload` for local dev, `uv run pytest tests/` for test suites, and `make tidy` (Black + isort) before every commit; `make black` and `make isort` remain available when partial formatting is needed.
 - Generate coverage with `make coverage` when verifying broad changes and profile KWIC workloads via `make profile-kwic-pyinstrument` (output lives in `tests/output/`).
 - Rely on fixtures from `tests/conftest.py`: use cached corpus fixtures for module scope and clone them for function scope to ensure isolation (`speech_index`, `person_codecs`, etc.).
 

@@ -34,7 +34,7 @@ fi
 # Build wheel in docker/wheels directory
 log "Building Python wheel..."
 mkdir -p docker/wheels
-poetry build --format wheel --output docker/wheels
+uv build --wheel --out-dir docker/wheels
 
 pushd docker > /dev/null
 
