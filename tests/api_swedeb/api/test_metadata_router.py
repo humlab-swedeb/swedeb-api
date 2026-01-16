@@ -2,7 +2,6 @@ from unittest.mock import Mock, patch
 
 from fastapi import status
 
-from api_swedeb.api.metadata_router import router
 from api_swedeb.schemas.metadata_schema import (
     ChamberItem,
     ChamberList,

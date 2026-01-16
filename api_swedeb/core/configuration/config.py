@@ -27,7 +27,7 @@ def yaml_path_join(loader: yaml.Loader, node: yaml.SequenceNode) -> str:
 
 
 def nj(*paths) -> str | None:
-    return normpath(join(*paths)) if not None in paths else None
+    return normpath(join(*paths)) if None not in paths else None
 
 
 class SafeLoaderIgnoreUnknown(yaml.SafeLoader):  # pylint: disable=too-many-ancestors

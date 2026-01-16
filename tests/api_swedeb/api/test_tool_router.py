@@ -4,10 +4,7 @@ from unittest.mock import patch
 import pytest
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.testclient import TestClient
 
-from api_swedeb.api.tool_router import router
-from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
