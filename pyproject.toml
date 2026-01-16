@@ -31,27 +31,148 @@ dev = [
     "isort",
 ]
 
+# --------------------
+# Pylance/Pyright
+# --------------------
+[tool.pyright]
+exclude = [
+    ".venv",
+    "**/__pycache__",
+    ".eggs",
+    ".git",
+    ".ruff_cache",
+    "dist",
+    "build",
+    "node_modules",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+output-format = "concise"
+exclude = [ ".eggs", ".git", ".ruff_cache", ".venv", "dist" ]
+
+[tool.ruff.lint]
+# Import checking rules
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "TID", # flake8-tidy-imports
+]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+exclude = [
+    "__init__.py",
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Prevent relative imports beyond current package
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["classmethod"]
+
+[tool.ruff.format]
+# Use Ruff's formatter (Black-compatible). Set to false if you prefer Black.
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0904",
+    "R0903",
+    "R0801",
+    "too-many-return-statements",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-lines",
+    "too-many-arguments",
+    "too-few-public-methods",
+    "too-many-nested-blocks",
+    "too-many-instance-attributes",
+    "too-many-positional-arguments",
+    "global-variable-not-assigned",
+    "logging-fstring-interpolation",
+    "too-many-function-args",
+    "too-many-locals",
+    "protected-access",
+    "f-string-without-interpolation",
+    "unnecessary-ellipsis",
+    "bare-except",
+]
+
 [tool.black]
 line-length = 120
 target-version = ["py312"]
 skip-string-normalization = true
 
 
+[tool.pylint]
+max-line-length = 140
+max-args = 10
+
 [tool.pylint.format]
 max-line-length = 120
 
-[tool.ruff]
-target-version = "py312"
-line-length = 120
-# output-format = "grouped"
-exclude = [ ".eggs", ".git", ".ruff_cache", ".venv", "dist" ]
+# Import sorting (handled by Ruff)
+[tool.isort]
+line_length = 142
+# multi_line_output = 3
+profile = "black"
 
-[tool.ruff.lint]
-select = ["E", "F", "W"]
-ignore = []
-fixable = ["ALL"]
-unfixable = []
+# --------------------
+# mypy (type checking)
+# --------------------
+[tool.mypy]
+python_version = "3.13"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+strict_equality = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+show_error_codes = true
+pretty = true
 
+# Loosen types in tests
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+warn_return_any = false
+
+# --------------------
+# pytest
+# --------------------
+[tool.pytest.ini_options]
+addopts = "-q -ra --strict-markers"
+# addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::DeprecationWarning"
+testpaths = ["tests"]
+# python_classes = "Test*"
+# python_functions = "test_*"
+asyncio_mode = "auto"
+markers = [
+  "integration: marks tests that hit external services (e.g., Ollama, DB)",
+  "debug: marks tests for debugging purposes (typically run manually)",
+  "manual: marks tests requiring manual setup (e.g., real database)",
+]
+# python_files = "test_*.py" "*_test.py"
+# Uncomment to see logs during test runs:
+# log_cli = true
+# log_cli_level = "DEBUG"
+
+# --------------------
+# coverage.py
+# --------------------
 [tool.coverage]
     [tool.coverage.run]
     omit = [
@@ -64,9 +185,6 @@ unfixable = []
     [tool.coverage.report]
     skip_empty = true
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::DeprecationWarning"
 
 [build-system]
 requires = ["hatchling"]
