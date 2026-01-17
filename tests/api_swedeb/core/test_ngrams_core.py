@@ -70,13 +70,13 @@ def test_to_n_grams_edge_cases():
     """Test to_n_grams with edge cases."""
     # Empty phrase
     assert list(ng.to_n_grams("", 2)) == []
-    
+
     # Single word, n=1
     assert list(ng.to_n_grams("word", 1)) == ["word"]
-    
+
     # n larger than phrase length
     assert list(ng.to_n_grams("a b", 3)) == []
-    
+
     # n equal to phrase length
     assert list(ng.to_n_grams("a b c", 3)) == ["a b c"]
 
@@ -85,7 +85,7 @@ def test_compile_n_grams_empty_input():
     """Test compile_n_grams with empty DataFrame."""
     empty_df = pd.DataFrame(columns=['window', 'count', 'documents'])
     result = ng.compile_n_grams(empty_df, n=2, mode="sliding")
-    
+
     assert isinstance(result, pd.DataFrame)
     assert result.index.name == 'ngram'
     assert list(result.columns) == ['window_count', 'documents']
@@ -95,10 +95,10 @@ def test_compile_n_grams_empty_input():
 def test_compile_n_grams_with_threshold():
     """Test compile_n_grams applies threshold correctly."""
     windows = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
-    
+
     # Threshold filters out low-count ngrams
     n_grams = ng.compile_n_grams(windows, n=2, threshold=5, mode="sliding")
-    
+
     assert isinstance(n_grams, pd.DataFrame)
     assert len(n_grams) == 2  # 'e b' (count=5) and 'f e' (count=6) have count >= 5
     assert 'f e' in n_grams.index
@@ -146,13 +146,13 @@ def test_compute_n_grams_with_sliding_window():
 def test_compute_n_grams_with_locked_window():
     windows: pd.DataFrame = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
     n_grams: pd.DataFrame = ng.compile_n_grams(windows, n=2, threshold=None, mode="locked")
-    
+
     # Verify DataFrame structure and content
     assert isinstance(n_grams, pd.DataFrame)
     assert n_grams.index.name == 'ngram'
     assert list(n_grams.columns) == ['window_count', 'documents']
     assert len(n_grams) == 4  # Four locked windows
-    
+
     assert n_grams.reset_index().to_dict('list') == {
         'ngram': ['f e b', 'f e n', 'n e b', 'e e e'],
         'window_count': [2, 4, 3, 2],

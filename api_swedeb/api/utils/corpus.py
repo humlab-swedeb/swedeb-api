@@ -1,6 +1,6 @@
 # type: ignore
 from functools import cached_property
-
+from typing import Any
 import pandas as pd
 
 from api_swedeb.core import codecs as md
@@ -123,7 +123,7 @@ class Corpus:
         )
         return speeches
 
-    def _get_filtered_speakers(self, selection_dict: dict[str, str], df: pd.DataFrame) -> pd.DataFrame:
+    def _get_filtered_speakers(self, selection_dict: dict[str, Any], df: pd.DataFrame) -> pd.DataFrame:
         for key, value in selection_dict.items():
             if key == "party_id":
                 value: list[int] = [int(v) for v in value] if isinstance(value, list) else [int(value)]

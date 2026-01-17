@@ -5,7 +5,7 @@ from fastapi import Depends
 from loguru import logger
 
 from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.core.codecs import PersonCodecs, Codecs
+from api_swedeb.core.codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 
 __shared_corpus: Corpus | None = None

@@ -101,6 +101,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     def id2token(self) -> dict[int, str]:
         if self._id2token is None and self.token2id is not None:
             self._id2token = {i: t for t, i in self.token2id.items()}
+        assert self._id2token is not None
         return self._id2token
 
     @property

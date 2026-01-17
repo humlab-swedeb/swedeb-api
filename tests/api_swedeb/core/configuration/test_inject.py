@@ -1,14 +1,13 @@
 """Unit tests for api_swedeb.core.configuration.inject module."""
 
-import inspect
 from dataclasses import dataclass
 
 import pytest
 
 from api_swedeb.core.configuration.config import Config
 from api_swedeb.core.configuration.inject import (
-    Configurable,
     ConfigStore,
+    Configurable,
     ConfigValue,
     configure_context,
     inject_config,

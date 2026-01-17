@@ -5,6 +5,7 @@ Tests for api_swedeb.core.codecs module.
 import os
 import sqlite3
 import tempfile
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -180,7 +181,7 @@ class TestBaseCodecs:
     """Test cases for Codecs class."""
 
     @pytest.fixture
-    def sample_specification(self):
+    def sample_specification(self) -> dict[str, Any]:
         """Fixture providing sample codec specification."""
         return {
             "tables": {"gender": "gender_id", "party": "party_id"},
@@ -193,7 +194,7 @@ class TestBaseCodecs:
         }
 
     @pytest.fixture
-    def sample_store(self):
+    def sample_store(self) -> dict[str, pd.DataFrame]:
         """Fixture providing sample data store."""
         return {
             "gender": pd.DataFrame({"gender": ["Male", "Female"], "gender_abbrev": ["M", "F"]}, index=[1, 2]),
@@ -618,7 +619,7 @@ class TestPersonCodecs:
         person_codecs.load(codecs_source_dict)
 
         person = person_codecs[0]
-        assert person["name"] == "John Doe"
+        assert str(person["name"]) == "John Doe"
 
     def test_getitem_by_string_digit_key(self, codecs_source_dict):
         """Test __getitem__ with string digit key."""
@@ -626,7 +627,7 @@ class TestPersonCodecs:
         person_codecs.load(codecs_source_dict)
 
         person = person_codecs["0"]
-        assert person["name"] == "John Doe"
+        assert str(person["name"]) == "John Doe"
 
     def test_getitem_by_wiki_id(self, codecs_source_dict):
         """Test __getitem__ with wiki_id key."""
@@ -638,7 +639,7 @@ class TestPersonCodecs:
             mock_get_mapping.return_value = {"q1": "p1", "q2": "p2"}
 
             person = person_codecs["q1"]
-            assert person["name"] == "John Doe"
+            assert str(person["name"]) == "John Doe"
 
     def test_getitem_by_person_id(self, codecs_source_dict):
         """Test __getitem__ with person_id key."""
@@ -650,7 +651,7 @@ class TestPersonCodecs:
             mock_get_mapping.return_value = {"p1": 0, "p2": 1}
 
             person = person_codecs["p1"]
-            assert person["name"] == "John Doe"
+            assert str(person["name"]) == "John Doe"
 
     def test_person_codecs_on_load(self, codecs_source_dict):
         """Test add multiple party abbrevs hook."""
@@ -671,8 +672,8 @@ class TestPersonCodecs:
     def test_person_wiki_link_single_value(self):
         """Test person_wiki_link with single value."""
         result = PersonCodecs.person_wiki_link("Q123456")
-        expected = "https://www.wikidata.org/wiki/Q123456"
-        assert result == expected
+        expected: str = "https://www.wikidata.org/wiki/Q123456"
+        assert str(result) == expected
 
     @patch('api_swedeb.core.codecs.ConfigValue')
     def test_person_wiki_link_unknown_value(self, mock_config_value):
@@ -680,7 +681,7 @@ class TestPersonCodecs:
         mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
 
         result = PersonCodecs.person_wiki_link("unknown")
-        assert result == "Unknown Speaker"
+        assert str(result) == "Unknown Speaker"
 
     def test_person_wiki_link_series(self):
         """Test person_wiki_link with pandas Series."""

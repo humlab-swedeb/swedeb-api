@@ -1,9 +1,6 @@
 """Unit tests for api_swedeb.core.utility module."""
 
 import os
-import sqlite3
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pandas as pd

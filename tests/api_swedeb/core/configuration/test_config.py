@@ -1,7 +1,6 @@
 """Unit tests for api_swedeb.core.configuration.config module."""
 
 import os
-from pathlib import Path
 
 import pytest
 import yaml
@@ -11,8 +10,6 @@ from api_swedeb.core.configuration.config import (
     Config,
     SafeLoaderIgnoreUnknown,
     nj,
-    yaml_path_join,
-    yaml_str_join,
 )
 
 

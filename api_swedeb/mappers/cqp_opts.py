@@ -56,7 +56,7 @@ def query_params_to_CQP_criterias(params: CommonQueryParams | None = None) -> li
 
 def query_params_to_CQP_opts(
     params: CommonQueryParams,
-    word_targets: str | tuple[str, str] | list[str | tuple[str, str]],
+    word_targets: str | tuple[str, str] | list[str] | list[tuple[str, str]],
     search_target: None | Literal["word", "lemma"] = None,
 ) -> list[dict[str, Any]]:
     """Maps a QueryParams to CQP options
@@ -65,7 +65,7 @@ def query_params_to_CQP_opts(
     ----------
     params : CommonQueryParams | SpeakerQueryParams
         Query APU parameters
-    word_targets : str | tuple[str, str] | list[str  |  tuple[str, str]]
+    word_targets : str | tuple[str, str] | list[str] | list[tuple[str, str]]
         Positional targets i.e. a sequence of words to match, if a tuple is provided
         the second element is the target type ("pos", "word", or "Lemma").
         If a literal string is provided, the target type defaults to "word".

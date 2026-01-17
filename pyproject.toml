@@ -61,12 +61,13 @@ select = [
     "I",  # isort
     "TID", # flake8-tidy-imports
 ]
-ignore = []
+ignore = ["E501", "E722"]
 fixable = ["ALL"]
 unfixable = []
 exclude = [
     "__init__.py",
 ]
+# Specific rule configurations
 
 [tool.ruff.lint.flake8-tidy-imports]
 # Prevent relative imports beyond current package

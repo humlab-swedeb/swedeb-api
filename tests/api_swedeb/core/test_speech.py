@@ -1,7 +1,5 @@
 """Unit tests for api_swedeb.core.speech module."""
 
-import pytest
-from unittest.mock import Mock
 
 from api_swedeb.core.speech import Speech
 

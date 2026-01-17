@@ -1,11 +1,10 @@
 """Unit tests for api_swedeb.api.utils.corpus module."""
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pandas as pd
-import pytest
-from unittest.mock import Mock, MagicMock, patch, PropertyMock
 
 from api_swedeb.api.utils.corpus import Corpus, load_corpus
-from api_swedeb.core.speech import Speech
 
 
 class TestCorpusInit:
@@ -17,9 +16,9 @@ class TestCorpusInit:
         mock_config.return_value.resolve.side_effect = [
             "v1.0", "/data/dtm", "metadata.db", "/data/vrt"
         ]
-        
+
         corpus = Corpus()
-        
+
         assert corpus.dtm_tag == "v1.0"
         assert corpus.dtm_folder == "/data/dtm"
         assert corpus.metadata_filename == "metadata.db"
@@ -33,7 +32,7 @@ class TestCorpusInit:
             metadata_filename="custom.db",
             tagged_corpus_folder="/custom/vrt"
         )
-        
+
         assert corpus.dtm_tag == "v2.0"
         assert corpus.dtm_folder == "/custom/dtm"
         assert corpus.metadata_filename == "custom.db"
@@ -50,10 +49,10 @@ class TestCorpusProperties:
         mock_config.return_value.resolve.return_value = "test"
         mock_vc = Mock()
         mock_load_dtm.return_value = mock_vc
-        
+
         corpus = Corpus()
         result = corpus.vectorized_corpus
-        
+
         assert result is mock_vc
         mock_load_dtm.assert_called_once()
 
@@ -65,10 +64,10 @@ class TestCorpusProperties:
         mock_pc = Mock()
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
-        
+
         corpus = Corpus()
         result = corpus.person_codecs
-        
+
         assert result is mock_pc
 
     @patch('api_swedeb.api.utils.corpus.load_dtm_corpus')
@@ -80,11 +79,11 @@ class TestCorpusProperties:
         mock_di = pd.DataFrame({"doc": [1, 2]})
         mock_vc.document_index = mock_di
         mock_load_dtm.return_value = mock_vc
-        
+
         corpus = Corpus()
         _ = corpus.vectorized_corpus  # Initialize
         result = corpus.document_index
-        
+
         assert result is mock_di
 
 
@@ -99,10 +98,10 @@ class TestCorpusWordMethods:
         mock_vc = Mock()
         mock_vc.token2id = {"hello": 0, "world": 1}
         mock_load.return_value = mock_vc
-        
+
         corpus = Corpus()
         result = corpus.word_in_vocabulary("hello")
-        
+
         assert result == "hello"
 
     @patch('api_swedeb.api.utils.corpus.load_dtm_corpus')
@@ -113,10 +112,10 @@ class TestCorpusWordMethods:
         mock_vc = Mock()
         mock_vc.token2id = {"hello": 0}
         mock_load.return_value = mock_vc
-        
+
         corpus = Corpus()
         result = corpus.word_in_vocabulary("Hello")
-        
+
         assert result == "hello"
 
     @patch('api_swedeb.api.utils.corpus.load_dtm_corpus')
@@ -127,10 +126,10 @@ class TestCorpusWordMethods:
         mock_vc = Mock()
         mock_vc.token2id = {"hello": 0}
         mock_load.return_value = mock_vc
-        
+
         corpus = Corpus()
         result = corpus.word_in_vocabulary("missing")
-        
+
         assert result is None
 
     @patch('api_swedeb.api.utils.corpus.load_dtm_corpus')
@@ -141,10 +140,10 @@ class TestCorpusWordMethods:
         mock_vc = Mock()
         mock_vc.token2id = {"hello": 0, "world": 1}
         mock_load.return_value = mock_vc
-        
+
         corpus = Corpus()
         result = corpus.filter_search_terms(["hello", "missing", "world"])
-        
+
         assert result == ["hello", "world"]
 
 
@@ -164,10 +163,10 @@ class TestCorpusMetadataMethods:
         mock_pc.party = party_df
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
-        
+
         corpus = Corpus()
         result = corpus.get_party_meta()
-        
+
         assert len(result) == 2
         assert "party" in result.columns
 
@@ -181,10 +180,10 @@ class TestCorpusMetadataMethods:
         mock_pc.gender = gender_df
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
-        
+
         corpus = Corpus()
         result = corpus.get_gender_meta()
-        
+
         assert "gender_id" in result.columns
 
 
@@ -196,15 +195,15 @@ class TestCorpusYearsMethods:
     def test_get_years_start(self, mock_config, mock_load):
         """Test get_years_start returns minimum year."""
         mock_config.return_value.resolve.return_value = "test"
-        
+
         # Mock VectorizedCorpus with document_index
         mock_corpus = MagicMock()
         mock_corpus.document_index = pd.DataFrame({"year": [1990, 2000, 1995]})
         mock_load.return_value = mock_corpus
-        
+
         corpus = Corpus()
         result = corpus.get_years_start()
-        
+
         assert result == 1990
 
     @patch('api_swedeb.api.utils.corpus.load_dtm_corpus')
@@ -212,15 +211,15 @@ class TestCorpusYearsMethods:
     def test_get_years_end(self, mock_config, mock_load):
         """Test get_years_end returns maximum year."""
         mock_config.return_value.resolve.return_value = "test"
-        
+
         # Mock VectorizedCorpus with document_index
         mock_corpus = MagicMock()
         mock_corpus.document_index = pd.DataFrame({"year": [1990, 2000, 1995]})
         mock_load.return_value = mock_corpus
-        
+
         corpus = Corpus()
         result = corpus.get_years_end()
-        
+
         assert result == 2000
 
 
@@ -236,10 +235,10 @@ class TestCorpusWordHits:
         mock_vc.vocabulary = ["hello", "help", "world"]
         mock_vc.find_matching_words.return_value = ["help", "hello"]
         mock_load.return_value = mock_vc
-        
+
         corpus = Corpus()
         result = corpus.get_word_hits("hel", n_hits=5)
-        
+
         # Result is reversed
         assert result == ["hello", "help"]
 
@@ -252,10 +251,10 @@ class TestCorpusWordHits:
         mock_vc.vocabulary = ["hello"]
         mock_vc.find_matching_words.return_value = ["hello"]
         mock_load.return_value = mock_vc
-        
+
         corpus = Corpus()
         result = corpus.get_word_hits("Hello", n_hits=5)
-        
+
         assert "hello" in result or result == ["hello"]
 
 
@@ -266,16 +265,16 @@ class TestLoadCorpus:
     def test_load_corpus_returns_instance(self, mock_config):
         """Test load_corpus returns Corpus instance."""
         mock_config.return_value.resolve.return_value = "test"
-        
+
         result = load_corpus()
-        
+
         assert isinstance(result, Corpus)
 
     @patch('api_swedeb.api.utils.corpus.ConfigValue')
     def test_load_corpus_with_opts(self, mock_config):
         """Test load_corpus passes options."""
         mock_config.return_value.resolve.return_value = "test"
-        
+
         result = load_corpus(dtm_tag="custom")
-        
+
         assert result.dtm_tag == "custom"

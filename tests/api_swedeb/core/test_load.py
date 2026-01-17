@@ -1,18 +1,16 @@
 """Unit tests for api_swedeb.core.load module."""
 
 import json
-import os
 import time
 import zipfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from api_swedeb.core.load import (
-    SPEECH_INDEX_DTYPES,
     SKIP_COLUMNS,
+    SPEECH_INDEX_DTYPES,
     USED_COLUMNS,
     ZipLoader,
     _memory_usage,

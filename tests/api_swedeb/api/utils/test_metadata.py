@@ -1,27 +1,27 @@
 """Unit tests for api_swedeb.api.utils.metadata module."""
 
-import pandas as pd
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 
+import pandas as pd
+
+from api_swedeb.api.utils.common_params import SpeakerQueryParams
 from api_swedeb.api.utils.metadata import (
+    get_chambers,
+    get_end_year,
+    get_genders,
+    get_office_types,
+    get_parties,
     get_speakers,
     get_start_year,
-    get_end_year,
-    get_parties,
-    get_genders,
-    get_chambers,
-    get_office_types,
-    get_sub_office_types
+    get_sub_office_types,
 )
-from api_swedeb.api.utils.common_params import SpeakerQueryParams
 from api_swedeb.schemas.metadata_schema import (
-    SpeakerResult,
-    PartyList,
-    GenderList,
     ChamberList,
+    GenderList,
     OfficeTypeList,
-    SubOfficeTypeList
+    PartyList,
+    SpeakerResult,
+    SubOfficeTypeList,
 )
 
 
@@ -38,10 +38,10 @@ class TestGetSpeakers:
             "year_of_birth": [1980],
             "year_of_death": [None]
         })
-        
+
         query_params = SpeakerQueryParams()
         result = get_speakers(query_params, mock_corpus)
-        
+
         assert isinstance(result, SpeakerResult)
         assert len(result.speaker_list) == 1
 
@@ -54,10 +54,10 @@ class TestGetSpeakers:
             "party_abbrev": ["PB"],
             "year_of_birth": [1975]
         })
-        
+
         query_params = SpeakerQueryParams(party_id=[5])
         result = get_speakers(query_params, mock_corpus)
-        
+
         mock_corpus.get_speakers.assert_called_once()
         assert len(result.speaker_list) == 1
 
@@ -69,9 +69,9 @@ class TestGetYears:
         """Test get_start_year returns minimum year."""
         mock_corpus = Mock()
         mock_corpus.get_years_start.return_value = 1990
-        
+
         result = get_start_year(mock_corpus)
-        
+
         assert result == 1990
         mock_corpus.get_years_start.assert_called_once()
 
@@ -79,9 +79,9 @@ class TestGetYears:
         """Test get_end_year returns maximum year."""
         mock_corpus = Mock()
         mock_corpus.get_years_end.return_value = 2020
-        
+
         result = get_end_year(mock_corpus)
-        
+
         assert result == 2020
         mock_corpus.get_years_end.assert_called_once()
 
@@ -98,9 +98,9 @@ class TestGetParties:
             "party_abbrev": ["PA", "PB"],
             "party_color": ["#FF0000", "#00FF00"]
         })
-        
+
         result = get_parties(mock_corpus)
-        
+
         assert isinstance(result, PartyList)
         assert len(result.party_list) == 2
 
@@ -112,9 +112,9 @@ class TestGetParties:
             "party": [],
             "party_abbrev": []
         })
-        
+
         result = get_parties(mock_corpus)
-        
+
         assert isinstance(result, PartyList)
         assert len(result.party_list) == 0
 
@@ -130,9 +130,9 @@ class TestGetGenders:
             "gender": ["man", "woman"],
             "gender_abbrev": ["M", "F"]
         })
-        
+
         result = get_genders(mock_corpus)
-        
+
         assert isinstance(result, GenderList)
         assert len(result.gender_list) == 2
 
@@ -148,9 +148,9 @@ class TestGetChambers:
             "chamber": ["Andra kammaren", "Första kammaren"],
             "chamber_abbrev": ["AK", "FK"]
         })
-        
+
         result = get_chambers(mock_corpus)
-        
+
         assert isinstance(result, ChamberList)
         assert len(result.chamber_list) == 2
 
@@ -165,9 +165,9 @@ class TestGetOfficeTypes:
             "office_type_id": [1, 2],
             "office": ["Minister", "Member"]
         })
-        
+
         result = get_office_types(mock_corpus)
-        
+
         assert isinstance(result, OfficeTypeList)
         assert len(result.office_type_list) == 2
 
@@ -183,8 +183,8 @@ class TestGetSubOfficeTypes:
             "office_type_id": [10, 20],
             "identifier": ["deputy", "assistant"]
         })
-        
+
         result = get_sub_office_types(mock_corpus)
-        
+
         assert isinstance(result, SubOfficeTypeList)
         assert len(result.sub_office_type_list) == 2

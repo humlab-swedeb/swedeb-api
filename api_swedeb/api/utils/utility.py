@@ -27,8 +27,8 @@ import pandas as pd
 
 
 def get_filtered_speakers_improved(
-    person_party: pd.DataFrame,  # getattr(self.metadata, "person_party", None)
-    doc_index: pd.DataFrame,  # getattr(self.vectorized_corpus, "document_index", None)
+    person_party: pd.DataFrame | None,  # getattr(self.metadata, "person_party", None)
+    doc_index: pd.DataFrame | None,  # getattr(self.vectorized_corpus, "document_index", None)
     selection_dict: dict[str, Any],
     df: pd.DataFrame,
 ) -> pd.DataFrame:

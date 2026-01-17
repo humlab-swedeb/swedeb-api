@@ -1,8 +1,7 @@
 """Unit tests for api_swedeb.core.cwb.utility module."""
 
 import os
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 import ccc
 import pandas as pd
@@ -52,9 +51,9 @@ class TestCorpusCreateOpts:
             corpus_name="test",
             data_dir="/custom/data"
         )
-        
+
         result = opts.create_corpus()
-        
+
         mock_corpora_class.assert_called_once_with(registry_dir="/registry")
         mock_corpora.corpus.assert_called_once_with(
             corpus_name="test",
@@ -76,10 +75,10 @@ class TestCorpusCreateOpts:
             corpus_name="test",
             data_dir=None
         )
-        
+
         with patch('api_swedeb.core.cwb.utility.ccc.__version__', '1.2.3'):
             result = opts.create_corpus()
-        
+
         # Should create temp dir with version and username
         expected_dir = "/tmp/ccc-1.2.3-testuser"
         mock_corpora.corpus.assert_called_once_with(
@@ -93,13 +92,13 @@ class TestCorpusCreateOpts:
             registry_dir="/registry",
             corpus_name="test"
         )
-        
+
         with patch.object(opts, 'create_corpus') as mock_create:
             mock_corpus = Mock()
             mock_create.return_value = mock_corpus
-            
+
             result = CorpusCreateOpts.resolve(opts)
-            
+
             assert result is mock_corpus
             mock_create.assert_called_once()
 
@@ -124,9 +123,9 @@ class TestCorpusCreateOpts:
         mock_corpus.registry_dir = "/reg"
         mock_corpus.corpus_name = "corpus"
         mock_corpus.data_dir = "/data"
-        
+
         result = CorpusCreateOpts.to_opts(mock_corpus)
-        
+
         assert isinstance(result, CorpusCreateOpts)
         assert result.registry_dir == "/reg"
         assert result.corpus_name == "corpus"
@@ -163,10 +162,10 @@ class TestCorpusAttribs:
             "type": ["p-Att", "p-Att"]
         })
         mock_available.return_value = df
-        
+
         mock_corpus = Mock(spec=ccc.Corpus)
         mock_corpus.available_attributes.return_value = df
-        
+
         corpus_attribs = CorpusAttribs(mock_corpus)
         assert "word" in corpus_attribs.data
 
@@ -182,7 +181,7 @@ class TestCorpusAttribs:
             "sentence": {"type": "s-Att", "attribute": "sentence", "annotation": False}
         }
         corpus_attribs = CorpusAttribs(attrs)
-        
+
         pos_attrs = corpus_attribs.positional_attributes
         assert "word" in pos_attrs
         assert "sentence" not in pos_attrs
@@ -195,7 +194,7 @@ class TestCorpusAttribs:
             "speech_id": {"type": "s-Att", "attribute": "speech_id", "annotation": True}
         }
         corpus_attribs = CorpusAttribs(attrs)
-        
+
         tags = corpus_attribs.tags
         assert "sentence" in tags
         assert "speech_id" not in tags
@@ -209,7 +208,7 @@ class TestCorpusAttribs:
             "speech_id": {"type": "s-Att", "attribute": "speech_id", "annotation": True}
         }
         corpus_attribs = CorpusAttribs(attrs)
-        
+
         # Attributes should have tag/id split
         assert "speech_id" in corpus_attribs.attributes
         assert corpus_attribs.attributes["speech_id"]["tag"] == "speech"
@@ -225,7 +224,7 @@ class TestCorpusAttribs:
             }
         }
         corpus_attribs = CorpusAttribs(attrs)
-        
+
         name2id = corpus_attribs.name2id
         assert "speech_id" in name2id
         assert name2id["speech_id"] == "id"
@@ -240,7 +239,7 @@ class TestCorpusAttribs:
             }
         }
         corpus_attribs = CorpusAttribs(attrs)
-        
+
         id2name = corpus_attribs.id2name
         assert "id" in id2name
         assert id2name["id"] == "speech_id"

@@ -1,15 +1,15 @@
 """Integration tests for api_swedeb.core.cwb with real CWB corpus."""
 
+import ccc
 import pandas as pd
 import pytest
-from ccc import Corpus
 
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import compiler
 from api_swedeb.core.cwb.utility import CorpusAttribs
 
 
-def test_cqp_execute_query(corpus: Corpus, person_codecs: PersonCodecs):
+def test_cqp_execute_query(corpus: ccc.Corpus, person_codecs: PersonCodecs):
     """Test CQP query execution with real corpus data."""
     party_id = person_codecs.get_mapping('party_abbrev', 'party_id').get("M")
     query: str = compiler.to_cqp_exprs(
@@ -24,6 +24,9 @@ def test_cqp_execute_query(corpus: Corpus, person_codecs: PersonCodecs):
         }
     )
     subcorpus = corpus.query(query, context_left=2, context_right=2)
+
+    assert isinstance(subcorpus, ccc.SubCorpus)
+
     data: pd.DataFrame = subcorpus.concordance(form="kwic", p_show=["word"], s_show=["speech_who", "speech_party_id"])
 
     assert data is not None
@@ -32,14 +35,14 @@ def test_cqp_execute_query(corpus: Corpus, person_codecs: PersonCodecs):
     assert (data.speech_party_id.astype(int) == party_id).all()
 
 
-def test_corpus_attribs(corpus: Corpus):
+def test_corpus_attribs(corpus: ccc.Corpus):
     """Test CorpusAttribs wrapper with real corpus data."""
     attribs: CorpusAttribs = CorpusAttribs(corpus)
 
     assert attribs is not None
 
 
-def test_cqp_query_that_returns_speech_id(corpus: Corpus):
+def test_cqp_query_that_returns_speech_id(corpus: ccc.Corpus):
     """Test CQP query that returns speech_id with real corpus data."""
     opts = {
         "form": "kwic",
@@ -54,7 +57,7 @@ def test_cqp_query_that_returns_speech_id(corpus: Corpus):
             context_left=2,
             context_right=2,
         )
-        .concordance(**opts)
+        .concordance(**opts)  # type: ignore
         .reset_index(drop=True)
     )
 
@@ -71,7 +74,7 @@ def test_cqp_query_that_returns_speech_id(corpus: Corpus):
         ('a:[word="information"] :: (a.protocol_chamber="ak")', {'ak'}),
     ],
 )
-def test_cqp_query_with_chamber_filter(corpus: Corpus, query: str, answer: set[str]):
+def test_cqp_query_with_chamber_filter(corpus: ccc.Corpus, query: str, answer: set[str]):
     """Test CQP queries with chamber filter using real corpus data."""
     opts = {
         "form": "kwic",
@@ -81,7 +84,7 @@ def test_cqp_query_with_chamber_filter(corpus: Corpus, query: str, answer: set[s
         "cut_off": None,
     }
     segments: pd.DataFrame = (
-        corpus.query(query, context_left=2, context_right=2).concordance(**opts).reset_index(drop=True)
+        corpus.query(query, context_left=2, context_right=2).concordance(**opts).reset_index(drop=True)  # type: ignore
     )
     assert segments is not None
     assert 'protocol_chamber' in segments.columns

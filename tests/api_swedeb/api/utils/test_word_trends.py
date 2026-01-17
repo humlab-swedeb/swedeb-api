@@ -1,17 +1,13 @@
 """Unit tests for api_swedeb.api.utils.word_trends module."""
 
-import pandas as pd
-import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
-from api_swedeb.api.utils.word_trends import (
-    get_search_hit_results,
-    get_word_trends,
-    get_word_trend_speeches
-)
+import pandas as pd
+
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
+from api_swedeb.api.utils.word_trends import get_search_hit_results, get_word_trend_speeches, get_word_trends
 from api_swedeb.schemas.speeches_schema import SpeechesResultWT
+from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 
 class TestGetSearchHitResults:
@@ -21,9 +17,9 @@ class TestGetSearchHitResults:
         """Test get_search_hit_results returns SearchHits."""
         mock_corpus = Mock()
         mock_corpus.get_word_hits.return_value = ["word1", "word2", "word3"]
-        
+
         result = get_search_hit_results("test", mock_corpus, 5)
-        
+
         assert isinstance(result, SearchHits)
         assert hasattr(result, 'hit_list')
         assert len(result.hit_list) == 3
@@ -34,9 +30,9 @@ class TestGetSearchHitResults:
         """Test get_search_hit_results with no hits."""
         mock_corpus = Mock()
         mock_corpus.get_word_hits.return_value = []
-        
+
         result = get_search_hit_results("missing", mock_corpus, 5)
-        
+
         assert isinstance(result, SearchHits)
         assert hasattr(result, 'hit_list')
         assert len(result.hit_list) == 0
@@ -46,9 +42,9 @@ class TestGetSearchHitResults:
         """Test get_search_hit_results respects max_hits parameter."""
         mock_corpus = Mock()
         mock_corpus.get_word_hits.return_value = ["a", "b", "c"]
-        
+
         result = get_search_hit_results("test", mock_corpus, 10)
-        
+
         assert isinstance(result, SearchHits)
         assert len(result.hit_list) == 3
         mock_corpus.get_word_hits.assert_called_once_with("test", 10)
@@ -64,10 +60,10 @@ class TestGetWordTrends:
             "word1": [10, 20, 30]
         }, index=[1990, 2000, 2010])
         mock_corpus.get_word_trend_results.return_value = trends_df
-        
+
         commons = CommonQueryParams()
         result = get_word_trends("word1", commons, mock_corpus, normalize=False)
-        
+
         assert isinstance(result, WordTrendsResult)
         assert hasattr(result, 'wt_list')
         assert len(result.wt_list) == 3
@@ -85,10 +81,10 @@ class TestGetWordTrends:
             "word2": [5, 15]
         }, index=[2000, 2010])
         mock_corpus.get_word_trend_results.return_value = trends_df
-        
+
         commons = CommonQueryParams()
-        result = get_word_trends("word1,word2", commons, mock_corpus, normalize=True)
-        
+        _ = get_word_trends("word1,word2", commons, mock_corpus, normalize=True)
+
         mock_corpus.get_word_trend_results.assert_called_once()
         call_args = mock_corpus.get_word_trend_results.call_args
         assert call_args[1]['search_terms'] == ["word1", "word2"]
@@ -103,10 +99,10 @@ class TestGetWordTrends:
             "chamber_abbrev": ["AK", "FK"]
         }, index=[2000, 2010])
         mock_corpus.get_word_trend_results.return_value = trends_df
-        
+
         commons = CommonQueryParams()
         result = get_word_trends("word1", commons, mock_corpus, normalize=False)
-        
+
         # Result should not have gender_abbrev or chamber_abbrev
         assert all("gender_abbrev" not in item.count for item in result.wt_list)
 
@@ -115,10 +111,10 @@ class TestGetWordTrends:
         mock_corpus = Mock()
         # Empty but with named columns to avoid .str accessor error
         mock_corpus.get_word_trend_results.return_value = pd.DataFrame(columns=["year", "count"])
-        
+
         commons = CommonQueryParams()
         result = get_word_trends("missing", commons, mock_corpus, normalize=False)
-        
+
         assert isinstance(result, WordTrendsResult)
         assert hasattr(result, 'wt_list')
         assert len(result.wt_list) == 0
@@ -128,10 +124,10 @@ class TestGetWordTrends:
         mock_corpus = Mock()
         trends_df = pd.DataFrame({"word1": [10]}, index=[2000])
         mock_corpus.get_word_trend_results.return_value = trends_df
-        
+
         commons = CommonQueryParams()
-        result = get_word_trends("word1", commons, mock_corpus, normalize=True)
-        
+        _ = get_word_trends("word1", commons, mock_corpus, normalize=True)
+
         call_args = mock_corpus.get_word_trend_results.call_args
         assert call_args[1]['normalize'] is True
 
@@ -148,10 +144,10 @@ class TestGetWordTrendSpeeches:
             "node_word": ["word1", "word1"]
         })
         mock_corpus.get_anforanden_for_word_trends.return_value = speeches_df
-        
+
         commons = CommonQueryParams()
         result = get_word_trend_speeches("word1", commons, mock_corpus)
-        
+
         assert isinstance(result, SpeechesResultWT)
         assert hasattr(result, 'speech_list')
         assert len(result.speech_list) == 2
@@ -168,10 +164,10 @@ class TestGetWordTrendSpeeches:
             "node_word": ["word1"]
         })
         mock_corpus.get_anforanden_for_word_trends.return_value = speeches_df
-        
+
         commons = CommonQueryParams()
-        result = get_word_trend_speeches("word1,word2", commons, mock_corpus)
-        
+        _ = get_word_trend_speeches("word1,word2", commons, mock_corpus)
+
         call_args = mock_corpus.get_anforanden_for_word_trends.call_args
         assert call_args[0][0] == ["word1", "word2"]
 
@@ -183,10 +179,10 @@ class TestGetWordTrendSpeeches:
             "year": [],
             "node_word": []
         })
-        
+
         commons = CommonQueryParams()
         result = get_word_trend_speeches("missing", commons, mock_corpus)
-        
+
         assert isinstance(result, SpeechesResultWT)
         assert hasattr(result, 'speech_list')
         assert len(result.speech_list) == 0

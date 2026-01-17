@@ -15,7 +15,7 @@ from ..document_index import (
     TemporalKeySpecifier,
     create_temporal_key_categorizer,
 )
-from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol, VectorizedCorpusError
+from .interface import IVectorizedCorpus, VectorizedCorpusError
 
 T = TypeVar("T", int, str)
 
@@ -24,13 +24,13 @@ T = TypeVar("T", int, str)
 
 class SupportsGroupBy(Protocol):
     """Protocol defining the interface required by GroupByMixIn."""
-    
+
     bag_term_matrix: scipy.sparse.spmatrix
     token2id: dict
     document_index: pd.DataFrame
     overridden_term_frequency: Any
     payload: dict
-    
+
     def create(
         self,
         bag_term_matrix: scipy.sparse.spmatrix,
@@ -40,7 +40,7 @@ class SupportsGroupBy(Protocol):
         **kwargs
     ) -> IVectorizedCorpus:
         ...
-    
+
     def group_by_pivot_column(
         self,
         pivot_column_name: str,
@@ -51,7 +51,7 @@ class SupportsGroupBy(Protocol):
         target_column_name: str = 'category',
     ) -> IVectorizedCorpus:
         ...
-    
+
     def group_by_year(
         self,
         aggregate: str = 'sum',
@@ -59,7 +59,7 @@ class SupportsGroupBy(Protocol):
         target_column_name: str = 'category',
     ) -> IVectorizedCorpus:
         ...
-    
+
     def group_by_indices_mapping(
         self,
         document_index: pd.DataFrame,

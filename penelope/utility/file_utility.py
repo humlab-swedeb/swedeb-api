@@ -7,7 +7,7 @@ import pathlib
 import pickle
 from os.path import basename, exists, isdir, isfile, join
 from pathlib import Path
-from typing import Any, AnyStr, Dict, List, Mapping, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 import pandas as pd
 import yaml
