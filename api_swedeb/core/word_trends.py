@@ -74,6 +74,7 @@ class SweDebTrendsData(wt.TrendsService):
 # FIXME: Add this logic to penelope.VectorizedCorpus
 def get_words_per_year(corpus: pc.VectorizedCorpus) -> pd.DataFrame:
     """Cach computation of words per year"""
+    # FIXME: DataFrame truthiness check raises ValueError. Should use `is not None` instead.
     if corpus.recall("words_per_year"):
         return corpus.recall("words_per_year")
     year_count_series: pd.Series = corpus.document_index.groupby("year")["n_raw_tokens"].sum()
