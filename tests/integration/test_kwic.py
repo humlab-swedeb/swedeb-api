@@ -1,7 +1,7 @@
 import pytest
 from fastapi import status
 
-from .core.test_kwic import EXPECTED_COLUMNS
+from tests.core.test_kwic import EXPECTED_COLUMNS
 
 # pylint: disable=redefined-outer-name
 
