@@ -1,85 +1,436 @@
-# import os
-# import shutil
-# import time
-# import uuid
-# from os.path import join
+"""Unit tests for api_swedeb.core.load module."""
 
-# import pandas as pd
+import json
+import os
+import time
+import zipfile
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
-# from api_swedeb.core.configuration.inject import ConfigStore, ConfigValue
-# from api_swedeb.core.load import SPEECH_INDEX_DTYPES, load_speech_index, slim_speech_index, is_invalidated
+import pandas as pd
+import pytest
 
-# ConfigStore.configure_context(context="all-data", source="config/config.yml", switch_to_context=False)
-
-# def test_is_invalidated():
-
-#     temp_folder: str = f"tests/output/{str(uuid.uuid4())[:8]}"
-#     os.makedirs(temp_folder, exist_ok=True)
-
-#     # Test when target file does not exist
-#     source_path: str = f"{temp_folder}/source.txt"
-#     target_path: str = f"{temp_folder}/target.txt"
-#     assert is_invalidated(source_path, target_path)
-
-#     # Test when source file is older than target file
-#     with open(source_path, "w", encoding="utf-8") as f:
-#         f.write("Hello")
-
-#     time.sleep(1)
-#     with open(target_path, "w", encoding="utf-8") as f:
-#         f.write("Hello")
-
-#     assert not is_invalidated(source_path, target_path)
-
-#     # Test when source file is newer than target file
-#     time.sleep(1)
-
-#     with open(source_path, "w", encoding="utf-8") as f:
-#         f.write("Hello")
-
-#     assert is_invalidated(source_path, target_path)
+from api_swedeb.core.load import (
+    SPEECH_INDEX_DTYPES,
+    SKIP_COLUMNS,
+    USED_COLUMNS,
+    ZipLoader,
+    _memory_usage,
+    _to_feather,
+    is_invalidated,
+    load_dtm_corpus,
+    load_speech_index,
+    slim_speech_index,
+    zero_fill_filename_sequence,
+)
 
 
-# def test_speech_index_memory_usage():
-#     folder: str = ConfigValue("dtm.folder").resolve("all-data")
-#     tag: str = ConfigValue("dtm.tag").resolve("all-data")
-#     csv_path: str = join(folder, f"{tag}_document_index.csv.gz")
-#     di: pd.DataFrame = pd.read_csv(join(folder, csv_path), sep=';', compression="gzip", index_col=0)
-#     memory_after_load = di.memory_usage(deep=True).sum() / 1024**2
+class TestConstants:
+    """Tests for module constants."""
 
-#     di = slim_speech_index(di)
-#     memory_after_slim = di.memory_usage(deep=True).sum() / 1024**2
+    def test_used_columns_contains_required_fields(self):
+        """Test USED_COLUMNS has essential fields."""
+        required = ["document_id", "speech_id", "year", "person_id", "party_id"]
+        for field in required:
+            assert field in USED_COLUMNS
 
-#     di = di.astype(SPEECH_INDEX_DTYPES)
+    def test_skip_columns_has_pos_tags(self):
+        """Test SKIP_COLUMNS includes POS tag columns."""
+        pos_tags = ["Noun", "Verb", "Adjective"]
+        for tag in pos_tags:
+            assert tag in SKIP_COLUMNS
 
-#     memory_after_astype = di.memory_usage(deep=True).sum() / 1024**2
-
-#     logger.info(f"Memory usage after load: {memory_after_load:3} MB")
-#     logger.info(f"Memory usage after slim: {memory_after_slim:3} MB")
-#     logger.info(f"Memory usage after cast: {memory_after_astype:3} MB")
-
-#     assert memory_after_astype < memory_after_load
+    def test_speech_index_dtypes_has_category_fields(self):
+        """Test SPEECH_INDEX_DTYPES defines category fields."""
+        assert SPEECH_INDEX_DTYPES["chamber_abbrev"] == "category"
+        assert SPEECH_INDEX_DTYPES["gender_id"] == "category"
 
 
-# def test_load_speech_index():
-#     folder: str = ConfigValue("dtm.folder").resolve()
-#     tag: str = ConfigValue("dtm.tag").resolve()
-#     csv_file = f"{tag}_document_index.csv.gz"
-#     feather_file = f"{tag}_document_index.feather"
-#     prepped_file = f"{tag}_document_index.prepped.feather"
+class TestSlimSpeechIndex:
+    """Tests for slim_speech_index function."""
 
-#     temp_folder: str = f"tests/output/{str(uuid.uuid4())[:8]}"
+    def test_slim_speech_index_renames_columns(self):
+        """Test slim_speech_index renames who -> person_id, u_id -> speech_id."""
+        df = pd.DataFrame(
+            {
+                "who": ["P1", "P2"],
+                "u_id": ["S1", "S2"],
+                "document_id": [1, 2],
+                "document_name": ["D1", "D2"],
+                "speech_index": [1, 2],
+                "speech_name": ["N1", "N2"],
+                "year": [2020, 2021],
+                "chamber_abbrev": ["ak", "fk"],
+                "gender_id": [1, 2],
+                "party_id": [1, 2],
+                "speaker_note_id": ["N1", "N2"],
+                "office_type_id": [1, 2],
+                "sub_office_type_id": [1, 2],
+                "n_utterances": [10, 20],
+                "n_tokens": [100, 200],
+                "n_raw_tokens": [105, 205],
+                "page_number": [1, 2],
+            }
+        )
+        result = slim_speech_index(df)
+        assert "person_id" in result.columns
+        assert "speech_id" in result.columns
+        assert "who" not in result.columns
+        assert "u_id" not in result.columns
 
-#     os.makedirs(temp_folder, exist_ok=True)
-#     shutil.copyfile(f"{folder}/{csv_file}", f"{temp_folder}/{csv_file}")
+    def test_slim_speech_index_selects_used_columns(self):
+        """Test slim_speech_index selects only USED_COLUMNS."""
+        df = pd.DataFrame(
+            {
+                "who": ["P1"],
+                "u_id": ["S1"],
+                "document_id": [1],
+                "document_name": ["D1"],
+                "speech_index": [1],
+                "speech_name": ["N1"],
+                "year": [2020],
+                "chamber_abbrev": ["ak"],
+                "gender_id": [1],
+                "party_id": [1],
+                "speaker_note_id": ["N1"],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "n_utterances": [10],
+                "n_tokens": [100],
+                "n_raw_tokens": [105],
+                "page_number": [1],
+                "extra_column": ["should_be_removed"],
+            }
+        )
+        result = slim_speech_index(df)
+        assert "extra_column" not in result.columns
 
-#     speech_index = load_speech_index(folder=temp_folder, tag=tag)
+    def test_slim_speech_index_converts_dtypes(self):
+        """Test slim_speech_index converts to specified dtypes."""
+        df = pd.DataFrame(
+            {
+                "who": ["P1"],
+                "u_id": ["S1"],
+                "document_id": [1],
+                "document_name": ["D1"],
+                "speech_index": [1],
+                "speech_name": ["N1"],
+                "year": [2020],
+                "chamber_abbrev": ["ak"],
+                "gender_id": [1],
+                "party_id": [1],
+                "speaker_note_id": ["N1"],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "n_utterances": [10],
+                "n_tokens": [100],
+                "n_raw_tokens": [105],
+                "page_number": [1],
+            }
+        )
+        result = slim_speech_index(df)
+        assert result["chamber_abbrev"].dtype.name == "category"
+        assert result["year"].dtype.name == "UInt16"
+        assert result["party_id"].dtype.name == "UInt8"
 
-#     assert speech_index is not None
-#     assert os.path.isfile(f"{temp_folder}/{feather_file}")
-#     assert not os.path.isfile(f"{temp_folder}/{prepped_file}")
 
-#     speech_index2 = load_speech_index(folder=temp_folder, tag=tag)
-#     assert speech_index2 is not None
+class TestToFeather:
+    """Tests for _to_feather function."""
 
-#     assert os.path.isfile(f"{temp_folder}/{prepped_file}")
+    def test_to_feather_writes_file(self, tmp_path):
+        """Test _to_feather writes DataFrame to feather file."""
+        df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+        target = tmp_path / "test.feather"
+        _to_feather(df, str(target))
+        assert target.exists()
+        loaded = pd.read_feather(target)
+        pd.testing.assert_frame_equal(df, loaded)
+
+    def test_to_feather_handles_error(self, tmp_path):
+        """Test _to_feather handles errors gracefully without crashing."""
+        df = pd.DataFrame({"a": [1, 2, 3]})
+        invalid_path = "/nonexistent/path/file.feather"
+        # Should not raise - error is logged and caught
+        _to_feather(df, invalid_path)
+
+
+class TestMemoryUsage:
+    """Tests for _memory_usage function."""
+
+    def test_memory_usage_returns_float(self):
+        """Test _memory_usage returns memory in MB."""
+        df = pd.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
+        result = _memory_usage(df)
+        assert isinstance(result, float)
+        assert result > 0
+
+
+class TestIsInvalidated:
+    """Tests for is_invalidated function."""
+
+    def test_is_invalidated_when_target_missing(self, tmp_path):
+        """Test is_invalidated returns True when target doesn't exist."""
+        source = tmp_path / "source.txt"
+        source.write_text("content")
+        target = tmp_path / "target.txt"
+        assert is_invalidated(str(source), str(target))
+
+    def test_is_invalidated_when_source_newer(self, tmp_path):
+        """Test is_invalidated returns True when source is newer."""
+        source = tmp_path / "source.txt"
+        target = tmp_path / "target.txt"
+        target.write_text("old")
+        time.sleep(0.01)
+        source.write_text("new")
+        assert is_invalidated(str(source), str(target))
+
+    def test_is_invalidated_when_target_newer(self, tmp_path):
+        """Test is_invalidated returns False when target is newer."""
+        source = tmp_path / "source.txt"
+        target = tmp_path / "target.txt"
+        source.write_text("old")
+        time.sleep(0.01)
+        target.write_text("new")
+        assert not is_invalidated(str(source), str(target))
+
+
+class TestLoadSpeechIndex:
+    """Tests for load_speech_index function."""
+
+    def test_load_speech_index_from_prepped_feather(self, tmp_path):
+        """Test load_speech_index loads from prepped feather if valid."""
+        df = pd.DataFrame(
+            {
+                "document_id": [1],
+                "document_name": ["D1"],
+                "speech_id": ["S1"],
+                "speech_index": [1],
+                "speech_name": ["N1"],
+                "year": [2020],
+                "chamber_abbrev": ["ak"],
+                "person_id": ["P1"],
+                "gender_id": [1],
+                "party_id": [1],
+                "speaker_note_id": ["N1"],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "n_utterances": [10],
+                "n_tokens": [100],
+                "n_raw_tokens": [105],
+                "page_number": [1],
+            }
+        ).astype(SPEECH_INDEX_DTYPES)
+
+        tag = "test"
+        prepped_path = tmp_path / f"{tag}_document_index.prepped.feather"
+        feather_path = tmp_path / f"{tag}_document_index.feather"
+        csv_path = tmp_path / f"{tag}_document_index.csv.gz"
+
+        # Create CSV to prevent FileNotFoundError in is_invalidated
+        df.to_csv(str(csv_path), sep=";", compression="gzip")
+        time.sleep(0.01)
+        df.to_feather(str(feather_path))
+        time.sleep(0.01)
+        df.to_feather(str(prepped_path))
+
+        result = load_speech_index(str(tmp_path), tag, write_feather=False)
+        assert len(result) == 1
+        assert "speech_id" in result.columns
+
+    def test_load_speech_index_from_feather(self, tmp_path):
+        """Test load_speech_index loads from feather if prepped missing."""
+        df_raw = pd.DataFrame(
+            {
+                "who": ["P1"],
+                "u_id": ["S1"],
+                "document_id": [1],
+                "document_name": ["D1"],
+                "speech_index": [1],
+                "speech_name": ["N1"],
+                "year": [2020],
+                "chamber_abbrev": ["ak"],
+                "gender_id": [1],
+                "party_id": [1],
+                "speaker_note_id": ["N1"],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "n_utterances": [10],
+                "n_tokens": [100],
+                "n_raw_tokens": [105],
+                "page_number": [1],
+            }
+        )
+
+        tag = "test"
+        feather_path = tmp_path / f"{tag}_document_index.feather"
+        csv_path = tmp_path / f"{tag}_document_index.csv.gz"
+
+        df_raw.to_feather(str(feather_path))
+        df_raw.to_csv(str(csv_path), sep=";", compression="gzip")
+
+        result = load_speech_index(str(tmp_path), tag, write_feather=True)
+        assert "person_id" in result.columns
+        assert "speech_id" in result.columns
+
+    def test_load_speech_index_from_csv(self, tmp_path):
+        """Test load_speech_index loads from CSV if feather missing."""
+        df_raw = pd.DataFrame(
+            {
+                "who": ["P1"],
+                "u_id": ["S1"],
+                "document_id": [1],
+                "document_name": ["D1"],
+                "speech_index": [1],
+                "speech_name": ["N1"],
+                "year": [2020],
+                "chamber_abbrev": ["ak"],
+                "gender_id": [1],
+                "party_id": [1],
+                "speaker_note_id": ["N1"],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "n_utterances": [10],
+                "n_tokens": [100],
+                "n_raw_tokens": [105],
+                "page_number": [1],
+            }
+        )
+
+        tag = "test"
+        csv_path = tmp_path / f"{tag}_document_index.csv.gz"
+        df_raw.to_csv(str(csv_path), sep=";", compression="gzip")
+
+        result = load_speech_index(str(tmp_path), tag, write_feather=False)
+        assert "person_id" in result.columns
+        assert len(result) == 1
+
+    def test_load_speech_index_raises_when_missing(self, tmp_path):
+        """Test load_speech_index raises FileNotFoundError when all files missing."""
+        with pytest.raises(FileNotFoundError, match="Speech index with tag"):
+            load_speech_index(str(tmp_path), "nonexistent")
+
+
+class TestLoadDtmCorpus:
+    """Tests for load_dtm_corpus function."""
+
+    @patch("api_swedeb.core.load.VectorizedCorpus")
+    def test_load_dtm_corpus_calls_vectorized_corpus_load(self, mock_corpus_class):
+        """Test load_dtm_corpus calls VectorizedCorpus.load."""
+        mock_corpus = MagicMock()
+        mock_corpus.document_index = pd.DataFrame(
+            {
+                "who": ["P1"],
+                "u_id": ["S1"],
+                "document_id": [1],
+                "document_name": ["D1"],
+                "speech_index": [1],
+                "speech_name": ["N1"],
+                "year": [2020],
+                "chamber_abbrev": ["ak"],
+                "gender_id": [1],
+                "party_id": [1],
+                "speaker_note_id": ["N1"],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "n_utterances": [10],
+                "n_tokens": [100],
+                "n_raw_tokens": [105],
+                "page_number": [1],
+            }
+        )
+        mock_corpus_class.load.return_value = mock_corpus
+
+        result = load_dtm_corpus("/path/to/folder", "test_tag")
+
+        mock_corpus_class.load.assert_called_once_with(folder="/path/to/folder", tag="test_tag")
+        assert result == mock_corpus
+
+
+class TestZeroFillFilenameSequence:
+    """Tests for zero_fill_filename_sequence function."""
+
+    def test_zero_fill_pads_numeric_suffix(self):
+        """Test zero_fill_filename_sequence pads numeric suffix to 3 digits."""
+        assert zero_fill_filename_sequence("prot-2020-1") == "prot-2020-001"
+        assert zero_fill_filename_sequence("prot-2020-42") == "prot-2020-042"
+        assert zero_fill_filename_sequence("prot-2020-123") == "prot-2020-123"
+
+    def test_zero_fill_no_change_if_non_numeric(self):
+        """Test zero_fill_filename_sequence doesn't change non-numeric suffix."""
+        assert zero_fill_filename_sequence("prot-2020-abc") == "prot-2020-abc"
+
+    def test_zero_fill_single_part_unchanged(self):
+        """Test zero_fill_filename_sequence handles single-part names."""
+        assert zero_fill_filename_sequence("filename") == "filename"
+
+
+class TestZipLoader:
+    """Tests for ZipLoader class."""
+
+    def test_ziploader_init(self):
+        """Test ZipLoader initialization."""
+        loader = ZipLoader("/path/to/folder")
+        assert loader.folder == "/path/to/folder"
+
+    def test_ziploader_load_from_zip(self, tmp_path):
+        """Test ZipLoader.load reads from zip file."""
+        protocol_name = "prot-2020-001"
+        metadata = {"name": "prot-2020-001", "date": "2020-01-01"}
+        utterances = [{"speaker": "P1", "text": "Hello"}]
+
+        # Create zip file
+        zip_path = tmp_path / f"{protocol_name}.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(f"{protocol_name}.json", json.dumps(utterances))
+            zf.writestr("metadata.json", json.dumps(metadata))
+
+        loader = ZipLoader(str(tmp_path))
+        loaded_metadata, loaded_utterances = loader.load(protocol_name)
+
+        assert loaded_metadata["name"] == "prot-2020-001"
+        assert len(loaded_utterances) == 1
+        assert loaded_utterances[0]["speaker"] == "P1"
+
+    def test_ziploader_load_from_subfolder(self, tmp_path):
+        """Test ZipLoader.load finds zip in subfolder."""
+        protocol_name = "prot-2020-001"
+        subfolder = tmp_path / "2020"
+        subfolder.mkdir()
+
+        metadata = {"name": "prot-2020-1"}
+        utterances = [{"text": "test"}]
+
+        zip_path = subfolder / f"{protocol_name}.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(f"{protocol_name}.json", json.dumps(utterances))
+            zf.writestr("metadata.json", json.dumps(metadata))
+
+        loader = ZipLoader(str(tmp_path))
+        loaded_metadata, loaded_utterances = loader.load(protocol_name)
+
+        assert loaded_metadata["name"] == "prot-2020-001"  # zero-filled
+        assert len(loaded_utterances) == 1
+
+    def test_ziploader_load_tries_zero_padded_variants(self, tmp_path):
+        """Test ZipLoader.load tries zero-padded filename variants."""
+        protocol_name = "prot-2020-1"
+        padded_name = "prot-2020-001"
+
+        metadata = {"name": "prot-2020-1"}
+        utterances = [{"text": "test"}]
+
+        zip_path = tmp_path / f"{padded_name}.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(f"{protocol_name}.json", json.dumps(utterances))
+            zf.writestr("metadata.json", json.dumps(metadata))
+
+        loader = ZipLoader(str(tmp_path))
+        loaded_metadata, loaded_utterances = loader.load(protocol_name)
+
+        assert loaded_metadata["name"] == "prot-2020-001"
+
+    def test_ziploader_load_raises_filenotfound(self, tmp_path):
+        """Test ZipLoader.load raises FileNotFoundError when zip missing."""
+        loader = ZipLoader(str(tmp_path))
+        with pytest.raises(FileNotFoundError, match="prot-9999-999"):
+            loader.load("prot-9999-999")
