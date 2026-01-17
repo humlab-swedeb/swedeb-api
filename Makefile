@@ -27,7 +27,7 @@ run:
 	@uv run uvicorn main:app --reload
 
 .PHONY: lint tidy isort black
-lint: tidy pylint
+lint: tidy ruff pylint
 
 tidy: black isort
 
@@ -57,6 +57,10 @@ pylint:
 .PHONY: ruff
 ruff:
 	@uv run ruff check --output-format concise --fix $(SOURCE_FOLDERS)
+
+.PHONY: vulture
+vulture:
+	@uv run vulture api_swedeb penelope --min-confidence 80
 
 requirements.txt: pyproject.toml
 	@uv pip compile pyproject.toml -o requirements.txt
