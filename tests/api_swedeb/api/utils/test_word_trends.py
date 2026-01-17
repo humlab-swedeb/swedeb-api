@@ -25,7 +25,9 @@ class TestGetSearchHitResults:
         result = get_search_hit_results("test", mock_corpus, 5)
         
         assert isinstance(result, SearchHits)
+        assert hasattr(result, 'hit_list')
         assert len(result.hit_list) == 3
+        assert result.hit_list == ["word1", "word2", "word3"]
         mock_corpus.get_word_hits.assert_called_once_with("test", 5)
 
     def test_get_search_hit_results_empty(self):
@@ -36,7 +38,20 @@ class TestGetSearchHitResults:
         result = get_search_hit_results("missing", mock_corpus, 5)
         
         assert isinstance(result, SearchHits)
+        assert hasattr(result, 'hit_list')
         assert len(result.hit_list) == 0
+        assert result.hit_list == []
+
+    def test_get_search_hit_results_max_hits(self):
+        """Test get_search_hit_results respects max_hits parameter."""
+        mock_corpus = Mock()
+        mock_corpus.get_word_hits.return_value = ["a", "b", "c"]
+        
+        result = get_search_hit_results("test", mock_corpus, 10)
+        
+        assert isinstance(result, SearchHits)
+        assert len(result.hit_list) == 3
+        mock_corpus.get_word_hits.assert_called_once_with("test", 10)
 
 
 class TestGetWordTrends:
@@ -54,8 +69,13 @@ class TestGetWordTrends:
         result = get_word_trends("word1", commons, mock_corpus, normalize=False)
         
         assert isinstance(result, WordTrendsResult)
+        assert hasattr(result, 'wt_list')
         assert len(result.wt_list) == 3
         assert result.wt_list[0].year == 1990
+        assert result.wt_list[1].year == 2000
+        assert result.wt_list[2].year == 2010
+        # Verify actual count values from DataFrame
+        assert hasattr(result.wt_list[0], 'count')
 
     def test_get_word_trends_multiple_words(self):
         """Test get_word_trends with multiple search terms."""
@@ -90,6 +110,31 @@ class TestGetWordTrends:
         # Result should not have gender_abbrev or chamber_abbrev
         assert all("gender_abbrev" not in item.count for item in result.wt_list)
 
+    def test_get_word_trends_empty_result(self):
+        """Test get_word_trends with empty DataFrame with proper columns."""
+        mock_corpus = Mock()
+        # Empty but with named columns to avoid .str accessor error
+        mock_corpus.get_word_trend_results.return_value = pd.DataFrame(columns=["year", "count"])
+        
+        commons = CommonQueryParams()
+        result = get_word_trends("missing", commons, mock_corpus, normalize=False)
+        
+        assert isinstance(result, WordTrendsResult)
+        assert hasattr(result, 'wt_list')
+        assert len(result.wt_list) == 0
+
+    def test_get_word_trends_normalization(self):
+        """Test get_word_trends passes normalize parameter."""
+        mock_corpus = Mock()
+        trends_df = pd.DataFrame({"word1": [10]}, index=[2000])
+        mock_corpus.get_word_trend_results.return_value = trends_df
+        
+        commons = CommonQueryParams()
+        result = get_word_trends("word1", commons, mock_corpus, normalize=True)
+        
+        call_args = mock_corpus.get_word_trend_results.call_args
+        assert call_args[1]['normalize'] is True
+
 
 class TestGetWordTrendSpeeches:
     """Tests for get_word_trend_speeches function."""
@@ -108,7 +153,11 @@ class TestGetWordTrendSpeeches:
         result = get_word_trend_speeches("word1", commons, mock_corpus)
         
         assert isinstance(result, SpeechesResultWT)
+        assert hasattr(result, 'speech_list')
         assert len(result.speech_list) == 2
+        # Verify speech objects have required fields
+        assert hasattr(result.speech_list[0], 'speech_id')
+        assert hasattr(result.speech_list[0], 'year')
 
     def test_get_word_trend_speeches_multiple_words(self):
         """Test get_word_trend_speeches with comma-separated words."""
@@ -139,4 +188,6 @@ class TestGetWordTrendSpeeches:
         result = get_word_trend_speeches("missing", commons, mock_corpus)
         
         assert isinstance(result, SpeechesResultWT)
+        assert hasattr(result, 'speech_list')
         assert len(result.speech_list) == 0
+        assert result.speech_list == []

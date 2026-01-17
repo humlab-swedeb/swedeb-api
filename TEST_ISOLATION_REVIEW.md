@@ -8,12 +8,13 @@ All integration tests have been successfully moved from `tests/api_swedeb/` to `
 
 **STATUS BEFORE FIX**: 
 - ❌ **Properly Isolated**: 16 files (~70%)
-- ❌ **Integration Tests**: 7 files (~30%)
+- ❌ **Integration Tests**: 5 files
+- ❌ **Mixed Files**: 2 files (both unit and integration tests)
 
 **STATUS AFTER FIX**:
 - ✅ **All tests in tests/api_swedeb/ are now properly isolated unit tests**
 - ✅ **All integration tests moved to tests/integration/**
-- ✅ **Unit test execution time: ~3 seconds** (down from ~7 seconds)
+- ✅ **Unit test execution time: ~0.79 seconds** ⚡ (down from ~7 seconds)
 
 ---
 
@@ -24,15 +25,28 @@ All integration tests have been successfully moved from `tests/api_swedeb/` to `
 - ✅ `test_metadata_router.py` → `tests/integration/test_metadata_router.py`
 - ✅ `test_kwic.py` → `tests/integration/test_kwic_core.py` (renamed to avoid conflict)
 
-### 2. Split Mixed Test File
-- ✅ `test_spech_index.py` split into:
+### 2. Split Mixed Test Files
+
+#### test_spech_index.py
+- ✅ Split into:
   - `tests/api_swedeb/core/test_speech_index_unit.py` - 6 unit tests with mocked corpus
   - `tests/integration/test_speech_index.py` - 5 integration tests with real data
+
+#### test_ngrams_core.py  
+- ✅ Split into:
+  - `tests/api_swedeb/core/test_ngrams_core.py` - 4 unit tests with corpus_mock
+  - `tests/integration/test_ngrams_core.py` - 2 integration tests with real corpus
+
+#### test_cwb.py
+- ✅ Split into:
+  - `tests/api_swedeb/core/test_cwb.py` - Unit tests for CQP pattern compilation
+  - `tests/integration/test_cwb_integration.py` - 4 integration tests with real corpus
 
 ### 3. Updated Documentation
 - ✅ Updated `tests/README.md` with clear separation guidelines
 - ✅ Added test organization philosophy
 - ✅ Updated test statistics
+- ✅ Updated TEST_ISOLATION_REVIEW.md with final results
 
 ---
 
@@ -40,16 +54,15 @@ All integration tests have been successfully moved from `tests/api_swedeb/` to `
 
 ### Unit Tests (tests/api_swedeb/)
 ```bash
-pytest tests/api_swedeb --ignore=tests/api_swedeb/core/test_speech_text.py -q
-# Result: ~504 tests passing in ~3 seconds ⚡
+pytest tests/api_swedeb -q
+# Result: 490 passed, 1 skipped, 3 failed (pre-existing), 2 warnings in 0.79s ⚡
+# All 490 passing tests run without CWB corpus - 100% isolation achieved!
 ```
 
 ### Integration Tests (tests/integration/)
 ```bash
-pytest tests/integration/test_tool_router.py tests/integration/test_metadata_router.py
-# Result: 27 passed, 5 skipped in 1.22s
-pytest tests/integration/test_speech_index.py
-# Result: 5 passed, 7 warnings in 0.08s
+pytest tests/integration/test_ngrams_core.py tests/integration/test_cwb_integration.py -q
+# Result: 9 passed, 1 warning in 0.66s
 ```
 
 ---

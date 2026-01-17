@@ -27,26 +27,30 @@ tests/
   - `api_swedeb/api/` → `tests/api_swedeb/api/`
   - `api_swedeb/core/` → `tests/api_swedeb/core/`
 - **Characteristics**:
-  - Fast execution (< 8 seconds for full suite)
+  - ⚡ Fast execution (~0.79 seconds for full suite!)
   - No external dependencies (CWB, real corpus data)
   - Use mocks and fixtures for dependencies
   - Can run without full data setup
-- **Run with**: `pytest tests/api_swedeb` or `pytest tests/ --ignore=tests/integration --ignore=tests/legacy`
+  - **100% isolation** - no real corpus required
+- **Run with**: `pytest tests/api_swedeb`
 - **Coverage target**: >90% for all modules (currently 96%)
+- **Test count**: ~490 tests (excluding 3 pre-existing failures in test_speech_text.py)
 
 ### Integration Tests (`integration/`)
 - **Purpose**: Test complete workflows using real CWB corpus and API endpoints
 - **Characteristics**:
   - Require real corpus data and CWB setup
   - Test end-to-end functionality
-  - Moderate execution (~5 seconds)
+  - Moderate execution time (~5 seconds total)
   - Use fixtures from `conftest.py`: `corpus`, `api_corpus`, `fastapi_client`, `person_codecs`, `speech_index`
 - **Run with**: `pytest tests/integration`
+- **Test count**: ~120 tests
 - **Files include**:
   - `test_tool_router.py` - API tool endpoint integration tests
   - `test_metadata_router.py` - API metadata endpoint integration tests
   - `test_kwic.py`, `test_kwic_core.py` - KWIC endpoint and core functionality tests
-  - `test_ngrams.py` - N-gram service integration tests
+  - `test_ngrams.py`, `test_ngrams_core.py` - N-gram service integration tests
+  - `test_cwb_integration.py` - CWB/CQP query execution tests
   - `test_speeches.py` - Speech retrieval tests
   - `test_speech_index.py` - Speech index with real data
   - `test_speakers.py` - Speaker filtering tests

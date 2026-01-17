@@ -31,7 +31,14 @@ class TestGetNgrams:
         )
         
         assert isinstance(result, NGramResult)
+        assert hasattr(result, 'ngram_list')
         mock_n_grams.assert_called_once()
+        # Verify correct opts were passed
+        mock_to_opts.assert_called_once_with(
+            mock_commons,
+            word_targets=["hello"],
+            search_target="word"
+        )
 
     @patch('api_swedeb.api.utils.ngrams.n_grams.n_grams')
     @patch('api_swedeb.api.utils.ngrams.mappers.query_params_to_CQP_opts')
@@ -52,6 +59,14 @@ class TestGetNgrams:
         )
         
         assert isinstance(result, NGramResult)
+        assert hasattr(result, 'ngram_list')
+        mock_n_grams.assert_called_once()
+        # Verify correct opts were passed for list input
+        mock_to_opts.assert_called_once_with(
+            mock_commons,
+            word_targets=["hello", "world"],
+            search_target="word"
+        )
 
     def test_get_ngrams_empty_list_raises(self):
         """Test empty search_term list raises ValueError."""
@@ -81,4 +96,7 @@ class TestGetNgrams:
             commons=mock_commons
         )
         
+        assert isinstance(result, NGramResult)
         assert result.ngram_list == []
+        # n_grams is called even with empty opts, returns empty DataFrame
+        mock_n_grams.assert_called_once()

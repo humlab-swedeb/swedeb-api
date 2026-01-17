@@ -222,6 +222,9 @@ class TestBaseCodecs:
         assert codec is not None
         assert codec.from_column == "gender_id"
         assert codec.to_column == "gender"
+        # Verify codec type is 'decode'
+        assert codec.type == "decode"
+        assert hasattr(codec, 'fx_factory')
 
     def test_find_codec_not_exists(self, sample_specification):
         """Test find_codec returns None when codec doesn't exist."""
@@ -298,7 +301,11 @@ class TestBaseCodecs:
         # First access should create the codecs
         codec_list = codecs.codecs
         assert codecs._codecs is not None
+        assert isinstance(codecs._codecs, list)
         assert len(codec_list) == 3
+        # Verify codecs have expected structure
+        assert all(hasattr(c, 'from_column') for c in codec_list)
+        assert all(hasattr(c, 'to_column') for c in codec_list)
 
         # Second access should return the same cached list
         codec_list2 = codecs.codecs
@@ -429,10 +436,13 @@ class TestBaseCodecs:
         decoder = codecs.decoder("gender_id")
         assert decoder is not None
         assert decoder.from_column == "gender_id"
+        assert decoder.type == "decode"
 
         decoder = codecs.decoder("gender_id", "gender")
         assert decoder is not None
         assert decoder.to_column == "gender"
+        assert decoder.from_column == "gender_id"
+        assert decoder.type == "decode"
 
     def test_apply_codec_basic(self, sample_specification, sample_store):
         """Test apply_codec method."""

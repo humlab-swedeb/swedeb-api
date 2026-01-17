@@ -1,6 +1,4 @@
 import io
-from collections import Counter, defaultdict
-from typing import Iterable
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -68,6 +66,47 @@ def test_to_n_grams():
     assert list(ng.to_n_grams(phrase, 3)) == ["a b c", "b c d", "c d e"]
 
 
+def test_to_n_grams_edge_cases():
+    """Test to_n_grams with edge cases."""
+    # Empty phrase
+    assert list(ng.to_n_grams("", 2)) == []
+    
+    # Single word, n=1
+    assert list(ng.to_n_grams("word", 1)) == ["word"]
+    
+    # n larger than phrase length
+    assert list(ng.to_n_grams("a b", 3)) == []
+    
+    # n equal to phrase length
+    assert list(ng.to_n_grams("a b c", 3)) == ["a b c"]
+
+
+def test_compile_n_grams_empty_input():
+    """Test compile_n_grams with empty DataFrame."""
+    empty_df = pd.DataFrame(columns=['window', 'count', 'documents'])
+    result = ng.compile_n_grams(empty_df, n=2, mode="sliding")
+    
+    assert isinstance(result, pd.DataFrame)
+    assert result.index.name == 'ngram'
+    assert list(result.columns) == ['window_count', 'documents']
+    assert len(result) == 0
+
+
+def test_compile_n_grams_with_threshold():
+    """Test compile_n_grams applies threshold correctly."""
+    windows = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
+    
+    # Threshold filters out low-count ngrams
+    n_grams = ng.compile_n_grams(windows, n=2, threshold=5, mode="sliding")
+    
+    assert isinstance(n_grams, pd.DataFrame)
+    assert len(n_grams) == 2  # 'e b' (count=5) and 'f e' (count=6) have count >= 5
+    assert 'f e' in n_grams.index
+    assert 'e b' in n_grams.index
+    assert n_grams.loc['f e', 'window_count'] == 6
+    assert n_grams.loc['e b', 'window_count'] == 5
+
+
 @patch("api_swedeb.core.cwb.to_cqp_exprs", lambda *_, **__: 'apa')
 def test_query_keyword_windows():
     corpus: MagicMock = corpus_mock(SUPER_SIMPLE_CONCORDANCE)
@@ -76,7 +115,10 @@ def test_query_keyword_windows():
 
     expected_result: pd.DataFrame = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
 
-    assert result is not None
+    # Verify result is a DataFrame with correct structure
+    assert isinstance(result, pd.DataFrame)
+    assert list(result.columns) == ['window', 'count', 'documents']
+    assert len(result) == 4  # Four unique windows in test data
 
     expected_result = expected_result.sort_values(by='window').reset_index(drop=True)
     result = result.sort_values(by='window').reset_index(drop=True)
@@ -88,7 +130,11 @@ def test_compute_n_grams_with_sliding_window():
     windows: pd.DataFrame = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
     n_grams: pd.DataFrame = ng.compile_n_grams(windows, n=2, threshold=None, mode="sliding")
 
-    assert n_grams is not None
+    # Verify DataFrame structure and content
+    assert isinstance(n_grams, pd.DataFrame)
+    assert n_grams.index.name == 'ngram'
+    assert list(n_grams.columns) == ['window_count', 'documents']
+    assert len(n_grams) == 5  # Five unique 2-grams
 
     assert n_grams.reset_index().to_dict('list') == {
         'ngram': ['e b', 'e e', 'e n', 'f e', 'n e'],
@@ -100,62 +146,15 @@ def test_compute_n_grams_with_sliding_window():
 def test_compute_n_grams_with_locked_window():
     windows: pd.DataFrame = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
     n_grams: pd.DataFrame = ng.compile_n_grams(windows, n=2, threshold=None, mode="locked")
-    assert n_grams is not None
+    
+    # Verify DataFrame structure and content
+    assert isinstance(n_grams, pd.DataFrame)
     assert n_grams.index.name == 'ngram'
+    assert list(n_grams.columns) == ['window_count', 'documents']
+    assert len(n_grams) == 4  # Four locked windows
+    
     assert n_grams.reset_index().to_dict('list') == {
         'ngram': ['f e b', 'f e n', 'n e b', 'e e e'],
         'window_count': [2, 4, 3, 2],
         'documents': ['A', 'B,C', 'A,B', 'D'],
     }
-
-
-def test_compute_n_grams2(corpus: Corpus):
-    n: int = 2
-    keyword: str = "'sverige'%c"
-
-    windows: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts=keyword, context_size=n, p_show="word")
-
-    ngram_counter: Counter = defaultdict(int)
-    ngram_documents: Counter = defaultdict(set)
-
-    cx: dict[int, int] = windows['count'].to_dict().get
-
-    n_grams: Iterable[tuple[int, str, str]] = (
-        (index, ngram, row['documents'])
-        for index, row in windows.iterrows()
-        for ngram in ng.to_n_grams(row['window'], n)
-    )
-
-    for index, ngram, documents in n_grams:
-        ngram_counter[ngram] += cx(index)
-        ngram_documents['documents'] |= set(documents.split(','))
-
-    assert ngram_counter is not None
-
-
-def test_n_grams(corpus: Corpus):
-    query_or_opts = {
-        "target": "information",
-    }
-    n: int = 2
-
-    # with patch("api_swedeb.core.n_grams.compute.compile_n_grams", lambda *_, **__: 'apa'):
-    data: pd.DataFrame = ng.n_grams(corpus, query_or_opts, n=n, threshold=2, mode="sliding")
-    assert data is not None
-    assert len(data) > 0
-    assert data.columns.tolist() == ['window_count', 'documents']
-    assert data.index.name == 'ngram'
-    assert data.index.str.lower().str.contains('information').all()
-    assert (data.index.str.split().str.len() == 2).all()
-
-    data_left_aligned: pd.DataFrame = ng.n_grams(corpus, query_or_opts, n=n, threshold=1, mode="left-aligned")
-    assert data_left_aligned is not None
-    assert len(data_left_aligned) > 0
-    assert data_left_aligned.index.str.lower().str.startswith('information').all()
-    assert (data_left_aligned.index.str.split().str.len() == 2).all()
-
-    data_right_aligned: pd.DataFrame = ng.n_grams(corpus, query_or_opts, n=n, threshold=1, mode="right-aligned")
-    assert data_right_aligned is not None
-    assert len(data_right_aligned) > 0
-    assert data_right_aligned.index.str.lower().str.endswith('information').all()
-    assert (data_right_aligned.index.str.split().str.len() == 2).all()
