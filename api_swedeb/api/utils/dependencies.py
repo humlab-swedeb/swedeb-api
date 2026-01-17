@@ -4,8 +4,8 @@ import ccc
 from fastapi import Depends
 from loguru import logger
 
-from api_swedeb.api import parlaclarin as md
 from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.core.codecs import PersonCodecs, Codecs
 from api_swedeb.core.configuration import ConfigValue
 
 __shared_corpus: Corpus | None = None
@@ -47,11 +47,11 @@ def get_decoder_opts() -> dict[str, str | None]:
     }
 
 
-_corpus_codecs: md.PersonCodecs | md.Codecs | None = None
+_corpus_codecs: PersonCodecs | Codecs | None = None
 
 
-async def get_corpus_decoder(opts: dict = Depends(get_decoder_opts)) -> md.PersonCodecs | md.Codecs:
+async def get_corpus_decoder(opts: dict = Depends(get_decoder_opts)) -> PersonCodecs | Codecs:
     global _corpus_codecs
     if _corpus_codecs is None:
-        _corpus_codecs = md.PersonCodecs().load(source=opts.get("metadata_filename", ""))
+        _corpus_codecs = PersonCodecs().load(source=opts.get("metadata_filename", ""))
     return _corpus_codecs
