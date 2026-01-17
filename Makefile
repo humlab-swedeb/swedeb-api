@@ -56,7 +56,7 @@ pylint:
 
 .PHONY: ruff
 ruff:
-	@uv run ruff check --fix $(SOURCE_FOLDERS)
+	@uv run ruff check --output-format concise --fix $(SOURCE_FOLDERS)
 
 requirements.txt: pyproject.toml
 	@uv pip compile pyproject.toml -o requirements.txt

@@ -26,7 +26,6 @@ from .file_utility import (
     read_textfile,
     read_textfile2,
     read_yaml,
-    save_excel,
     symlink_files,
     touch,
     unpickle_compressed_from_file,

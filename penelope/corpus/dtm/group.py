@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, List, Literal, Mapping, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, List, Literal, Mapping, Protocol, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 import pandas as pd
@@ -22,9 +22,57 @@ T = TypeVar("T", int, str)
 # pylint: disable=no-member
 
 
+class SupportsGroupBy(Protocol):
+    """Protocol defining the interface required by GroupByMixIn."""
+    
+    bag_term_matrix: scipy.sparse.spmatrix
+    token2id: dict
+    document_index: pd.DataFrame
+    overridden_term_frequency: Any
+    payload: dict
+    
+    def create(
+        self,
+        bag_term_matrix: scipy.sparse.spmatrix,
+        token2id: dict,
+        document_index: pd.DataFrame,
+        overridden_term_frequency: Any,
+        **kwargs
+    ) -> IVectorizedCorpus:
+        ...
+    
+    def group_by_pivot_column(
+        self,
+        pivot_column_name: str,
+        *,
+        aggregate: str = 'sum',
+        fill_gaps: bool = False,
+        fill_steps: int = 1,
+        target_column_name: str = 'category',
+    ) -> IVectorizedCorpus:
+        ...
+    
+    def group_by_year(
+        self,
+        aggregate: str = 'sum',
+        fill_gaps: bool = True,
+        target_column_name: str = 'category',
+    ) -> IVectorizedCorpus:
+        ...
+    
+    def group_by_indices_mapping(
+        self,
+        document_index: pd.DataFrame,
+        category_indices: Mapping[int, List[int]],
+        aggregate: str = 'sum',
+        dtype: np.dtype | None = None,
+    ) -> IVectorizedCorpus:
+        ...
+
+
 class GroupByMixIn:
     def group_by_pivot_column(
-        self: IVectorizedCorpusProtocol,
+        self: SupportsGroupBy,
         pivot_column_name: str,
         *,
         aggregate: str = 'sum',
@@ -61,7 +109,7 @@ class GroupByMixIn:
             aggregate=aggregate,
         )
 
-        document_index: DocumentIndexHelper = (
+        document_index: pd.DataFrame = (
             DocumentIndexHelper(self.document_index)
             .group_by_column(
                 pivot_column_name=pivot_column_name,
@@ -87,7 +135,7 @@ class GroupByMixIn:
         return corpus
 
     def group_by_year(
-        self: IVectorizedCorpusProtocol,
+        self: SupportsGroupBy,
         aggregate='sum',
         fill_gaps=True,
         target_column_name: str = 'category',
@@ -103,7 +151,7 @@ class GroupByMixIn:
         return corpus
 
     def group_by_temporal_key(
-        self: IVectorizedCorpusProtocol,
+        self: SupportsGroupBy,
         *,
         temporal_key_specifier: TemporalKeySpecifier,
         aggregate: str = 'sum',
@@ -144,7 +192,7 @@ class GroupByMixIn:
         return corpus
 
     def group_by_temporal_key_optimized(
-        self: IVectorizedCorpusProtocol,
+        self: SupportsGroupBy,
         temporal_key_specifier: Union[str, dict],
         aggregate: str = 'sum',
         fill_gaps: bool = False,
@@ -193,7 +241,7 @@ class GroupByMixIn:
         return grouped_corpus
 
     def group_by_indices_mapping(
-        self: IVectorizedCorpusProtocol,
+        self: SupportsGroupBy,
         document_index: pd.DataFrame,
         category_indices: Mapping[int, List[int]],
         aggregate: str = 'sum',
@@ -227,7 +275,7 @@ class GroupByMixIn:
         return grouped_corpus
 
     def group_by_pivot_keys(  # pylint: disable=too-many-arguments)
-        self: IVectorizedCorpusProtocol | GroupByMixIn,
+        self: SupportsGroupBy,
         temporal_key: Literal['year', 'decade', 'lustrum'],
         pivot_keys: List[str],
         filter_opts: pu.PropertyValueMaskingOpts,

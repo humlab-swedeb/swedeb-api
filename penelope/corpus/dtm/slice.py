@@ -38,7 +38,7 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
     def overridden_term_frequency(self) -> np.ndarray: ...
 
 
-class SliceMixIn:
+class SliceMixIn(ISlicedCorpusProtocol):
     def slice_by_tf(
         self: ISlicedCorpusProtocol, threshold: Union[int, float], inplace: bool = False
     ) -> IVectorizedCorpus:

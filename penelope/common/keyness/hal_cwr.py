@@ -30,7 +30,7 @@ def compute_hal_score_by_co_occurrence_matrix(co_occurrences: pd.DataFrame, nw_x
     co_occurrences = co_occurrences[['document_id', 'w1_id', 'w2_id', 'value']]
     co_occurrences['nw_xy'] = co_occurrences.value
 
-    nw_x_matrix: SparseMatrix = nw_x_matrix.tocoo()
+    nw_x_matrix: sp.coo_matrix = nw_x_matrix.tocoo()
     nw_x_frame: pd.DataFrame = pd.DataFrame(
         data={
             'document_id': nw_x_matrix.row,
