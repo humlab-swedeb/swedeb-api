@@ -11,17 +11,17 @@ year_regex = r"^\d{4}$"
 class SpeakerQueryParams:
     def __init__(
         self,
-        office_types: List[str] = Query(None, description="List of selected office types"),
-        sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
-        party_id: List[int] = Query(None, description="List of selected parties"),
-        gender_id: List[int] = Query(None, description="List of selected genders"),
-        chamber_abbrev: List[str] = Query(None, description="List of selected chambers"),
+        office_types: List[str] | None = Query(None, description="List of selected office types"),
+        sub_office_types: List[str] | None = Query(None, description="List of selected suboffice types"),
+        party_id: List[int] | None = Query(None, description="List of selected parties"),
+        gender_id: List[int] | None = Query(None, description="List of selected genders"),
+        chamber_abbrev: List[str] | None = Query(None, description="List of selected chambers"),
     ):
-        self.office_types: List[str] = office_types
-        self.sub_office_types: List[str] = sub_office_types
-        self.party_id: List[int] = party_id
-        self.gender_id: List[int] = gender_id
-        self.chamber_abbrev: List[str] = chamber_abbrev
+        self.office_types: List[str] | None = office_types
+        self.sub_office_types: List[str] | None = sub_office_types
+        self.party_id: List[int] | None = party_id
+        self.gender_id: List[int] | None = gender_id
+        self.chamber_abbrev: List[str] | None = chamber_abbrev
 
     def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:  # pylint: disable=unused-argument
         opts: dict[str, list[int]] = {  # type: ignore
@@ -37,31 +37,31 @@ class SpeakerQueryParams:
 class CommonQueryParams(SpeakerQueryParams):
     def __init__(
         self,
-        from_year: int = Query(None, description="The first year to be included"),
-        to_year: int = Query(None, description="The last year to be included"),
-        office_types: List[str] = Query(None, description="List of selected office types"),
-        sub_office_types: List[str] = Query(None, description="List of selected suboffice types"),
-        who: List[str] = Query(
+        from_year: int | None = Query(None, description="The first year to be included"),
+        to_year: int | None = Query(None, description="The last year to be included"),
+        office_types: List[str] | None = Query(None, description="List of selected office types"),
+        sub_office_types: List[str] | None = Query(None, description="List of selected suboffice types"),
+        who: List[str] | None = Query(
             None,
             description="List of selected speaker ids. With this parameter, other metadata filters are unnecessary",
         ),
         sort_by: str = Query("year_title", description="Column to sort by"),
-        party_id: List[int] = Query(None, description="List of selected parties"),
-        gender_id: List[int] = Query(None, description="List of selected genders"),
-        chamber_abbrev: List[str] = Query(None, description="List of selected chambers"),
-        speech_id: List[str] = Query(None, description="List of speech ids to filter by"),
-        limit: int = Query(None, description="The number of results per page"),
-        offset: int = Query(None, description="Result offset"),
+        party_id: List[int] | None = Query(None, description="List of selected parties"),
+        gender_id: List[int] | None = Query(None, description="List of selected genders"),
+        chamber_abbrev: List[str] | None = Query(None, description="List of selected chambers"),
+        speech_id: List[str] | None = Query(None, description="List of speech ids to filter by"),
+        limit: int | None = Query(None, description="The number of results per page"),
+        offset: int | None = Query(None, description="Result offset"),
         sort_order: str = Query("asc", description="Sort order. Default is asc"),
     ):
         super().__init__(office_types, sub_office_types, party_id, gender_id, chamber_abbrev)
-        self.from_year: int = from_year
-        self.to_year: int = to_year
-        self.speech_id: List[str] = speech_id
-        self.who: List[str] = who
+        self.from_year: int | None = from_year
+        self.to_year: int | None = to_year
+        self.speech_id: List[str] | None = speech_id
+        self.who: List[str] | None = who
         self.sort_by: str = sort_by
-        self.limit: int = limit
-        self.offset: int = offset
+        self.limit: int | None = limit
+        self.offset: int | None = offset
         self.sort_order: str = sort_order
 
     def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:

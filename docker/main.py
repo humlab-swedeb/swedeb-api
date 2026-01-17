@@ -13,7 +13,7 @@ ConfigStore.configure_context(source=os.environ.get("SWEDEB_CONFIG_PATH", "confi
 
 # https://stackoverflow.com/questions/65686318/sharing-python-objects-across-multiple-workers
 
-shared_data: dict = multiprocessing.Manager().dict()
+shared_data = multiprocessing.Manager().dict()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
