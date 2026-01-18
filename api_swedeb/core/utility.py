@@ -8,7 +8,7 @@ import time
 import types
 from functools import wraps
 from os.path import basename, dirname, splitext
-from typing import Any, Callable, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
+from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
 
 import numpy as np
 import pandas as pd
@@ -90,22 +90,25 @@ def flatten(lst: list[list[Any]]) -> list[Any]:
     #     return lst
     return [item for sublist in lst for item in sublist]
 
+L = TypeVar("L")
 
-class Lazy:
+class Lazy(Generic[L]):
     """Implements Lazy evaluation of a value."""
 
-    def __init__(self, factory: Callable[[], Any]) -> None:
-        self._factory: Callable[[], Any] = factory
+    def __init__(self, factory: Callable[[], L]) -> None:
+        self._factory: Callable[[], L] = factory
         self._is_initialized: bool = False
-        self._value: Any = None
+        self._value: L | None = None
 
     @property
-    def value(self) -> Any | None:
+    def value(self) -> L:
         if not self._is_initialized:
             self._value = self._factory()
             self._is_initialized = True
+        assert self._value is not None
         return self._value
 
+    @property
     def is_initialized(self) -> bool:
         return self._is_initialized
 

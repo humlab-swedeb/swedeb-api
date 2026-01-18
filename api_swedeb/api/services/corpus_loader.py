@@ -61,20 +61,20 @@ class CorpusLoader:
         self.tagged_corpus_folder: str = tagged_corpus_folder or ConfigValue("vrt.folder").resolve()
 
         # Lazy-loaded resources
-        self.__lazy_vectorized_corpus: Lazy[IVectorizedCorpus] = Lazy(
+        self.__lazy_vectorized_corpus: Lazy[IVectorizedCorpus] = Lazy[IVectorizedCorpus](
             lambda: load_dtm_corpus(folder=self.dtm_folder, tag=self.dtm_tag)
         )
-        self.__lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy(
+        self.__lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy[md.PersonCodecs](
             lambda: md.PersonCodecs().load(source=self.metadata_filename),
         )
-        self.__lazy_repository: Lazy[sr.SpeechTextRepository] = Lazy(
+        self.__lazy_repository: Lazy[sr.SpeechTextRepository] = Lazy[sr.SpeechTextRepository](
             lambda: sr.SpeechTextRepository(
                 source=self.tagged_corpus_folder,
                 person_codecs=self.person_codecs,
                 document_index=self.document_index,
             )
         )
-        self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy(
+        self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](
             lambda: load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
         )
 
