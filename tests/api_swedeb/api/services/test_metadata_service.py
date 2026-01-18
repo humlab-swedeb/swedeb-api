@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock
 
 import pandas as pd
-import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService

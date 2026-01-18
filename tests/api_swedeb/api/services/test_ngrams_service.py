@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb import schemas
+from api_swedeb.api.services.ngrams_service import NGramsService
 
 
 class TestNGramsServiceInit:
@@ -29,16 +29,16 @@ class TestNGramsServiceMethods:
 
         mock_corpus = MagicMock()
         mock_to_opts.return_value = [{"cqp": "test"}]
-        
+
         ngrams_df = pd.DataFrame({"ngram": ["test ngram"], "count": [5]})
         mock_n_grams.return_value = ngrams_df
-        
+
         expected_result = schemas.NGramResult(ngram_list=[])
         mock_to_result.return_value = expected_result
 
         service = NGramsService()
         commons = CommonQueryParams(from_year=2000, to_year=2010)
-        
+
         result = service.get_ngrams(
             corpus=mock_corpus,
             search_term="test",
@@ -61,7 +61,7 @@ class TestNGramsServiceMethods:
 
         service = NGramsService()
         commons = CommonQueryParams(from_year=2000, to_year=2010)
-        
+
         result = service.get_ngrams(
             corpus=mock_corpus,
             search_term="test",
@@ -81,7 +81,7 @@ class TestNGramsServiceMethods:
 
         service = NGramsService()
         commons = CommonQueryParams(from_year=2000, to_year=2010)
-        
+
         try:
             service.get_ngrams(
                 corpus=mock_corpus,
@@ -101,16 +101,16 @@ class TestNGramsServiceMethods:
 
         mock_corpus = MagicMock()
         mock_to_opts.return_value = [{"cqp": "test"}]
-        
+
         ngrams_df = pd.DataFrame({"ngram": ["test ngram"], "count": [5]})
         mock_n_grams.return_value = ngrams_df
-        
+
         expected_result = schemas.NGramResult(ngram_list=[])
         mock_to_result.return_value = expected_result
 
         service = NGramsService()
         commons = CommonQueryParams(from_year=2000, to_year=2010)
-        
+
         result = service.get_ngrams(
             corpus=mock_corpus,
             search_term=["test", "word"],

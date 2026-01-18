@@ -58,7 +58,7 @@ class TestSearchServiceMethods:
             "document_id": ["1", "2"],
             "year": [2000, 2001]
         })
-        
+
         service = SearchService(loader=mock_loader)
         service._loader = mock_loader
         service.get_anforanden = MagicMock(return_value=expected_df)
@@ -76,7 +76,7 @@ class TestSearchServiceMethods:
             "person_id": ["p1", "p2"],
             "name": ["Speaker 1", "Speaker 2"]
         })
-        
+
         service = SearchService(loader=mock_loader)
         service._loader = mock_loader
         service.get_speakers = MagicMock(return_value=expected_df)
@@ -97,7 +97,7 @@ class TestSearchServiceMethods:
             "gender": ["M", "F", "M"],
             "name": ["Alice", "Bob", "Charlie"]
         })
-        
+
         service._get_filtered_speakers = MagicMock(return_value=df[df["gender"] == "M"])
 
         result = service._get_filtered_speakers({"gender": ["M"]}, df)

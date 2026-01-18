@@ -247,7 +247,7 @@ class TestGetFilteredSpeakersImproved:
         assert list(result.columns) == list(sample_df.columns)
         assert result.index.name == sample_df.index.name
 
-    def test_handles_integer_person_id_dtype(self, sample_person_party, sample_doc_index):
+    def test_handles_integer_person_id_dtype(self, sample_doc_index):
         """Should handle integer person_id dtypes."""
         df = pd.DataFrame(
             {

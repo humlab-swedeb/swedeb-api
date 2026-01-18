@@ -9,7 +9,7 @@ from typing import Any, Type, TypeVar
 import yaml
 from dotenv import load_dotenv
 
-from ..utility import dget, dotexists, dotset, env2dict
+from api_swedeb.core.utility import dget, dotexists, dotset, env2dict
 
 ENV_PREFIX: str = "PYRIKSPROT"
 

@@ -1,6 +1,6 @@
 """Unit tests for api_swedeb.api.services.word_trends_service module."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 

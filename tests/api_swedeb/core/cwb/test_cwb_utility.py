@@ -77,7 +77,7 @@ class TestCorpusCreateOpts:
         )
 
         with patch('api_swedeb.core.cwb.utility.ccc.__version__', '1.2.3'):
-            result = opts.create_corpus()
+            _ = opts.create_corpus()
 
         # Should create temp dir with version and username
         expected_dir = "/tmp/ccc-1.2.3-testuser"

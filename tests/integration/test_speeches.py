@@ -8,7 +8,6 @@ from loguru import logger
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.api.utils.speech import get_speeches
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.utility import format_protocol_id

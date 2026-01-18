@@ -6,7 +6,8 @@ from dataclasses import dataclass, field, fields
 from inspect import isclass
 from typing import Any, Callable, Generic, Type, TypeVar
 
-from ..utility import dget
+from api_swedeb.core.utility import dget
+
 from .config import Config
 
 T = TypeVar("T", str, int, float)

@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
@@ -193,7 +192,7 @@ class TestCorpusLoaderLazyLoading:
         """Test document_index loads separately if vectorized corpus not yet loaded."""
         mock_index_df = MagicMock(spec=pd.DataFrame)
         mock_index.return_value = mock_index_df
-        
+
         # Configure dtm to return a corpus with document_index property
         mock_corpus = MagicMock()
         mock_corpus.document_index = MagicMock(spec=pd.DataFrame)
@@ -213,7 +212,7 @@ class TestCorpusLoaderLazyLoading:
 
         # In this case, it loads dtm_corpus and uses its document_index
         assert result == mock_corpus.document_index
-        # Since we didn't explicitly load vectorized_corpus first, 
+        # Since we didn't explicitly load vectorized_corpus first,
         # it should use the dtm_corpus's document_index
         mock_dtm.assert_called_once()
 

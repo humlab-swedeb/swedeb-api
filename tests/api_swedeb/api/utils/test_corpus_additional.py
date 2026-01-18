@@ -30,15 +30,15 @@ class TestGetWordTrendResults:
 
         # Mock the word_trends service
         expected_df = pd.DataFrame({"year": [2020], "democracy": [10]})
-        corpus._word_trends_service.get_word_trend_results = MagicMock(return_value=expected_df)
+        corpus._word_trends_service.get_word_trend_results = MagicMock(
+            return_value=expected_df
+        )  # pylint: disable=protected-access
 
         result = corpus.get_word_trend_results(
-            search_terms=["democracy", "freedom"],
-            filter_opts={"year": 2020},
-            normalize=True
+            search_terms=["democracy", "freedom"], filter_opts={"year": 2020}, normalize=True
         )
 
-        corpus._word_trends_service.get_word_trend_results.assert_called_once_with(
+        corpus._word_trends_service.get_word_trend_results.assert_called_once_with(  # pylint: disable=protected-access
             ["democracy", "freedom"], {"year": 2020}, True
         )
         assert isinstance(result, pd.DataFrame)
@@ -52,15 +52,13 @@ class TestGetWordTrendResults:
         corpus = Corpus()
 
         # Mock the word_trends service
-        corpus._word_trends_service.get_word_trend_results = MagicMock(return_value=pd.DataFrame())
+        corpus._word_trends_service.get_word_trend_results = MagicMock(
+            return_value=pd.DataFrame()
+        )  # pylint: disable=protected-access
 
-        result = corpus.get_word_trend_results(
-            search_terms=["missing"],
-            filter_opts={},
-            normalize=False
-        )
+        result = corpus.get_word_trend_results(search_terms=["missing"], filter_opts={}, normalize=False)
 
-        corpus._word_trends_service.get_word_trend_results.assert_called_once()
+        corpus._word_trends_service.get_word_trend_results.assert_called_once()  # pylint: disable=protected-access
         assert result.empty
 
     @patch('api_swedeb.api.utils.corpus.CorpusLoader')
@@ -73,12 +71,14 @@ class TestGetWordTrendResults:
 
         # Mock the word_trends service
         expected_df = pd.DataFrame({"year": [2020], "count": [5]})
-        corpus._word_trends_service.get_word_trend_results = MagicMock(return_value=expected_df)
+        corpus._word_trends_service.get_word_trend_results = MagicMock(
+            return_value=expected_df
+        )  # pylint: disable=protected-access
 
         result = corpus.get_word_trend_results(["democracy"], {})
 
         # Verify normalize defaults to False
-        corpus._word_trends_service.get_word_trend_results.assert_called_once_with(
+        corpus._word_trends_service.get_word_trend_results.assert_called_once_with(  # pylint: disable=protected-access
             ["democracy"], {}, False
         )
         assert isinstance(result, pd.DataFrame)
@@ -100,16 +100,13 @@ class TestGetFilteredSpeakers:
         mock_pc_class.return_value = mock_pc
 
         # Setup person_party mapping
-        person_party_df = pd.DataFrame({
-            "person_id": ["p1", "p2", "p3"],
-            "party_id": [10, 20, 10]
-        })
+        person_party_df = pd.DataFrame({"person_id": ["p1", "p2", "p3"], "party_id": [10, 20, 10]})
         mock_pc.person_party = person_party_df
 
         df = pd.DataFrame({"name": ["Alice", "Bob", "Charlie"]}, index=["p1", "p2", "p3"])
 
         corpus = Corpus()
-        result = corpus._get_filtered_speakers({"party_id": [10]}, df) # pylint: disable=protected-access
+        result = corpus._get_filtered_speakers({"party_id": [10]}, df)  # pylint: disable=protected-access
 
         # Should only include p1 and p3
         assert len(result) == 2
@@ -127,10 +124,7 @@ class TestGetFilteredSpeakers:
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
 
-        person_party_df = pd.DataFrame({
-            "person_id": ["p1", "p2"],
-            "party_id": [10, 20]
-        })
+        person_party_df = pd.DataFrame({"person_id": ["p1", "p2"], "party_id": [10, 20]})
         mock_pc.person_party = person_party_df
 
         df = pd.DataFrame({"name": ["Alice", "Bob"]}, index=["p1", "p2"])
@@ -146,10 +140,12 @@ class TestGetFilteredSpeakers:
 
         # Create mock vectorized corpus with document index
         mock_vc = Mock()
-        doc_index = pd.DataFrame({
-            "person_id": ["p1", "p2", "p3", "p1"],
-            "chamber_abbrev": ["fk", "ak", "fk", "fk"]  # Lowercase to match code behavior
-        })
+        doc_index = pd.DataFrame(
+            {
+                "person_id": ["p1", "p2", "p3", "p1"],
+                "chamber_abbrev": ["fk", "ak", "fk", "fk"],  # Lowercase to match code behavior
+            }
+        )
         mock_vc.document_index = doc_index
         mock_load.return_value = mock_vc
 
@@ -172,10 +168,7 @@ class TestGetFilteredSpeakers:
         mock_config.return_value.resolve.return_value = "test"
 
         mock_vc = Mock()
-        doc_index = pd.DataFrame({
-            "person_id": ["p1"],
-            "chamber_abbrev": ["fk"]  # lowercase in data
-        })
+        doc_index = pd.DataFrame({"person_id": ["p1"], "chamber_abbrev": ["fk"]})  # lowercase in data
         mock_vc.document_index = doc_index
         mock_load.return_value = mock_vc
 
@@ -194,10 +187,7 @@ class TestGetFilteredSpeakers:
         """Test _get_filtered_speakers with column-based filter."""
         mock_config.return_value.resolve.return_value = "test"
 
-        df = pd.DataFrame({
-            "gender": ["M", "F", "M"],
-            "name": ["Alice", "Bob", "Charlie"]
-        })
+        df = pd.DataFrame({"gender": ["M", "F", "M"], "name": ["Alice", "Bob", "Charlie"]})
 
         corpus = Corpus()
         result = corpus._get_filtered_speakers({"gender": ["M"]}, df)  # pylint: disable=protected-access
@@ -242,10 +232,7 @@ class TestGetSpeakers:
         mock_pc = Mock()
         mock_pc.load.return_value = mock_pc
         mock_pc.persons_of_interest = pd.DataFrame({"person_id": ["p1", "p2"]})
-        mock_pc.decode.return_value = pd.DataFrame(
-            {"name": ["Alice", "Bob"]},
-            index=["p1", "p2"]
-        )
+        mock_pc.decode.return_value = pd.DataFrame({"name": ["Alice", "Bob"]}, index=["p1", "p2"])
         mock_pc_class.return_value = mock_pc
 
         corpus = Corpus()
@@ -265,10 +252,7 @@ class TestGetSpeakers:
         mock_pc = Mock()
         mock_pc.load.return_value = mock_pc
         mock_pc.persons_of_interest = pd.DataFrame({"person_id": ["p1", "p2"]})
-        decoded_df = pd.DataFrame(
-            {"name": ["Alice", "Bob"], "gender": ["F", "M"]},
-            index=["p1", "p2"]
-        )
+        decoded_df = pd.DataFrame({"name": ["Alice", "Bob"], "gender": ["F", "M"]}, index=["p1", "p2"])
         mock_pc.decode.return_value = decoded_df
         mock_pc_class.return_value = mock_pc
 
@@ -287,10 +271,9 @@ class TestGetChamberMeta:
         mock_config.return_value.resolve.return_value = "test"
 
         mock_pc = Mock()
-        chamber_df = pd.DataFrame({
-            "chamber_abbrev": ["FK", " ", "AK", ""],
-            "name": ["First", "Empty1", "Second", "Empty2"]
-        })
+        chamber_df = pd.DataFrame(
+            {"chamber_abbrev": ["FK", " ", "AK", ""], "name": ["First", "Empty1", "Second", "Empty2"]}
+        )
         mock_pc.chamber = chamber_df
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
@@ -311,10 +294,7 @@ class TestGetOfficeTypeMeta:
         mock_config.return_value.resolve.return_value = "test"
 
         mock_pc = Mock()
-        office_df = pd.DataFrame(
-            {"office_type": ["Minister", "MP"]},
-            index=[1, 2]
-        )
+        office_df = pd.DataFrame({"office_type": ["Minister", "MP"]}, index=[1, 2])
         mock_pc.office_type = office_df
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
@@ -336,10 +316,7 @@ class TestGetSubOfficeTypeMeta:
         mock_config.return_value.resolve.return_value = "test"
 
         mock_pc = Mock()
-        sub_office_df = pd.DataFrame(
-            {"sub_office_type": ["Deputy", "State Secretary"]},
-            index=[1, 2]
-        )
+        sub_office_df = pd.DataFrame({"sub_office_type": ["Deputy", "State Secretary"]}, index=[1, 2])
         mock_pc.sub_office_type = sub_office_df
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
@@ -396,6 +373,7 @@ class TestGetSpeaker:
     @patch('api_swedeb.api.utils.corpus.load_speech_index')
     def test_get_speaker_success(self, mock_config, mock_pc_class, mock_load_index, mock_repo_class, mock_load_dtm):
         """Test get_speaker returns speaker name."""
+
         # ConfigValue calls: dtm.tag, dtm.folder, metadata.filename, vrt.folder (init), display.labels.speaker.unknown (method)
         def config_side_effect(key):
             mock_val = Mock()
@@ -404,6 +382,7 @@ class TestGetSpeaker:
             else:
                 mock_val.resolve.return_value = "test"
             return mock_val
+
         mock_config.side_effect = config_side_effect
 
         mock_pc = Mock()
@@ -411,10 +390,7 @@ class TestGetSpeaker:
         mock_pc.__getitem__ = Mock(return_value={"name": "Alice Smith"})
         mock_pc_class.return_value = mock_pc
 
-        doc_index = pd.DataFrame({
-            "person_id": ["p1"],
-            "document_name": ["doc_123"]
-        }, index=[0])
+        doc_index = pd.DataFrame({"person_id": ["p1"], "document_name": ["doc_123"]}, index=[0])
         mock_load_index.return_value = doc_index
 
         # Mock vectorized corpus
@@ -434,8 +410,11 @@ class TestGetSpeaker:
     @patch('api_swedeb.api.utils.corpus.CorpusLoader')
     @patch('api_swedeb.api.utils.corpus.sr.SpeechTextRepository')
     @patch('api_swedeb.api.utils.corpus.load_speech_index')
-    def test_get_speaker_unknown_person(self, mock_config, mock_pc_class, mock_load_index, mock_repo_class, mock_load_dtm):
+    def test_get_speaker_unknown_person(
+        self, mock_config, mock_pc_class, mock_load_index, mock_repo_class, mock_load_dtm
+    ):
         """Test get_speaker returns Unknown when person_id is 'unknown'."""
+
         def config_side_effect(key):
             mock_val = Mock()
             if "unknown" in key:
@@ -443,16 +422,14 @@ class TestGetSpeaker:
             else:
                 mock_val.resolve.return_value = "test"
             return mock_val
+
         mock_config.side_effect = config_side_effect
 
         mock_pc = Mock()
         mock_pc.load.return_value = mock_pc
         mock_pc_class.return_value = mock_pc
 
-        doc_index = pd.DataFrame({
-            "person_id": ["unknown"],
-            "document_name": ["doc_123"]
-        }, index=[0])
+        doc_index = pd.DataFrame({"person_id": ["unknown"], "document_name": ["doc_123"]}, index=[0])
         mock_load_index.return_value = doc_index
 
         # Mock vectorized corpus
@@ -472,8 +449,11 @@ class TestGetSpeaker:
     @patch('api_swedeb.api.utils.corpus.CorpusLoader')
     @patch('api_swedeb.api.utils.corpus.sr.SpeechTextRepository')
     @patch('api_swedeb.api.utils.corpus.load_speech_index')
-    def test_get_speaker_key_index_none(self, mock_config, mock_pc_class, mock_load_index, mock_repo_class, mock_load_dtm):
+    def test_get_speaker_key_index_none(
+        self, mock_config, mock_pc_class, mock_load_index, mock_repo_class, mock_load_dtm
+    ):
         """Test get_speaker returns Unknown when key_index is None."""
+
         def config_side_effect(key):
             mock_val = Mock()
             if "unknown" in key:
@@ -481,6 +461,7 @@ class TestGetSpeaker:
             else:
                 mock_val.resolve.return_value = "test"
             return mock_val
+
         mock_config.side_effect = config_side_effect
 
         mock_pc = Mock()
@@ -509,6 +490,7 @@ class TestGetSpeaker:
     @patch('api_swedeb.api.utils.corpus.load_speech_index')
     def test_get_speaker_index_error(self, mock_config, mock_pc_class, mock_load_index, mock_repo_class, mock_load_dtm):
         """Test get_speaker returns Unknown on IndexError."""
+
         def config_side_effect(key):
             mock_val = Mock()
             if "unknown" in key:
@@ -516,6 +498,7 @@ class TestGetSpeaker:
             else:
                 mock_val.resolve.return_value = "test"
             return mock_val
+
         mock_config.side_effect = config_side_effect
 
         mock_pc = Mock()
@@ -524,10 +507,7 @@ class TestGetSpeaker:
         mock_pc.__getitem__ = Mock(side_effect=IndexError("Invalid person_id"))
         mock_pc_class.return_value = mock_pc
 
-        doc_index = pd.DataFrame({
-            "person_id": ["invalid_person"],
-            "document_name": ["doc_123"]
-        }, index=[0])
+        doc_index = pd.DataFrame({"person_id": ["invalid_person"], "document_name": ["doc_123"]}, index=[0])
         mock_load_index.return_value = doc_index
 
         # Mock vectorized corpus

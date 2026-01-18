@@ -1,8 +1,7 @@
 """Unit tests for api_swedeb.api.utils.ngrams module."""
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
-import pandas as pd
 import pytest
 
 from api_swedeb.api.utils.common_params import CommonQueryParams

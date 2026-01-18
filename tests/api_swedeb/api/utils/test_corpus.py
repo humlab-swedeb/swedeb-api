@@ -30,10 +30,7 @@ class TestCorpusInit:
     def test_init_with_opts(self):
         """Test Corpus initialization with provided options."""
         corpus = Corpus(
-            dtm_tag="v2.0",
-            dtm_folder="/custom/dtm",
-            metadata_filename="custom.db",
-            tagged_corpus_folder="/custom/vrt"
+            dtm_tag="v2.0", dtm_folder="/custom/dtm", metadata_filename="custom.db", tagged_corpus_folder="/custom/vrt"
         )
 
         assert corpus.dtm_tag == "v2.0"
@@ -50,7 +47,7 @@ class TestCorpusInit:
 
         corpus = Corpus(loader=mock_loader)
 
-        assert corpus._loader is mock_loader
+        assert corpus._loader is mock_loader  # pylint: disable=protected-access
 
 
 class TestCorpusProperties:
@@ -94,7 +91,6 @@ class TestCorpusProperties:
         result = corpus.document_index
 
         assert result is mock_di
-
 
 
 class TestCorpusWordMethods:
@@ -169,14 +165,13 @@ class TestCorpusMetadataMethods:
         corpus = Corpus()
 
         # Mock the metadata service
-        corpus._metadata_service.get_party_meta = MagicMock(return_value=pd.DataFrame({
-            "party": ["A", "B"],
-            "sort_order": [1, 2]
-        }))
+        corpus._metadata_service.get_party_meta = MagicMock(  # pylint: disable=protected-access
+            return_value=pd.DataFrame({"party": ["A", "B"], "sort_order": [1, 2]})
+        )
 
         result = corpus.get_party_meta()
 
-        corpus._metadata_service.get_party_meta.assert_called_once()
+        corpus._metadata_service.get_party_meta.assert_called_once()  # pylint: disable=protected-access
         assert len(result) == 2
         assert "party" in result.columns
 
@@ -189,14 +184,13 @@ class TestCorpusMetadataMethods:
         corpus = Corpus()
 
         # Mock the metadata service
-        corpus._metadata_service.get_gender_meta = MagicMock(return_value=pd.DataFrame({
-            "gender": ["M", "F"],
-            "gender_id": [1, 2]
-        }))
+        corpus._metadata_service.get_gender_meta = MagicMock(  # pylint: disable=protected-access
+            return_value=pd.DataFrame({"gender": ["M", "F"], "gender_id": [1, 2]})
+        )
 
         result = corpus.get_gender_meta()
 
-        corpus._metadata_service.get_gender_meta.assert_called_once()
+        corpus._metadata_service.get_gender_meta.assert_called_once()  # pylint: disable=protected-access
         assert "gender_id" in result.columns
 
 

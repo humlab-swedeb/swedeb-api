@@ -157,7 +157,7 @@ class TestSpeechTextService:
 
         service = SpeechTextService(df)
 
-        result = service._create_speech(metadata={}, utterances=[])  # pylint: disable=protected-access 
+        result = service._create_speech(metadata={}, utterances=[])  # pylint: disable=protected-access
 
         assert result == {}
 

@@ -5,10 +5,9 @@ import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
-from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core import codecs as md
-from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech import Speech
 
 # pylint: disable=cell-var-from-loop, too-many-public-methods
@@ -17,11 +16,13 @@ from api_swedeb.core.speech import Speech
 class Corpus:
     """Corpus service providing access to parliamentary speech data.
 
-    This class acts as a facade over CorpusLoader and provides domain-specific
-    methods for querying speech data, metadata, and word trends.
+    This class acts as a facade over CorpusLoader and specialized services:
+    - MetadataService: metadata queries (parties, genders, chambers, office types)
+    - WordTrendsService: word analysis and trends
+    - SearchService: speech and speaker retrieval
 
-    Note: This class delegates resource loading to CorpusLoader. In future
-    phases, individual methods will be extracted into focused services.
+    All business logic is delegated to focused services, maintaining a clean
+    separation of concerns while preserving backward compatibility.
     """
 
     def __init__(self, loader: CorpusLoader | None = None, **opts):
@@ -111,13 +112,20 @@ class Corpus:
         """Get word trend results via WordTrendsService."""
         return self._word_trends_service.get_word_trend_results(search_terms, filter_opts, normalize)
 
-    # FIXME: refactor get_anforanden_for_word_trends & get_anforanden to a single method
     def get_anforanden_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
-        """Get speeches for word trends via WordTrendsService."""
+        """Get speeches for word trends analysis via WordTrendsService.
+
+        Returns speeches matching word trends search parameters, optimized for
+        vocabulary analysis across multiple terms.
+        """
         return self._word_trends_service.get_anforanden_for_word_trends(selected_terms, filter_opts)
 
     def get_anforanden(self, selections: dict) -> pd.DataFrame:
-        """Get speeches via SearchService."""
+        """Get speeches matching selection criteria via SearchService.
+
+        Returns speeches for general search queries (e.g., speaker, date, chamber filters).
+        See SearchService for parameter details.
+        """
         return self._search_service.get_anforanden(selections)
 
     def _get_filtered_speakers(self, selection_dict: dict[str, Any], df: pd.DataFrame) -> pd.DataFrame:

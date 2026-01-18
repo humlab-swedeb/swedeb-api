@@ -8,13 +8,13 @@ import scipy
 from scipy import sparse as sp
 
 from penelope import utility as pu
-
-from ..document_index import (
+from penelope.corpus.document_index import (
     KNOWN_TIME_PERIODS,
     DocumentIndexHelper,
     TemporalKeySpecifier,
     create_temporal_key_categorizer,
 )
+
 from .interface import IVectorizedCorpus, VectorizedCorpusError
 
 T = TypeVar("T", int, str)

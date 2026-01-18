@@ -117,7 +117,7 @@ class TestSweDebTrendsData:
         opts = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=["person_id"])
 
         with patch.object(SweDebTrendsData.__bases__[0], '_transform_corpus', return_value=mock_corpus):
-            result = trends_data._transform_corpus(opts)
+            _ = trends_data._transform_corpus(opts)  # pylint: disable=protected-access
 
         mock_corpus.replace_document_index.assert_called_once()
 
@@ -372,7 +372,7 @@ class TestComputeWordTrends:
         }))
         mock_trends_class.return_value = mock_trends_instance
 
-        result = compute_word_trends(
+        _ = compute_word_trends(
             vectorized_corpus=mock_corpus,
             person_codecs=mock_codecs,
             search_terms=["democracy"],

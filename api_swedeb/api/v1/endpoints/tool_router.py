@@ -1,19 +1,21 @@
+import io
+import zipfile
 from typing import Annotated, Any, Literal
 
 import fastapi
 from fastapi import Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from pandas import DataFrame
 
-from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.dependencies import get_corpus_decoder, get_cwb_corpus, get_shared_corpus
+from api_swedeb.api.services.ngrams_service import NGramsService
+from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.kwic import get_kwic_data
-from api_swedeb.api.utils.ngrams import get_ngrams
-from api_swedeb.api.utils.speech import get_speech_text_by_id, get_speech_zip, get_speeches
 from api_swedeb.api.utils.word_trends import get_search_hit_results, get_word_trend_speeches, get_word_trends
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
+from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
@@ -94,11 +96,13 @@ async def get_ngram_results(
     ),
     corpus: Any = Depends(get_cwb_corpus),
 ) -> NGramResult:
-    """Get ngrams"""
+    """Get n-grams from corpus"""
     keywords: str | list[str] = search
     if isinstance(keywords, str):
         keywords = keywords.split()
-    return get_ngrams(
+
+    service = NGramsService()
+    return service.get_ngrams(
         search_term=keywords,
         commons=commons,
         corpus=corpus,
@@ -113,21 +117,50 @@ async def get_ngram_results(
 async def get_speeches_result(
     commons: CommonParams,
 ) -> SpeechesResult:
-    return get_speeches(commons, get_shared_corpus())
+    """Get speeches matching filter criteria"""
+    corpus = get_shared_corpus()
+    df: DataFrame = corpus.get_anforanden(selections=commons.get_filter_opts(True))
+    rows: list[SpeechesResultItem] = [SpeechesResultItem(**row) for row in df.to_dict(orient="records")]  # type: ignore
+    return SpeechesResult(speech_list=rows)
 
 
 # FIXME: rename endpoint to /speeches/{speech_id}/text
 @router.get("/speeches/{speech_id}", response_model=SpeechesTextResultItem)
 async def get_speech_by_id_result(speech_id: str) -> SpeechesTextResultItem:
-    """eg. i-246211bdfc60c4fd-265"""
-    return get_speech_text_by_id(speech_id, get_shared_corpus())
+    """Get speech text by ID (e.g., i-246211bdfc60c4fd-265)"""
+    corpus = get_shared_corpus()
+    speech = corpus.get_speech(speech_id)
+    return SpeechesTextResultItem(
+        speaker_note=speech.speaker_note,
+        speech_text=speech.text,
+        page_number=speech.page_number,
+    )
 
 
 @router.post("/speech_download/")
 async def get_zip(ids: list = Body(..., min_length=1, max_length=100)) -> StreamingResponse:
+    """Download speeches as ZIP file"""
     if not ids:
         raise HTTPException(status_code=400, detail="Speech ids are required")
-    return get_speech_zip(ids, get_shared_corpus())
+
+    corpus = get_shared_corpus()
+
+    file_and_speech = []
+    for protocol_id in ids:
+        speaker = corpus.get_speaker(protocol_id)
+        file_and_speech.append((f"{speaker}_{protocol_id}.txt", corpus.get_speech(protocol_id).text.encode("utf-8")))
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_name, content in file_and_speech:
+            zipf.writestr(file_name, content)
+
+    buffer.seek(0)
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=speeches.zip"},
+    )
 
 
 @router.get("/topics")
