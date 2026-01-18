@@ -15,7 +15,6 @@ class TestDocumentIndexLazyLoad:
     # Note: Line 55 (return self.__lazy_document_index.value) appears to be dead code
     # The vectorized_corpus Lazy object is always initialized before document_index is accessed
     # Therefore is_initialized always returns True and line 54 is always executed
-    pass
 
 
 class TestGetWordTrendResults:
@@ -128,7 +127,7 @@ class TestGetFilteredSpeakers:
         df = pd.DataFrame({"name": ["Alice", "Bob", "Charlie"]}, index=["p1", "p2", "p3"])
 
         corpus = Corpus()
-        result = corpus._get_filtered_speakers({"party_id": [10]}, df)
+        result = corpus._get_filtered_speakers({"party_id": [10]}, df) # pylint: disable=protected-access
 
         # Should only include p1 and p3
         assert len(result) == 2
@@ -187,7 +186,7 @@ class TestGetFilteredSpeakers:
         corpus = Corpus()
         # Force vectorized_corpus to be initialized
         _ = corpus.vectorized_corpus
-        result = corpus._get_filtered_speakers({"chamber_abbrev": ["FK"]}, df)
+        result = corpus._get_filtered_speakers({"chamber_abbrev": ["FK"]}, df)  # pylint: disable=protected-access
 
         # Should include p1 and p3 who have FK chamber
         assert len(result) == 2
@@ -214,7 +213,7 @@ class TestGetFilteredSpeakers:
         df = pd.DataFrame({"name": ["Alice"]}, index=["p1"])
 
         corpus = Corpus()
-        result = corpus._get_filtered_speakers({"chamber_abbrev": "FK"}, df)
+        result = corpus._get_filtered_speakers({"chamber_abbrev": "FK"}, df)  # pylint: disable=protected-access
 
         assert len(result) == 1
 
@@ -229,7 +228,7 @@ class TestGetFilteredSpeakers:
         })
 
         corpus = Corpus()
-        result = corpus._get_filtered_speakers({"gender": ["M"]}, df)
+        result = corpus._get_filtered_speakers({"gender": ["M"]}, df)  # pylint: disable=protected-access
 
         assert len(result) == 2
 
@@ -242,7 +241,7 @@ class TestGetFilteredSpeakers:
         df.index.name = "person_id"
 
         corpus = Corpus()
-        result = corpus._get_filtered_speakers({"person_id": ["p1", "p3"]}, df)
+        result = corpus._get_filtered_speakers({"person_id": ["p1", "p3"]}, df)  # pylint: disable=protected-access
 
         assert len(result) == 2
         assert "p1" in result.index
@@ -256,7 +255,7 @@ class TestGetFilteredSpeakers:
 
         corpus = Corpus()
         with pytest.raises(KeyError, match="Unknown filter key"):
-            corpus._get_filtered_speakers({"unknown_key": ["value"]}, df)
+            corpus._get_filtered_speakers({"unknown_key": ["value"]}, df)  # pylint: disable=protected-access
 
 
 class TestGetSpeakers:

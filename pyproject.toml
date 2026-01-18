@@ -150,6 +150,7 @@ ignore-paths = [
     ".pytest_cache",
     ".ruff_cache",
     "tests/test_data",
+    ".venv",
 ]
 
 [tool.pylint.format]
