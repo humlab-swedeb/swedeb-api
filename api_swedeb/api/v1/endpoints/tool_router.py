@@ -5,7 +5,7 @@ from fastapi import Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.dependencies import get_corpus_decoder, get_cwb_corpus, get_shared_corpus
+from api_swedeb.api.dependencies import get_corpus_decoder, get_cwb_corpus, get_shared_corpus
 from api_swedeb.api.utils.kwic import get_kwic_data
 from api_swedeb.api.utils.ngrams import get_ngrams
 from api_swedeb.api.utils.speech import get_speech_text_by_id, get_speech_zip, get_speeches

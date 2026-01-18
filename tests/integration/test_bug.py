@@ -8,7 +8,7 @@ from httpx import Response
 
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.api.utils.dependencies import get_shared_corpus
+from api_swedeb.api.dependencies import get_shared_corpus
 from api_swedeb.api.utils.word_trends import get_word_trends
 from api_swedeb.core.word_trends import compute_word_trends
 from api_swedeb.schemas.word_trends_schema import WordTrendsResult
