@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_text import SpeechTextRepository, SpeechTextService
+from api_swedeb.core.speech_text import SpeechTextRepository, SpeechTextService, Loader
 
 
 def create_basic_document_index():
@@ -370,9 +370,9 @@ class TestSpeechTextRepository2:
 
     @patch('api_swedeb.core.speech_text.sqlite3.connect')
     @patch('api_swedeb.core.speech_text.read_sql_table')
-    def test_speaker_note_id2note_success(self, mock_read_sql):
+    def test_speaker_note_id2note_success(self, mock_read_sql, connect_mock):  # pylint: disable=unused-argument
         """Test speaker_note_id2note loads notes from database."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         mock_codecs.filename = "test.db"
 
@@ -420,7 +420,7 @@ class TestSpeechTextRepository2:
 
     def test_speech_with_prot_prefix(self):
         """Test speech method loads speech with prot- prefix."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_loader.load.return_value = (
             {"name": "prot-1234", "date": "2020-01-01"},
             [{"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}]
@@ -453,7 +453,7 @@ class TestSpeechTextRepository2:
 
     def test_speech_with_numeric_id(self):
         """Test speech method converts numeric id to document_name."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_loader.load.return_value = (
             {"name": "prot-1234", "date": "2020-01-01"},
             [{"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}]
@@ -485,7 +485,7 @@ class TestSpeechTextRepository2:
 
     def test_speech_file_not_found(self):
         """Test speech method handles FileNotFoundError."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_loader.load.side_effect = FileNotFoundError("File not found")
 
         mock_codecs = Mock()
@@ -500,7 +500,7 @@ class TestSpeechTextRepository2:
 
     def test_speech_general_exception(self):
         """Test speech method handles general exceptions."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_loader.load.side_effect = ValueError("Invalid data")
 
         mock_codecs = Mock()
@@ -515,7 +515,7 @@ class TestSpeechTextRepository2:
     @patch('api_swedeb.core.speech_text.fix_whitespace')
     def test_to_text(self, mock_fix_whitespace):
         """Test to_text converts speech paragraphs to text."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = create_basic_document_index()
 
@@ -695,10 +695,9 @@ class TestSpeechTextRepository:
 
         mock_zip_loader.assert_called_once_with("path/to/archive.zip")
 
-    @patch('api_swedeb.core.speech_text.isinstance', return_value=True)
     def test_init_with_loader_source(self):
         """Test initialization with Loader instance."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = create_basic_document_index()
 
@@ -727,7 +726,7 @@ class TestSpeechTextRepository:
 
     def test_speech_id2id_property(self):
         """Test speech_id2id cached property."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({
             "document_id": [0, 1],
@@ -745,7 +744,7 @@ class TestSpeechTextRepository:
 
     def test_get_speech_info_with_int_key(self):
         """Test get_speech_info with integer document_id."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
 
@@ -767,7 +766,7 @@ class TestSpeechTextRepository:
 
     def test_get_speech_info_with_invalid_key_type(self):
         """Test get_speech_info raises ValueError for invalid key type."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
@@ -778,7 +777,7 @@ class TestSpeechTextRepository:
 
     def test_get_speech_info_key_not_found(self):
         """Test get_speech_info raises KeyError when key not found."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
@@ -789,7 +788,7 @@ class TestSpeechTextRepository:
 
     def test_get_speech_info_person_not_found_uses_person_id(self):
         """Test get_speech_info uses person_id when person not found in codecs."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(side_effect=KeyError("person not found"))
 
@@ -808,7 +807,7 @@ class TestSpeechTextRepository:
 
     def test_get_key_index_with_int(self):
         """Test get_key_index with integer."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
@@ -818,7 +817,7 @@ class TestSpeechTextRepository:
 
     def test_get_key_index_with_digit_string(self):
         """Test get_key_index with digit string."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
@@ -828,7 +827,7 @@ class TestSpeechTextRepository:
 
     def test_get_key_index_with_prot_prefix(self):
         """Test get_key_index with prot- prefix."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0, 1], "document_name": ["prot-1234_1", "prot-1234_2"]})
 
@@ -838,7 +837,7 @@ class TestSpeechTextRepository:
 
     def test_get_key_index_with_i_prefix(self):
         """Test get_key_index with i- prefix (speech_id)."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0, 1], "speech_id": ["i-001", "i-002"]})
 
@@ -848,7 +847,7 @@ class TestSpeechTextRepository:
 
     def test_get_key_index_unknown_format(self):
         """Test get_key_index raises ValueError for unknown format."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
@@ -859,9 +858,9 @@ class TestSpeechTextRepository:
 
     @patch('api_swedeb.core.speech_text.sqlite3.connect')
     @patch('api_swedeb.core.speech_text.read_sql_table')
-    def test_speaker_note_id2note_success(self, mock_read_sql):
+    def test_speaker_note_id2note_success(self, mock_read_sql, connection_mock):  # pylint: disable=unused-argument
         """Test speaker_note_id2note loads notes from database."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         mock_codecs.filename = "test.db"
 
@@ -884,7 +883,7 @@ class TestSpeechTextRepository:
 
     def test_speaker_note_id2note_no_filename(self):
         """Test speaker_note_id2note returns empty dict when no filename."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         mock_codecs.filename = None
 
@@ -898,7 +897,7 @@ class TestSpeechTextRepository:
     @patch('api_swedeb.core.speech_text.sqlite3.connect')
     def test_speaker_note_id2note_exception_handling(self, mock_connect):
         """Test speaker_note_id2note handles exceptions gracefully."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         mock_codecs.filename = "test.db"
         mock_connect.side_effect = Exception("Database error")
@@ -912,7 +911,7 @@ class TestSpeechTextRepository:
 
     def test_speech_with_prot_prefix(self):
         """Test speech method loads speech with prot- prefix."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_loader.load.return_value = (
             {"name": "prot-1234", "date": "2020-01-01"},
             [{"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}]
@@ -977,7 +976,7 @@ class TestSpeechTextRepository:
 
     def test_speech_file_not_found(self):
         """Test speech method handles FileNotFoundError."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_loader.load.side_effect = FileNotFoundError("File not found")
 
         mock_codecs = Mock()
@@ -987,12 +986,12 @@ class TestSpeechTextRepository:
 
         speech = repo.speech("prot-1234_1")
 
-        assert "error" in speech.data
-        assert "not found" in speech.data["name"]
+        assert speech.error is not None
+        assert "not found" in speech.error
 
     def test_speech_general_exception(self):
         """Test speech method handles general exceptions."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_loader.load.side_effect = ValueError("Invalid data")
 
         mock_codecs = Mock()
@@ -1001,13 +1000,13 @@ class TestSpeechTextRepository:
         repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
 
         speech = repo.speech("prot-1234_1")
-
-        assert "error" in speech.data
+        assert speech.error is not None
+        assert "Invalid data" in speech.error
 
     @patch('api_swedeb.core.speech_text.fix_whitespace')
     def test_to_text(self, mock_fix_whitespace):
         """Test to_text converts speech paragraphs to text."""
-        mock_loader = Mock()
+        mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 

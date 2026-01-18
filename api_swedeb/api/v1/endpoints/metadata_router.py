@@ -4,8 +4,9 @@ import fastapi
 from fastapi import Depends
 from pandas import DataFrame
 
-from api_swedeb.api.dependencies import get_corpus_loader, get_metadata_service
+from api_swedeb.api.dependencies import get_corpus_loader, get_metadata_service, get_search_service
 from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.utils.common_params import SpeakerQueryParams
 from api_swedeb.schemas.metadata_schema import (
     ChamberItem,
@@ -92,10 +93,10 @@ async def get_meta_sub_office_types(metadata_service: MetadataService = Depends(
 
 
 @router.get("/speakers", response_model=SpeakerResult)
-async def get_meta_speakers(query_params: SpeakerParams, metadata_service: MetadataService = Depends(get_metadata_service)):
+async def get_meta_speakers(query_params: SpeakerParams, search_service: SearchService = Depends(get_search_service)):
     """Get speakers matching filter criteria"""
     selection_params: dict[str, list[int]] = query_params.get_filter_opts(include_year=False)
-    df: DataFrame = metadata_service.get_speakers(selections=selection_params)
+    df: DataFrame = search_service.get_speakers(selections=selection_params)
     data: list[dict[str, Any]] = df.to_dict(orient="records")  # type: ignore
     speaker_list: list[SpeakerItem] = [SpeakerItem(**row) for row in data]
     return SpeakerResult(speaker_list=speaker_list)

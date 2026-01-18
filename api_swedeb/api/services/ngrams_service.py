@@ -19,7 +19,6 @@ class NGramsService:
 
     def __init__(self):
         """Initialize NGramsService."""
-        pass
 
     def get_ngrams(
         self,
