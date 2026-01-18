@@ -93,27 +93,34 @@ class Codec:
     def reverse(self) -> "Codec":
         """Return a codec with direction swapped and mapping inverted.
 
-        Note: Requires an invertible mapping (values must be unique).
+        Note: This assumes the mapping is invertible (values unique).
         """
-        fx = self.get_fx()
 
-        if not isinstance(fx, Mapping):
-            raise TypeError("Codec.reverse(): can only reverse Mapping-based codecs.")
+        if self.fx is not None:  # Verify that fx is invertible
+            if not isinstance(self.fx, dict):
+                raise TypeError("Codec.reverse(): can only reverse Mapping-based codecs.")
 
-        reversed_fx: dict = {}
-        for k, v in fx.items():
-            if v in reversed_fx:
-                raise ValueError(
-                    f"Codec.reverse(): mapping not invertible; duplicate value {v!r}."
-                )
-            reversed_fx[v] = k
+        def invert_map(m: dict) -> dict:
+            inv = {}
+            for k, v in m.items():
+                if v in inv:
+                    raise ValueError(f"Codec.reverse(): mapping is not invertible; duplicate value {v!r}.")
+                inv[v] = k
+            return inv
+
+        def lazy_reversed_fx_factory(_from: str, _to: str):
+            fx = self.get_fx()
+            if not isinstance(fx, dict):
+                raise TypeError("Codec.reverse(): can only reverse Mapping-based codecs.")
+            return invert_map(fx)
 
         return Codec(
             table=self.table,
             type="encode" if self.type == "decode" else "decode",
             from_column=self.to_column,
             to_column=self.from_column,
-            fx=reversed_fx,
+            fx_factory=None if self.fx else lazy_reversed_fx_factory,
+            fx=invert_map(self.fx) if self.fx else None,
             default=self.default,
         )
 
