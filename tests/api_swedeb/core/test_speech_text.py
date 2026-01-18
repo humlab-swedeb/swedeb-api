@@ -157,7 +157,7 @@ class TestSpeechTextService:
 
         service = SpeechTextService(df)
 
-        result = service._create_speech(metadata={}, utterances=[])
+        result = service._create_speech(metadata={}, utterances=[])  # pylint: disable=protected-access 
 
         assert result == {}
 
@@ -178,7 +178,7 @@ class TestSpeechTextService:
             {"speaker_note_id": "note1", "who": "Alice", "u_id": "u2", "paragraphs": ["p3"], "num_tokens": 12, "num_words": 9, "page_number": 2}
         ]
 
-        speech = service._create_speech(metadata=metadata, utterances=utterances)
+        speech = service._create_speech(metadata=metadata, utterances=utterances)  # pylint: disable=protected-access
 
         assert speech["who"] == "Alice"
         assert speech["speaker_note_id"] == "note1"
@@ -191,7 +191,7 @@ class TestSpeechTextService:
         assert speech["date"] == "2020-01-01"
 
 
-class TestSpeechTextRepository:
+class TestSpeechTextRepository2:
     """Tests for SpeechTextRepository class."""
 
     @patch('api_swedeb.core.speech_text.ZipLoader')
@@ -200,7 +200,7 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source="path/to/archive.zip", person_codecs=mock_codecs, document_index=df)
+        SpeechTextRepository(source="path/to/archive.zip", person_codecs=mock_codecs, document_index=df)
 
         mock_zip_loader.assert_called_once_with("path/to/archive.zip")
 
@@ -272,7 +272,7 @@ class TestSpeechTextRepository:
         repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
 
         with pytest.raises(ValueError, match="key must be int or str"):
-            repo.get_speech_info([1, 2, 3])
+            repo.get_speech_info([1, 2, 3])  # type: ignore
 
     def test_get_speech_info_key_not_found(self):
         """Test get_speech_info raises KeyError when key not found."""
@@ -370,7 +370,7 @@ class TestSpeechTextRepository:
 
     @patch('api_swedeb.core.speech_text.sqlite3.connect')
     @patch('api_swedeb.core.speech_text.read_sql_table')
-    def test_speaker_note_id2note_success(self, mock_read_sql, mock_connect):
+    def test_speaker_note_id2note_success(self, mock_read_sql):
         """Test speaker_note_id2note loads notes from database."""
         mock_loader = Mock()
         mock_codecs = Mock()
@@ -648,7 +648,7 @@ class TestSpeechTextRepository:
 
         service = SpeechTextService(df)
 
-        result = service._create_speech(metadata={}, utterances=[])
+        result = service._create_speech(metadata={}, utterances=[])  # pylint: disable=protected-access
 
         assert result == {}
 
@@ -669,7 +669,7 @@ class TestSpeechTextRepository:
             {"speaker_note_id": "note1", "who": "Alice", "u_id": "u2", "paragraphs": ["p3"], "num_tokens": 12, "num_words": 9, "page_number": 2}
         ]
 
-        speech = service._create_speech(metadata=metadata, utterances=utterances)
+        speech = service._create_speech(metadata=metadata, utterances=utterances)  # pylint: disable=protected-access
 
         assert speech["who"] == "Alice"
         assert speech["speaker_note_id"] == "note1"
@@ -691,12 +691,12 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [1], "document_name": ["prot-1234_1"]})
 
-        repo = SpeechTextRepository(source="path/to/archive.zip", person_codecs=mock_codecs, document_index=df)
+        _ = SpeechTextRepository(source="path/to/archive.zip", person_codecs=mock_codecs, document_index=df)
 
         mock_zip_loader.assert_called_once_with("path/to/archive.zip")
 
     @patch('api_swedeb.core.speech_text.isinstance', return_value=True)
-    def test_init_with_loader_source(self, mock_isinstance):
+    def test_init_with_loader_source(self):
         """Test initialization with Loader instance."""
         mock_loader = Mock()
         mock_codecs = Mock()
@@ -774,7 +774,7 @@ class TestSpeechTextRepository:
         repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
 
         with pytest.raises(ValueError, match="key must be int or str"):
-            repo.get_speech_info([1, 2, 3])
+            repo.get_speech_info([1, 2, 3])  # type: ignore
 
     def test_get_speech_info_key_not_found(self):
         """Test get_speech_info raises KeyError when key not found."""
@@ -859,7 +859,7 @@ class TestSpeechTextRepository:
 
     @patch('api_swedeb.core.speech_text.sqlite3.connect')
     @patch('api_swedeb.core.speech_text.read_sql_table')
-    def test_speaker_note_id2note_success(self, mock_read_sql, mock_connect):
+    def test_speaker_note_id2note_success(self, mock_read_sql):
         """Test speaker_note_id2note loads notes from database."""
         mock_loader = Mock()
         mock_codecs = Mock()

@@ -9,8 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 from loguru import logger
 
-from api_swedeb.api import metadata_router, tool_router
+from api_swedeb.api.v1.endpoints import tool_router
 from api_swedeb.api.utils import corpus as api_swedeb
+from api_swedeb.api.v1.endpoints import metadata_router
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 
