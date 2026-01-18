@@ -1,74 +1,96 @@
 # type: ignore
-from functools import cached_property
 from typing import Any
+
 import pandas as pd
 
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core import codecs as md
-from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
-from api_swedeb.core.load import load_dtm_corpus, load_speech_index
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
-from api_swedeb.core.utility import Lazy, replace_by_patterns
+from api_swedeb.core.utility import replace_by_patterns
 from api_swedeb.core.word_trends import compute_word_trends
-from penelope.corpus import IVectorizedCorpus, VectorizedCorpus
 
 # pylint: disable=cell-var-from-loop, too-many-public-methods
 
 
 class Corpus:
-    def __init__(self, **opts):
-        self.dtm_tag: str = opts.get('dtm_tag') or ConfigValue("dtm.tag").resolve()
-        self.dtm_folder: str = opts.get('dtm_folder') or ConfigValue("dtm.folder").resolve()
-        self.metadata_filename: str = opts.get('metadata_filename') or ConfigValue("metadata.filename").resolve()
-        self.tagged_corpus_folder: str = opts.get('tagged_corpus_folder') or ConfigValue("vrt.folder").resolve()
+    """Corpus service providing access to parliamentary speech data.
 
-        self.__vectorized_corpus: IVectorizedCorpus = Lazy(
-            lambda: load_dtm_corpus(folder=self.dtm_folder, tag=self.dtm_tag)
-        )
-        self.__lazy_person_codecs: md.PersonCodecs = Lazy(
-            lambda: md.PersonCodecs().load(source=self.metadata_filename),
-        )
-        self.__lazy_repository: sr.SpeechTextRepository = Lazy(
-            lambda: sr.SpeechTextRepository(
-                source=self.tagged_corpus_folder,
-                person_codecs=self.person_codecs,
-                document_index=self.document_index,
+    This class acts as a facade over CorpusLoader and provides domain-specific
+    methods for querying speech data, metadata, and word trends.
+
+    Note: This class delegates resource loading to CorpusLoader. In future
+    phases, individual methods will be extracted into focused services.
+    """
+
+    def __init__(self, loader: CorpusLoader | None = None, **opts):
+        """Initialize Corpus with optional CorpusLoader or configuration options.
+
+        Args:
+            loader: Optional CorpusLoader instance (if None, creates a new one)
+            **opts: Optional configuration overrides for CorpusLoader
+        """
+        if loader is not None:
+            self._loader = loader
+        else:
+            # Create loader with optional config overrides
+            self._loader = CorpusLoader(
+                dtm_tag=opts.get('dtm_tag'),
+                dtm_folder=opts.get('dtm_folder'),
+                metadata_filename=opts.get('metadata_filename'),
+                tagged_corpus_folder=opts.get('tagged_corpus_folder'),
             )
-        )
-        self.__lazy_document_index: pd.DataFrame = Lazy(
-            lambda: load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
-        )
-
-        self.__lazy_decoded_persons = Lazy(
-            lambda: self.metadata.decode(self.person_codecs.persons_of_interest, drop=False)
-        )
 
     @property
-    def vectorized_corpus(self) -> VectorizedCorpus:
-        return self.__vectorized_corpus.value
+    def dtm_tag(self) -> str:
+        """Get the DTM tag from the loader."""
+        return self._loader.dtm_tag
+
+    @property
+    def dtm_folder(self) -> str:
+        """Get the DTM folder from the loader."""
+        return self._loader.dtm_folder
+
+    @property
+    def metadata_filename(self) -> str:
+        """Get the metadata filename from the loader."""
+        return self._loader.metadata_filename
+
+    @property
+    def tagged_corpus_folder(self) -> str:
+        """Get the tagged corpus folder from the loader."""
+        return self._loader.tagged_corpus_folder
+
+    @property
+    def vectorized_corpus(self):
+        """Get the vectorized corpus from the loader."""
+        return self._loader.vectorized_corpus
 
     @property
     def document_index(self) -> pd.DataFrame:
-        if self.__vectorized_corpus.is_initialized:  # pylint: disable=using-constant-test
-            return self.vectorized_corpus.document_index
-        return self.__lazy_document_index.value
+        """Get the document index from the loader."""
+        return self._loader.document_index
 
     @property
     def metadata(self) -> md.PersonCodecs:
+        """Alias for person_codecs for backwards compatibility."""
         return self.person_codecs
 
     @property
-    def repository(self) -> sr.SpeechTextRepository:
-        return self.__lazy_repository.value
+    def repository(self):
+        """Get the speech text repository from the loader."""
+        return self._loader.repository
 
     @property
     def person_codecs(self) -> md.PersonCodecs:
-        return self.__lazy_person_codecs.value
+        """Get the person codecs from the loader."""
+        return self._loader.person_codecs
 
-    @cached_property
+    @property
     def decoded_persons(self) -> pd.DataFrame:
-        return self.__lazy_decoded_persons.value
+        """Get the decoded persons dataframe from the loader."""
+        return self._loader.decoded_persons
 
     def word_in_vocabulary(self, word):
         if word in self.vectorized_corpus.token2id:

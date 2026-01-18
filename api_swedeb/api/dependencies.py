@@ -4,11 +4,21 @@ import ccc
 from fastapi import Depends
 from loguru import logger
 
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 
 __shared_corpus: Corpus | None = None
+__loader: CorpusLoader | None = None
+
+
+def get_corpus_loader() -> CorpusLoader:
+    """Get the singleton CorpusLoader instance."""
+    global __loader
+    if __loader is None:
+        __loader = CorpusLoader()
+    return __loader
 
 
 def get_shared_corpus() -> Corpus:
