@@ -7,6 +7,7 @@ business logic for different domains:
 - CorpusLoader: Manages loading and caching of corpus data
 - MetadataService: Metadata queries (party, gender, chamber, office types)
 - WordTrendsService: Word trend analysis and vocabulary operations
+- NGramsService: N-grams extraction and analysis
 - SpeechService: Speech operations (retrieval, speaker queries)
 - WordService: Vocabulary and word trend operations
 - SpeakerService: Speaker queries and filtering
@@ -17,6 +18,7 @@ __all__ = [
     "CorpusLoader",
     "MetadataService",
     "WordTrendsService",
+    "NGramsService",
     "SpeechService",
     "WordService",
     "SpeakerService",

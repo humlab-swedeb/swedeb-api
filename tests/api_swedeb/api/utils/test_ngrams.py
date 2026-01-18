@@ -1,6 +1,6 @@
 """Unit tests for api_swedeb.api.utils.ngrams module."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
 import pandas as pd
 import pytest
@@ -13,17 +13,17 @@ from api_swedeb.schemas import NGramResult
 class TestGetNgrams:
     """Tests for get_ngrams function."""
 
-    @patch('api_swedeb.api.utils.ngrams.n_grams.n_grams')
-    @patch('api_swedeb.api.utils.ngrams.mappers.query_params_to_CQP_opts')
-    @patch('api_swedeb.api.utils.ngrams.mappers.ngrams_to_ngram_result')
-    def test_get_ngrams_with_string(self, mock_to_result, mock_to_opts, mock_n_grams):
+    @patch('api_swedeb.api.utils.ngrams.NGramsService')
+    def test_get_ngrams_with_string(self, mock_service_class):
         """Test get_ngrams with string search_term."""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+
         mock_corpus = Mock()
         mock_commons = CommonQueryParams()
 
-        mock_to_opts.return_value = {"target": "word"}
-        mock_n_grams.return_value = pd.DataFrame({"ngram": ["test"]})
-        mock_to_result.return_value = NGramResult(ngram_list=[])
+        expected_result = NGramResult(ngram_list=[])
+        mock_service.get_ngrams.return_value = expected_result
 
         result = get_ngrams(
             corpus=mock_corpus,
@@ -33,25 +33,18 @@ class TestGetNgrams:
 
         assert isinstance(result, NGramResult)
         assert hasattr(result, 'ngram_list')
-        mock_n_grams.assert_called_once()
-        # Verify correct opts were passed
-        mock_to_opts.assert_called_once_with(
-            mock_commons,
-            word_targets=["hello"],
-            search_target="word"
-        )
 
-    @patch('api_swedeb.api.utils.ngrams.n_grams.n_grams')
-    @patch('api_swedeb.api.utils.ngrams.mappers.query_params_to_CQP_opts')
-    @patch('api_swedeb.api.utils.ngrams.mappers.ngrams_to_ngram_result')
-    def test_get_ngrams_with_list(self, mock_to_result, mock_to_opts, mock_n_grams):
+    @patch('api_swedeb.api.utils.ngrams.NGramsService')
+    def test_get_ngrams_with_list(self, mock_service_class):
         """Test get_ngrams with list of search terms."""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+
         mock_corpus = Mock()
         mock_commons = CommonQueryParams()
 
-        mock_to_opts.return_value = {"target": "word"}
-        mock_n_grams.return_value = pd.DataFrame()
-        mock_to_result.return_value = NGramResult(ngram_list=[])
+        expected_result = NGramResult(ngram_list=[])
+        mock_service.get_ngrams.return_value = expected_result
 
         result = get_ngrams(
             corpus=mock_corpus,
@@ -61,13 +54,6 @@ class TestGetNgrams:
 
         assert isinstance(result, NGramResult)
         assert hasattr(result, 'ngram_list')
-        mock_n_grams.assert_called_once()
-        # Verify correct opts were passed for list input
-        mock_to_opts.assert_called_once_with(
-            mock_commons,
-            word_targets=["hello", "world"],
-            search_target="word"
-        )
 
     def test_get_ngrams_empty_list_raises(self):
         """Test empty search_term list raises ValueError."""
@@ -81,15 +67,17 @@ class TestGetNgrams:
                 commons=mock_commons
             )
 
-    @patch('api_swedeb.api.utils.ngrams.n_grams.n_grams')
-    @patch('api_swedeb.api.utils.ngrams.mappers.query_params_to_CQP_opts')
-    def test_get_ngrams_empty_opts_returns_empty(self, mock_to_opts, mock_n_grams):
+    @patch('api_swedeb.api.utils.ngrams.NGramsService')
+    def test_get_ngrams_empty_opts_returns_empty(self, mock_service_class):
         """Test empty opts returns empty NGramResult."""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+
         mock_corpus = Mock()
         mock_commons = CommonQueryParams()
 
-        mock_to_opts.return_value = []
-        mock_n_grams.return_value = pd.DataFrame()
+        expected_result = NGramResult(ngram_list=[])
+        mock_service.get_ngrams.return_value = expected_result
 
         result = get_ngrams(
             corpus=mock_corpus,
@@ -99,5 +87,3 @@ class TestGetNgrams:
 
         assert isinstance(result, NGramResult)
         assert result.ngram_list == []
-        # n_grams is called even with empty opts, returns empty DataFrame
-        mock_n_grams.assert_called_once()

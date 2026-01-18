@@ -1,11 +1,10 @@
 from typing import Any, Literal
 
 import ccc
-import pandas as pd
 
-from api_swedeb import mappers, schemas
+from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.core import n_grams
+from api_swedeb import schemas
 
 
 def get_ngrams(
@@ -19,19 +18,14 @@ def get_ngrams(
     mode: Literal['sliding', 'left-aligned', 'right-aligned'] = 'sliding',
 ) -> schemas.NGramResult:
     """Get n-grams from a corpus"""
-
-    if isinstance(search_term, str):
-        search_term = [search_term]
-    if len(search_term) == 0:
-        raise ValueError("search_term must contain at least one term")
-    opts: dict[str, Any] | list[dict[str, Any]] = mappers.query_params_to_CQP_opts(
-        commons, word_targets=search_term, search_target=search_target
+    service = NGramsService()
+    return service.get_ngrams(
+        corpus=corpus,
+        search_term=search_term,
+        commons=commons,
+        n_gram_width=n_gram_width,
+        n_threshold=n_threshold,
+        search_target=search_target,
+        display_target=display_target,
+        mode=mode,
     )
-    ngrams: pd.DataFrame = n_grams.n_grams(
-        corpus, opts, n=n_gram_width, p_show=display_target, threshold=n_threshold, mode=mode
-    )
-
-    if len(opts) == 0:
-        return schemas.NGramResult(ngram_list=[])
-
-    return mappers.ngrams_to_ngram_result(ngrams)
