@@ -6,10 +6,10 @@ import pandas as pd
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core import codecs as md
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_index import get_speeches_by_opts
 
 # pylint: disable=cell-var-from-loop, too-many-public-methods
 
@@ -45,6 +45,7 @@ class Corpus:
         # Initialize services
         self._metadata_service = MetadataService(self._loader)
         self._word_trends_service = WordTrendsService(self._loader)
+        self._search_service = SearchService(self._loader)
 
     @property
     def dtm_tag(self) -> str:
@@ -116,51 +117,16 @@ class Corpus:
         return self._word_trends_service.get_anforanden_for_word_trends(selected_terms, filter_opts)
 
     def get_anforanden(self, selections: dict) -> pd.DataFrame:
-        """For getting a list of - and info about - the full 'Anföranden' (speeches)
-
-        Args:
-            from_year int: start year
-            to_year int: end year
-            selections dict: selected filters, i.e. genders, parties, and, speakers
-
-        Returns:
-            DataFrame: DataFrame with speeches for selected years and filter.
-        """
-        speeches: pd.DataFrame = get_speeches_by_opts(self.document_index, selections)
-        speeches = self.person_codecs.decode_speech_index(
-            speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
-        )
-        return speeches
+        """Get speeches via SearchService."""
+        return self._search_service.get_anforanden(selections)
 
     def _get_filtered_speakers(self, selection_dict: dict[str, Any], df: pd.DataFrame) -> pd.DataFrame:
-        for key, value in selection_dict.items():
-            if key == "party_id":
-                value: list[int] = [int(v) for v in value] if isinstance(value, list) else [int(value)]
-                person_party = getattr(self.metadata, 'person_party')
-                party_person_ids: set[str] = set(person_party[person_party.party_id.isin(value)].person_id)
-                df = df[df.index.isin(party_person_ids)]
-            elif key == "chamber_abbrev" and value:
-                value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [value.lower()]
-                di: pd.DataFrame = self.vectorized_corpus.document_index
-                df = df[df.index.isin(set(di[di.chamber_abbrev.isin(value)].person_id.unique()))]
-            else:
-                if key in df.columns:
-                    df = df[df[key].isin(value)]
-                elif df.index.name == key:
-                    df = df[df.index.isin(value)]
-                else:
-                    raise KeyError(f"Unknown filter key: {key}")
-        return df
+        """Filter speakers via SearchService."""
+        return self._search_service._get_filtered_speakers(selection_dict, df)
 
     def get_speakers(self, selections):
-        current_speakers = self.decoded_persons.copy()
-
-        current_speakers = self._get_filtered_speakers(
-            selections,
-            current_speakers,
-        )
-
-        return current_speakers.reset_index(inplace=False)
+        """Get speakers via SearchService."""
+        return self._search_service.get_speakers(selections)
 
     def get_party_meta(self) -> pd.DataFrame:
         """Get party metadata via MetadataService."""
@@ -183,22 +149,12 @@ class Corpus:
         return self._metadata_service.get_sub_office_type_meta()
 
     def get_speech(self, document_name: str) -> Speech:
-        speech: Speech = self.repository.speech(speech_name=document_name)
-        return speech
+        """Get speech via SearchService."""
+        return self._search_service.get_speech(document_name)
 
     def get_speaker(self, document_name: str) -> str:
-        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-        try:
-            key_index: int = self.repository.get_key_index(document_name)
-            if key_index is None:
-                return unknown
-            document_item: dict = self.document_index.loc[key_index]
-            if document_item["person_id"] == "unknown":
-                return unknown
-            person: dict = self.person_codecs[document_item["person_id"]]
-            return person['name']
-        except IndexError:
-            return unknown
+        """Get speaker via SearchService."""
+        return self._search_service.get_speaker(document_name)
 
     def get_years_start(self) -> int:
         """Returns the first year in the corpus"""

@@ -8,6 +8,7 @@ from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.services.ngrams_service import NGramsService
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
@@ -17,6 +18,7 @@ __loader: CorpusLoader | None = None
 __metadata_service: MetadataService | None = None
 __word_trends_service: WordTrendsService | None = None
 __ngrams_service: NGramsService | None = None
+__search_service: SearchService | None = None
 
 
 def get_corpus_loader() -> CorpusLoader:
@@ -49,6 +51,14 @@ def get_ngrams_service() -> NGramsService:
     if __ngrams_service is None:
         __ngrams_service = NGramsService()
     return __ngrams_service
+
+
+def get_search_service() -> SearchService:
+    """Get the singleton SearchService instance."""
+    global __search_service
+    if __search_service is None:
+        __search_service = SearchService(get_corpus_loader())
+    return __search_service
 
 
 def get_shared_corpus() -> Corpus:

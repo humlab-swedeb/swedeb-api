@@ -8,6 +8,7 @@ business logic for different domains:
 - MetadataService: Metadata queries (party, gender, chamber, office types)
 - WordTrendsService: Word trend analysis and vocabulary operations
 - NGramsService: N-grams extraction and analysis
+- SearchService: Speech search and retrieval operations
 - SpeechService: Speech operations (retrieval, speaker queries)
 - WordService: Vocabulary and word trend operations
 - SpeakerService: Speaker queries and filtering
@@ -19,6 +20,7 @@ __all__ = [
     "MetadataService",
     "WordTrendsService",
     "NGramsService",
+    "SearchService",
     "SpeechService",
     "WordService",
     "SpeakerService",
