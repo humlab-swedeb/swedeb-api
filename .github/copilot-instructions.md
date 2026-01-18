@@ -3,6 +3,19 @@
 ## Project Overview
 Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application analyzing parliamentary speech data using the IMS Open Corpus Workbench (CWB). The system processes historical Swedish parliamentary data (1867-2020+) from the SWERIK project.
 
+## Current Architecture (Post-Refactoring)
+**Summary**: Corpus facade class was deleted in favor of direct service injection. The system now uses clean service-based dependency injection instead of a monolithic wrapper.
+
+- **Pattern**: Direct service injection via FastAPI's `Depends()` mechanism with `@lru_cache` singletons
+- **Services**: 
+  - `CorpusLoader` - Manages CWB, vectorized corpus, and codec resources
+  - `MetadataService` - Parliament metadata (parties, genders, chambers, office types, speakers)
+  - `WordTrendsService` - Word frequency analysis and trends
+  - `SearchService` - Speech search and retrieval
+  - `NGramsService` - N-gram analysis
+- **Benefits**: Cleaner separation of concerns, easier testing, no unnecessary abstraction layers, better code clarity
+- **Router Pattern**: Routes inject services directly, call their methods, return results - no facade indirection
+
 ## Architecture & Core Components
 
 ### Configuration System (`api_swedeb/core/configuration/`)
@@ -20,8 +33,9 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - Memory-optimized columns defined in `USED_COLUMNS`, skip `SKIP_COLUMNS`
 
 ### API Structure (`api_swedeb/api/`)
-- Two main routers: `tool_router.py` (prefix `/v1/tools`) and `metadata_router.py` (prefix `/v1/metadata`)
-- FastAPI Depends pattern for shared state: `get_shared_corpus()`, `get_cwb_corpus()`, `get_corpus_decoder()`
+- Two main routers: `v1/endpoints/tool_router.py` (prefix `/v1/tools`) and `v1/endpoints/metadata_router.py` (prefix `/v1/metadata`)
+- Services injected directly via `Depends()`: `get_corpus_loader()`, `get_metadata_service()`, `get_word_trends_service()`, `get_search_service()`, `get_ngrams_service()`
+- Each service is a singleton (cached) and handles specific domain logic
 - Common query params via `CommonQueryParams` dependency injection
 - KWIC (Keyword in Context), word trends, n-grams, and speech retrieval endpoints
 
@@ -92,11 +106,19 @@ make profile-kwic-pyinstrument  # Profile KWIC queries, outputs to tests/output/
 
 ### FastAPI Dependencies
 ```python
-# Shared corpus instance (singleton pattern)
-corpus: api_swedeb.Corpus = Depends(get_shared_corpus)
+# Direct service injection (singleton pattern via @lru_cache)
+from api_swedeb.api.dependencies import get_metadata_service, get_word_trends_service
+from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.word_trends_service import WordTrendsService
 
-# Common query params (year ranges, filters)
-commons: CommonParams = Annotated[CommonQueryParams, Depends()]
+@router.get("/example")
+def example_endpoint(
+    metadata_service: MetadataService = Depends(get_metadata_service),
+    commons: Annotated[CommonQueryParams, Depends()] = None
+):
+    # Services are injected, not the corpus object
+    result = metadata_service.get_parties()
+    return result
 ```
 
 ### Configuration Access
@@ -110,11 +132,12 @@ origins = ConfigValue("fastapi.origins").resolve()
 ```
 
 ### Testing Fixtures (`tests/conftest.py`)
-- `corpus()` - CWB corpus instance (module-scoped)
-- `api_corpus()` - Full API corpus with vectorized data (module-scoped)
-- `speech_index()` - Deep copy for test isolation (function-scoped)
-- `person_codecs()` - Cloned codecs (function-scoped)
-- Always use cached fixtures (`_cached` suffix) as base for function-scoped copies
+- `api_corpus()` - `CorpusLoader` instance (module-scoped) - Resource manager for CWB and vectorized data
+- `fastapi_client()` - `TestClient` for testing API endpoints (module-scoped)
+- `speech_index()` - Deep copy for test isolation (function-scoped, cloned from cached version)
+- `person_codecs()` - Cloned codecs (function-scoped, cloned from cached version)
+- Cached versions (`_speech_index_cached`, `_person_codecs_cached`) provide base for function-scoped isolation
+- Services are instantiated with `api_corpus` fixture in tests (not injected via Depends)
 
 ### Penelope Integration
 - Internal package for text analysis: `penelope/corpus/`, `penelope/utility/`
@@ -148,10 +171,11 @@ origins = ConfigValue("fastapi.origins").resolve()
 
 ### Adding a New Endpoint
 1. Define response schema in `api_swedeb/schemas/`
-2. Add utility function in `api_swedeb/api/utils/`
-3. Add route decorator and handler in `tool_router.py` or `metadata_router.py`
-4. Use existing dependency injection patterns
-5. Add tests in `tests/test_endpoints.py`
+2. Create or extend service in `api_swedeb/api/services/` (if needed)
+3. Add route decorator and handler in `api_swedeb/api/v1/endpoints/tool_router.py` or `metadata_router.py`
+4. Inject required services via `Depends()` pattern (e.g., `metadata_service: MetadataService = Depends(get_metadata_service)`)
+5. Call service methods instead of corpus methods
+6. Add tests in `tests/api_swedeb/api/` directory (mock services directly, not the corpus)
 
 ### Modifying Configuration
 1. Update `config/config.yml` with new keys

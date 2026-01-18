@@ -1,5 +1,14 @@
 # AGENT INSTRUCTIONS - Swedeb API
 
+## Current Architecture (Post-Refactoring)
+**Summary**: The Corpus facade class has been deleted. Services are now injected directly into routes via FastAPI's Depends() mechanism.
+
+- **Pattern**: Direct service dependency injection with singleton caching (@lru_cache)
+- **Active Services**: CorpusLoader, MetadataService, WordTrendsService, SearchService, NGramsService
+- **Removed**: `api_swedeb/api/utils/corpus.py` (the monolithic facade wrapper)
+- **Router Changes**: Routes now inject services directly, not a generic corpus object
+- **Testing**: Services are mocked directly in tests, not through the facade
+
 ## Scope & Ownership
 - Build, test, and optimize the FastAPI backend that exposes Swedish parliamentary debate data backed by IMS Open Corpus Workbench (CWB) and Penelope corpora.
 - Maintain compatibility with historical data (1867–present) from the SWERIK project and the existing directory layout.
@@ -17,8 +26,10 @@
 - Keep document-term matrices based on `penelope.corpus.VectorizedCorpus` and manage token vocabularies through the provided token2id mappings.
 
 ## API Design (`api_swedeb/api/`)
-- Register routes only in `tool_router.py` (`/v1/tools`) or `metadata_router.py` (`/v1/metadata`) and reuse shared dependency helpers (`get_shared_corpus`, `get_cwb_corpus`, `get_corpus_decoder`).
-- Inject reusable query parameters via `CommonQueryParams` (KWIC filters, year ranges, etc.) and follow FastAPI Depends patterns for singleton resources.
+- Register routes only in `api_swedeb/api/v1/endpoints/tool_router.py` (`/v1/tools`) or `metadata_router.py` (`/v1/metadata`)
+- Inject services directly via `Depends()`: `get_corpus_loader()`, `get_metadata_service()`, `get_word_trends_service()`, `get_search_service()`, `get_ngrams_service()`
+- Each service is a singleton (cached) and handles specific domain logic
+- Common query params via `CommonQueryParams` (KWIC filters, year ranges, etc.)
 - Keep KWIC, word trends, n-grams, and speech retrieval endpoints performant by enforcing cutoffs (default `cut_off=200000`) and cached corpora.
 
 ## CWB Integration (`api_swedeb/core/cwb/`)
@@ -28,7 +39,7 @@
 ## Testing & Tooling
 - Run `uv run uvicorn main:app --reload` for local dev, `uv run pytest tests/` for test suites, and `make tidy` (Black + isort) before every commit; `make black` and `make isort` remain available when partial formatting is needed.
 - Generate coverage with `make coverage` when verifying broad changes and profile KWIC workloads via `make profile-kwic-pyinstrument` (output lives in `tests/output/`).
-- Rely on fixtures from `tests/conftest.py`: use cached corpus fixtures for module scope and clone them for function scope to ensure isolation (`speech_index`, `person_codecs`, etc.).
+- Rely on fixtures from `tests/conftest.py`: `api_corpus` provides `CorpusLoader` instance (module-scoped), instantiate services with it in tests, use function-scoped fixtures (`speech_index`, `person_codecs`) for test isolation via cloning.
 
 ## Git Workflow & Releases
 - Follow the four-branch deployment flow: feature PRs → `dev`, promote sequentially `dev`→`test`→`staging`→`main`, and expect only `test`, `staging`, `main` to trigger CI/CD builds.
@@ -40,7 +51,7 @@
 - Keep API contracts discoverable via `/docs` (Swagger) and `/redoc`; update schemas in `api_swedeb/schemas/` alongside endpoint changes.
 
 ## Common Implementation Tasks
-- When adding endpoints: define schemas under `api_swedeb/schemas/`, extend utilities in `api_swedeb/api/utils/`, mount handlers in the correct router, wire dependencies, and add coverage in `tests/test_endpoints.py`.
+- When adding endpoints: define schemas under `api_swedeb/schemas/`, create/extend services in `api_swedeb/api/services/`, inject services via `Depends()` in routers, call service methods (not corpus methods), add tests in `tests/api_swedeb/api/` with mocked services
 - When changing configuration: edit `config/config.yml`, update `tests/config.yml` to mirror new keys, adjust `ConfigValue` usages, and refresh deployment docs if the change affects environments.
 - When optimizing performance: profile first, inspect `load.py::_memory_usage()`, prefer feather storage, and refine CWB/CQP queries instead of bypassing caches.
 
