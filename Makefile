@@ -24,41 +24,46 @@ force-release-action:
 .PHONY: lint tidy isort black test pylint
 
 run:       
-	@poetry run uvicorn main:app --reload
+	@uv run uvicorn main:app --reload
 
-lint: tidy pylint
+.PHONY: lint tidy isort black
+lint: tidy ruff pylint
 
 tidy: black isort
 
 isort:
-	@poetry run isort --profile black --float-to-top --line-length 120 --py 311 $(SOURCE_FOLDERS)
+	@uv run isort --profile black --float-to-top --line-length 120 --py 311 $(SOURCE_FOLDERS)
 
 black: 
-	@poetry run black --version
-	@poetry run black --line-length 120 --target-version py311 --skip-string-normalization $(SOURCE_FOLDERS)
+	@uv run black --version
+	@uv run black --line-length 120 --target-version py311 --skip-string-normalization $(SOURCE_FOLDERS)
 
+.PHONY: test coverage notes
 test:
 	@echo "Running tests..."
-	@poetry run pytest $(PYTEST_ARGS) tests
+	@uv run pytest $(PYTEST_ARGS) tests
 
 coverage:
 	@echo "Running tests with coverage..."
-	@poetry run pytest --durations=0 --cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html --cov-branch tests/ || true
-.PHONY: coverage
+	@uv run pytest --durations=0 --cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html --cov-branch tests/ || true
 
 notes:
-	@poetry run pylint --notes=FIXME,XXX,TODO --disable=all --enable=W0511 -f colorized $(SOURCE_FOLDERS) || true
-.PHONY: notes
+	@uv run pylint --notes=FIXME,XXX,TODO --disable=all --enable=W0511 -f colorized $(SOURCE_FOLDERS) || true
 
+.PHONY: pylint 
 pylint:
-	@poetry run pylint $(SOURCE_FOLDERS)
+	@uv run pylint $(SOURCE_FOLDERS)
 
-.PHONY: tools
-tools:
-	@poetry self add poetry-plugin-shell poetry-plugin-export > /dev/null
+.PHONY: ruff
+ruff:
+	@uv run ruff check --output-format concise --fix $(SOURCE_FOLDERS)
 
-requirements.txt: poetry.lock
-	@poetry export --without-hashes --format=requirements.txt > requirements.txt
+.PHONY: vulture
+vulture:
+	@uv run vulture api_swedeb penelope --min-confidence 80
+
+requirements.txt: pyproject.toml
+	@uv pip compile pyproject.toml -o requirements.txt
 
 # requirements.txt-to-git: requirements.txt
 # 	@git add requirements.txt \
@@ -69,13 +74,13 @@ requirements.txt: poetry.lock
 
 build-utils:
 	@echo "Building lib..."
-	@poetry run cythonize tests/profiling/utilities.pyx 
-	@poetry run python setup.py build_ext --inplace
+	@uv run cythonize tests/profiling/utilities.pyx 
+	@uv run python setup.py build_ext --inplace
 
 
 profile-utils-pyinstrument: build-utils
 	@echo "Profiling lib..."
-	@poetry run pyinstrument tests/profiling/profile_utilities.py
+	@uv run pyinstrument tests/profiling/profile_utilities.py
 
 TIMESTAMP_IN_ISO_FORMAT=$(shell date -u +"%Y%m%dT%H%M%SZ")
 
@@ -99,21 +104,22 @@ clean-dev:
 release: ready guard-clean-working-repository bump.patch tag publish
 
 publish:
-	@poetry publish
+	@uv build
+	@uv publish
 
 ready: clean-dev tidy test lint requirements.txt build
 
 build: requirements.txt
-	@poetry build
+	@uv build
 
 tag:
-	@poetry build
+	@uv build
 	@git push
 	@git tag $(shell grep "^version \= " pyproject.toml | sed "s/version = //" | sed "s/\"//g") -a
 	@git push origin --tags
 
 bump.patch: requirements.txt
-	@poetry version patch
+	@echo "Manual version bump required - update version in pyproject.toml"
 	@git add pyproject.toml requirements.txt
 	@git commit -m "📌 bump version patch"
 	@git push

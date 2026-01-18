@@ -364,8 +364,8 @@ def partitioned_significances(
     co_occurrences: pd.DataFrame,
     pivot_key: str,
     keyness_metric: KeynessMetric,
-    document_index: pd.DataFrame = None,
-    vocabulary_size: int = None,
+    document_index: pd.DataFrame | None = None,
+    vocabulary_size: int | None = None,
     normalize: bool = False,
 ) -> pd.DataFrame:
     """Computes keyness values for `co-occurrences` data frame

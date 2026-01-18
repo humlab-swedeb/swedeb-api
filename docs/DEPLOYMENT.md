@@ -415,7 +415,7 @@ prepare-release-assets.sh <version>
 1. Validates version format (SemVer compliance)
 2. Updates `pyproject.toml` with new version
 3. Syncs version to `api_swedeb/__init__.py`
-4. Builds Python wheel package using Poetry
+4. Builds Python wheel package using uv
 5. Outputs wheel to `dist/` directory
 
 **Example**:

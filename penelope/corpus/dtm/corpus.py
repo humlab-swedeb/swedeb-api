@@ -24,8 +24,8 @@ from .stats import StatsMixIn
 from .store import StoreMixIn
 
 try:
-    import sklearn.preprocessing
-    from sklearn.feature_extraction.text import TfidfTransformer
+    import sklearn.preprocessing  # type: ignore
+    from sklearn.feature_extraction.text import TfidfTransformer  # type: ignore
 except ImportError:
     ...
 
@@ -101,6 +101,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     def id2token(self) -> dict[int, str]:
         if self._id2token is None and self.token2id is not None:
             self._id2token = {i: t for t, i in self.token2id.items()}
+        assert self._id2token is not None
         return self._id2token
 
     @property
@@ -480,7 +481,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         return corpus
 
-    def nbytes(self, kind="bytes") -> float:
+    def nbytes(self, kind="bytes") -> float | None:
         k = {'bytes': 0, 'kb': 1, 'mb': 2, 'gb': 3}.get(kind.lower(), 0)
         with contextlib.suppress(Exception):
             return (self.data.data.nbytes + self.data.indptr.nbytes + self.data.indices.nbytes) / pow(1024, k)
@@ -511,7 +512,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         term_frequency = self.term_frequency
 
-        indices: Sequence[int] = [i for i in indices if term_frequency[i] > 0]
+        indices = [i for i in indices if term_frequency[i] > 0]
 
         if len(indices) == 0:
             return indices
@@ -533,7 +534,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     #     self.data.eliminate_zeros()
 
 
-def find_matching_words_in_vocabulary(token2id: dict[str], candidate_words: Set[str]) -> Set[str]:
+def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Set[str]) -> Set[str]:
     words = {w for w in candidate_words if w in token2id}
 
     remaining_words = [w for w in candidate_words if w not in words and len(w) > 0]

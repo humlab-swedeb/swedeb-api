@@ -21,7 +21,7 @@ def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
     """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
     if len(pivot_keys) <= 1 or data is None:
         return data
-    data: pd.DataFrame = data.set_index(pivot_keys)
+    data = data.set_index(pivot_keys)
     while isinstance(data.index, pd.MultiIndex):
         data = data.unstack(level=1, fill_value=0)
         if isinstance(data.columns, pd.MultiIndex):
@@ -114,7 +114,7 @@ def create_mask(doc: pd.DataFrame, args: dict) -> np.ndarray:
 
     for attr_name, attr_value in args.items():
         attr_sign = True
-        attr_operator: str | Callable = None
+        attr_operator: str | Callable | None = None
 
         if attr_value is None:
             continue
@@ -147,7 +147,7 @@ def create_mask(doc: pd.DataFrame, args: dict) -> np.ndarray:
             value_serie.between(*attr_value)
             if isinstance(attr_value, tuple)
             else (
-                attr_operator(value_serie, attr_value)
+                attr_operator(value_serie, attr_value)  # type: ignore
                 if attr_operator is not None
                 else value_serie.isin(attr_value) if isinstance(attr_value, (list, set)) else value_serie == attr_value
             )
@@ -168,38 +168,38 @@ class PropertyValueMaskingOpts:
         super().__setattr__('data', kwargs or {})
 
     def __getitem__(self, key: int):
-        return self.data[key]
+        return self.data[key]  # type: ignore
 
     def __setitem__(self, k, v):
-        self.data[k] = v
+        self.data[k] = v  # type: ignore
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data)  # type: ignore
 
     def __setattr__(self, k, v):
-        self.data[k] = v
+        self.data[k] = v  # type: ignore
 
     def __getattr__(self, k):
         try:
-            return self.data[k]
+            return self.data[k]  # type: ignore
         except KeyError:
             return None
 
-    def __eq__(self, other: PropertyValueMaskingOpts) -> bool:
+    def __eq__(self, other: PropertyValueMaskingOpts) -> bool:  # type: ignore
         if not isinstance(other, PropertyValueMaskingOpts):
             return False
         return self.data == other.props
 
     @property
     def props(self) -> dict:
-        return self.data
+        return self.data  # type: ignore
 
     @property
     def opts(self) -> dict:
-        return self.data
+        return self.data  # type: ignore
 
     def mask(self, doc: pd.DataFrame) -> np.ndarray:
-        return create_mask(doc, self.data)
+        return create_mask(doc, self.data)  # type: ignore
 
     def apply(self, doc: pd.DataFrame) -> pd.DataFrame:
         if len(self.hot_attributes(doc)) == 0:
@@ -267,7 +267,7 @@ def pandas_to_csv_zip(
                 )
             filename = replace_extension(filename=filename, extension=extension)
             data_str = df.to_csv(**to_csv_opts)
-            zf.writestr(filename, data=data_str)
+            zf.writestr(str(filename), data=data_str)
 
 
 def pandas_read_csv_zip(zip_filename: str, pattern='*.csv', **read_csv_opts) -> dict:
@@ -305,7 +305,7 @@ def ts_store(
     logger.info(f'Data stored in {filename}')
 
 
-def rename_columns(df: pd.DataFrame, columns: list[str] = None) -> pd.DataFrame:
+def rename_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     df.columns = columns
     return df
 
@@ -321,7 +321,9 @@ def as_slim_types(df: pd.DataFrame, columns: list[str], dtype: np.dtype) -> pd.D
     return df
 
 
-def set_index(df: pd.DataFrame, columns: str | list[str], drop: bool = True, axis_name: str = None) -> pd.DataFrame:
+def set_index(
+    df: pd.DataFrame, columns: str | list[str], drop: bool = True, axis_name: str | None = None
+) -> pd.DataFrame:
     """Set index if columns exist, otherwise skip (assuming columns already are index)"""
     columns: list[str] = [columns] if isinstance(columns, str) else columns
     if any(column not in df.columns for column in columns):

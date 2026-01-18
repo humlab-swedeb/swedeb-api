@@ -33,7 +33,7 @@ class SpeechTextService:
         si: pd.DataFrame = self.speech_index.set_index("protocol_name", drop=True)[
             ["speech_id", "speech_index", self.id_name, "n_utterances"]
         ]
-        return si.assign(data=si.to_dict("records")).groupby(si.index).agg(list)["data"].to_dict()
+        return si.assign(data=si.to_dict("records")).groupby(si.index).agg(list)["data"].to_dict()  # type: ignore
 
     def speeches(self, *, metadata: dict, utterances: list[dict]) -> list[dict]:
         """Create list of speeches for all speeches in protocol"""

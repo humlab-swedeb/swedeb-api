@@ -14,7 +14,7 @@ class StatsMixIn:
     def get_top_n_words(
         self: IVectorizedCorpusProtocol,
         n: int = 1000,
-        indices: Sequence[int] = None,
+        indices: Sequence[int] | None = None,
     ) -> Sequence[Tuple[str, Number]]:
         """Returns the top n words in a subset of the self sorted according to occurrence."""
 
@@ -46,7 +46,7 @@ class StatsMixIn:
         *,
         category_column: str = 'category',
         n_top: int = 100,
-        pad: str = None,
+        pad: str | None = None,
         keep_empty: bool = False,
     ) -> dict:
         """Returns top `n_top` terms per category (as defined by `category_column`) as a dict.
@@ -57,7 +57,7 @@ class StatsMixIn:
         Args:
             category_column (str, optional): Column in document index that defines categories. Defaults to 'category'.
             n_top (int, optional): Number of words to return per category. Defaults to 100.
-            pad (str, optional): If specified, the lists are padded to be of equal length by appending tuples (`pad`, 0)
+            pad (str | None, optional): If specified, the lists are padded to be of equal length by appending tuples (`pad`, 0)
             keep_empty (bool, optional): If false, then empty categories are removed
         Returns:
             dict:

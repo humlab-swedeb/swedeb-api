@@ -143,8 +143,8 @@ class DocumentIndexHelper:
         self,
         pivot_column_name: str,
         transformer: Union[Callable[[T], T], Dict[T, T], None] = None,
-        index_values: Union[str, List[T]] = None,
-        extra_grouping_columns: List[str] = None,
+        index_values: Union[str, List[T]] | None = None,
+        extra_grouping_columns: List[str] | None = None,
         target_column_name: str = 'category',
     ) -> "DocumentIndexHelper":
         """Returns a reduced document index grouped by specified column.
@@ -278,7 +278,7 @@ class DocumentIndexHelper:
         temporal_key_specifier: Union[str, dict, Callable[[Any], Any]],
         source_column_name: str = 'year',
         target_column_name: str = 'time_period',
-        index_values: Union[str, List[T]] = None,
+        index_values: Union[str, List[T]] | None = None,
     ) -> Tuple[pd.DataFrame, dict]:
         """Special case of of above, groups by 'year' based on `temporal_key_specifier`
 
@@ -693,7 +693,7 @@ def update_document_index_by_dicts_or_tuples(
     document_index: pd.DataFrame,
     *,
     data: List[Tuple[Any, ...]],
-    columns: List[str] = None,
+    columns: List[str] | None = None,
     dtype=None,
     default: Any = 0,
 ) -> pd.DataFrame:

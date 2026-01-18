@@ -1,34 +1,136 @@
-[tool.poetry]
+[project]
 name = "api-swedeb"
 version = "0.6.0"
 description = ""
-authors = ["rebeckaw <rebecka.weegar@umu.se>"]
+authors = [{name = "rebeckaw", email = "rebecka.weegar@umu.se"}]
 readme = "README.md"
-packages = [{include = "api_swedeb"},  {include = "penelope"}]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-dotenv",
+    "cwb-ccc",
+    "pydantic",
+    "scipy",
+    "numpy",
+    "pyarrow",
+    "loguru",
+    "requests",
+    "more-itertools",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.13"
-fastapi = "*"
-uvicorn = {extras = ["standard"], version = "*"}
-python-dotenv = "*"
-cwb-ccc = "*"
-pydantic = "*"
-scipy = "*"
-numpy = "*"
-pyarrow = "*"
-loguru = "*"
-requests = "*"
-more-itertools = "*"
+[project.optional-dependencies]
+dev = [
+    "black",
+    "httpx",
+    "pytest",
+    "pylint",
+    "ruff",
+    "pyinstrument",
+    "pytest-cov",
+    "isort",
+]
 
-[tool.poetry.group.dev.dependencies]
-black = "*"
-httpx = "*"
-pytest = "*"
-pylint = "*"
-ruff = "*"
-pyinstrument = "*"
-pytest-cov = "*"
-isort = "*"
+# --------------------
+# Pylance/Pyright
+# --------------------
+[tool.pyright]
+exclude = [
+    ".venv",
+    "**/__pycache__",
+    ".eggs",
+    ".git",
+    ".ruff_cache",
+    "dist",
+    "build",
+    "node_modules",
+    "htmlcov",
+    "coverage*",
+    "tests/test_data",
+    "data",
+    "tmp",
+    "deprecated",
+    "docker",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+output-format = "concise"
+exclude = [
+    ".eggs",
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "dist",
+    "node_modules",
+    "htmlcov",
+    "coverage*",
+    "tests/test_data",
+    "data",
+    "tmp",
+    "deprecated",
+    "docker",
+    ".pytest_cache",
+]
+
+[tool.ruff.lint]
+# Import checking rules
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "TID", # flake8-tidy-imports
+]
+ignore = ["E501", "E722"]
+fixable = ["ALL"]
+unfixable = []
+exclude = [
+    "__init__.py",
+]
+# Specific rule configurations
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Prevent relative imports beyond current package
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["classmethod"]
+
+[tool.ruff.format]
+# Use Ruff's formatter (Black-compatible). Set to false if you prefer Black.
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0904",
+    "R0903",
+    "R0801",
+    "too-many-return-statements",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-lines",
+    "too-many-arguments",
+    "too-few-public-methods",
+    "too-many-nested-blocks",
+    "too-many-instance-attributes",
+    "too-many-positional-arguments",
+    "global-variable-not-assigned",
+    "logging-fstring-interpolation",
+    "too-many-function-args",
+    "too-many-locals",
+    "protected-access",
+    "f-string-without-interpolation",
+    "unnecessary-ellipsis",
+    "bare-except",
+]
 
 [tool.black]
 line-length = 120
@@ -36,21 +138,74 @@ target-version = ["py312"]
 skip-string-normalization = true
 
 
+[tool.pylint]
+max-line-length = 140
+max-args = 10
+ignore-paths = [
+    "tmp",
+    "data",
+    "deprecated",
+    "docker",
+    "htmlcov",
+    ".pytest_cache",
+    ".ruff_cache",
+    "tests/test_data",
+    ".venv",
+]
+
 [tool.pylint.format]
 max-line-length = 120
 
-[tool.ruff]
-target-version = "py312"
-line-length = 120
-# output-format = "grouped"
-exclude = [ ".eggs", ".git", ".ruff_cache", ".venv", "dist" ]
+# Import sorting (handled by Ruff)
+[tool.isort]
+line_length = 142
+# multi_line_output = 3
+profile = "black"
 
-[tool.ruff.lint]
-select = ["E", "F", "W"]
-ignore = []
-fixable = ["ALL"]
-unfixable = []
+# --------------------
+# mypy (type checking)
+# --------------------
+[tool.mypy]
+python_version = "3.13"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+strict_equality = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+show_error_codes = true
+pretty = true
 
+# Loosen types in tests
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+warn_return_any = false
+
+# --------------------
+# pytest
+# --------------------
+[tool.pytest.ini_options]
+addopts = "-q -ra --strict-markers"
+# addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::DeprecationWarning"
+testpaths = ["tests"]
+# python_classes = "Test*"
+# python_functions = "test_*"
+markers = [
+  "integration: marks tests that hit external services (e.g., Ollama, DB)",
+  "debug: marks tests for debugging purposes (typically run manually)",
+  "manual: marks tests requiring manual setup (e.g., real database)",
+]
+# python_files = "test_*.py" "*_test.py"
+# Uncomment to see logs during test runs:
+# log_cli = true
+# log_cli_level = "DEBUG"
+
+# --------------------
+# coverage.py
+# --------------------
 [tool.coverage]
     [tool.coverage.run]
     omit = [
@@ -63,14 +218,15 @@ unfixable = []
     [tool.coverage.report]
     skip_empty = true
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::DeprecationWarning"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-# [tool.poetry.requires-plugins]
-# poetry-plugin-export = ">=1.8"
-# poetry-plugin-shell = ">=1.0"
+[dependency-groups]
+dev = [
+    "vulture>=2.14",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["api_swedeb", "penelope"]

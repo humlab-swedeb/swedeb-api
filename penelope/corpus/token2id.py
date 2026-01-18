@@ -31,13 +31,17 @@ class Token2Id(MutableMapping):
     """A token-to-id mapping (dictionary)"""
 
     def __init__(
-        self, data: Optional[Union[dict, defaultdict]] = None, tf: dict = None, fallback_token: str = None, **kwargs
+        self,
+        data: Optional[Union[dict, defaultdict]] = None,
+        tf: dict | None = None,
+        fallback_token: str | None = None,
+        **kwargs,
     ):
-        self._data: defaultdict = None
-        self._tf: dict = None
+        self._data: defaultdict[str, int] | None = None
+        self._tf: defaultdict[str, int] | None = None
         self._is_open = True
-        self._id2token: dict = None
-        self._fallback_token_id: str = fallback_token
+        self._id2token: dict | None = None
+        self._fallback_token_id: str | None = fallback_token
         self._payload: dict = dict(**kwargs)
 
         self.replace(data=data or defaultdict(), tf=tf)
@@ -237,7 +241,7 @@ class Token2Id(MutableMapping):
         return self
 
     @staticmethod
-    def load(filename: str) -> "Token2Id":
+    def load(filename: str) -> "Token2Id | None":
         """Load vocabulary from CSV"""
         if not pathlib.Path(filename).exists():
             logger.info(f"Token2Id.load: filename {filename} not found")
@@ -249,7 +253,7 @@ class Token2Id(MutableMapping):
         return token2id
 
     @staticmethod
-    def load_tf(filename: str) -> Optional[dict]:
+    def load_tf(filename: str) -> "defaultdict | None":
         tf_filename: str = path_add_suffix(filename, "_tf", new_extension=".pbz2")
         tf: Any = unpickle_from_file(tf_filename) if pathlib.Path(tf_filename).exists() else None
         if not isinstance(tf, defaultdict):

@@ -36,10 +36,10 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 ### Running & Testing
 ```bash
 # Local development with auto-reload
-poetry run uvicorn main:app --reload
+uv run uvicorn main:app --reload
 
 # Run tests with pytest
-poetry run pytest tests/
+uv run pytest tests/
 
 # Code formatting (REQUIRED before commits)
 make tidy        # Runs black + isort

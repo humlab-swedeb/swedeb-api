@@ -1,12 +1,30 @@
 import pytest
 from fastapi import status
 
-from .core.test_kwic import EXPECTED_COLUMNS
-
 # pylint: disable=redefined-outer-name
 
 version = "v1"
 
+EXPECTED_COLUMNS: set[str] = {
+    "year",
+    "name",
+    "party_abbrev",
+    "party",
+    "gender",
+    "person_id",
+    "link",
+    "speech_name",
+    "speech_link",
+    "gender_abbrev",
+    "document_name",
+    "chamber_abbrev",
+    "speech_id",
+    "wiki_id",
+    "document_id",
+    "left_word",
+    "node_word",
+    "right_word",
+}
 
 def test_kwic_api(fastapi_client):
     response = fastapi_client.get(

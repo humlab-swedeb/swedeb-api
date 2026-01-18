@@ -7,7 +7,7 @@ def ngrams_to_ngram_result(ngrams: pd.DataFrame) -> schemas.NGramResult:
     """Convert ngrams dataframe with column `ngram` and `window_count` into sequence of NGramResultItems"""
     return schemas.NGramResult(
         ngram_list=[
-            schemas.NGramResultItem(ngram=x.Index, count=x.window_count, documents=x.documents.split(","))
+            schemas.NGramResultItem(ngram=x.Index, count=x.window_count, documents=x.documents.split(","))  # type: ignore
             for x in ngrams.itertuples(index=True)
         ]
     )

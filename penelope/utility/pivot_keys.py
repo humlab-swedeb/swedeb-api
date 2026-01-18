@@ -39,7 +39,7 @@ class PivotKeys:
         self._pivot_keys_spec: dict[str, PivotKeySpec] = {}
         self.update(pivot_keys)
 
-    def update(self, other: Self | dict | list | str) -> Self:
+    def update(self, other: Self | dict | list | str) -> "PivotKeys":
         if isinstance(other, PivotKeys):
             self._pivot_keys_spec.update(other.pivot_keys_spec)
         if isinstance(other, dict):
@@ -59,7 +59,7 @@ class PivotKeys:
         return self
 
     @staticmethod
-    def create_by_index(document_index: pd.DataFrame, *text_columns: str) -> Self:
+    def create_by_index(document_index: pd.DataFrame, *text_columns: str) -> "PivotKeys":
         """Create pivot keys from document index. For each text column an ID column is converted, and used as a pivot key."""
         # FIXME: Extend to support existing ID columns, naming, etc
         pivot_keys: dict = {}
@@ -73,16 +73,16 @@ class PivotKeys:
         return PivotKeys(pivot_keys=pivot_keys)
 
     @staticmethod
-    def try_load(path: str, default: dict = None) -> Self:
+    def try_load(path: str, default: dict | None = None) -> dict:
         data: dict = read_yaml(path)
         return dotcoalesce(data, 'extra_opts.pivot_keys', 'pivot_keys', default=default)
 
     @staticmethod
-    def load_by_probe(folder: str) -> Self:
+    def load_by_probe(folder: str) -> "PivotKeys":
         """Probes folder for pivot keys"""
 
         if isfile(join(folder, 'pivot_keys.yml')):
-            return PivotKeys(join(folder, 'pivot_keys.yml'))
+            return PivotKeys(pivot_keys=PivotKeys.try_load(join(folder, 'pivot_keys.yml')))
 
         for path in glob.glob(folder + '/*.y*ml'):
             data: dict = PivotKeys.try_load(path, default=None)
@@ -102,7 +102,7 @@ class PivotKeys:
     def __contains__(self, text_name: str) -> bool:
         return text_name in self._pivot_keys_spec
 
-    def __getitem__(self, text_name: str, default: dict = None) -> dict:
+    def __getitem__(self, text_name: str, default: dict | None = None) -> dict:
         return self._pivot_keys_spec.get(text_name, default or {})
 
     def get(self, text_name: str, default: Any = None) -> dict:

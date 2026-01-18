@@ -37,8 +37,7 @@ def kwic_worker(args: tuple) -> pd.DataFrame:
     # Each process gets its own temporary directory with the process ID in the name
     process_id = os.getpid()
     unique_data_dir = tempfile.mkdtemp(
-        prefix=f"ccc-{ccc.__version__}-swedeb-worker-{process_id}-",
-        dir=tempfile.gettempdir()
+        prefix=f"ccc-{ccc.__version__}-swedeb-worker-{process_id}-", dir=tempfile.gettempdir()
     )
 
     # Create a new CorpusCreateOpts with the unique data_dir
@@ -64,7 +63,8 @@ def kwic_worker(args: tuple) -> pd.DataFrame:
         # Clean up the temporary directory after processing
         # Note: We leave cleanup to the OS in case of crashes, but try to clean up on success
         try:
-            import shutil
+            import shutil  # pylint: disable=import-outside-toplevel
+
             shutil.rmtree(unique_data_dir, ignore_errors=True)
         except Exception:
             pass  # Best effort cleanup

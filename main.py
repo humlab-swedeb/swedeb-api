@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api_swedeb.api import metadata_router, tool_router
+from api_swedeb.api.v1.endpoints import tool_router
+from api_swedeb.api.v1.endpoints import metadata_router
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 
 ConfigStore.configure_context(source='config/config.yml')

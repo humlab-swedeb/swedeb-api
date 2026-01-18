@@ -12,7 +12,7 @@ def get_ngrams(
     corpus: ccc.Corpus,
     search_term: str | list[str],
     commons: CommonQueryParams,
-    n_gram_width: int | tuple[int, int] = 2,
+    n_gram_width: int = 2,
     n_threshold: int = 2,
     search_target: None | Literal["word", "lemma"] = "word",
     display_target: Literal["word", "lemma"] = "word",
@@ -24,7 +24,7 @@ def get_ngrams(
         search_term = [search_term]
     if len(search_term) == 0:
         raise ValueError("search_term must contain at least one term")
-    opts: dict[str, Any] = mappers.query_params_to_CQP_opts(
+    opts: dict[str, Any] | list[dict[str, Any]] = mappers.query_params_to_CQP_opts(
         commons, word_targets=search_term, search_target=search_target
     )
     ngrams: pd.DataFrame = n_grams.n_grams(

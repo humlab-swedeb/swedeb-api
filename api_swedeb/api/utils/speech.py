@@ -26,7 +26,7 @@ def get_speeches(commons: CommonQueryParams, corpus: Corpus) -> SpeechesResult:
     """
     df: DataFrame = corpus.get_anforanden(selections=commons.get_filter_opts(True))
 
-    rows: List[SpeechesResultItem] = [SpeechesResultItem(**row) for row in df.to_dict(orient="records")]
+    rows: List[SpeechesResultItem] = [SpeechesResultItem(**row) for row in df.to_dict(orient="records")]  # type: ignore
 
     return SpeechesResult(speech_list=rows)
 

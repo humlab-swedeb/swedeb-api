@@ -5,6 +5,7 @@ Tests for api_swedeb.core.codecs module.
 import os
 import sqlite3
 import tempfile
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -180,7 +181,7 @@ class TestBaseCodecs:
     """Test cases for Codecs class."""
 
     @pytest.fixture
-    def sample_specification(self):
+    def sample_specification(self) -> dict[str, Any]:
         """Fixture providing sample codec specification."""
         return {
             "tables": {"gender": "gender_id", "party": "party_id"},
@@ -193,7 +194,7 @@ class TestBaseCodecs:
         }
 
     @pytest.fixture
-    def sample_store(self):
+    def sample_store(self) -> dict[str, pd.DataFrame]:
         """Fixture providing sample data store."""
         return {
             "gender": pd.DataFrame({"gender": ["Male", "Female"], "gender_abbrev": ["M", "F"]}, index=[1, 2]),
@@ -222,6 +223,9 @@ class TestBaseCodecs:
         assert codec is not None
         assert codec.from_column == "gender_id"
         assert codec.to_column == "gender"
+        # Verify codec type is 'decode'
+        assert codec.type == "decode"
+        assert hasattr(codec, 'fx_factory')
 
     def test_find_codec_not_exists(self, sample_specification):
         """Test find_codec returns None when codec doesn't exist."""
@@ -298,7 +302,11 @@ class TestBaseCodecs:
         # First access should create the codecs
         codec_list = codecs.codecs
         assert codecs._codecs is not None
+        assert isinstance(codecs._codecs, list)
         assert len(codec_list) == 3
+        # Verify codecs have expected structure
+        assert all(hasattr(c, 'from_column') for c in codec_list)
+        assert all(hasattr(c, 'to_column') for c in codec_list)
 
         # Second access should return the same cached list
         codec_list2 = codecs.codecs
@@ -429,10 +437,13 @@ class TestBaseCodecs:
         decoder = codecs.decoder("gender_id")
         assert decoder is not None
         assert decoder.from_column == "gender_id"
+        assert decoder.type == "decode"
 
         decoder = codecs.decoder("gender_id", "gender")
         assert decoder is not None
         assert decoder.to_column == "gender"
+        assert decoder.from_column == "gender_id"
+        assert decoder.type == "decode"
 
     def test_apply_codec_basic(self, sample_specification, sample_store):
         """Test apply_codec method."""
@@ -510,8 +521,8 @@ class TestBaseCodecs:
         """Test property_values_specs cached property."""
         codecs: PersonCodecs = PersonCodecs(specification=sample_specification).load(sample_store)
 
-        specs: list[dict[str, str | dict[str, int]]] = codecs.property_values_specs
-        expected: list[dict[str, str]] = [
+        specs: list[dict[str, Any]] = codecs.property_values_specs
+        expected: list[dict[str, Any]] = [
             {"text_name": "gender", "id_name": "gender_id", "values": {'Male': 1, 'Female': 2}}
         ]
         assert specs == expected
@@ -608,7 +619,7 @@ class TestPersonCodecs:
         person_codecs.load(codecs_source_dict)
 
         person = person_codecs[0]
-        assert person["name"] == "John Doe"
+        assert str(person["name"]) == "John Doe"
 
     def test_getitem_by_string_digit_key(self, codecs_source_dict):
         """Test __getitem__ with string digit key."""
@@ -616,7 +627,7 @@ class TestPersonCodecs:
         person_codecs.load(codecs_source_dict)
 
         person = person_codecs["0"]
-        assert person["name"] == "John Doe"
+        assert str(person["name"]) == "John Doe"
 
     def test_getitem_by_wiki_id(self, codecs_source_dict):
         """Test __getitem__ with wiki_id key."""
@@ -628,7 +639,7 @@ class TestPersonCodecs:
             mock_get_mapping.return_value = {"q1": "p1", "q2": "p2"}
 
             person = person_codecs["q1"]
-            assert person["name"] == "John Doe"
+            assert str(person["name"]) == "John Doe"
 
     def test_getitem_by_person_id(self, codecs_source_dict):
         """Test __getitem__ with person_id key."""
@@ -640,7 +651,7 @@ class TestPersonCodecs:
             mock_get_mapping.return_value = {"p1": 0, "p2": 1}
 
             person = person_codecs["p1"]
-            assert person["name"] == "John Doe"
+            assert str(person["name"]) == "John Doe"
 
     def test_person_codecs_on_load(self, codecs_source_dict):
         """Test add multiple party abbrevs hook."""
@@ -661,8 +672,8 @@ class TestPersonCodecs:
     def test_person_wiki_link_single_value(self):
         """Test person_wiki_link with single value."""
         result = PersonCodecs.person_wiki_link("Q123456")
-        expected = "https://www.wikidata.org/wiki/Q123456"
-        assert result == expected
+        expected: str = "https://www.wikidata.org/wiki/Q123456"
+        assert str(result) == expected
 
     @patch('api_swedeb.core.codecs.ConfigValue')
     def test_person_wiki_link_unknown_value(self, mock_config_value):
@@ -670,7 +681,7 @@ class TestPersonCodecs:
         mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
 
         result = PersonCodecs.person_wiki_link("unknown")
-        assert result == "Unknown Speaker"
+        assert str(result) == "Unknown Speaker"
 
     def test_person_wiki_link_series(self):
         """Test person_wiki_link with pandas Series."""
@@ -684,6 +695,7 @@ class TestPersonCodecs:
             expected = pd.Series(
                 ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
             )
+            assert isinstance(result, pd.Series)
 
             pd.testing.assert_series_equal(result, expected)
 
@@ -694,6 +706,7 @@ class TestPersonCodecs:
 
         result = PersonCodecs.speech_link("prot-1970--ak--029_001", 5)
         expected = "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
+        assert isinstance(result, str)
         assert result == expected
 
     @patch('api_swedeb.core.codecs.ConfigValue')
@@ -712,7 +725,7 @@ class TestPersonCodecs:
                 "https://example.com/1980/prot-1980--ak--029.pdf#page=2",
             ]
         )
-
+        assert isinstance(result, pd.Series)
         pd.testing.assert_series_equal(result, expected)
 
     def test_decode_speech_index_empty_dataframe(self):

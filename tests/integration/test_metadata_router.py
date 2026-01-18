@@ -1,20 +1,19 @@
 from unittest.mock import Mock, patch
 
-import pytest
-from fastapi import FastAPI, status
-from fastapi.testclient import TestClient
+from fastapi import status
 
-from api_swedeb.api.metadata_router import router
-from api_swedeb.api.utils.dependencies import get_shared_corpus
 from api_swedeb.schemas.metadata_schema import (
+    ChamberItem,
     ChamberList,
     GenderItem,
     GenderList,
+    OfficeTypeItem,
     OfficeTypeList,
     PartyItem,
     PartyList,
     SpeakerItem,
     SpeakerResult,
+    SubOfficeTypeItem,
     SubOfficeTypeList,
 )
 
@@ -69,7 +68,7 @@ def test_get_meta_genders(mock_get_genders: Mock, fastapi_client):
 
 @patch(
     "api_swedeb.api.metadata_router.get_chambers",
-    return_value=ChamberList(chamber_list=[{"chamber_id": 1, "chamber": "chamber", "chamber_abbrev": "C"}]),
+    return_value=ChamberList(chamber_list=[ChamberItem(chamber_id=1, chamber="chamber", chamber_abbrev="C")]),
 )
 def test_get_meta_chambers(mock_get_chambers: Mock, fastapi_client):
     response = fastapi_client.get("/v1/metadata/chambers")
@@ -84,7 +83,7 @@ def test_get_meta_chambers(mock_get_chambers: Mock, fastapi_client):
 
 @patch(
     "api_swedeb.api.metadata_router.get_office_types",
-    return_value=OfficeTypeList(office_type_list=[{"office_type_id": 1, "office": "office"}]),
+    return_value=OfficeTypeList(office_type_list=[OfficeTypeItem(office_type_id=1, office="office")]),
 )
 def test_get_meta_office_types(mock_get_office_types: Mock, fastapi_client):
     response = fastapi_client.get("/v1/metadata/office_types")
@@ -100,7 +99,7 @@ def test_get_meta_office_types(mock_get_office_types: Mock, fastapi_client):
 @patch(
     "api_swedeb.api.metadata_router.get_sub_office_types",
     return_value=SubOfficeTypeList(
-        sub_office_type_list=[{"sub_office_type_id": 1, "office_type_id": 1, "identifier": "identifier"}]
+        sub_office_type_list=[SubOfficeTypeItem(sub_office_type_id=1, office_type_id=1, identifier="identifier")]
     ),
 )
 def test_get_meta_sub_office_types(mock_get_sub_office_types: Mock, fastapi_client):

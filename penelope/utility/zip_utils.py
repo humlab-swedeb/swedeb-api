@@ -33,7 +33,7 @@ def list_filenames(
     *,
     zip_or_filename: zipfile.ZipFile,
     filename_pattern: str = '*.txt',
-    filename_filter: Union[List[str], Callable] = None,
+    filename_filter: Union[List[str], Callable] | None = None,
 ) -> List[str]:
     filenames: List[str] = [x for x in zip_or_filename.namelist() if fnmatch(x, filename_pattern)]
     if filename_pattern is not None:

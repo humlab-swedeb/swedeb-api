@@ -4,7 +4,7 @@ import fastapi
 from fastapi import Depends
 
 from api_swedeb.api.utils.common_params import SpeakerQueryParams
-from api_swedeb.api.utils.dependencies import get_shared_corpus
+from api_swedeb.api.dependencies import get_shared_corpus
 from api_swedeb.api.utils.metadata import (
     get_chambers,
     get_end_year,
