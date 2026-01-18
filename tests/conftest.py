@@ -34,7 +34,7 @@ def corpus() -> ccc.Corpus:
 
 
 @pytest.fixture(scope="module")
-def api_corpus() -> CorpusLoader:
+def corpus_loader() -> CorpusLoader:
     loader: CorpusLoader = CorpusLoader()
     _ = loader.vectorized_corpus
     _ = loader.person_codecs
@@ -45,9 +45,9 @@ def api_corpus() -> CorpusLoader:
 
 
 @pytest.fixture(scope="module")
-def _speech_index_cached(api_corpus: CorpusLoader) -> pd.DataFrame:
+def _speech_index_cached(corpus_loader: CorpusLoader) -> pd.DataFrame:
     """Cached speech index - internal use only."""
-    return api_corpus.vectorized_corpus.document_index
+    return corpus_loader.vectorized_corpus.document_index
 
 
 @pytest.fixture
@@ -57,8 +57,8 @@ def speech_index(_speech_index_cached: pd.DataFrame) -> pd.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def _person_codecs_cached(api_corpus: CorpusLoader) -> PersonCodecs:
-    return api_corpus.person_codecs
+def _person_codecs_cached(corpus_loader: CorpusLoader) -> PersonCodecs:
+    return corpus_loader.person_codecs
 
 
 @pytest.fixture
