@@ -141,6 +141,16 @@ skip-string-normalization = true
 [tool.pylint]
 max-line-length = 140
 max-args = 10
+ignore-paths = [
+    "tmp",
+    "data",
+    "deprecated",
+    "docker",
+    "htmlcov",
+    ".pytest_cache",
+    ".ruff_cache",
+    "tests/test_data",
+]
 
 [tool.pylint.format]
 max-line-length = 120
