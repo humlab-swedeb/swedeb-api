@@ -20,77 +20,68 @@ class TestDocumentIndexLazyLoad:
 class TestGetWordTrendResults:
     """Tests for get_word_trend_results method."""
 
-    @patch('api_swedeb.api.utils.corpus.compute_word_trends')
-    @patch('api_swedeb.api.utils.corpus.replace_by_patterns')
     @patch('api_swedeb.api.utils.corpus.CorpusLoader')
-    def test_get_word_trend_results_success(self, mock_loader_class, mock_replace, mock_compute):
-        """Test get_word_trend_results with valid terms."""
+    def test_get_word_trend_results_success(self, mock_loader_class):
+        """Test get_word_trend_results delegates to WordTrendsService."""
         mock_loader = MagicMock()
         mock_loader_class.return_value = mock_loader
 
-        mock_vc = Mock()
-        mock_vc.token2id = {"democracy": 0, "freedom": 1}
-        mock_loader.vectorized_corpus = mock_vc
-
-        mock_pc = Mock()
-        mock_loader.person_codecs = mock_pc
-
-        trends_df = pd.DataFrame({"year": [2020], "democracy": [10]})
-        mock_compute.return_value = trends_df
-        mock_replace.return_value = pd.Index(["year", "democracy"])
-
         corpus = Corpus()
+
+        # Mock the word_trends service
+        expected_df = pd.DataFrame({"year": [2020], "democracy": [10]})
+        corpus._word_trends_service.get_word_trend_results = MagicMock(return_value=expected_df)
+
         result = corpus.get_word_trend_results(
             search_terms=["democracy", "freedom"],
             filter_opts={"year": 2020},
             normalize=True
         )
 
-        mock_compute.assert_called_once_with(
-            mock_vc, mock_pc, ["democracy", "freedom"], {"year": 2020}, True
+        corpus._word_trends_service.get_word_trend_results.assert_called_once_with(
+            ["democracy", "freedom"], {"year": 2020}, True
         )
         assert isinstance(result, pd.DataFrame)
 
-    def test_get_word_trend_results_empty_terms(self, mock_config, mock_load):
-        """Test get_word_trend_results returns empty DataFrame when terms filtered out."""
-        mock_config.return_value.resolve.return_value = "test"
-
-        mock_vc = Mock()
-        mock_vc.token2id = {}
-        mock_load.return_value = mock_vc
+    @patch('api_swedeb.api.utils.corpus.CorpusLoader')
+    def test_get_word_trend_results_empty_terms(self, mock_loader_class):
+        """Test get_word_trend_results delegates empty terms correctly."""
+        mock_loader = MagicMock()
+        mock_loader_class.return_value = mock_loader
 
         corpus = Corpus()
+
+        # Mock the word_trends service
+        corpus._word_trends_service.get_word_trend_results = MagicMock(return_value=pd.DataFrame())
+
         result = corpus.get_word_trend_results(
             search_terms=["missing"],
             filter_opts={},
             normalize=False
         )
 
+        corpus._word_trends_service.get_word_trend_results.assert_called_once()
         assert result.empty
 
     @patch('api_swedeb.api.utils.corpus.CorpusLoader')
-    @patch('api_swedeb.api.utils.corpus.compute_word_trends')
-    def test_get_word_trend_results_without_normalize(self, mock_config, mock_pc_class,
-                                                      mock_load, mock_compute):
+    def test_get_word_trend_results_without_normalize(self, mock_loader_class):
         """Test get_word_trend_results with normalize=False (default)."""
-        mock_config.return_value.resolve.return_value = {"old": "new"}
-
-        mock_vc = Mock()
-        mock_vc.token2id = {"democracy": 0}
-        mock_load.return_value = mock_vc
-
-        mock_pc = Mock()
-        mock_pc.load.return_value = mock_pc
-        mock_pc_class.return_value = mock_pc
-
-        trends_df = pd.DataFrame({"year": [2020], "count": [5]})
-        mock_compute.return_value = trends_df
+        mock_loader = MagicMock()
+        mock_loader_class.return_value = mock_loader
 
         corpus = Corpus()
-        _ = corpus.get_word_trend_results(["democracy"], {})
+
+        # Mock the word_trends service
+        expected_df = pd.DataFrame({"year": [2020], "count": [5]})
+        corpus._word_trends_service.get_word_trend_results = MagicMock(return_value=expected_df)
+
+        result = corpus.get_word_trend_results(["democracy"], {})
 
         # Verify normalize defaults to False
-        mock_compute.assert_called_with(mock_vc, mock_pc, ["democracy"], {}, False)
+        corpus._word_trends_service.get_word_trend_results.assert_called_once_with(
+            ["democracy"], {}, False
+        )
+        assert isinstance(result, pd.DataFrame)
 
 
 class TestGetFilteredSpeakers:

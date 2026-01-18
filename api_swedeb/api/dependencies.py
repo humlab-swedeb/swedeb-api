@@ -6,6 +6,7 @@ from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
@@ -13,6 +14,7 @@ from api_swedeb.core.configuration import ConfigValue
 __shared_corpus: Corpus | None = None
 __loader: CorpusLoader | None = None
 __metadata_service: MetadataService | None = None
+__word_trends_service: WordTrendsService | None = None
 
 
 def get_corpus_loader() -> CorpusLoader:
@@ -29,6 +31,14 @@ def get_metadata_service() -> MetadataService:
     if __metadata_service is None:
         __metadata_service = MetadataService(get_corpus_loader())
     return __metadata_service
+
+
+def get_word_trends_service() -> WordTrendsService:
+    """Get the singleton WordTrendsService instance."""
+    global __word_trends_service
+    if __word_trends_service is None:
+        __word_trends_service = WordTrendsService(get_corpus_loader())
+    return __word_trends_service
 
 
 def get_shared_corpus() -> Corpus:

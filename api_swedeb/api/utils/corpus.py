@@ -5,12 +5,11 @@ import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core import codecs as md
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_index import get_speeches_by_opts, get_speeches_by_words
-from api_swedeb.core.utility import replace_by_patterns
-from api_swedeb.core.word_trends import compute_word_trends
+from api_swedeb.core.speech_index import get_speeches_by_opts
 
 # pylint: disable=cell-var-from-loop, too-many-public-methods
 
@@ -45,6 +44,7 @@ class Corpus:
 
         # Initialize services
         self._metadata_service = MetadataService(self._loader)
+        self._word_trends_service = WordTrendsService(self._loader)
 
     @property
     def dtm_tag(self) -> str:
@@ -97,40 +97,23 @@ class Corpus:
         return self._loader.decoded_persons
 
     def word_in_vocabulary(self, word):
-        if word in self.vectorized_corpus.token2id:
-            return word
-        if word.lower() in self.vectorized_corpus.token2id:
-            return word.lower()
-        return None
+        """Check if word is in vocabulary via WordTrendsService."""
+        return self._word_trends_service.word_in_vocabulary(word)
 
     def filter_search_terms(self, search_terms):
-        return [self.word_in_vocabulary(word) for word in search_terms if self.word_in_vocabulary(word)]
+        """Filter search terms via WordTrendsService."""
+        return self._word_trends_service.filter_search_terms(search_terms)
 
     def get_word_trend_results(
         self, search_terms: list[str], filter_opts: dict, normalize: bool = False
     ) -> pd.DataFrame:
-        search_terms = self.filter_search_terms(search_terms)
-
-        if not search_terms:
-            return pd.DataFrame()
-
-        trends: pd.DataFrame = compute_word_trends(
-            self.vectorized_corpus, self.person_codecs, search_terms, filter_opts, normalize
-        )
-
-        trends.columns = replace_by_patterns(trends.columns, ConfigValue("display.headers.translations").resolve())
-
-        return trends
+        """Get word trend results via WordTrendsService."""
+        return self._word_trends_service.get_word_trend_results(search_terms, filter_opts, normalize)
 
     # FIXME: refactor get_anforanden_for_word_trends & get_anforanden to a single method
     def get_anforanden_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
-        speeches: pd.DataFrame = get_speeches_by_words(
-            self.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts
-        )
-        speeches = self.person_codecs.decode_speech_index(
-            speeches, value_updates=ConfigValue("display.speech_index.updates").resolve(), sort_values=True
-        )
-        return speeches
+        """Get speeches for word trends via WordTrendsService."""
+        return self._word_trends_service.get_anforanden_for_word_trends(selected_terms, filter_opts)
 
     def get_anforanden(self, selections: dict) -> pd.DataFrame:
         """For getting a list of - and info about - the full 'Anföranden' (speeches)
