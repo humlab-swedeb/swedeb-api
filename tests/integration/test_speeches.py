@@ -33,7 +33,7 @@ def check_url_availability(url):
 def test_pdf_link(corpus_loader: CorpusLoader):
     """
     Test that the pdf link points to available pdf"""
-    
+
     search_service = SearchService(corpus_loader)
     protocol_ids = [
         find_a_speech_id(search_service)[0],

@@ -184,15 +184,16 @@ class DocumentIndexHelper:
         if pivot_column_name not in di_cols:
             raise DocumentIndexError(f"fatal: document index has no {pivot_column_name} column")
 
-        transform = lambda df: (
-            df[pivot_column_name]
-            if transformer is None
-            else (
-                df[pivot_column_name].apply(transformer)
-                if callable(transformer)
-                else df[pivot_column_name].apply(transformer.get) if isinstance(transformer, dict) else None
+        def transform(df: pd.DataFrame) -> pd.Series | None:
+            return (
+                df[pivot_column_name]
+                if transformer is None
+                else (
+                    df[pivot_column_name].apply(transformer)
+                    if callable(transformer)
+                    else df[pivot_column_name].apply(transformer.get) if isinstance(transformer, dict) else None
+                )
             )
-        )
 
         """
         Create `agg` dict that sums up all count variables (and span of years per group)

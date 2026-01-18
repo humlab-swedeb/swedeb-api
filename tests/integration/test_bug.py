@@ -84,7 +84,7 @@ def test_bug_with_get_word_trends_even_deeper():
     search_terms = ['sverige']
     filter_opts: dict[str, Any] = {'party_id': [5, 6], 'year': (1867, 2022)}
     normalize = False
-    
+
     # Filter search terms
     word_trends_service = WordTrendsService(loader)
     search_terms = word_trends_service.filter_search_terms(search_terms)

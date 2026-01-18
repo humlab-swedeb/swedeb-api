@@ -49,9 +49,9 @@ class TestLazy:
             return 42
 
         result = Lazy(factory)
-        assert not result.is_initialized()
+        assert not result.is_initialized
         assert result.value == 42
-        assert result.is_initialized()
+        assert result.is_initialized
         assert result.value == 42
 
     def test_lazy_factory_called_once(self):
@@ -533,9 +533,9 @@ def test_lazy():
         return 42
 
     result = Lazy(factory)
-    assert not result.is_initialized()
+    assert not result.is_initialized
     assert result.value == 42
-    assert result.is_initialized()
+    assert result.is_initialized
     assert result.value == 42
 
 

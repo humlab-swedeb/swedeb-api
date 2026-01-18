@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_text import SpeechTextRepository, SpeechTextService, Loader
+from api_swedeb.core.speech_text import Loader, SpeechTextRepository, SpeechTextService
 
 
 def create_basic_document_index():

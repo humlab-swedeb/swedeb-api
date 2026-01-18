@@ -4,7 +4,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from api_swedeb.api.dependencies import get_corpus_loader, get_search_service
+from api_swedeb.api.dependencies import get_corpus_loader
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.codecs import PersonCodecs

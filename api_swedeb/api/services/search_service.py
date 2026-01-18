@@ -41,7 +41,7 @@ class SearchService:
         for key, value in selection_dict.items():
             if key == "party_id":
                 value: list[int] = [int(v) for v in value] if isinstance(value, list) else [int(value)]
-                person_party = getattr(self._loader.metadata, 'person_party')
+                person_party = getattr(self._loader.person_codecs, 'person_party')
                 party_person_ids: set[str] = set(person_party[person_party.party_id.isin(value)].person_id)
                 df = df[df.index.isin(party_person_ids)]
             elif key == "chamber_abbrev" and value:

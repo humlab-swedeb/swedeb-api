@@ -20,7 +20,7 @@ class TestGetSearchHitResults:
         mock_vectorized_corpus.vocabulary = {"test", "word1", "word2", "word3"}
         mock_vectorized_corpus.find_matching_words.return_value = ["word1", "word2", "word3"]
         mock_loader.vectorized_corpus = mock_vectorized_corpus
-        
+
         mock_service = Mock()
         mock_service._loader = mock_loader
 
@@ -37,7 +37,7 @@ class TestGetSearchHitResults:
         mock_vectorized_corpus.vocabulary = {}
         mock_vectorized_corpus.find_matching_words.return_value = []
         mock_loader.vectorized_corpus = mock_vectorized_corpus
-        
+
         mock_service = Mock()
         mock_service._loader = mock_loader
 
@@ -54,7 +54,7 @@ class TestGetSearchHitResults:
         mock_vectorized_corpus.vocabulary = {"a", "b", "c"}
         mock_vectorized_corpus.find_matching_words.return_value = ["c", "b", "a"]
         mock_loader.vectorized_corpus = mock_vectorized_corpus
-        
+
         mock_service = Mock()
         mock_service._loader = mock_loader
 
