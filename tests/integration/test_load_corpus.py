@@ -1,14 +1,14 @@
 from typing import Any
 
-from api_swedeb.api.utils.corpus import load_corpus
+from api_swedeb.api.dependencies import get_corpus_loader
 
 
 def test_load_corpus():
-    # corpus is loaded
-    c = load_corpus()
-    assert c is not None
-    # corpus has a person_codecs attribute
-    person_codecs = c.person_codecs
+    # corpus loader is loaded
+    loader = get_corpus_loader()
+    assert loader is not None
+    # loader has person_codecs attribute
+    person_codecs = loader.person_codecs
     assert person_codecs is not None
     # with some content
     id_to_person: dict[Any, Any] = person_codecs.get_mapping('person_id', 'name')

@@ -6,8 +6,9 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from loguru import logger
 
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.utility import format_protocol_id
@@ -29,12 +30,13 @@ def check_url_availability(url):
         return False
 
 
-def test_pdf_link(api_corpus: Corpus):
+def test_pdf_link(api_corpus: CorpusLoader):
     """
     Test that the pdf link points to available pdf"""
-
+    
+    search_service = SearchService(api_corpus)
     protocol_ids = [
-        find_a_speech_id(api_corpus)[0],
+        find_a_speech_id(search_service)[0],
         "prot-1867--ak--0118_001",
         "prot-19992000--001_001",
         "prot-201011--084_160",

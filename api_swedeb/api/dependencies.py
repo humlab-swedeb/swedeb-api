@@ -9,11 +9,9 @@ from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 
-__shared_corpus: Corpus | None = None
 __loader: CorpusLoader | None = None
 __metadata_service: MetadataService | None = None
 __word_trends_service: WordTrendsService | None = None
@@ -59,13 +57,6 @@ def get_search_service() -> SearchService:
     if __search_service is None:
         __search_service = SearchService(get_corpus_loader())
     return __search_service
-
-
-def get_shared_corpus() -> Corpus:
-    global __shared_corpus
-    if __shared_corpus is None:
-        __shared_corpus = Corpus()
-    return __shared_corpus
 
 
 def get_cwb_corpus_opts() -> dict[str, str | None]:

@@ -2,7 +2,8 @@ import pandas as pd
 import pytest
 from fastapi import status
 
-from api_swedeb.api.utils.corpus import Corpus, load_corpus
+from api_swedeb.api.dependencies import get_corpus_loader
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.schemas.metadata_schema import (
     ChamberItem,
     ChamberList,
@@ -21,8 +22,8 @@ version = "v1"
 
 
 @pytest.fixture(scope="module")
-def corpus() -> Corpus:
-    return load_corpus()
+def corpus() -> CorpusLoader:
+    return get_corpus_loader()
 
 
 def test_multiple_parties(corpus):

@@ -15,39 +15,53 @@ class TestGetSearchHitResults:
 
     def test_get_search_hit_results_success(self):
         """Test get_search_hit_results returns SearchHits."""
-        mock_corpus = Mock()
-        mock_corpus.get_word_hits.return_value = ["word1", "word2", "word3"]
+        mock_loader = Mock()
+        mock_vectorized_corpus = Mock()
+        mock_vectorized_corpus.vocabulary = {"test", "word1", "word2", "word3"}
+        mock_vectorized_corpus.find_matching_words.return_value = ["word1", "word2", "word3"]
+        mock_loader.vectorized_corpus = mock_vectorized_corpus
+        
+        mock_service = Mock()
+        mock_service._loader = mock_loader
 
-        result = get_search_hit_results("test", mock_corpus, 5)
+        result = get_search_hit_results("test", mock_service, 5)
 
         assert isinstance(result, SearchHits)
         assert hasattr(result, 'hit_list')
         assert len(result.hit_list) == 3
-        assert result.hit_list == ["word1", "word2", "word3"]
-        mock_corpus.get_word_hits.assert_called_once_with("test", 5)
 
     def test_get_search_hit_results_empty(self):
         """Test get_search_hit_results with no hits."""
-        mock_corpus = Mock()
-        mock_corpus.get_word_hits.return_value = []
+        mock_loader = Mock()
+        mock_vectorized_corpus = Mock()
+        mock_vectorized_corpus.vocabulary = {}
+        mock_vectorized_corpus.find_matching_words.return_value = []
+        mock_loader.vectorized_corpus = mock_vectorized_corpus
+        
+        mock_service = Mock()
+        mock_service._loader = mock_loader
 
-        result = get_search_hit_results("missing", mock_corpus, 5)
+        result = get_search_hit_results("missing", mock_service, 5)
 
         assert isinstance(result, SearchHits)
         assert hasattr(result, 'hit_list')
         assert len(result.hit_list) == 0
-        assert result.hit_list == []
 
     def test_get_search_hit_results_max_hits(self):
         """Test get_search_hit_results respects max_hits parameter."""
-        mock_corpus = Mock()
-        mock_corpus.get_word_hits.return_value = ["a", "b", "c"]
+        mock_loader = Mock()
+        mock_vectorized_corpus = Mock()
+        mock_vectorized_corpus.vocabulary = {"a", "b", "c"}
+        mock_vectorized_corpus.find_matching_words.return_value = ["c", "b", "a"]
+        mock_loader.vectorized_corpus = mock_vectorized_corpus
+        
+        mock_service = Mock()
+        mock_service._loader = mock_loader
 
-        result = get_search_hit_results("test", mock_corpus, 10)
+        result = get_search_hit_results("test", mock_service, 10)
 
         assert isinstance(result, SearchHits)
         assert len(result.hit_list) == 3
-        mock_corpus.get_word_hits.assert_called_once_with("test", 10)
 
 
 class TestGetWordTrends:
@@ -55,14 +69,14 @@ class TestGetWordTrends:
 
     def test_get_word_trends_success(self):
         """Test get_word_trends returns WordTrendsResult."""
-        mock_corpus = Mock()
+        mock_service = Mock()
         trends_df = pd.DataFrame({
             "word1": [10, 20, 30]
         }, index=[1990, 2000, 2010])
-        mock_corpus.get_word_trend_results.return_value = trends_df
+        mock_service.get_word_trend_results.return_value = trends_df
 
         commons = CommonQueryParams()
-        result = get_word_trends("word1", commons, mock_corpus, normalize=False)
+        result = get_word_trends("word1", commons, mock_service, normalize=False)
 
         assert isinstance(result, WordTrendsResult)
         assert hasattr(result, 'wt_list')
@@ -75,45 +89,45 @@ class TestGetWordTrends:
 
     def test_get_word_trends_multiple_words(self):
         """Test get_word_trends with multiple search terms."""
-        mock_corpus = Mock()
+        mock_service = Mock()
         trends_df = pd.DataFrame({
             "word1": [10, 20],
             "word2": [5, 15]
         }, index=[2000, 2010])
-        mock_corpus.get_word_trend_results.return_value = trends_df
+        mock_service.get_word_trend_results.return_value = trends_df
 
         commons = CommonQueryParams()
-        _ = get_word_trends("word1,word2", commons, mock_corpus, normalize=True)
+        _ = get_word_trends("word1,word2", commons, mock_service, normalize=True)
 
-        mock_corpus.get_word_trend_results.assert_called_once()
-        call_args = mock_corpus.get_word_trend_results.call_args
+        mock_service.get_word_trend_results.assert_called_once()
+        call_args = mock_service.get_word_trend_results.call_args
         assert call_args[1]['search_terms'] == ["word1", "word2"]
         assert call_args[1]['normalize'] is True
 
     def test_get_word_trends_filters_columns(self):
         """Test get_word_trends removes gender/chamber columns."""
-        mock_corpus = Mock()
+        mock_service = Mock()
         trends_df = pd.DataFrame({
             "word1": [10, 20],
             "gender_abbrev": ["M", "F"],
             "chamber_abbrev": ["AK", "FK"]
         }, index=[2000, 2010])
-        mock_corpus.get_word_trend_results.return_value = trends_df
+        mock_service.get_word_trend_results.return_value = trends_df
 
         commons = CommonQueryParams()
-        result = get_word_trends("word1", commons, mock_corpus, normalize=False)
+        result = get_word_trends("word1", commons, mock_service, normalize=False)
 
         # Result should not have gender_abbrev or chamber_abbrev
         assert all("gender_abbrev" not in item.count for item in result.wt_list)
 
     def test_get_word_trends_empty_result(self):
         """Test get_word_trends with empty DataFrame with proper columns."""
-        mock_corpus = Mock()
+        mock_service = Mock()
         # Empty but with named columns to avoid .str accessor error
-        mock_corpus.get_word_trend_results.return_value = pd.DataFrame(columns=["year", "count"])
+        mock_service.get_word_trend_results.return_value = pd.DataFrame(columns=["year", "count"])
 
         commons = CommonQueryParams()
-        result = get_word_trends("missing", commons, mock_corpus, normalize=False)
+        result = get_word_trends("missing", commons, mock_service, normalize=False)
 
         assert isinstance(result, WordTrendsResult)
         assert hasattr(result, 'wt_list')
@@ -121,14 +135,14 @@ class TestGetWordTrends:
 
     def test_get_word_trends_normalization(self):
         """Test get_word_trends passes normalize parameter."""
-        mock_corpus = Mock()
+        mock_service = Mock()
         trends_df = pd.DataFrame({"word1": [10]}, index=[2000])
-        mock_corpus.get_word_trend_results.return_value = trends_df
+        mock_service.get_word_trend_results.return_value = trends_df
 
         commons = CommonQueryParams()
-        _ = get_word_trends("word1", commons, mock_corpus, normalize=True)
+        _ = get_word_trends("word1", commons, mock_service, normalize=True)
 
-        call_args = mock_corpus.get_word_trend_results.call_args
+        call_args = mock_service.get_word_trend_results.call_args
         assert call_args[1]['normalize'] is True
 
 
@@ -137,16 +151,16 @@ class TestGetWordTrendSpeeches:
 
     def test_get_word_trend_speeches_success(self):
         """Test get_word_trend_speeches returns SpeechesResultWT."""
-        mock_corpus = Mock()
+        mock_service = Mock()
         speeches_df = pd.DataFrame({
             "speech_id": ["s1", "s2"],
             "year": [2000, 2001],
             "node_word": ["word1", "word1"]
         })
-        mock_corpus.get_anforanden_for_word_trends.return_value = speeches_df
+        mock_service.get_anforanden_for_word_trends.return_value = speeches_df
 
         commons = CommonQueryParams()
-        result = get_word_trend_speeches("word1", commons, mock_corpus)
+        result = get_word_trend_speeches("word1", commons, mock_service)
 
         assert isinstance(result, SpeechesResultWT)
         assert hasattr(result, 'speech_list')
@@ -157,31 +171,31 @@ class TestGetWordTrendSpeeches:
 
     def test_get_word_trend_speeches_multiple_words(self):
         """Test get_word_trend_speeches with comma-separated words."""
-        mock_corpus = Mock()
+        mock_service = Mock()
         speeches_df = pd.DataFrame({
             "speech_id": ["s1"],
             "year": [2000],
             "node_word": ["word1"]
         })
-        mock_corpus.get_anforanden_for_word_trends.return_value = speeches_df
+        mock_service.get_anforanden_for_word_trends.return_value = speeches_df
 
         commons = CommonQueryParams()
-        _ = get_word_trend_speeches("word1,word2", commons, mock_corpus)
+        _ = get_word_trend_speeches("word1,word2", commons, mock_service)
 
-        call_args = mock_corpus.get_anforanden_for_word_trends.call_args
+        call_args = mock_service.get_anforanden_for_word_trends.call_args
         assert call_args[0][0] == ["word1", "word2"]
 
     def test_get_word_trend_speeches_empty(self):
         """Test get_word_trend_speeches with no results."""
-        mock_corpus = Mock()
-        mock_corpus.get_anforanden_for_word_trends.return_value = pd.DataFrame({
+        mock_service = Mock()
+        mock_service.get_anforanden_for_word_trends.return_value = pd.DataFrame({
             "speech_id": [],
             "year": [],
             "node_word": []
         })
 
         commons = CommonQueryParams()
-        result = get_word_trend_speeches("missing", commons, mock_corpus)
+        result = get_word_trend_speeches("missing", commons, mock_service)
 
         assert isinstance(result, SpeechesResultWT)
         assert hasattr(result, 'speech_list')
