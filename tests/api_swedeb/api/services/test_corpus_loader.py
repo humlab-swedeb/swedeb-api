@@ -193,7 +193,7 @@ class TestCorpusLoaderLazyLoading:
         mock_index_df = MagicMock(spec=pd.DataFrame)
         mock_index.return_value = mock_index_df
 
-        # Configure dtm to return a corpus with document_index property
+        # Configure dtm to return a corpus (but we won't use it)
         mock_corpus = MagicMock()
         mock_corpus.document_index = MagicMock(spec=pd.DataFrame)
         mock_dtm.return_value = mock_corpus
@@ -206,15 +206,15 @@ class TestCorpusLoaderLazyLoading:
         )
 
         # Access document_index without loading vectorized corpus explicitly
-        # The lazy loader will load dtm when document_index is accessed
-        # because is_initialized checks if __lazy_vectorized_corpus was accessed
+        # This should call load_speech_index directly, not load_dtm_corpus
         result = loader.document_index
 
-        # In this case, it loads dtm_corpus and uses its document_index
-        assert result == mock_corpus.document_index
-        # Since we didn't explicitly load vectorized_corpus first,
-        # it should use the dtm_corpus's document_index
-        mock_dtm.assert_called_once()
+        # Should get the index from load_speech_index, not from dtm_corpus
+        assert result is mock_index_df
+        # load_speech_index should be called
+        mock_index.assert_called_once()
+        # load_dtm_corpus should NOT be called since vectorized_corpus wasn't accessed
+        mock_dtm.assert_not_called()
 
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
