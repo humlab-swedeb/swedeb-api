@@ -3,14 +3,15 @@ from typing import Any
 import pytest
 from ccc import Corpus
 
+from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.utils import common_params as cp
-from api_swedeb.api.utils import ngrams as ngram_service
 from api_swedeb.schemas.ngrams_schema import NGramResult
 
 version = "v1"
 
 
 def test_n_gram_service_with_single_word(corpus: Corpus):
+    ngram_service = NGramsService()
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(
         from_year=1970, to_year=1975, who=None, party_id=None, office_types=None, sub_office_types=None, gender_id=None
     )
@@ -43,6 +44,7 @@ def test_n_gram_service_with_single_word(corpus: Corpus):
 
 
 def test_n_gram_service_fails_if_target_is_lemma(corpus: Corpus):
+    ngram_service = NGramsService()
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(
         from_year=1970, to_year=1975, who=None, party_id=None, office_types=None, sub_office_types=None, gender_id=None
     )
@@ -60,6 +62,7 @@ def test_n_gram_service_fails_if_target_is_lemma(corpus: Corpus):
 
 @pytest.mark.skip("FIXME: When phrase is used, to many sliding windows are created ")
 def test_n_gram_service_with_phrase(corpus: Corpus):
+    ngram_service = NGramsService()
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
     opts: dict[str, Any] = {
         'search_term': ['sverige', 'vara'],
@@ -83,6 +86,7 @@ def test_n_gram_service_with_phrase(corpus: Corpus):
 
 def test_n_gram_service_with_phrase_word(corpus: Corpus):
     # test n-gram with a phrase
+    ngram_service = NGramsService()
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
     opts: dict[str, Any] = {
         'search_term': ['sverige', 'är'],
@@ -109,6 +113,7 @@ def test_n_gram_service_with_phrase_word(corpus: Corpus):
 @pytest.mark.skip("FIXME: Phrase are not handled correctly in n-grams")
 def test_n_gram_service_with_smaller_window(corpus: Corpus):
     # test n-gram with a phrase and
+    ngram_service = NGramsService()
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
     opts: dict[str, Any] = {
         'search_term': ['det', 'är', 'därför'],
