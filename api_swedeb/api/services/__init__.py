@@ -9,11 +9,15 @@ business logic for different domains:
 - WordTrendsService: Word trend analysis and vocabulary operations
 - NGramsService: N-grams extraction and analysis
 - SearchService: Speech search and retrieval operations
-- SpeechService: Speech operations (retrieval, speaker queries)
-- WordService: Vocabulary and word trend operations
-- SpeakerService: Speaker queries and filtering
-- CorpusFacade: Optional coordination layer for multiple services
 """
+
+# type: ignore
+
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.word_trends_service import WordTrendsService
+from api_swedeb.api.services.ngrams_service import NGramsService
+from api_swedeb.api.services.search_service import SearchService
 
 __all__ = [
     "CorpusLoader",
@@ -21,8 +25,4 @@ __all__ = [
     "WordTrendsService",
     "NGramsService",
     "SearchService",
-    "SpeechService",
-    "WordService",
-    "SpeakerService",
-    "CorpusFacade",
 ]
