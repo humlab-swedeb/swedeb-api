@@ -24,8 +24,8 @@ from .stats import StatsMixIn
 from .store import StoreMixIn
 
 try:
-    import sklearn.preprocessing
-    from sklearn.feature_extraction.text import TfidfTransformer
+    import sklearn.preprocessing  # type: ignore
+    from sklearn.feature_extraction.text import TfidfTransformer  # type: ignore
 except ImportError:
     ...
 

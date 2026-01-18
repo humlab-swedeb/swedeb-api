@@ -11,11 +11,11 @@ from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 def test_to_value_expr():
     assert compiler._to_value_expr("") == ""
     assert compiler._to_value_expr([""]) == ""
-    assert compiler._to_value_expr([None]) == ""
-    assert compiler._to_value_expr(1) == "1"
-    assert compiler._to_value_expr("1") == "1"
-    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
-    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"
+    assert compiler._to_value_expr([None]) == ""  # type: ignore
+    assert compiler._to_value_expr(1) == "1"  # type: ignore
+    assert compiler._to_value_expr("1") == "1"  # type: ignore
+    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"  # type: ignore
+    assert compiler._to_value_expr([1, 2, 3, "a"]) == "1|2|3|a"  # type: ignore
     assert compiler._to_value_expr((1990, 1999)) == "199[0-9]"
     assert compiler._to_value_expr((1957, 1975)) == "195[7-9]|196[0-9]|197[0-5]"
 

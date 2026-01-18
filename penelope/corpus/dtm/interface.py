@@ -2,7 +2,7 @@
 
 import abc
 from numbers import Number
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Protocol, Self, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ class IVectorizedCorpus(abc.ABC):
     def vocabulary(self) -> List[str]: ...
 
     @abc.abstractmethod
-    def nlargest(self, n_top: int, sort_indices: bool = False, override: bool = False) -> np.ndarray: ...
+    def nlargest(self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: ...
 
     @property
     @abc.abstractmethod
@@ -216,7 +216,7 @@ class IVectorizedCorpusProtocol(Protocol):
     @property
     def payload(self) -> dict[str, Any]: ...
 
-    def remember(self, **kwargs) -> None: ...
+    def remember(self, **kwargs) -> Self: ...
 
     def recall(self, key: str) -> Optional[Any]: ...
 

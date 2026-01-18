@@ -410,7 +410,7 @@ def fill_temporal_gaps_in_group_document_index(
         row.update(document_name=f'{temporal_value}{sep}{sep.join(["0"]*len(pivot_keys))}')
         return row
 
-    values_with_no_gaps: set[T] = set(temporal_key_values_with_no_gaps(di[temporal_key], temporal_key=temporal_key))
+    values_with_no_gaps: set = set(temporal_key_values_with_no_gaps(di[temporal_key], temporal_key=temporal_key))
     missing_values = values_with_no_gaps - set(di[temporal_key])
     missing_documents: list[dict] = [to_row(pivot_keys, aggs, temporal_value) for temporal_value in missing_values]
 
@@ -461,15 +461,17 @@ def group_DTM_by_category_series(
 
 
 def group_DTM_by_indices_mapping(
-    dtm: sp.spmatrix,
+    dtm: scipy.sparse.csr_matrix,
     n_docs: int,
     category_indices: Mapping[int, List[int]],
     aggregate: str = 'sum',
     dtype: np.dtype | None = None,
 ):
+    assert dtm.shape is not None
+
     shape: Tuple[int, int] = (n_docs, dtm.shape[1])
 
-    dtype: np.dtype = dtype or (np.int32 if np.issubdtype(dtm.dtype, np.integer) and aggregate == 'sum' else np.float64)
+    dtype = dtype or (np.int32 if np.issubdtype(dtm.dtype, np.integer) and aggregate == 'sum' else np.float64)
 
     matrix: sp.lil_matrix = sp.lil_matrix(shape, dtype=dtype)
 

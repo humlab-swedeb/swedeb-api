@@ -1,4 +1,5 @@
 """Unit tests for api_swedeb/core/speech_index.py"""
+from typing import Any
 from unittest.mock import Mock
 
 import pandas as pd
@@ -142,13 +143,13 @@ class TestFindDocumentsWithWords:
 
         mock_corpus.get_word_vector = Mock(side_effect=get_vector)
 
-        result = _find_documents_with_words(mock_corpus, ["democracy", "freedom"], {})
+        result: pd.DataFrame = _find_documents_with_words(mock_corpus, ["democracy", "freedom"], {})
 
         assert len(result) == 1
         assert 0 in result.index
         # Both words should be in the result, separated by comma
-        assert "democracy" in result.loc[0, "words"]
-        assert "freedom" in result.loc[0, "words"]
+        assert "democracy" in str(result.loc[0, "words"])
+        assert "freedom" in str(result.loc[0, "words"])
 
     def test_with_filter_opts(self):
         """Test _find_documents_with_words with filter options."""
@@ -319,7 +320,7 @@ class TestGetSpeechesByOpts:
 
     def test_with_filter_opts(self):
         """Test get_speeches_by_opts with filter options."""
-        data = {col: [f"{col}_{i}" for i in range(3)] for col in COLUMNS_OF_INTEREST}
+        data: dict[str, Any] = {col: [f"{col}_{i}" for i in range(3)] for col in COLUMNS_OF_INTEREST}
         data["year"] = [2019, 2020, 2021]
         speech_index = pd.DataFrame(data)
 

@@ -279,7 +279,7 @@ class Codecs:
         return self.apply_codec(df, self.encoders, drop=drop, keeps=keeps, ignores=ignores)
 
     @cached_property
-    def property_values_specs(self) -> list[Mapping[str, str | Mapping[str, int]]]:
+    def property_values_specs(self) -> list[dict[str, Any]]:
         return [
             dict(text_name=d["text_name"], id_name=d["id_name"], values=self.get_mapping(d["text_name"], d["id_name"]))
             for d in self.specification.get("property_values_specs", [])
@@ -328,7 +328,7 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def speech_link(
-        document_name: str | pd.Series, page_nr: str | int | pd.Series[int | str] = 1
+        document_name: str | pd.Series, page_nr: str | int | pd.Series[int] | pd.Series[str] = 1
     ) -> str | pd.Series[str]:
         base_url: str = ConfigValue("pdf_server.base_url").resolve()
         if isinstance(document_name, pd.Series):

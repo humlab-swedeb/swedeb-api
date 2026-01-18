@@ -521,8 +521,8 @@ class TestBaseCodecs:
         """Test property_values_specs cached property."""
         codecs: PersonCodecs = PersonCodecs(specification=sample_specification).load(sample_store)
 
-        specs: list[dict[str, str | dict[str, int]]] = codecs.property_values_specs
-        expected: list[dict[str, str]] = [
+        specs: list[dict[str, Any]] = codecs.property_values_specs
+        expected: list[dict[str, Any]] = [
             {"text_name": "gender", "id_name": "gender_id", "values": {'Male': 1, 'Female': 2}}
         ]
         assert specs == expected
@@ -695,6 +695,7 @@ class TestPersonCodecs:
             expected = pd.Series(
                 ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
             )
+            assert isinstance(result, pd.Series)
 
             pd.testing.assert_series_equal(result, expected)
 
@@ -705,6 +706,7 @@ class TestPersonCodecs:
 
         result = PersonCodecs.speech_link("prot-1970--ak--029_001", 5)
         expected = "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
+        assert isinstance(result, str)
         assert result == expected
 
     @patch('api_swedeb.core.codecs.ConfigValue')
@@ -723,7 +725,7 @@ class TestPersonCodecs:
                 "https://example.com/1980/prot-1980--ak--029.pdf#page=2",
             ]
         )
-
+        assert isinstance(result, pd.Series)
         pd.testing.assert_series_equal(result, expected)
 
     def test_decode_speech_index_empty_dataframe(self):
