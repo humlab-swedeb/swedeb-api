@@ -5,12 +5,14 @@ from fastapi import Depends
 from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.utils.corpus import Corpus
 from api_swedeb.core.codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 
 __shared_corpus: Corpus | None = None
 __loader: CorpusLoader | None = None
+__metadata_service: MetadataService | None = None
 
 
 def get_corpus_loader() -> CorpusLoader:
@@ -19,6 +21,14 @@ def get_corpus_loader() -> CorpusLoader:
     if __loader is None:
         __loader = CorpusLoader()
     return __loader
+
+
+def get_metadata_service() -> MetadataService:
+    """Get the singleton MetadataService instance."""
+    global __metadata_service
+    if __metadata_service is None:
+        __metadata_service = MetadataService(get_corpus_loader())
+    return __metadata_service
 
 
 def get_shared_corpus() -> Corpus:

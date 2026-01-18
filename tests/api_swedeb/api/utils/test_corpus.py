@@ -162,36 +162,41 @@ class TestCorpusMetadataMethods:
 
     @patch('api_swedeb.api.utils.corpus.CorpusLoader')
     def test_get_party_meta(self, mock_loader_class):
-        """Test get_party_meta returns sorted parties."""
+        """Test get_party_meta delegates to MetadataService."""
         mock_loader = MagicMock()
-        mock_pc = Mock()
-        party_df = pd.DataFrame({
-            "party": ["A", "B"],
-            "sort_order": [2, 1]
-        })
-        mock_pc.party = party_df
-        mock_loader.person_codecs = mock_pc
         mock_loader_class.return_value = mock_loader
 
         corpus = Corpus()
+
+        # Mock the metadata service
+        corpus._metadata_service.get_party_meta = MagicMock(return_value=pd.DataFrame({
+            "party": ["A", "B"],
+            "sort_order": [1, 2]
+        }))
+
         result = corpus.get_party_meta()
 
+        corpus._metadata_service.get_party_meta.assert_called_once()
         assert len(result) == 2
         assert "party" in result.columns
 
     @patch('api_swedeb.api.utils.corpus.CorpusLoader')
     def test_get_gender_meta(self, mock_loader_class):
-        """Test get_gender_meta adds gender_id."""
+        """Test get_gender_meta delegates to MetadataService."""
         mock_loader = MagicMock()
-        mock_pc = Mock()
-        gender_df = pd.DataFrame({"gender": ["M", "F"]})
-        mock_pc.gender = gender_df
-        mock_loader.person_codecs = mock_pc
         mock_loader_class.return_value = mock_loader
 
         corpus = Corpus()
+
+        # Mock the metadata service
+        corpus._metadata_service.get_gender_meta = MagicMock(return_value=pd.DataFrame({
+            "gender": ["M", "F"],
+            "gender_id": [1, 2]
+        }))
+
         result = corpus.get_gender_meta()
 
+        corpus._metadata_service.get_gender_meta.assert_called_once()
         assert "gender_id" in result.columns
 
 

@@ -4,6 +4,7 @@ from typing import Any
 import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.core import codecs as md
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech import Speech
@@ -41,6 +42,9 @@ class Corpus:
                 metadata_filename=opts.get('metadata_filename'),
                 tagged_corpus_folder=opts.get('tagged_corpus_folder'),
             )
+
+        # Initialize services
+        self._metadata_service = MetadataService(self._loader)
 
     @property
     def dtm_tag(self) -> str:
@@ -176,23 +180,24 @@ class Corpus:
         return current_speakers.reset_index(inplace=False)
 
     def get_party_meta(self) -> pd.DataFrame:
-        return self.metadata.party.sort_values(by=['sort_order', 'party']).reset_index()
+        """Get party metadata via MetadataService."""
+        return self._metadata_service.get_party_meta()
 
     def get_gender_meta(self):
-        return self.metadata.gender.assign(gender_id=self.metadata.gender.index)
+        """Get gender metadata via MetadataService."""
+        return self._metadata_service.get_gender_meta()
 
     def get_chamber_meta(self):
-        df = self.metadata.chamber
-        df = df[df['chamber_abbrev'].str.strip().astype(bool)]
-        return df.reset_index()
+        """Get chamber metadata via MetadataService."""
+        return self._metadata_service.get_chamber_meta()
 
     def get_office_type_meta(self):
-        df = self.metadata.office_type
-        return df.reset_index()
+        """Get office type metadata via MetadataService."""
+        return self._metadata_service.get_office_type_meta()
 
     def get_sub_office_type_meta(self):
-        df = self.metadata.sub_office_type
-        return df.reset_index()
+        """Get sub-office type metadata via MetadataService."""
+        return self._metadata_service.get_sub_office_type_meta()
 
     def get_speech(self, document_name: str) -> Speech:
         speech: Speech = self.repository.speech(speech_name=document_name)
