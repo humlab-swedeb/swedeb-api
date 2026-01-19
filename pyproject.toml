@@ -130,6 +130,11 @@ disable = [
     "f-string-without-interpolation",
     "unnecessary-ellipsis",
     "bare-except",
+    "too-many-arguments",
+    "invalid-name",
+    "line-too-long",
+    "pointless-string-statement",
+    "unnecessary-lambda-assignment"
 ]
 
 [tool.black]
