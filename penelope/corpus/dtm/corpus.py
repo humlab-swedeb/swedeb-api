@@ -41,7 +41,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         *,
         token2id: dict[str, int],
         document_index: pd.DataFrame,
-        overridden_term_frequency: Optional[dict[int, int]] = None,
+        overridden_term_frequency: Optional[np.ndarray] = None,
         **kwargs,
     ):
         """Class that encapsulates a bag-of-word matrix
@@ -50,7 +50,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             bag_term_matrix (scipy.sparse.csr_matrix): Bag-of-word matrix
             token2id (dict[str, int]): Token to token/column index translation
             document_index (pd.DataFrame): Corpus document/row metadata
-            overridden_term_frequency (np.ndarrys, optional): Supplied if source TF
+            overridden_term_frequency (np.ndarray, optional): Supplied if source TF differs from corpus TF
         """
         self._class_name: str = "penelope.corpus.dtm.corpus.VectorizedCorpus"
 
