@@ -18,7 +18,34 @@
 - Always initialize the configuration context via `ConfigStore.configure_context(source='config/config.yml')` (use `tests/config.yml` inside tests) before reading any configuration value.
 - Resolve configuration values with `ConfigValue("path.to.key").resolve()` using dot notation and respect custom YAML constructors `!jj` and `!join` plus the `PYRIKSPROT_` env override prefix.
 - Keep environment variables (`DATA_DIR`, `METADATA_FILENAME`, `TAGGED_CORPUS_FOLDER`, `FOLDER`, `TAG`, `KWIC_CORPUS_NAME`, `KWIC_DIR`) defined and absolute when referencing corpus assets.
-- Validate CWB registry/data directories exist prior to issuing queries and configure per-environment paths consistently.
+
+### Performance Optimization
+1. Profile with `make profile-kwic-pyinstrument`
+2. Check speech index memory usage: `load.py::_memory_usage()`
+3. Use feather format for large DataFrames
+4. Consider CWB query optimization via CQP patterns
+
+### Avoiding Unnecessary Wrappers
+- **Rule**: No utility wrapper functions that just call a single service method
+- **Bad Pattern**: `utils/ngrams.py` → `def get_ngrams(): return service.get_ngrams()`
+- **Good Pattern**: Route directly injects service and calls method, applies mapper
+- **Exception**: Keep `common_params.py` for shared query parameter handling only
+- If you create a util function, it must:
+  - Have complex business logic (not just a pass-through)
+  - Be reused by multiple routes or services
+  - Not duplicate service responsibility
+
+### Refactoring Patterns (Recent Improvements)
+- **Removed Wrapper Pattern**: Deleted `utils/ngrams.py`, `utils/word_trends.py`, `utils/kwic.py`
+  - Reason: Unnecessary indirection between routes and services
+  - Benefit: Cleaner code path, easier to understand flow
+- **Added Service Pattern**: Created `KWICService` to encapsulate KWIC logic
+  - Reason: Needed persistent access to loader and codecs
+  - Benefit: Reusable, testable, follows existing pattern
+- **Enhanced Services**: Added helpers like `WordTrendsService.get_search_hits()`
+  - Reason: Related functionality grouped with service
+  - Benefit: Cohesive service interface, easier discoverability
+- **Result**: 3 fewer files, clearer architecture, same functionality
 
 ## Data Loading & Storage (`api_swedeb/core/`)
 - Use `api_swedeb/core/load.py` helpers to load speech indexes and DTMs; check the feather cache via `is_invalidated(source, target)` before falling back to CSV.gz.
