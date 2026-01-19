@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 import requests
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -8,11 +7,9 @@ from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.search_service import SearchService
-from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.utility import format_protocol_id
-from api_swedeb.schemas.speeches_schema import SpeechesResult
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked

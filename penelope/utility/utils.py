@@ -701,9 +701,9 @@ def multiple_replace(text: str, replace_map: dict, ignore_case: bool = False) ->
     sorted_keys = sorted(replace_map.keys(), key=lambda k: len(replace_map[k]), reverse=True)
     regex = re.compile(f"({'|'.join(map(re.escape, sorted_keys))})", **opts)
     if ignore_case:
-        fx = lambda mo: replace_map[(mo.string[mo.start() : mo.end()]).lower()]
+        fx = lambda mo: replace_map[(mo.string[mo.start() : mo.end()]).lower()]  # noqa: E731
     else:
-        fx = lambda mo: replace_map[mo.string[mo.start() : mo.end()]]
+        fx = lambda mo: replace_map[mo.string[mo.start() : mo.end()]]  # noqa: E731
     return regex.sub(fx, text)
 
 

@@ -57,7 +57,7 @@ class TestCodec:
     def test_get_fx_with_fx_factory(self):
         """Test get_fx returns result of fx_factory when provided."""
         mapping = {1: "One", 2: "Two"}
-        factory = lambda from_col, to_col: mapping
+        factory = lambda from_col, to_col: mapping  # noqa: E731
 
         codec = Codec(table="test_table", type="decode", from_column="id", to_column="name", fx_factory=factory)
 

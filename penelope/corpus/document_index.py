@@ -399,12 +399,12 @@ def create_temporal_key_categorizer(temporal_key_specifier: TemporalKeySpecifier
         if temporal_key_specifier not in KNOWN_TIME_PERIODS:
             raise ValueError(f"{temporal_key_specifier} is not a known period specifier")
 
-        categorizer = lambda y: y - int(y % KNOWN_TIME_PERIODS[temporal_key_specifier])
+        categorizer = lambda y: y - int(y % KNOWN_TIME_PERIODS[temporal_key_specifier])  # noqa: E731
 
     else:
         year_group_mapping = dict_of_key_values_inverted_to_dict_of_value_key(temporal_key_specifier)
 
-        categorizer = lambda x: year_group_mapping.get(x, np.nan)
+        categorizer = lambda x: year_group_mapping.get(x, np.nan)  # noqa: E731
 
     return categorizer
 
@@ -604,7 +604,7 @@ def update_document_index_token_counts(
     """Updates or adds fields `n_raw_tokens` and `n_tokens` to document index from collected during a corpus read pass
     Only updates values that don't already exist in the document index"""
     try:
-        strip_ext = lambda filename: os.path.splitext(filename)[0]
+        strip_ext = lambda filename: os.path.splitext(filename)[0]  # noqa: E731
 
         df_counts: pd.DataFrame = pd.DataFrame(data=doc_token_counts, columns=['filename', 'n_raw_tokens', 'n_tokens'])
         df_counts['document_name'] = df_counts.filename.apply(strip_ext)

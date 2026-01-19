@@ -15,8 +15,8 @@ from loguru import logger
 from scipy.sparse import SparseEfficiencyWarning, lil_matrix
 
 from penelope import utility
+from penelope.corpus.document_index import DocumentIndex
 
-from ..document_index import DocumentIndex
 from .group import GroupByMixIn
 from .interface import IVectorizedCorpus, VectorizedCorpusError
 from .slice import SliceMixIn

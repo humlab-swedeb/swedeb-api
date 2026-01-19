@@ -6,7 +6,8 @@ import numpy as np
 import scipy.sparse as sp
 from loguru import logger
 
-from ..token2id import id2token2token2id
+from penelope.corpus.token2id import id2token2token2id
+
 from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol
 
 # pylint: disable=no-member, attribute-defined-outside-init, access-member-before-definition, unused-argument

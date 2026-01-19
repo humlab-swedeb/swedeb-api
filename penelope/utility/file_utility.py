@@ -98,7 +98,7 @@ def read_json(path: str, default: dict | None = None) -> Dict:
 def write_json(path: str, data: Dict, default=None):
     if default is not None:
         if not callable(default):
-            default = lambda _: default
+            default = lambda _: default  # noqa: E731
 
     with open(path, 'w', encoding='utf-8') as json_file:
         json.dump(data, json_file, indent=4, default=default)
