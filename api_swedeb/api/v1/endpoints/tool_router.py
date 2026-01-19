@@ -149,7 +149,9 @@ async def get_speeches_result(
 
 # FIXME: rename endpoint to /speeches/{speech_id}/text
 @router.get("/speeches/{speech_id}", response_model=SpeechesTextResultItem)
-async def get_speech_by_id_result(speech_id: str, search_service: SearchService = Depends(get_search_service)) -> SpeechesTextResultItem:
+async def get_speech_by_id_result(
+    speech_id: str, search_service: SearchService = Depends(get_search_service)
+) -> SpeechesTextResultItem:
     """Get speech text by ID (e.g., i-246211bdfc60c4fd-265)"""
     speech = search_service.get_speech(speech_id)
     return SpeechesTextResultItem(
@@ -160,7 +162,9 @@ async def get_speech_by_id_result(speech_id: str, search_service: SearchService 
 
 
 @router.post("/speech_download/")
-async def get_zip(ids: list = Body(..., min_length=1, max_length=100), search_service: SearchService = Depends(get_search_service)) -> StreamingResponse:
+async def get_zip(
+    ids: list = Body(..., min_length=1, max_length=100), search_service: SearchService = Depends(get_search_service)
+) -> StreamingResponse:
     """Download speeches as ZIP file"""
     if not ids:
         raise HTTPException(status_code=400, detail="Speech ids are required")
@@ -168,7 +172,9 @@ async def get_zip(ids: list = Body(..., min_length=1, max_length=100), search_se
     file_and_speech = []
     for protocol_id in ids:
         speaker = search_service.get_speaker(protocol_id)
-        file_and_speech.append((f"{speaker}_{protocol_id}.txt", search_service.get_speech(protocol_id).text.encode("utf-8")))
+        file_and_speech.append(
+            (f"{speaker}_{protocol_id}.txt", search_service.get_speech(protocol_id).text.encode("utf-8"))
+        )
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:

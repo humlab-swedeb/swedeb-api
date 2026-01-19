@@ -37,9 +37,8 @@ class SupportsGroupBy(Protocol):
         token2id: dict,
         document_index: pd.DataFrame,
         overridden_term_frequency: Any,
-        **kwargs
-    ) -> IVectorizedCorpus:
-        ...
+        **kwargs,
+    ) -> IVectorizedCorpus: ...
 
     def group_by_pivot_column(
         self,
@@ -49,16 +48,14 @@ class SupportsGroupBy(Protocol):
         fill_gaps: bool = False,
         fill_steps: int = 1,
         target_column_name: str = 'category',
-    ) -> IVectorizedCorpus:
-        ...
+    ) -> IVectorizedCorpus: ...
 
     def group_by_year(
         self,
         aggregate: str = 'sum',
         fill_gaps: bool = True,
         target_column_name: str = 'category',
-    ) -> IVectorizedCorpus:
-        ...
+    ) -> IVectorizedCorpus: ...
 
     def group_by_indices_mapping(
         self,
@@ -66,8 +63,7 @@ class SupportsGroupBy(Protocol):
         category_indices: Mapping[int, List[int]],
         aggregate: str = 'sum',
         dtype: np.dtype | None = None,
-    ) -> IVectorizedCorpus:
-        ...
+    ) -> IVectorizedCorpus: ...
 
 
 class GroupByMixIn:

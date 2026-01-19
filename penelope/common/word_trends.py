@@ -11,6 +11,7 @@ from penelope.common import keyness as pk
 
 T = TypeVar("T", bound="TrendsComputeOpts")
 
+
 @dataclass
 class TrendsComputeOpts(Generic[T]):
     normalize: bool

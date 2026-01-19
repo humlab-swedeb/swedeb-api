@@ -41,7 +41,7 @@ class SearchService:
         """
         for key, value in selection_dict.items():
             if key == "party_id":
-                ivalues: list[int] | list[str]= [int(v) for v in value] if isinstance(value, list) else [int(value)]
+                ivalues: list[int] | list[str] = [int(v) for v in value] if isinstance(value, list) else [int(value)]
                 person_party = getattr(self._loader.person_codecs, 'person_party')
                 party_person_ids: set[str] = set(person_party[person_party.party_id.isin(ivalues)].person_id)
                 df = df[df.index.isin(party_person_ids)]
@@ -176,7 +176,9 @@ class SearchService:
                     else doc_index["chamber_abbrev"]
                 )
                 allowed_person_ids = (
-                    doc_index.loc[di_col.isin(chamber_vals), "person_id"].astype(df["person_id"].dtype, copy=False).unique()
+                    doc_index.loc[di_col.isin(chamber_vals), "person_id"]
+                    .astype(df["person_id"].dtype, copy=False)
+                    .unique()
                 )
                 if len(allowed_person_ids) == 0:
                     return df.iloc[0:0]

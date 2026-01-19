@@ -15,9 +15,9 @@ business logic for different domains:
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
-from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.api.services.word_trends_service import WordTrendsService
 
 __all__ = [
     "CorpusLoader",

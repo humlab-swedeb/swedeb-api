@@ -26,7 +26,7 @@ class WordTrendsService:
 
     @property
     def loader(self) -> CorpusLoader:
-        """Get the CorpusLoader instance. """
+        """Get the CorpusLoader instance."""
         return self._loader
 
     def word_in_vocabulary(self, word: str) -> str | None:
@@ -86,7 +86,9 @@ class WordTrendsService:
             normalize,
         )
 
-        trends.columns = replace_by_patterns(trends.columns.to_list(), ConfigValue("display.headers.translations").resolve())
+        trends.columns = replace_by_patterns(
+            trends.columns.to_list(), ConfigValue("display.headers.translations").resolve()
+        )
 
         return trends
 

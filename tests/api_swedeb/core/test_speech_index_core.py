@@ -1,4 +1,5 @@
 """Unit tests for api_swedeb/core/speech_index.py"""
+
 from typing import Any
 from unittest.mock import Mock
 
@@ -96,6 +97,7 @@ class TestFindDocumentsWithWords:
 
         # All word vectors are False (no matches)
         import numpy as np
+
         mock_corpus.get_word_vector = Mock(return_value=np.array([0, 0]))
 
         result = _find_documents_with_words(mock_corpus, ["democracy"], {})
@@ -107,14 +109,12 @@ class TestFindDocumentsWithWords:
         """Test _find_documents_with_words with single word in multiple documents."""
         mock_corpus = Mock()
         mock_corpus.token2id = {"democracy": 0}
-        doc_index = pd.DataFrame({
-            "document_id": [0, 1, 2],
-            "year": [2020, 2020, 2021]
-        })
+        doc_index = pd.DataFrame({"document_id": [0, 1, 2], "year": [2020, 2020, 2021]})
         mock_corpus.document_index = doc_index
 
         # Word appears in documents 0 and 2
         import numpy as np
+
         mock_corpus.get_word_vector = Mock(return_value=np.array([1, 0, 1]))
 
         result = _find_documents_with_words(mock_corpus, ["democracy"], {})
@@ -127,14 +127,12 @@ class TestFindDocumentsWithWords:
         """Test _find_documents_with_words with multiple words in same document."""
         mock_corpus = Mock()
         mock_corpus.token2id = {"democracy": 0, "freedom": 1}
-        doc_index = pd.DataFrame({
-            "document_id": [0, 1],
-            "year": [2020, 2021]
-        })
+        doc_index = pd.DataFrame({"document_id": [0, 1], "year": [2020, 2021]})
         mock_corpus.document_index = doc_index
 
         # Both words in document 0
         import numpy as np
+
         def get_vector(word):
             if word == "democracy":
                 return np.array([1, 0])
@@ -155,15 +153,13 @@ class TestFindDocumentsWithWords:
         """Test _find_documents_with_words with filter options."""
         mock_corpus = Mock()
         mock_corpus.token2id = {"democracy": 0}
-        doc_index = pd.DataFrame({
-            "document_id": [0, 1, 2],
-            "year": [2019, 2020, 2021]
-        })
+        doc_index = pd.DataFrame({"document_id": [0, 1, 2], "year": [2019, 2020, 2021]})
         doc_index.index = [0, 1, 2]
         mock_corpus.document_index = doc_index
 
         # Word in all documents
         import numpy as np
+
         mock_corpus.get_word_vector = Mock(return_value=np.array([1, 1, 1]))
 
         # Filter to year 2020 only
@@ -214,9 +210,7 @@ class TestGetSpeechesBySpeechIds:
         data = {col: [f"{col}_{i}" for i in range(3)] for col in COLUMNS_OF_INTEREST}
         speech_index = pd.DataFrame(data, index=["id1", "id2", "id3"])
 
-        speech_ids_df = pd.DataFrame({
-            "extra_info": ["info1", "info2"]
-        }, index=["id1", "id2"])
+        speech_ids_df = pd.DataFrame({"extra_info": ["info1", "info2"]}, index=["id1", "id2"])
 
         result = get_speeches_by_speech_ids(speech_index, speech_ids_df)
 
@@ -230,17 +224,9 @@ class TestGetSpeechesBySpeechIds:
         data["speech_name"] = ["name1", "name2", "name3"]
         speech_index = pd.DataFrame(data)
 
-        speech_ids_df = pd.DataFrame({
-            "speech_name": ["name1", "name3"],
-            "count": [10, 20]
-        })
+        speech_ids_df = pd.DataFrame({"speech_name": ["name1", "name3"], "count": [10, 20]})
 
-        result = get_speeches_by_speech_ids(
-            speech_index,
-            speech_ids_df,
-            left_on="speech_name",
-            right_on="speech_name"
-        )
+        result = get_speeches_by_speech_ids(speech_index, speech_ids_df, left_on="speech_name", right_on="speech_name")
 
         assert len(result) == 2
         assert "count" in result.columns
@@ -251,17 +237,9 @@ class TestGetSpeechesBySpeechIds:
         data["speech_name"] = ["name1", "name2"]
         speech_index = pd.DataFrame(data)
 
-        speech_ids_df = pd.DataFrame({
-            "speech_name": ["name1"],
-            "extra": ["val1"]
-        })
+        speech_ids_df = pd.DataFrame({"speech_name": ["name1"], "extra": ["val1"]})
 
-        result = get_speeches_by_speech_ids(
-            speech_index,
-            speech_ids_df,
-            left_on="speech_name",
-            right_on="speech_name"
-        )
+        result = get_speeches_by_speech_ids(speech_index, speech_ids_df, left_on="speech_name", right_on="speech_name")
 
         assert len(result) == 1
 
@@ -271,16 +249,9 @@ class TestGetSpeechesBySpeechIds:
         data["speech_id"] = ["s1", "s2"]
         speech_index = pd.DataFrame(data, index=["idx1", "idx2"])
 
-        speech_ids_df = pd.DataFrame({
-            "speech_id": ["s1"]
-        }, index=["idx1"])
+        speech_ids_df = pd.DataFrame({"speech_id": ["s1"]}, index=["idx1"])
 
-        result = get_speeches_by_speech_ids(
-            speech_index,
-            speech_ids_df,
-            left_index=True,
-            right_index=True
-        )
+        result = get_speeches_by_speech_ids(speech_index, speech_ids_df, left_index=True, right_index=True)
 
         assert len(result) == 1
 
@@ -291,19 +262,18 @@ class TestGetSpeechesBySpeechIds:
             data[col] = [f"{col}_0", f"{col}_1"]
         speech_index = pd.DataFrame(data, index=["idx1", "idx2"])
 
-        speech_ids_df = pd.DataFrame({
-            "extra": ["val1"]
-        }, index=["idx1"])
+        speech_ids_df = pd.DataFrame({"extra": ["val1"]}, index=["idx1"])
 
         # Call with only 'suffixes' specified to trigger fallback left_index/right_index logic
         result = get_speeches_by_speech_ids(
             speech_index,
             speech_ids_df,
-            suffixes=('_left', '_right')  # This triggers lines 67 and 69 since no index/on keys specified
+            suffixes=('_left', '_right'),  # This triggers lines 67 and 69 since no index/on keys specified
         )
 
         assert len(result) == 1
         assert "extra" in result.columns
+
 
 class TestGetSpeechesByOpts:
     """Tests for get_speeches_by_opts function."""
@@ -360,17 +330,20 @@ class TestGetSpeechesByWords:
         mock_corpus.token2id = {"democracy": 0}
 
         # Document index with required columns - document_id should be integer
-        doc_index = pd.DataFrame({
-            'document_id': [0, 1],
-            'document_name': ["doc_0", "doc_1"],
-            'chamber_abbrev': ["FK", "AK"],
-            'year': [2020, 2021],
-            'speech_id': ["s0", "s1"],
-            'speech_name': ["speech_0", "speech_1"],
-            'person_id': ["p0", "p1"],
-            'gender_id': [1, 2],
-            'party_id': [10, 20]
-        }, index=[0, 1])
+        doc_index = pd.DataFrame(
+            {
+                'document_id': [0, 1],
+                'document_name': ["doc_0", "doc_1"],
+                'chamber_abbrev': ["FK", "AK"],
+                'year': [2020, 2021],
+                'speech_id': ["s0", "s1"],
+                'speech_name': ["speech_0", "speech_1"],
+                'person_id': ["p0", "p1"],
+                'gender_id': [1, 2],
+                'party_id': [10, 20],
+            },
+            index=[0, 1],
+        )
         mock_corpus.document_index = doc_index
 
         # Word appears in document 0
@@ -390,17 +363,20 @@ class TestGetSpeechesByWords:
         mock_corpus = Mock()
         mock_corpus.token2id = {"democracy": 0}
 
-        doc_index = pd.DataFrame({
-            'document_id': [0, 1],
-            'document_name': ["doc_0", "doc_1"],
-            'chamber_abbrev': ["FK", "AK"],
-            'year': [2020, 2021],
-            'speech_id': ["s0", "s1"],
-            'speech_name': ["speech_0", "speech_1"],
-            'person_id': ["p0", "p1"],
-            'gender_id': [1, 2],
-            'party_id': [10, 20]
-        }, index=[0, 1])
+        doc_index = pd.DataFrame(
+            {
+                'document_id': [0, 1],
+                'document_name': ["doc_0", "doc_1"],
+                'chamber_abbrev': ["FK", "AK"],
+                'year': [2020, 2021],
+                'speech_id': ["s0", "s1"],
+                'speech_name': ["speech_0", "speech_1"],
+                'person_id': ["p0", "p1"],
+                'gender_id': [1, 2],
+                'party_id': [10, 20],
+            },
+            index=[0, 1],
+        )
         mock_corpus.document_index = doc_index
 
         # Word in both documents

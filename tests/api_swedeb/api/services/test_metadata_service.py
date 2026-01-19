@@ -36,10 +36,7 @@ class TestGetPartyMeta:
     def test_get_party_meta_returns_sorted_dataframe(self):
         """Test get_party_meta returns party metadata sorted correctly."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        party_df = pd.DataFrame({
-            "party": ["Moderate", "Left", "Green"],
-            "sort_order": [2, 1, 3]
-        }, index=[10, 20, 30])
+        party_df = pd.DataFrame({"party": ["Moderate", "Left", "Green"], "sort_order": [2, 1, 3]}, index=[10, 20, 30])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.party = party_df
@@ -56,10 +53,7 @@ class TestGetPartyMeta:
     def test_get_party_meta_includes_index(self):
         """Test get_party_meta includes index as column after reset."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        party_df = pd.DataFrame({
-            "party": ["A", "B"],
-            "sort_order": [1, 2]
-        }, index=[10, 20])
+        party_df = pd.DataFrame({"party": ["A", "B"], "sort_order": [1, 2]}, index=[10, 20])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.party = party_df
@@ -75,10 +69,7 @@ class TestGetPartyMeta:
     def test_get_party_meta_empty_dataframe(self):
         """Test get_party_meta handles empty dataframe."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        party_df = pd.DataFrame({
-            "party": [],
-            "sort_order": []
-        })
+        party_df = pd.DataFrame({"party": [], "sort_order": []})
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.party = party_df
@@ -97,9 +88,7 @@ class TestGetGenderMeta:
     def test_get_gender_meta_assigns_gender_id(self):
         """Test get_gender_meta assigns gender_id from index."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        gender_df = pd.DataFrame({
-            "gender": ["Male", "Female"]
-        }, index=[1, 2])
+        gender_df = pd.DataFrame({"gender": ["Male", "Female"]}, index=[1, 2])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.gender = gender_df
@@ -114,9 +103,7 @@ class TestGetGenderMeta:
     def test_get_gender_meta_preserves_gender_column(self):
         """Test get_gender_meta preserves gender column."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        gender_df = pd.DataFrame({
-            "gender": ["M", "F", "X"]
-        }, index=[1, 2, 3])
+        gender_df = pd.DataFrame({"gender": ["M", "F", "X"]}, index=[1, 2, 3])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.gender = gender_df
@@ -135,10 +122,9 @@ class TestGetChamberMeta:
     def test_get_chamber_meta_filters_empty_abbrev(self):
         """Test get_chamber_meta filters out empty chamber abbreviations."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        chamber_df = pd.DataFrame({
-            "chamber_name": ["Primary", "Secondary", "Empty"],
-            "chamber_abbrev": ["P", "S", "   "]
-        }, index=[1, 2, 3])
+        chamber_df = pd.DataFrame(
+            {"chamber_name": ["Primary", "Secondary", "Empty"], "chamber_abbrev": ["P", "S", "   "]}, index=[1, 2, 3]
+        )
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.chamber = chamber_df
@@ -154,9 +140,7 @@ class TestGetChamberMeta:
     def test_get_chamber_meta_preserves_whitespace_content(self):
         """Test get_chamber_meta preserves abbrev with non-whitespace."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        chamber_df = pd.DataFrame({
-            "chamber_abbrev": ["A", " B ", "   "]
-        }, index=[1, 2, 3])
+        chamber_df = pd.DataFrame({"chamber_abbrev": ["A", " B ", "   "]}, index=[1, 2, 3])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.chamber = chamber_df
@@ -175,9 +159,7 @@ class TestGetOfficeTypeMeta:
     def test_get_office_type_meta_returns_dataframe(self):
         """Test get_office_type_meta returns office type metadata."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        office_df = pd.DataFrame({
-            "office_type": ["Minister", "MP"]
-        }, index=[1, 2])
+        office_df = pd.DataFrame({"office_type": ["Minister", "MP"]}, index=[1, 2])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.office_type = office_df
@@ -192,9 +174,7 @@ class TestGetOfficeTypeMeta:
     def test_get_office_type_meta_resets_index(self):
         """Test get_office_type_meta resets index."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        office_df = pd.DataFrame({
-            "office_type": ["A", "B"]
-        }, index=[10, 20])
+        office_df = pd.DataFrame({"office_type": ["A", "B"]}, index=[10, 20])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.office_type = office_df
@@ -214,9 +194,7 @@ class TestGetSubOfficeTypeMeta:
     def test_get_sub_office_type_meta_returns_dataframe(self):
         """Test get_sub_office_type_meta returns sub-office type metadata."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        sub_office_df = pd.DataFrame({
-            "sub_office_type": ["Deputy", "Chair"]
-        }, index=[1, 2])
+        sub_office_df = pd.DataFrame({"sub_office_type": ["Deputy", "Chair"]}, index=[1, 2])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.sub_office_type = sub_office_df
@@ -231,9 +209,7 @@ class TestGetSubOfficeTypeMeta:
     def test_get_sub_office_type_meta_empty(self):
         """Test get_sub_office_type_meta handles empty dataframe."""
         mock_loader = MagicMock(spec=CorpusLoader)
-        sub_office_df = pd.DataFrame({
-            "sub_office_type": []
-        })
+        sub_office_df = pd.DataFrame({"sub_office_type": []})
 
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs.sub_office_type = sub_office_df
@@ -255,22 +231,11 @@ class TestMetadataServiceIntegration:
 
         # Setup mock codecs with all metadata
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.party = pd.DataFrame({
-            "party": ["A", "B"],
-            "sort_order": [1, 2]
-        })
-        mock_codecs.gender = pd.DataFrame({
-            "gender": ["M", "F"]
-        }, index=[1, 2])
-        mock_codecs.chamber = pd.DataFrame({
-            "chamber_abbrev": ["X", " "]
-        })
-        mock_codecs.office_type = pd.DataFrame({
-            "office_type": ["Type1"]
-        })
-        mock_codecs.sub_office_type = pd.DataFrame({
-            "sub_office_type": ["SubType1"]
-        })
+        mock_codecs.party = pd.DataFrame({"party": ["A", "B"], "sort_order": [1, 2]})
+        mock_codecs.gender = pd.DataFrame({"gender": ["M", "F"]}, index=[1, 2])
+        mock_codecs.chamber = pd.DataFrame({"chamber_abbrev": ["X", " "]})
+        mock_codecs.office_type = pd.DataFrame({"office_type": ["Type1"]})
+        mock_codecs.sub_office_type = pd.DataFrame({"sub_office_type": ["SubType1"]})
 
         mock_loader.person_codecs = mock_codecs
 

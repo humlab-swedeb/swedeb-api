@@ -24,11 +24,14 @@ class TestSearchHitsMapper:
 
 class TestWordTrendsMapper:
     def test_word_trends_to_api_model_filters_columns(self):
-        df = pd.DataFrame({
-            "word1": [10, 20],
-            "gender_abbrev": ["M", "F"],
-            "chamber_abbrev": ["AK", "FK"],
-        }, index=[2000, 2010])
+        df = pd.DataFrame(
+            {
+                "word1": [10, 20],
+                "gender_abbrev": ["M", "F"],
+                "chamber_abbrev": ["AK", "FK"],
+            },
+            index=[2000, 2010],
+        )
 
         result = word_trends_to_api_model(df)
 
@@ -40,11 +43,13 @@ class TestWordTrendsMapper:
 
 class TestWordTrendSpeechesMapper:
     def test_word_trend_speeches_to_api_model(self):
-        df = pd.DataFrame({
-            "speech_id": ["s1"],
-            "year": [2000],
-            "node_word": ["word1"],
-        })
+        df = pd.DataFrame(
+            {
+                "speech_id": ["s1"],
+                "year": [2000],
+                "node_word": ["word1"],
+            }
+        )
 
         result = word_trend_speeches_to_api_model(df)
 

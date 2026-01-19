@@ -153,9 +153,7 @@ class TestCorpusLoaderLazyLoading:
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
     @patch('api_swedeb.api.services.corpus_loader.md.PersonCodecs')
-    def test_document_index_uses_vectorized_corpus_if_loaded(
-        self, mock_codecs_class, mock_index, mock_dtm
-    ):
+    def test_document_index_uses_vectorized_corpus_if_loaded(self, mock_codecs_class, mock_index, mock_dtm):
         """Test document_index returns index from vectorized corpus if already loaded."""
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs_instance = MagicMock()
@@ -186,9 +184,7 @@ class TestCorpusLoaderLazyLoading:
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
     @patch('api_swedeb.api.services.corpus_loader.md.PersonCodecs')
-    def test_document_index_loads_separately_if_corpus_not_loaded(
-        self, mock_codecs_class, mock_index, mock_dtm
-    ):
+    def test_document_index_loads_separately_if_corpus_not_loaded(self, mock_codecs_class, mock_index, mock_dtm):
         """Test document_index loads separately if vectorized corpus not yet loaded."""
         mock_index_df = MagicMock(spec=pd.DataFrame)
         mock_index.return_value = mock_index_df
@@ -251,9 +247,7 @@ class TestCorpusLoaderCaching:
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
     @patch('api_swedeb.api.services.corpus_loader.md.PersonCodecs')
-    def test_vectorized_corpus_cached_on_multiple_accesses(
-        self, mock_codecs_class, mock_index, mock_dtm
-    ):
+    def test_vectorized_corpus_cached_on_multiple_accesses(self, mock_codecs_class, mock_index, mock_dtm):
         """Test vectorized corpus is cached and not reloaded on subsequent accesses."""
         mock_corpus = MagicMock()
         mock_dtm.return_value = mock_corpus
@@ -280,9 +274,7 @@ class TestCorpusLoaderCaching:
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
     @patch('api_swedeb.api.services.corpus_loader.md.PersonCodecs')
-    def test_person_codecs_cached_on_multiple_accesses(
-        self, mock_codecs_class, mock_index, mock_dtm
-    ):
+    def test_person_codecs_cached_on_multiple_accesses(self, mock_codecs_class, mock_index, mock_dtm):
         """Test person codecs are cached and not reloaded on subsequent accesses."""
         mock_codecs = MagicMock(spec=PersonCodecs)
         mock_codecs_instance = MagicMock()

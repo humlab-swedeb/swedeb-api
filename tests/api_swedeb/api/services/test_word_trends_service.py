@@ -93,10 +93,7 @@ class TestWordTrendsServiceMethods:
         service._loader = mock_loader
 
         # Mock the method
-        expected_df = pd.DataFrame({
-            "year": [2000, 2001],
-            "count": [10, 20]
-        })
+        expected_df = pd.DataFrame({"year": [2000, 2001], "count": [10, 20]})
         service.get_word_trend_results = MagicMock(return_value=expected_df)
 
         result = service.get_word_trend_results(["democracy"], {})
@@ -126,10 +123,7 @@ class TestWordTrendsServiceMethods:
         service = WordTrendsService(loader=mock_loader)
         service._loader = mock_loader
 
-        expected_df = pd.DataFrame({
-            "speech_id": [1, 2],
-            "text": ["speech 1", "speech 2"]
-        })
+        expected_df = pd.DataFrame({"speech_id": [1, 2], "text": ["speech 1", "speech 2"]})
         service.get_anforanden_for_word_trends = MagicMock(return_value=expected_df)
 
         result = service.get_anforanden_for_word_trends(["democracy"], {})

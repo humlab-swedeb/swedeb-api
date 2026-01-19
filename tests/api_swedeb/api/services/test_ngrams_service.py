@@ -73,7 +73,6 @@ class TestNGramsServiceMethods:
         assert isinstance(result, schemas.NGramResult)
         assert len(result.ngram_list) == 0
 
-
     @patch('api_swedeb.api.services.ngrams_service.mappers.query_params_to_CQP_opts')
     def test_get_ngrams_empty_search_term_raises(self, mock_to_opts):
         """Test get_ngrams raises ValueError for empty search terms."""
@@ -137,11 +136,7 @@ class TestNGramsService:
         mock_get_ngrams.return_value = expected_result
 
         service = NGramsService()
-        result = service.get_ngrams(
-            corpus=mock_corpus,
-            search_term="hello",
-            commons=mock_commons
-        )
+        result = service.get_ngrams(corpus=mock_corpus, search_term="hello", commons=mock_commons)
 
         assert isinstance(result, NGramResult)
         assert hasattr(result, 'ngram_list')
@@ -156,11 +151,7 @@ class TestNGramsService:
         mock_get_ngrams.return_value = expected_result
 
         service = NGramsService()
-        result = service.get_ngrams(
-            corpus=mock_corpus,
-            search_term=["hello", "world"],
-            commons=mock_commons
-        )
+        result = service.get_ngrams(corpus=mock_corpus, search_term=["hello", "world"], commons=mock_commons)
 
         assert isinstance(result, NGramResult)
         assert hasattr(result, 'ngram_list')
@@ -175,11 +166,7 @@ class TestNGramsService:
         mock_get_ngrams.return_value = expected_result
 
         service = NGramsService()
-        result = service.get_ngrams(
-            corpus=mock_corpus,
-            search_term="test",
-            commons=mock_commons
-        )
+        result = service.get_ngrams(corpus=mock_corpus, search_term="test", commons=mock_commons)
 
         assert isinstance(result, NGramResult)
         assert result.ngram_list == []

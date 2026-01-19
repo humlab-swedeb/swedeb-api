@@ -1,4 +1,5 @@
 """Unit tests for api_swedeb/core/speech_text.py"""
+
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -10,14 +11,16 @@ from api_swedeb.core.speech_text import Loader, SpeechTextRepository, SpeechText
 
 def create_basic_document_index():
     """Helper to create a basic document index DataFrame with required columns."""
-    return pd.DataFrame({
-        "document_id": [0],
-        "document_name": ["prot-1234_1"],
-        "speech_id": ["i-001"],
-        "speaker_note_id": ["note1"],
-        "n_utterances": [1],
-        "person_id": ["p1"]
-    })
+    return pd.DataFrame(
+        {
+            "document_id": [0],
+            "document_name": ["prot-1234_1"],
+            "speech_id": ["i-001"],
+            "speaker_note_id": ["note1"],
+            "n_utterances": [1],
+            "person_id": ["p1"],
+        }
+    )
 
 
 def create_mock_service():
@@ -25,15 +28,17 @@ def create_mock_service():
     service = Mock()
     service.id_name = "speaker_note_id"
     # Provide a default implementation for nth that returns a basic speech dict
-    service.nth = Mock(return_value={
-        "speaker_note_id": "note1",
-        "who": "Test Speaker",
-        "u_id": "u1",
-        "paragraphs": ["Test paragraph"],
-        "num_tokens": 10,
-        "num_words": 8,
-        "page_number": 1
-    })
+    service.nth = Mock(
+        return_value={
+            "speaker_note_id": "note1",
+            "who": "Test Speaker",
+            "u_id": "u1",
+            "paragraphs": ["Test paragraph"],
+            "num_tokens": 10,
+            "num_words": 8,
+            "page_number": 1,
+        }
+    )
     return service
 
 
@@ -42,12 +47,9 @@ class TestSpeechTextService:
 
     def test_init_with_speaker_note_id(self):
         """Test initialization with speaker_note_id column."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [5]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_note_id": ["note1"], "n_utterances": [5]}
+        )
 
         service = SpeechTextService(df)
 
@@ -57,12 +59,9 @@ class TestSpeechTextService:
 
     def test_init_with_speaker_hash_legacy(self):
         """Test initialization with legacy speaker_hash column."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_hash": ["hash1"],
-            "n_utterances": [5]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_hash": ["hash1"], "n_utterances": [5]}
+        )
 
         service = SpeechTextService(df)
 
@@ -70,12 +69,9 @@ class TestSpeechTextService:
 
     def test_init_renames_speach_index_typo(self):
         """Test that speach_index typo is renamed to speech_index."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speach_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [5]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speach_index": [1], "speaker_note_id": ["note1"], "n_utterances": [5]}
+        )
 
         service = SpeechTextService(df)
 
@@ -84,13 +80,15 @@ class TestSpeechTextService:
 
     def test_name2info_property(self):
         """Test name2info cached property creates protocol mapping."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speech_id": ["i-001", "i-002"],
-            "speech_index": [1, 2],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [5, 3]
-        })
+        df = pd.DataFrame(
+            {
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
+                "speech_index": [1, 2],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [5, 3],
+            }
+        )
 
         service = SpeechTextService(df)
         mapping = service.name2info
@@ -101,21 +99,47 @@ class TestSpeechTextService:
 
     def test_speeches_creates_correct_structure(self):
         """Test speeches method creates list of speeches."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speech_id": ["i-001", "i-002"],
-            "speech_index": [1, 2],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [2, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
+                "speech_index": [1, 2],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [2, 1],
+            }
+        )
 
         service = SpeechTextService(df)
 
         metadata = {"name": "prot-1234"}
         utterances = [
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1},
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u2", "paragraphs": ["p2"], "num_tokens": 12, "num_words": 9, "page_number": 2},
-            {"speaker_note_id": "note2", "who": "Bob", "u_id": "u3", "paragraphs": ["p3"], "num_tokens": 5, "num_words": 4, "page_number": 3}
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u1",
+                "paragraphs": ["p1"],
+                "num_tokens": 10,
+                "num_words": 8,
+                "page_number": 1,
+            },
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u2",
+                "paragraphs": ["p2"],
+                "num_tokens": 12,
+                "num_words": 9,
+                "page_number": 2,
+            },
+            {
+                "speaker_note_id": "note2",
+                "who": "Bob",
+                "u_id": "u3",
+                "paragraphs": ["p3"],
+                "num_tokens": 5,
+                "num_words": 4,
+                "page_number": 3,
+            },
         ]
 
         speeches = service.speeches(metadata=metadata, utterances=utterances)
@@ -126,19 +150,29 @@ class TestSpeechTextService:
 
     def test_nth_returns_specific_speech(self):
         """Test nth method returns the nth speech."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_id": ["i-001"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_name": ["prot-1234_1"],
+                "speech_id": ["i-001"],
+                "speech_index": [1],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+            }
+        )
 
         service = SpeechTextService(df)
 
         metadata = {"name": "prot-1234", "date": "2020-01-01"}
         utterances = [
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u1",
+                "paragraphs": ["p1"],
+                "num_tokens": 10,
+                "num_words": 8,
+                "page_number": 1,
+            }
         ]
 
         speech = service.nth(metadata=metadata, utterances=utterances, n=0)
@@ -148,12 +182,9 @@ class TestSpeechTextService:
 
     def test_create_speech_with_empty_utterances(self):
         """Test _create_speech returns empty dict for empty utterances."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [0]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_note_id": ["note1"], "n_utterances": [0]}
+        )
 
         service = SpeechTextService(df)
 
@@ -163,19 +194,32 @@ class TestSpeechTextService:
 
     def test_create_speech_with_utterances(self):
         """Test _create_speech creates proper speech structure."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [2]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_note_id": ["note1"], "n_utterances": [2]}
+        )
 
         service = SpeechTextService(df)
 
         metadata = {"name": "prot-1234", "date": "2020-01-01"}
         utterances = [
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1", "p2"], "num_tokens": 10, "num_words": 8, "page_number": 1},
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u2", "paragraphs": ["p3"], "num_tokens": 12, "num_words": 9, "page_number": 2}
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u1",
+                "paragraphs": ["p1", "p2"],
+                "num_tokens": 10,
+                "num_words": 8,
+                "page_number": 1,
+            },
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u2",
+                "paragraphs": ["p3"],
+                "num_tokens": 12,
+                "num_words": 9,
+                "page_number": 2,
+            },
         ]
 
         speech = service._create_speech(metadata=metadata, utterances=utterances)  # pylint: disable=protected-access
@@ -208,14 +252,18 @@ class TestSpeechTextRepository2:
         """Test document_name2id cached property."""
         mock_loader = Mock()
         mock_codecs = Mock()
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [1, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0, 1],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [1, 1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         mapping = repo.document_name2id
 
         assert mapping["prot-1234_1"] == 0
@@ -225,15 +273,19 @@ class TestSpeechTextRepository2:
         """Test speech_id2id cached property."""
         mock_loader = Mock()
         mock_codecs = Mock()
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speech_id": ["i-001", "i-002"],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [1, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0, 1],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [1, 1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         mapping = repo.speech_id2id
 
         assert mapping["i-001"] == 0
@@ -245,15 +297,19 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
 
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "person_id": ["p1", "p2"],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [1, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0, 1],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "person_id": ["p1", "p2"],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [1, 1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         # Mock speaker_note_id2note to return empty dict
         with patch.object(repo, 'speaker_note_id2note', {"note1": "Introduction"}):
@@ -269,7 +325,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with pytest.raises(ValueError, match="key must be int or str"):
             repo.get_speech_info([1, 2, 3])  # type: ignore
@@ -280,7 +338,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with pytest.raises(KeyError, match="Speech 999 not found in index"):
             repo.get_speech_info(999)
@@ -291,15 +351,19 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(side_effect=KeyError("person not found"))
 
-        df = pd.DataFrame({
-            "document_id": [0],
-            "document_name": ["prot-1234_1"],
-            "person_id": ["unknown_person"],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0],
+                "document_name": ["prot-1234_1"],
+                "person_id": ["unknown_person"],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with patch.object(repo, 'speaker_note_id2note', {}):
             info = repo.get_speech_info(0)
@@ -312,7 +376,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index(42) == 42
 
@@ -322,7 +388,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index("42") == 42
 
@@ -330,14 +398,18 @@ class TestSpeechTextRepository2:
         """Test get_key_index with prot- prefix."""
         mock_loader = Mock()
         mock_codecs = Mock()
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [1, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0, 1],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [1, 1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index("prot-1234_1") == 0
 
@@ -345,15 +417,19 @@ class TestSpeechTextRepository2:
         """Test get_key_index with i- prefix (speech_id)."""
         mock_loader = Mock()
         mock_codecs = Mock()
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speech_id": ["i-001", "i-002"],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [1, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0, 1],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [1, 1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index("i-001") == 0
 
@@ -363,7 +439,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with pytest.raises(ValueError, match="unknown speech key"):
             repo.get_key_index("unknown-format")
@@ -378,13 +456,14 @@ class TestSpeechTextRepository2:
 
         df = create_basic_document_index()
 
-        mock_notes_df = pd.DataFrame({
-            "speaker_note_id": ["note1", "note2"],
-            "speaker_note": ["Introduction", "Closing"]
-        })
+        mock_notes_df = pd.DataFrame(
+            {"speaker_note_id": ["note1", "note2"], "speaker_note": ["Introduction", "Closing"]}
+        )
         mock_read_sql.return_value = mock_notes_df
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         notes = repo.speaker_note_id2note
 
         assert notes["note1"] == "Introduction"
@@ -398,7 +477,9 @@ class TestSpeechTextRepository2:
 
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         notes = repo.speaker_note_id2note
 
         assert notes == {}
@@ -413,7 +494,9 @@ class TestSpeechTextRepository2:
 
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         notes = repo.speaker_note_id2note
 
         assert notes == {}
@@ -423,27 +506,41 @@ class TestSpeechTextRepository2:
         mock_loader = Mock(spec_set=Loader)
         mock_loader.load.return_value = (
             {"name": "prot-1234", "date": "2020-01-01"},
-            [{"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}]
+            [
+                {
+                    "speaker_note_id": "note1",
+                    "who": "Alice",
+                    "u_id": "u1",
+                    "paragraphs": ["p1"],
+                    "num_tokens": 10,
+                    "num_words": 8,
+                    "page_number": 1,
+                }
+            ],
         )
 
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
         mock_codecs.get_mapping = Mock(side_effect=lambda k, v: {1: "value"})
 
-        df = pd.DataFrame({
-            "document_id": [0],
-            "document_name": ["prot-1234_1"],
-            "speech_id": ["i-001"],
-            "person_id": ["p1"],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [1],
-            "office_type_id": [1],
-            "sub_office_type_id": [1],
-            "gender_id": [1],
-            "party_id": [1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0],
+                "document_name": ["prot-1234_1"],
+                "speech_id": ["i-001"],
+                "person_id": ["p1"],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "gender_id": [1],
+                "party_id": [1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with patch.object(repo, 'speaker_note_id2note', {}):
             speech = repo.speech("prot-1234_1")
@@ -456,27 +553,41 @@ class TestSpeechTextRepository2:
         mock_loader = Mock(spec_set=Loader)
         mock_loader.load.return_value = (
             {"name": "prot-1234", "date": "2020-01-01"},
-            [{"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}]
+            [
+                {
+                    "speaker_note_id": "note1",
+                    "who": "Alice",
+                    "u_id": "u1",
+                    "paragraphs": ["p1"],
+                    "num_tokens": 10,
+                    "num_words": 8,
+                    "page_number": 1,
+                }
+            ],
         )
 
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
         mock_codecs.get_mapping = Mock(return_value={1: "value"})
 
-        df = pd.DataFrame({
-            "document_id": [0],
-            "document_name": ["prot-1234_1"],
-            "speech_id": ["i-001"],
-            "person_id": ["p1"],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [1],
-            "office_type_id": [1],
-            "sub_office_type_id": [1],
-            "gender_id": [1],
-            "party_id": [1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0],
+                "document_name": ["prot-1234_1"],
+                "speech_id": ["i-001"],
+                "person_id": ["p1"],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "gender_id": [1],
+                "party_id": [1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with patch.object(repo, 'speaker_note_id2note', {}):
             speech = repo.speech("0")
@@ -491,7 +602,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         speech = repo.speech("prot-1234_1")
 
@@ -506,7 +619,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         speech = repo.speech("prot-1234_1")
 
@@ -519,7 +634,9 @@ class TestSpeechTextRepository2:
         mock_codecs = Mock()
         df = create_basic_document_index()
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         mock_fix_whitespace.return_value = "cleaned text"
         speech = {"paragraphs": ["para1", "para2", "para3"]}
@@ -533,12 +650,9 @@ class TestSpeechTextRepository2:
 
     def test_init_with_speaker_note_id(self):
         """Test initialization with speaker_note_id column."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [5]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_note_id": ["note1"], "n_utterances": [5]}
+        )
 
         service = SpeechTextService(df)
 
@@ -548,12 +662,9 @@ class TestSpeechTextRepository2:
 
     def test_init_with_speaker_hash_legacy(self):
         """Test initialization with legacy speaker_hash column."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_hash": ["hash1"],
-            "n_utterances": [5]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_hash": ["hash1"], "n_utterances": [5]}
+        )
 
         service = SpeechTextService(df)
 
@@ -561,12 +672,9 @@ class TestSpeechTextRepository2:
 
     def test_init_renames_speach_index_typo(self):
         """Test that speach_index typo is renamed to speech_index."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speach_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [5]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speach_index": [1], "speaker_note_id": ["note1"], "n_utterances": [5]}
+        )
 
         service = SpeechTextService(df)
 
@@ -575,13 +683,15 @@ class TestSpeechTextRepository2:
 
     def test_name2info_property(self):
         """Test name2info cached property creates protocol mapping."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speech_id": ["i-001", "i-002"],
-            "speech_index": [1, 2],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [5, 3]
-        })
+        df = pd.DataFrame(
+            {
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
+                "speech_index": [1, 2],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [5, 3],
+            }
+        )
 
         service = SpeechTextService(df)
         mapping = service.name2info
@@ -592,21 +702,47 @@ class TestSpeechTextRepository2:
 
     def test_speeches_creates_correct_structure(self):
         """Test speeches method creates list of speeches."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speech_id": ["i-001", "i-002"],
-            "speech_index": [1, 2],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [2, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
+                "speech_index": [1, 2],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [2, 1],
+            }
+        )
 
         service = SpeechTextService(df)
 
         metadata = {"name": "prot-1234"}
         utterances = [
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1},
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u2", "paragraphs": ["p2"], "num_tokens": 12, "num_words": 9, "page_number": 2},
-            {"speaker_note_id": "note2", "who": "Bob", "u_id": "u3", "paragraphs": ["p3"], "num_tokens": 5, "num_words": 4, "page_number": 3}
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u1",
+                "paragraphs": ["p1"],
+                "num_tokens": 10,
+                "num_words": 8,
+                "page_number": 1,
+            },
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u2",
+                "paragraphs": ["p2"],
+                "num_tokens": 12,
+                "num_words": 9,
+                "page_number": 2,
+            },
+            {
+                "speaker_note_id": "note2",
+                "who": "Bob",
+                "u_id": "u3",
+                "paragraphs": ["p3"],
+                "num_tokens": 5,
+                "num_words": 4,
+                "page_number": 3,
+            },
         ]
 
         speeches = service.speeches(metadata=metadata, utterances=utterances)
@@ -617,19 +753,29 @@ class TestSpeechTextRepository2:
 
     def test_nth_returns_specific_speech(self):
         """Test nth method returns the nth speech."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_id": ["i-001"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_name": ["prot-1234_1"],
+                "speech_id": ["i-001"],
+                "speech_index": [1],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+            }
+        )
 
         service = SpeechTextService(df)
 
         metadata = {"name": "prot-1234", "date": "2020-01-01"}
         utterances = [
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u1",
+                "paragraphs": ["p1"],
+                "num_tokens": 10,
+                "num_words": 8,
+                "page_number": 1,
+            }
         ]
 
         speech = service.nth(metadata=metadata, utterances=utterances, n=0)
@@ -639,12 +785,9 @@ class TestSpeechTextRepository2:
 
     def test_create_speech_with_empty_utterances(self):
         """Test _create_speech returns empty dict for empty utterances."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [0]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_note_id": ["note1"], "n_utterances": [0]}
+        )
 
         service = SpeechTextService(df)
 
@@ -654,19 +797,32 @@ class TestSpeechTextRepository2:
 
     def test_create_speech_with_utterances(self):
         """Test _create_speech creates proper speech structure."""
-        df = pd.DataFrame({
-            "document_name": ["prot-1234_1"],
-            "speech_index": [1],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [2]
-        })
+        df = pd.DataFrame(
+            {"document_name": ["prot-1234_1"], "speech_index": [1], "speaker_note_id": ["note1"], "n_utterances": [2]}
+        )
 
         service = SpeechTextService(df)
 
         metadata = {"name": "prot-1234", "date": "2020-01-01"}
         utterances = [
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1", "p2"], "num_tokens": 10, "num_words": 8, "page_number": 1},
-            {"speaker_note_id": "note1", "who": "Alice", "u_id": "u2", "paragraphs": ["p3"], "num_tokens": 12, "num_words": 9, "page_number": 2}
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u1",
+                "paragraphs": ["p1", "p2"],
+                "num_tokens": 10,
+                "num_words": 8,
+                "page_number": 1,
+            },
+            {
+                "speaker_note_id": "note1",
+                "who": "Alice",
+                "u_id": "u2",
+                "paragraphs": ["p3"],
+                "num_tokens": 12,
+                "num_words": 9,
+                "page_number": 2,
+            },
         ]
 
         speech = service._create_speech(metadata=metadata, utterances=utterances)  # pylint: disable=protected-access
@@ -703,7 +859,9 @@ class TestSpeechTextRepository:
 
         # Create a mock service to prevent ZipLoader instantiation
         mock_service = Mock()
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=mock_service)
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=mock_service
+        )
 
         assert repo.source is mock_loader
 
@@ -711,14 +869,18 @@ class TestSpeechTextRepository:
         """Test document_name2id cached property."""
         mock_loader = Mock()
         mock_codecs = Mock()
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [1, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0, 1],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [1, 1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         mapping = repo.document_name2id
 
         assert mapping["prot-1234_1"] == 0
@@ -728,15 +890,19 @@ class TestSpeechTextRepository:
         """Test speech_id2id cached property."""
         mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "document_name": ["prot-1234_1", "prot-1234_2"],
-            "speech_id": ["i-001", "i-002"],
-            "speaker_note_id": ["note1", "note2"],
-            "n_utterances": [1, 1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0, 1],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
+                "speaker_note_id": ["note1", "note2"],
+                "n_utterances": [1, 1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         mapping = repo.speech_id2id
 
         assert mapping["i-001"] == 0
@@ -748,13 +914,11 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
 
-        df = pd.DataFrame({
-            "document_id": [0, 1],
-            "person_id": ["p1", "p2"],
-            "speaker_note_id": ["note1", "note2"]
-        })
+        df = pd.DataFrame({"document_id": [0, 1], "person_id": ["p1", "p2"], "speaker_note_id": ["note1", "note2"]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         # Mock speaker_note_id2note to return empty dict
         with patch.object(repo, 'speaker_note_id2note', {"note1": "Introduction"}):
@@ -770,7 +934,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with pytest.raises(ValueError, match="key must be int or str"):
             repo.get_speech_info([1, 2, 3])  # type: ignore
@@ -781,7 +947,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with pytest.raises(KeyError, match="Speech 999 not found in index"):
             repo.get_speech_info(999)
@@ -792,13 +960,11 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(side_effect=KeyError("person not found"))
 
-        df = pd.DataFrame({
-            "document_id": [0],
-            "person_id": ["unknown_person"],
-            "speaker_note_id": ["note1"]
-        })
+        df = pd.DataFrame({"document_id": [0], "person_id": ["unknown_person"], "speaker_note_id": ["note1"]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with patch.object(repo, 'speaker_note_id2note', {}):
             info = repo.get_speech_info(0)
@@ -811,7 +977,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index(42) == 42
 
@@ -821,7 +989,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index("42") == 42
 
@@ -831,7 +1001,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0, 1], "document_name": ["prot-1234_1", "prot-1234_2"]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index("prot-1234_1") == 0
 
@@ -841,7 +1013,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0, 1], "speech_id": ["i-001", "i-002"]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         assert repo.get_key_index("i-001") == 0
 
@@ -851,7 +1025,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with pytest.raises(ValueError, match="unknown speech key"):
             repo.get_key_index("unknown-format")
@@ -864,18 +1040,16 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         mock_codecs.filename = "test.db"
 
-        df = pd.DataFrame({
-            "document_id": [0],
-            "speaker_note_id": ["note1"]
-        })
+        df = pd.DataFrame({"document_id": [0], "speaker_note_id": ["note1"]})
 
-        mock_notes_df = pd.DataFrame({
-            "speaker_note_id": ["note1", "note2"],
-            "speaker_note": ["Introduction", "Closing"]
-        })
+        mock_notes_df = pd.DataFrame(
+            {"speaker_note_id": ["note1", "note2"], "speaker_note": ["Introduction", "Closing"]}
+        )
         mock_read_sql.return_value = mock_notes_df
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         notes = repo.speaker_note_id2note
 
         assert notes["note1"] == "Introduction"
@@ -889,7 +1063,9 @@ class TestSpeechTextRepository:
 
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         notes = repo.speaker_note_id2note
 
         assert notes == {}
@@ -904,7 +1080,9 @@ class TestSpeechTextRepository:
 
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
         notes = repo.speaker_note_id2note
 
         assert notes == {}
@@ -914,27 +1092,49 @@ class TestSpeechTextRepository:
         mock_loader = Mock(spec_set=Loader)
         mock_loader.load.return_value = (
             {"name": "prot-1234", "date": "2020-01-01"},
-            [{"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}]
+            [
+                {
+                    "speaker_note_id": "note1",
+                    "who": "Alice",
+                    "u_id": "u1",
+                    "paragraphs": ["p1"],
+                    "num_tokens": 10,
+                    "num_words": 8,
+                    "page_number": 1,
+                }
+            ],
         )
 
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
-        mock_codecs.get_mapping = Mock(side_effect=lambda k, v: {"office": "Minister", "sub_office_type": "Deputy", "gender": "Female", "gender_abbrev": "F", "party_abbrev": "PA"})
+        mock_codecs.get_mapping = Mock(
+            side_effect=lambda k, v: {
+                "office": "Minister",
+                "sub_office_type": "Deputy",
+                "gender": "Female",
+                "gender_abbrev": "F",
+                "party_abbrev": "PA",
+            }
+        )
 
-        df = pd.DataFrame({
-            "document_id": [0],
-            "document_name": ["prot-1234_1"],
-            "speech_id": ["i-001"],
-            "person_id": ["p1"],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [1],
-            "office_type_id": [1],
-            "sub_office_type_id": [1],
-            "gender_id": [1],
-            "party_id": [1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0],
+                "document_name": ["prot-1234_1"],
+                "speech_id": ["i-001"],
+                "person_id": ["p1"],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "gender_id": [1],
+                "party_id": [1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with patch.object(repo, 'speaker_note_id2note', {}):
             speech = repo.speech("prot-1234_1")
@@ -947,27 +1147,41 @@ class TestSpeechTextRepository:
         mock_loader = Mock()
         mock_loader.load.return_value = (
             {"name": "prot-1234", "date": "2020-01-01"},
-            [{"speaker_note_id": "note1", "who": "Alice", "u_id": "u1", "paragraphs": ["p1"], "num_tokens": 10, "num_words": 8, "page_number": 1}]
+            [
+                {
+                    "speaker_note_id": "note1",
+                    "who": "Alice",
+                    "u_id": "u1",
+                    "paragraphs": ["p1"],
+                    "num_tokens": 10,
+                    "num_words": 8,
+                    "page_number": 1,
+                }
+            ],
         )
 
         mock_codecs = Mock()
         mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
         mock_codecs.get_mapping = Mock(return_value={1: "value"})
 
-        df = pd.DataFrame({
-            "document_id": [0],
-            "document_name": ["prot-1234_1"],
-            "speech_id": ["i-001"],
-            "person_id": ["p1"],
-            "speaker_note_id": ["note1"],
-            "n_utterances": [1],
-            "office_type_id": [1],
-            "sub_office_type_id": [1],
-            "gender_id": [1],
-            "party_id": [1]
-        })
+        df = pd.DataFrame(
+            {
+                "document_id": [0],
+                "document_name": ["prot-1234_1"],
+                "speech_id": ["i-001"],
+                "person_id": ["p1"],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "gender_id": [1],
+                "party_id": [1],
+            }
+        )
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         with patch.object(repo, 'speaker_note_id2note', {}):
             speech = repo.speech("0")
@@ -982,7 +1196,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         speech = repo.speech("prot-1234_1")
 
@@ -997,7 +1213,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         speech = repo.speech("prot-1234_1")
         assert speech.error is not None
@@ -1010,7 +1228,9 @@ class TestSpeechTextRepository:
         mock_codecs = Mock()
         df = pd.DataFrame({"document_id": [0]})
 
-        repo = SpeechTextRepository(source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service())
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
 
         mock_fix_whitespace.return_value = "cleaned text"
         speech = {"paragraphs": ["para1", "para2", "para3"]}
