@@ -35,7 +35,7 @@ class SafeLoaderIgnoreUnknown(yaml.SafeLoader):  # pylint: disable=too-many-ance
         return None
 
 
-SafeLoaderIgnoreUnknown.add_constructor(None, SafeLoaderIgnoreUnknown.let_unknown_through)
+SafeLoaderIgnoreUnknown.add_constructor(None, SafeLoaderIgnoreUnknown.let_unknown_through)  # type: ignore
 SafeLoaderIgnoreUnknown.add_constructor('!join', yaml_str_join)
 SafeLoaderIgnoreUnknown.add_constructor('!jj', yaml_path_join)
 SafeLoaderIgnoreUnknown.add_constructor('!path_join', yaml_path_join)
@@ -45,7 +45,7 @@ class Config:
     """Container for configuration elements."""
 
     def __init__(self, *, data: dict | None = None, context: str = "default", filename: str | None = None):
-        self.data: dict = data
+        self.data: dict | None = data
         self.context: str = context
         self.filename: str | None = filename
 
@@ -68,21 +68,22 @@ class Config:
         return default() if isclass(default) else default
 
     def update(self, data: tuple[str, Any] | dict[str, Any] | list[tuple[str, Any]]) -> None:
-        if isinstance(data, tuple):
-            data = [data]
-        if isinstance(data, dict):
-            data = data.items()
-        for key, value in data:
+        loop_data = [data] if isinstance(data, tuple) else data.items() if isinstance(data, dict) else data
+        if not self.data:
+            self.data = {}
+        for key, value in loop_data:
             dotset(self.data, key, value)
 
     def exists(self, *keys) -> bool:
+        if self.data is None:
+            return False
         return dotexists(self.data, *keys)
 
     @staticmethod
     def load(
         *,
-        source: str | dict | Config = None,
-        context: str = None,
+        source: str | dict | Config | None = None,
+        context: str | None = None,
         env_filename: str | None = None,
         env_prefix: str = ENV_PREFIX,
     ) -> "Config":
@@ -92,19 +93,27 @@ class Config:
         if isinstance(source, Config):
             return source
 
-        data: str | dict | Config | None = (
+        data: str | dict = (
             (
                 yaml.load(Path(source).read_text(encoding="utf-8"), Loader=SafeLoaderIgnoreUnknown)
                 if Config.is_config_path(source)
                 else yaml.load(io.StringIO(source), Loader=SafeLoaderIgnoreUnknown)
             )
             if isinstance(source, str)
-            else source
+            else (source or {})
         )
-        env2dict(env_prefix, data)
         if not isinstance(data, dict):
             raise TypeError(f"expected dict, found {type(data)}")
-        return Config(data=data, context=context, filename=source if Config.is_config_path(source) else None)
+
+        data = env2dict(env_prefix, data)
+
+        filename: str | None = str(source) if Config.is_config_path(source) else None
+
+        return Config(
+            data=data,
+            context=context or "default",
+            filename=filename,
+        )
 
     @staticmethod
     def is_config_path(source: Any) -> bool:
@@ -115,4 +124,7 @@ class Config:
 
     def add(self, data: dict) -> None:
         """Recursively add data to the configuration."""
-        self.data.update(data)
+        if self.data is None:
+            self.data = data
+        else:
+            self.data.update(data)
