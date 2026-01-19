@@ -24,6 +24,11 @@ class WordTrendsService:
         """
         self._loader = loader
 
+    @property
+    def loader(self) -> CorpusLoader:
+        """Get the CorpusLoader instance. """
+        return self._loader
+    
     def word_in_vocabulary(self, word: str) -> str | None:
         """Check if word is in vocabulary and return the correct form.
 
@@ -69,7 +74,7 @@ class WordTrendsService:
             return pd.DataFrame()
 
         trends: pd.DataFrame = compute_word_trends(
-            self._loader.vectorized_corpus,
+            self._loader.vectorized_corpus,  # type: ignore
             self._loader.person_codecs,
             search_terms,
             filter_opts,
@@ -99,3 +104,11 @@ class WordTrendsService:
             sort_values=True,
         )
         return speeches
+
+    def get_search_hits(self, search: str, n_hits: int) -> list[str]:
+        """Find matching vocabulary entries for autocomplete/suggestions."""
+
+        vectorized_corpus = self._loader.vectorized_corpus
+        search_term = search if search in vectorized_corpus.vocabulary else search.lower()
+
+        return vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=False)

@@ -11,15 +11,17 @@ from api_swedeb.api.dependencies import (
     get_corpus_decoder,
     get_corpus_loader,
     get_cwb_corpus,
+    get_kwic_service,
     get_search_service,
     get_word_trends_service,
 )
+from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.kwic import get_kwic_data
-from api_swedeb.api.utils.word_trends import get_search_hit_results, get_word_trend_speeches, get_word_trends
+from api_swedeb.mappers.kwic import kwic_to_api_model
+from api_swedeb.mappers.word_trends import search_hits_to_api_model, word_trend_speeches_to_api_model, word_trends_to_api_model
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
@@ -43,8 +45,7 @@ async def get_kwic_results(
     words_after: int = Query(2, description="Number of tokens after the search word(s)"),
     cut_off: int = Query(200000, description="Maximum number of hits to return"),
     corpus: Any = Depends(get_cwb_corpus),
-    decoder: Any = Depends(get_corpus_decoder),
-    loader=Depends(get_corpus_loader),
+    kwic_service: KWICService = Depends(get_kwic_service),
 ) -> KeywordInContextResult:
     """Get keyword in context"""
 
@@ -53,18 +54,17 @@ async def get_kwic_results(
     if " " in keywords:
         keywords = keywords.split(" ")
 
-    return get_kwic_data(
-        corpus,
-        commons,
-        speech_index=loader.document_index,
+    data = kwic_service.get_kwic(
+        corpus=corpus,
+        commons=commons,
         keywords=keywords,
         lemmatized=lemmatized,
         words_before=words_before,
         words_after=words_after,
         cut_off=cut_off,
-        codecs=decoder,
         p_show="word",
     )
+    return kwic_to_api_model(data)
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
@@ -75,7 +75,12 @@ async def get_word_trends_result(
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> WordTrendsResult:
     """Get word trends"""
-    return get_word_trends(search, commons, word_trends_service, normalize=normalize)
+    df: DataFrame = word_trends_service.get_word_trend_results(
+        search_terms=search.split(","),
+        filter_opts=commons.get_filter_opts(include_year=True),
+        normalize=normalize,
+    )
+    return word_trends_to_api_model(df)
 
 
 @router.get("/word_trend_speeches/{search}", response_model=SpeechesResultWT)
@@ -85,7 +90,10 @@ async def get_word_trend_speeches_result(
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> SpeechesResultWT:
     """Get word trends"""
-    return get_word_trend_speeches(search, commons, word_trends_service)
+    df: DataFrame = word_trends_service.get_anforanden_for_word_trends(
+        search.split(','), commons.get_filter_opts(include_year=True)
+    )
+    return word_trend_speeches_to_api_model(df)
 
 
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
@@ -94,7 +102,8 @@ async def get_word_hits(
     n_hits: int = Query(5, description="Number of hits to return"),
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> SearchHits:
-    return get_search_hit_results(search=search, word_trends_service=word_trends_service, n_hits=n_hits)
+    hits = word_trends_service.get_search_hits(search=search, n_hits=n_hits)
+    return search_hits_to_api_model(hits)
 
 
 @router.get("/ngrams/{search}", response_model=NGramResult)

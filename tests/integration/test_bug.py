@@ -9,8 +9,8 @@ from httpx import Response
 from api_swedeb.api.dependencies import get_corpus_loader
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.word_trends import get_word_trends
 from api_swedeb.core.word_trends import compute_word_trends
+from api_swedeb.mappers.word_trends import word_trends_to_api_model
 from api_swedeb.schemas.word_trends_schema import WordTrendsResult
 
 
@@ -33,7 +33,7 @@ def test_bug_with_api_word_trends(fastapi_client: TestClient):
 
 
 def test_bug_with_get_word_trends():
-    """Test the api_swedeb.api.utils.word_trends.get_word_trends function for the bug."""
+    """Test word trend pipeline without the removed utils wrapper."""
     search = 'sverige'
     commons = CommonQueryParams(
         chamber_abbrev=None,
@@ -54,7 +54,10 @@ def test_bug_with_get_word_trends():
     word_trends_service = WordTrendsService(loader)
     normalize = False
 
-    result = get_word_trends(search, commons, word_trends_service, normalize=normalize)
+    df = word_trends_service.get_word_trend_results(
+        search_terms=search.split(","), filter_opts=commons.get_filter_opts(include_year=True), normalize=normalize
+    )
+    result = word_trends_to_api_model(df)
 
     assert isinstance(result, WordTrendsResult)
     assert len(result.wt_list) > 0

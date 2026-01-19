@@ -5,6 +5,7 @@ from fastapi import Depends
 from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
@@ -17,6 +18,7 @@ __metadata_service: MetadataService | None = None
 __word_trends_service: WordTrendsService | None = None
 __ngrams_service: NGramsService | None = None
 __search_service: SearchService | None = None
+__kwic_service: KWICService | None = None
 
 
 def get_corpus_loader() -> CorpusLoader:
@@ -96,3 +98,11 @@ async def get_corpus_decoder(opts: dict = Depends(get_decoder_opts)) -> PersonCo
     if _corpus_codecs is None:
         _corpus_codecs = PersonCodecs().load(source=opts.get("metadata_filename", ""))
     return _corpus_codecs
+
+
+async def get_kwic_service(corpus_decoder: PersonCodecs | Codecs = Depends(get_corpus_decoder)) -> KWICService:
+    """Get the KWICService instance with loader and decoder."""
+    global __kwic_service
+    if __kwic_service is None:
+        __kwic_service = KWICService(get_corpus_loader(), corpus_decoder)  # type: ignore
+    return __kwic_service
