@@ -23,7 +23,7 @@ def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
         return data
     data = data.set_index(pivot_keys)
     while isinstance(data.index, pd.MultiIndex):
-        data = data.unstack(level=1, fill_value=0)
+        data = data.unstack(level=1, fill_value=0)  # type: ignore
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = [' '.join(x) for x in data.columns]
     return data
@@ -43,7 +43,7 @@ def set_default_options():
     pd.options.display.max_columns = None
 
 
-def _create_mask(df: pd.DataFrame, name: str, value: Any, sign: bool = True) -> np.ndarray:
+def _create_mask(df: pd.DataFrame, name: str, value: Any, sign: bool = True) -> np.ndarray | pd.Series:
     if isinstance(
         value,
         (
@@ -82,7 +82,7 @@ class CreateMaskError(Exception):
 def size_of(df: pd.DataFrame, unit: Literal['bytes', 'kB', 'MB', 'GB'], total: bool = False) -> int | dict:
     d: dict = {x: 1024**i for i, x in enumerate(['bytes', 'kB', 'MB', 'GB'])}
     sizes: pd.Series = df.memory_usage(index=True, deep=True)
-    return (
+    return (  # type: ignore
         f"{sizes.sum()/d[unit]:.1f} {unit}"
         if total
         else {k: f"{v/d[unit]:.1f} {unit}" for k, v in sizes.to_dict().items()}
@@ -208,9 +208,9 @@ class PropertyValueMaskingOpts:
 
     def hot_attributes(self, doc: pd.DataFrame) -> list[str]:
         """Returns attributes that __might__ filter tagged frame"""
-        return [
+        return [  # type: ignore
             (attr_name, attr_value)
-            for attr_name, attr_value in self.data.items()
+            for attr_name, attr_value in self.data.items()  # type: ignore
             if attr_name in doc.columns and attr_value is not None
         ]
 
@@ -218,7 +218,8 @@ class PropertyValueMaskingOpts:
     def clone(self) -> PropertyValueMaskingOpts:
         return PropertyValueMaskingOpts(**self.props)
 
-    def update(self, other: PropertyValueMaskingOpts | dict = None, **kwargs) -> PropertyValueMaskingOpts:
+    def update(self, other: PropertyValueMaskingOpts | dict | None = None, **kwargs) -> PropertyValueMaskingOpts:
+        assert self.data is not None
         if isinstance(other, dict):
             self.data.update(other)
         if kwargs:
@@ -261,7 +262,7 @@ def pandas_to_csv_zip(
 
     with zipfile.ZipFile(zip_filename, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
         for df, filename in dfs:
-            if not isinstance(df, pd.core.frame.DataFrame) or not isinstance(filename, str):
+            if not isinstance(df, pd.DataFrame) or not isinstance(filename, str):
                 raise ValueError(
                     f"Expected tuple[pd.DateFrame, filename: str], found tuple[{type(df)}, {type(filename)}]"
                 )
@@ -325,7 +326,7 @@ def set_index(
     df: pd.DataFrame, columns: str | list[str], drop: bool = True, axis_name: str | None = None
 ) -> pd.DataFrame:
     """Set index if columns exist, otherwise skip (assuming columns already are index)"""
-    columns: list[str] = [columns] if isinstance(columns, str) else columns
+    columns = [columns] if isinstance(columns, str) else columns
     if any(column not in df.columns for column in columns):
         return df
     df = df.set_index(columns, drop=drop)

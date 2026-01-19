@@ -446,6 +446,34 @@ class TestSpeechTextRepository2:
         with pytest.raises(ValueError, match="unknown speech key"):
             repo.get_key_index("unknown-format")
 
+    def test_get_key_index_missing_prot_key(self):
+        """Test get_key_index raises ValueError for missing prot- key."""
+        mock_loader = Mock()
+        mock_codecs = Mock()
+        df = create_basic_document_index()
+
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
+
+        # Valid format (prot-) but key doesn't exist in document_name2id mapping
+        with pytest.raises(ValueError, match="unknown speech key prot-missing"):
+            repo.get_key_index("prot-missing")
+
+    def test_get_key_index_missing_speech_id(self):
+        """Test get_key_index raises ValueError for missing i- key (speech_id)."""
+        mock_loader = Mock()
+        mock_codecs = Mock()
+        df = create_basic_document_index()
+
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
+
+        # Valid format (i-) but key doesn't exist in speech_id2id mapping
+        with pytest.raises(ValueError, match="unknown speech key i-missing"):
+            repo.get_key_index("i-missing")
+
     @patch('api_swedeb.core.speech_text.sqlite3.connect')
     @patch('api_swedeb.core.speech_text.read_sql_table')
     def test_speaker_note_id2note_success(self, mock_read_sql, connect_mock):  # pylint: disable=unused-argument

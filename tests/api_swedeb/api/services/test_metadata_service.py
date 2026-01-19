@@ -39,7 +39,7 @@ class TestGetPartyMeta:
         party_df = pd.DataFrame({"party": ["Moderate", "Left", "Green"], "sort_order": [2, 1, 3]}, index=[10, 20, 30])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.party = party_df
+        mock_codecs.get_table.return_value = party_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -56,7 +56,7 @@ class TestGetPartyMeta:
         party_df = pd.DataFrame({"party": ["A", "B"], "sort_order": [1, 2]}, index=[10, 20])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.party = party_df
+        mock_codecs.get_table.return_value = party_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -72,7 +72,7 @@ class TestGetPartyMeta:
         party_df = pd.DataFrame({"party": [], "sort_order": []})
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.party = party_df
+        mock_codecs.get_table.return_value = party_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -91,7 +91,7 @@ class TestGetGenderMeta:
         gender_df = pd.DataFrame({"gender": ["Male", "Female"]}, index=[1, 2])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.gender = gender_df
+        mock_codecs.get_table.return_value = gender_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -106,7 +106,7 @@ class TestGetGenderMeta:
         gender_df = pd.DataFrame({"gender": ["M", "F", "X"]}, index=[1, 2, 3])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.gender = gender_df
+        mock_codecs.get_table.return_value = gender_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -127,7 +127,7 @@ class TestGetChamberMeta:
         )
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.chamber = chamber_df
+        mock_codecs.get_table.return_value = chamber_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -143,7 +143,7 @@ class TestGetChamberMeta:
         chamber_df = pd.DataFrame({"chamber_abbrev": ["A", " B ", "   "]}, index=[1, 2, 3])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.chamber = chamber_df
+        mock_codecs.get_table.return_value = chamber_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -162,7 +162,7 @@ class TestGetOfficeTypeMeta:
         office_df = pd.DataFrame({"office_type": ["Minister", "MP"]}, index=[1, 2])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.office_type = office_df
+        mock_codecs.get_table.return_value = office_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -177,7 +177,7 @@ class TestGetOfficeTypeMeta:
         office_df = pd.DataFrame({"office_type": ["A", "B"]}, index=[10, 20])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.office_type = office_df
+        mock_codecs.get_table.return_value = office_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -197,7 +197,7 @@ class TestGetSubOfficeTypeMeta:
         sub_office_df = pd.DataFrame({"sub_office_type": ["Deputy", "Chair"]}, index=[1, 2])
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.sub_office_type = sub_office_df
+        mock_codecs.get_table.return_value = sub_office_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -212,7 +212,7 @@ class TestGetSubOfficeTypeMeta:
         sub_office_df = pd.DataFrame({"sub_office_type": []})
 
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.sub_office_type = sub_office_df
+        mock_codecs.get_table.return_value = sub_office_df
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)
@@ -231,12 +231,19 @@ class TestMetadataServiceIntegration:
 
         # Setup mock codecs with all metadata
         mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs.party = pd.DataFrame({"party": ["A", "B"], "sort_order": [1, 2]})
-        mock_codecs.gender = pd.DataFrame({"gender": ["M", "F"]}, index=[1, 2])
-        mock_codecs.chamber = pd.DataFrame({"chamber_abbrev": ["X", " "]})
-        mock_codecs.office_type = pd.DataFrame({"office_type": ["Type1"]})
-        mock_codecs.sub_office_type = pd.DataFrame({"sub_office_type": ["SubType1"]})
-
+        
+        # Configure get_table to return appropriate DataFrame based on table name
+        def get_table_side_effect(table_name):
+            tables = {
+                "party": pd.DataFrame({"party": ["A", "B"], "sort_order": [1, 2]}),
+                "gender": pd.DataFrame({"gender": ["M", "F"]}, index=[1, 2]),
+                "chamber": pd.DataFrame({"chamber_abbrev": ["X", " "]}),
+                "office_type": pd.DataFrame({"office_type": ["Type1"]}),
+                "sub_office_type": pd.DataFrame({"sub_office_type": ["SubType1"]})
+            }
+            return tables.get(table_name, pd.DataFrame())
+        
+        mock_codecs.get_table.side_effect = get_table_side_effect
         mock_loader.person_codecs = mock_codecs
 
         service = MetadataService(mock_loader)

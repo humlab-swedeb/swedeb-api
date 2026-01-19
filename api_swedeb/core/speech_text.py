@@ -111,11 +111,10 @@ class SpeechTextRepository:
         if not isinstance(key, (int, str)):
             raise ValueError("key must be int or str")
 
-        key_idx: int = self.get_key_index(key)
-
         try:
+            key_idx: int = self.get_key_index(key)
             speech_info: dict = self.document_index.loc[key_idx].to_dict()
-        except KeyError as ex:
+        except (ValueError, KeyError) as ex:
             raise KeyError(f"Speech {key} not found in index") from ex
 
         try:

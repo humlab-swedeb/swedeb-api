@@ -127,7 +127,7 @@ class SearchService:
                 return unknown
             person: pd.Series = self._loader.person_codecs[document_item["person_id"]]  # type: ignore
             return person['name']
-        except IndexError:
+        except (IndexError, ValueError):
             return unknown
 
     def get_filtered_speakers_improved(

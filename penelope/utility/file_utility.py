@@ -144,8 +144,8 @@ def symlink_files(source_pattern: str, target_folder: str) -> None:
 
 def read_textfile(filename: str, as_binary: bool = False) -> str:
     """Returns text content from `filename`"""
-    opts = {'mode': 'rb'} if as_binary else {'mode': 'r', 'encoding': 'utf-8'}
-    with open(filename, **opts) as f:
+    opts: Dict[str, str] = {'mode': 'rb'} if as_binary else {'mode': 'r', 'encoding': 'utf-8'}
+    with open(filename, **opts) as f:  # type: ignore
         try:
             data = f.read()
             content = data  # .decode('utf-8')

@@ -35,11 +35,11 @@ class PivotKeys:
 
     """
 
-    def __init__(self, pivot_keys: dict[str, PivotKeySpec] | list[PivotKeySpec] = None):
+    def __init__(self, pivot_keys: dict[str, PivotKeySpec] | list[PivotKeySpec] | None = None):
         self._pivot_keys_spec: dict[str, PivotKeySpec] = {}
         self.update(pivot_keys)
 
-    def update(self, other: Self | dict | list | str) -> "PivotKeys":
+    def update(self, other: Self | dict | list | str | None) -> "PivotKeys":
         if isinstance(other, PivotKeys):
             self._pivot_keys_spec.update(other.pivot_keys_spec)
         if isinstance(other, dict):
@@ -135,23 +135,23 @@ class PivotKeys:
 
     @property
     def text_names(self) -> list[str]:
-        return [x['text_name'] for x in self._pivot_keys_spec.values()]
+        return [x['text_name'] for x in self._pivot_keys_spec.values()]    # type: ignore
 
     @property
     def id_names(self) -> list[str]:
-        return [x['id_name'] for x in self._pivot_keys_spec.values()]
+        return [x['id_name'] for x in self._pivot_keys_spec.values()]  # type: ignore
 
     @property
-    def has_pivot_keys(self) -> list[str]:
+    def has_pivot_keys(self) -> bool:
         return len(self._pivot_keys_spec) > 0
 
-    def key_value_name2id(self, text_name: str) -> dict[str, int]:
+    def key_value_name2id(self, text_name: str) -> dict[str, int] | None:
         """Returns name/id mapping for given key's value range"""
         return self.get(text_name).get('values')
 
-    def key_value_id2name(self, text_name: str) -> dict[int, str]:
+    def key_value_id2name(self, text_name: str) -> dict[int, str] | None:
         """Returns id/name mapping for given key's value range"""
-        return revdict(self.key_value_name2id(text_name))
+        return revdict(self.key_value_name2id(text_name) or {})
 
     def key_values_str(self, names: set[str], sep=': ') -> list[str]:
         return [f'{k}{sep}{v}' for k in names for v in self.key_value_name2id(k).keys()]
