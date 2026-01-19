@@ -520,7 +520,7 @@ def assert_is_strictly_increasing(series: pd.Series) -> None:
         raise ValueError(f"series: {series.name} must be an integer typed, strictly increasing series starting from 0")
 
 
-def is_strictly_increasing(series: pd.Series, by_value=1, start_value: int = 0, sort_values: bool = True) -> bool:
+def is_strictly_increasing(series: pd.Series | pd.Index, by_value=1, start_value: int = 0, sort_values: bool = True) -> bool:
     if len(series) == 0:
         return True
 

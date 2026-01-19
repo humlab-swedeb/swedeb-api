@@ -141,16 +141,18 @@ class TrendsServiceBase(abc.ABC):
         """
         if isinstance(opts, TrendsComputeOpts):
             return self.transform(opts).transformed_corpus.find_matching_words_indices(
-                words or opts.words,
-                top_count or opts.top_count,
+                words or opts.words or [],
+                top_count or opts.top_count or 99,
                 descending=descending if descending is not None else opts.descending,
             )
 
         if isinstance(words, list):
-            if self._transformed_corpus is None:
+            if self.transformed_corpus is None:
                 raise ValueError("Corpus is not transformed")
 
-            return self.transformed_corpus.find_matching_words_indices(words, top_count, descending=descending)
+            return self.transformed_corpus.find_matching_words_indices(
+                words, top_count or 99, descending=descending if descending is not None else False
+            )
 
         raise TypeError("Either opts or words must be provided")
 

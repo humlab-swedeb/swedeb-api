@@ -1,7 +1,6 @@
 # type: ignore
 from .document_index import (
     DOCUMENT_INDEX_COUNT_COLUMNS,
-    DocumentIndex,
     DocumentIndexHelper,
     consolidate_document_index,
     count_documents_in_index_by_pivot,

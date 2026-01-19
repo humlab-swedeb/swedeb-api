@@ -214,7 +214,6 @@ class Token2Id(MutableMapping):
 
     @property
     def id2token(self) -> dict:
-        # FIXME: Always create new reversed mapping if vocabulay is open
         if self._id2token is None or len(self) != len(self._id2token):  # or self.is_open:
             self._id2token = {v: k for k, v in self._data.items()}
         return self._id2token
