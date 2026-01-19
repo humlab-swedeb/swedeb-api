@@ -48,7 +48,7 @@ class MetadataService:
         Returns:
             DataFrame with party information
         """
-        return self.metadata.party.sort_values(by=['sort_order', 'party']).reset_index()
+        return self.metadata.get_table("party").sort_values(by=['sort_order', 'party']).reset_index()
 
     def get_gender_meta(self) -> pd.DataFrame:
         """Get gender metadata with gender_id assigned from index.
@@ -56,7 +56,7 @@ class MetadataService:
         Returns:
             DataFrame with gender information and gender_id column
         """
-        return self.metadata.gender.assign(gender_id=self.metadata.gender.index)
+        return self.metadata.get_table("gender").assign(gender_id=self.metadata.get_table("gender").index)
 
     def get_chamber_meta(self) -> pd.DataFrame:
         """Get chamber metadata, filtering out empty chamber abbreviations.
@@ -64,7 +64,7 @@ class MetadataService:
         Returns:
             DataFrame with non-empty chamber information
         """
-        df = self.metadata.chamber
+        df = self.metadata.get_table("chamber")
         df = df[df['chamber_abbrev'].str.strip().astype(bool)]
         return df.reset_index()
 
@@ -74,7 +74,7 @@ class MetadataService:
         Returns:
             DataFrame with office type information
         """
-        df = self.metadata.office_type
+        df = self.metadata.get_table("office_type")
         return df.reset_index()
 
     def get_sub_office_type_meta(self) -> pd.DataFrame:
@@ -83,5 +83,5 @@ class MetadataService:
         Returns:
             DataFrame with sub-office type information
         """
-        df = self.metadata.sub_office_type
+        df = self.metadata.get_table("sub_office_type")
         return df.reset_index()

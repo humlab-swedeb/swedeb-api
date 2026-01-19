@@ -6,7 +6,7 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import cached_property
 from os.path import isfile
-from typing import Any, Callable, Literal, Mapping, Protocol, Self
+from typing import Any, Callable, Hashable, Literal, Mapping, Protocol, Self
 
 import pandas as pd
 
@@ -186,6 +186,11 @@ class Codecs:
                 return d['table']
         return None
 
+    def get_table(self, table_name: str) -> pd.DataFrame:
+        """Get table by name. Note that tables are also injected as attributes
+        but this is a type hint friendly access method."""
+        return self.store.get(table_name, null_frame)
+
     def get_mapping(self, from_column: str, to_column: str) -> dict[Any, Any]:
         """Get mapping dict from `from_column` to `to_column` in `tablename`."""
         key: tuple[str, str] = (from_column, to_column)
@@ -214,7 +219,7 @@ class Codecs:
             return self.mappings[key]
 
         """Check if from column is index"""
-        key_column: str | None = self.tablenames().get(table_name, table.index.name or None)
+        key_column: str | Hashable | None = self.tablenames().get(table_name, table.index.name or None)
         if from_column in (key_column, table.index.name):
             self.mappings[key] = table[to_column].to_dict()
             return self.mappings[key]
@@ -316,7 +321,7 @@ class Codecs:
         Hooks are expected to implement an `execute(codecs: PersonCodecs)` method and may modify the codecs instance or its data store.
         """
         for hook in OnLoadHooks.items.values():
-            hook().execute(self)
+            hook().execute(self)  # type: ignore
         return self
 
 
@@ -364,7 +369,7 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def _speech_links(
-        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int | str] = 1
+        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int] | pd.Series[str] = 1
     ) -> pd.Series:
         """Create a series of speech links from document names and page numbers.
         The document has the following format: 'prot-YYYY--KK--NNN_MMM'
@@ -429,8 +434,8 @@ class MultiplePartyAbbrevsHook:
         codecs.store["persons_of_interest"] = persons_of_interest
 
     def _get_multi_party_abbrevs(self, codecs: PersonCodecs) -> pd.DataFrame:
-        fx: dict[int, str] = codecs.get_mapping('party_id', 'party_abbrev').get
-        person_party: pd.DataFrame = codecs.store.get("person_party")
+        fx: Callable[[int], str] = codecs.get_mapping('party_id', 'party_abbrev').get  # type: ignore
+        person_party: pd.DataFrame = codecs.get_table("person_party")
         person_party["party_abbrev"] = person_party["party_id"].map(fx).fillna("?")
         multi_party_abbrevs: pd.DataFrame = person_party.groupby("person_id").agg(
             {

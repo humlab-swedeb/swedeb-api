@@ -15,7 +15,7 @@ def word_in_vocabulary(corpus: VectorizedCorpus, word: str) -> str | None:
     return None
 
 
-def filter_search_terms(corpus: VectorizedCorpus, terms: list[str]) -> list[str | None]:
+def filter_search_terms(corpus: VectorizedCorpus, terms: list[str]) -> list[str]:
     return [w for w in (word_in_vocabulary(corpus, word) for word in terms) if w is not None]
 
 

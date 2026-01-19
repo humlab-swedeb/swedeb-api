@@ -41,14 +41,14 @@ class SearchService:
         """
         for key, value in selection_dict.items():
             if key == "party_id":
-                value: list[int] = [int(v) for v in value] if isinstance(value, list) else [int(value)]
+                ivalues: list[int] | list[str]= [int(v) for v in value] if isinstance(value, list) else [int(value)]
                 person_party = getattr(self._loader.person_codecs, 'person_party')
-                party_person_ids: set[str] = set(person_party[person_party.party_id.isin(value)].person_id)
+                party_person_ids: set[str] = set(person_party[person_party.party_id.isin(ivalues)].person_id)
                 df = df[df.index.isin(party_person_ids)]
             elif key == "chamber_abbrev" and value:
-                value: list[str] = [v.lower() for v in value] if isinstance(value, list) else [value.lower()]
+                svalues = [v.lower() for v in value] if isinstance(value, list) else [value.lower()]
                 di: pd.DataFrame = self._loader.vectorized_corpus.document_index
-                df = df[df.index.isin(set(di[di.chamber_abbrev.isin(value)].person_id.unique()))]
+                df = df[df.index.isin(set(di[di.chamber_abbrev.isin(svalues)].person_id.unique()))]
             else:
                 if key in df.columns:
                     df = df[df[key].isin(value)]
@@ -120,7 +120,7 @@ class SearchService:
                 person_id = person_id.iloc[0]
             if person_id == "unknown":
                 return unknown
-            person: dict = self._loader.person_codecs[document_item["person_id"]]
+            person: pd.Series = self._loader.person_codecs[document_item["person_id"]]  # type: ignore
             return person['name']
         except IndexError:
             return unknown
