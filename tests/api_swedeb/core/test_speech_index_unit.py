@@ -41,7 +41,7 @@ def mock_corpus() -> VectorizedCorpus:
         ]
     )
 
-    corpus = VectorizedCorpus(bag_term_matrix=dtm_matrix, document_index=document_index, token2id=token2id)
+    corpus = VectorizedCorpus(bag_term_matrix=dtm_matrix, document_index=document_index, token2id=token2id)  # type: ignore
 
     return corpus
 

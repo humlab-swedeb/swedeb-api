@@ -115,8 +115,9 @@ class TestRegistry:
         def my_func():
             return "test"
 
-        assert Registry.is_registered("test_func")
-        assert Registry.get("test_func")() == "test"
+        fx = Registry.get("test_func")
+        assert fx is not None
+        assert fx() == "test"
 
     def test_register_class(self):
         """Test registering a class."""
@@ -127,7 +128,9 @@ class TestRegistry:
                 return "value"
 
         assert Registry.is_registered("test_class")
-        instance = Registry.get("test_class")()
+        my_cls = Registry.get("test_class")
+        assert my_cls is not None
+        instance = my_cls()
         assert instance.method() == "value"
 
     def test_register_without_key_uses_name(self):
