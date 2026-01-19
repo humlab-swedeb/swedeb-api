@@ -201,6 +201,9 @@ class IVectorizedCorpusProtocol(Protocol):
     def term_frequency0(self) -> np.ndarray | dict[str, int] | None: ...
 
     @property
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
+
+    @property
     def document_index(self) -> pd.DataFrame: ...
 
     @property
@@ -217,6 +220,9 @@ class IVectorizedCorpusProtocol(Protocol):
 
     @property
     def payload(self) -> dict[str, Any]: ...
+
+    @property
+    def metadata(self) -> dict: ...
 
     def remember(self, **kwargs) -> Self: ...
 

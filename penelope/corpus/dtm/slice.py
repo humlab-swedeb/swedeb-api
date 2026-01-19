@@ -38,6 +38,15 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
     @property
     def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
 
+    @property
+    def shape(self) -> Tuple[int, int]: ...
+
+    # Internal mutable attributes for inplace operations
+    _bag_term_matrix: sp.csr_matrix
+    _token2id: dict[str, int]
+    _id2token: dict[int, str] | None
+    _overridden_term_frequency: np.ndarray | dict[str, int] | None
+
 
 class SliceMixIn(ISlicedCorpusProtocol):
     def slice_by_tf(

@@ -158,7 +158,7 @@ class StoreMixIn:
         return self
 
     @property
-    def metadata(self) -> dict:
+    def metadata(self: IVectorizedCorpusProtocol) -> dict:
         return {
             'token2id': self.token2id,
             'overridden_term_frequency': self.overridden_term_frequency,
@@ -284,7 +284,7 @@ class StoreMixIn:
     def load_metadata(*, tag: str, folder: str) -> dict:
         return load_metadata(tag=tag, folder=folder)
 
-    def store_metadata(self, *, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files') -> None:
+    def store_metadata(self: IVectorizedCorpusProtocol, *, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files') -> None:
         return store_metadata(tag=tag, folder=folder, mode=mode, **self.metadata)
 
     @staticmethod
