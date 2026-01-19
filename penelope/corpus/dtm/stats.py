@@ -28,9 +28,7 @@ class StatsMixIn:
 
         return largest_tokens
 
-    def nlargest(
-        self: IVectorizedCorpusProtocol, n_top: int, *, sort_indices: bool = False, override: bool = False
-    ) -> np.ndarray:
+    def nlargest(self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: 
         """Return indices for the `n_top` most frequent terms in DTM
         Note: indices are sorted by TF count as default."""
         n_top = min(n_top, len(self.term_frequency))

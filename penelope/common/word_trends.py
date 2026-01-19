@@ -112,11 +112,11 @@ class TrendsServiceBase(abc.ABC):
     #         self._gof_data = gof.GofData.compute(self.corpus, n_top=self.n_top)
     #     return self._gof_data
 
-    @overload
-    def find_word_indices(self, opts: TrendsComputeOpts = ...) -> list[int]: ...
+    # @overload
+    # def find_word_indices(self, opts: TrendsComputeOpts = ...) -> list[int]: ...
 
-    @overload
-    def find_word_indices(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[int]: ...
+    # @overload
+    # def find_word_indices(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[int]: ...
 
     def find_word_indices(
         self,

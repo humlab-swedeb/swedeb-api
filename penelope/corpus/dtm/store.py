@@ -171,8 +171,8 @@ class StoreMixIn:
         return any(os.path.isfile(jj(folder, f"{tag}{suffix}")) for suffix in DATA_SUFFIXES)
 
     @staticmethod
-    def is_dump(filename: str) -> bool:
-        return filename and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
+    def is_dump(filename: str | None) -> bool:
+        return bool(filename) and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
 
     @staticmethod
     def find_tags(folder: str) -> list[str]:
@@ -203,7 +203,7 @@ class StoreMixIn:
                     os.unlink(filename)
 
     @staticmethod
-    def load(*, tag: str = None, folder: str = None, filename: str = None) -> IVectorizedCorpus:
+    def load(*, tag: str | None = None, folder: str | None = None, filename: str | None = None) -> IVectorizedCorpus:
         """Loads corpus with tag `tag` in folder `folder`
 
         Raises `FileNotFoundError` if any of the two files containing metadata and matrix doesn't exist.
@@ -306,8 +306,8 @@ def load_corpus(
     *,
     tag: str,
     folder: str,
-    tf_threshold: int = None,
-    n_top: int = None,
+    tf_threshold: int | None = None,
+    n_top: int | None = None,
     axis: Optional[int] = 1,
     keep_magnitude: bool = True,
     group_by_year: bool = True,

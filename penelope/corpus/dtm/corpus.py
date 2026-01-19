@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 import contextlib
 import fnmatch
 import re
 import warnings
-from typing import Any, Callable, Iterable, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -119,14 +120,14 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return self._bag_term_matrix.T
 
     @property
-    def term_frequency0(self) -> np.ndarray:
+    def term_frequency0(self) -> np.ndarray | dict[str, int] | None:
         """Global TF (absolute term count), overridden prioritized"""
         if self._overridden_term_frequency is not None:
             return self._overridden_term_frequency
         return self.term_frequency
 
     @property
-    def term_frequency(self) -> np.ndarray:
+    def term_frequency(self) -> np.ndarray | dict[str, int] | None:
         """Global TF (absolute term count)"""
         return self._bag_term_matrix.sum(axis=0).A1.ravel()
 
@@ -415,7 +416,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         return term_term_matrix
 
-    def find_matching_words(self, word_or_regexp: Set[str], n_max_count: int, descending: bool = False) -> list[str]:
+    def find_matching_words(self, word_or_regexp: Collection[str], n_max_count: int, descending: bool = False) -> list[str]:
         """Returns words in corpus that matches candidate tokens"""
         words = self.pick_n_top_words(
             find_matching_words_in_vocabulary(self.token2id, word_or_regexp),
@@ -535,7 +536,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     #     self.data.eliminate_zeros()
 
 
-def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Set[str]) -> Set[str]:
+def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Collection[str]) -> set[str]:
     words = {w for w in candidate_words if w in token2id}
 
     remaining_words = [w for w in candidate_words if w not in words and len(w) > 0]

@@ -51,7 +51,7 @@ class SliceMixIn(ISlicedCorpusProtocol):
             return self
         return self.slice_by_indices(indices, inplace=inplace)
 
-    def slice_by_n_top(self: ISlicedCorpusProtocol, n_top: int, inplace: bool = False) -> IVectorizedCorpus:
+    def slice_by_n_top(self: ISlicedCorpusProtocol, n_top: int | None, inplace: bool = False) -> IVectorizedCorpus:
         """Create a subset corpus that only contains most frequent `n_top` words
 
         Parameters
