@@ -37,7 +37,8 @@ class SpeechTextService:
 
     def speeches(self, *, metadata: dict, utterances: list[dict]) -> list[dict]:
         """Create list of speeches for all speeches in protocol"""
-        speech_infos: dict = self.name2info.get(metadata.get("name"))
+        name: str = metadata.get("name") or "unknown"
+        speech_infos = self.name2info.get(name) or []
         speech_lengths: np.ndarray = np.array([s.get("n_utterances", 0) for s in speech_infos])
         speech_starts: np.ndarray = np.append([0], np.cumsum(speech_lengths))
         speeches = [
@@ -81,7 +82,7 @@ class SpeechTextRepository:
         source: str | Loader,
         person_codecs: md.PersonCodecs,
         document_index: pd.DataFrame,
-        service: SpeechTextService = None,
+        service: SpeechTextService | None = None,
     ):
         self.source: Loader = source if isinstance(source, Loader) else ZipLoader(source)
         self.person_codecs: md.PersonCodecs = person_codecs
@@ -118,7 +119,7 @@ class SpeechTextRepository:
             raise KeyError(f"Speech {key} not found in index") from ex
 
         try:
-            speaker_name: str = self.person_codecs[speech_info["person_id"]]["name"] if speech_info else "unknown"
+            speaker_name: str = self.person_codecs[speech_info["person_id"]]["name"] if speech_info else "unknown"  # type: ignore
         except KeyError:
             speaker_name: str = speech_info["person_id"]
 
@@ -130,14 +131,16 @@ class SpeechTextRepository:
 
         return speech_info
 
-    def get_key_index(self, key):
+    def get_key_index(self, key: int | str) -> int:
+        """Get the document index key for a given speech identifier."""
+        key_idx: int | None = None
         if isinstance(key, int) or key.isdigit():
-            key_idx: int = int(key)
+            key_idx = int(key)
         elif key.startswith('prot-'):
             key_idx = self.document_name2id.get(key)
         elif key.startswith('i-'):
             key_idx = self.speech_id2id.get(key)
-        else:
+        if key_idx is None:
             raise ValueError(f"unknown speech key {key}")
         return key_idx
 

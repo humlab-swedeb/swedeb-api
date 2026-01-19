@@ -70,7 +70,7 @@ def get_speeches_by_speech_ids(
 
     if isinstance(speech_ids, pd.DataFrame):
         """Merge and keep any additional columns in `speech_ids`"""
-        speech_index = speech_index[COLUMNS_OF_INTEREST].merge(speech_ids, how='inner', **join_opts)
+        speech_index = speech_index[COLUMNS_OF_INTEREST].merge(speech_ids, how='inner', **join_opts)  # type: ignore
     else:
         speech_index = speech_index[COLUMNS_OF_INTEREST].loc[speech_ids]
 

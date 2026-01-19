@@ -17,14 +17,14 @@ from loguru import logger
 
 from penelope.utility import PropertyValueMaskingOpts
 
-try:
-    import github as gh  # type: ignore
-except ImportError:
+# try:
+#     import github as gh  # type: ignore
+# except ImportError:
 
-    def Github(_) -> types.SimpleNamespace:
-        return types.SimpleNamespace()
+#     def Github(_) -> types.SimpleNamespace:
+#         return types.SimpleNamespace()
 
-    gh = types.SimpleNamespace(Github=Github)
+#     gh = types.SimpleNamespace(Github=Github)
 
 # pylint: disable=missing-timeout
 
@@ -90,7 +90,9 @@ def flatten(lst: list[list[Any]]) -> list[Any]:
     #     return lst
     return [item for sublist in lst for item in sublist]
 
+
 L = TypeVar("L")
+
 
 class Lazy(Generic[L]):
     """Implements Lazy evaluation of a value."""
@@ -174,7 +176,7 @@ def load_tables(
 ) -> dict[str, pd.DataFrame]:
     """Loads tables as pandas dataframes, slims types, fills NaN, sets pandas index"""
     data: dict[str, pd.DataFrame] = read_sql_tables(list(tables.keys()), db)
-    slim_table_types(data.values(), defaults=defaults, dtypes=dtypes)
+    slim_table_types(list(data.values()), defaults=defaults, dtypes=dtypes)
     assign_primary_key(tables, data)
     return data
 
@@ -302,7 +304,7 @@ def dget(data: dict, *path: str | list[str], default: Any = None) -> Any:
     if path is None or not data:
         return default
 
-    ps: Sequence[str] = path if isinstance(path, (list, tuple)) else [path]
+    ps: Sequence[str] = path if isinstance(path, (list, tuple)) else [path]  # type: ignore
 
     d = None
 
@@ -315,7 +317,7 @@ def dget(data: dict, *path: str | list[str], default: Any = None) -> Any:
     return d or default
 
 
-def dotexists(data: dict, *paths: list[str]) -> bool:
+def dotexists(data: dict, *paths: str) -> bool:
     for path in paths:
         if dotget(data, path, default="@@") != "@@":
             return True
@@ -340,9 +342,9 @@ def dotget(data: dict, path: str, default: Any = None) -> Any:
     if path is x:y:y then element is search using borh x.y.y or x_y_y."""
 
     for key in dotexpand(path):
-        d: dict = data
+        d: dict | None = data
         for attr in key.split('.'):
-            d: dict = d.get(attr) if isinstance(d, dict) else None
+            d = d.get(attr) if isinstance(d, dict) else None
             if d is None:
                 break
         if d is not None:
@@ -384,7 +386,7 @@ def strip_paths(filenames: str | list[str]) -> str | list[str]:
     return [basename(filename) for filename in filenames]
 
 
-def strip_extensions(filename: str | list[str]) -> list[str]:
+def strip_extensions(filename: str | list[str]) -> list[str] | str:
     if isinstance(filename, str):
         return splitext(filename)[0]
     return [splitext(x)[0] for x in filename]
@@ -405,16 +407,16 @@ def fix_whitespace(text: str) -> str:
     return SUBST_PUNCTS.sub(r"\1", text)
 
 
-def get_release_tags(user: str, repository: str, github_access_token: str = None) -> list[str]:
-    release_tags: list[str] = ["main", "dev"]
-    try:
-        access_token: str = github_access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
-        github: gh.Github = gh.Github(access_token)
-        riksdagen_corpus = github.get_repo(f"{user}/{repository}")
-        release_tags = release_tags + [x.title for x in riksdagen_corpus.get_releases()]
-    except:  # pylint: disable=bare-except
-        ...
-    return release_tags
+# def get_release_tags(user: str, repository: str, github_access_token: str | None = None) -> list[str]:
+#     release_tags: list[str] = ["main", "dev"]
+#     try:
+#         access_token: str = github_access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
+#         github: gh.Github = gh.Github(access_token)
+#         riksdagen_corpus = github.get_repo(f"{user}/{repository}")
+#         release_tags = release_tags + [x.title for x in riksdagen_corpus.get_releases()]
+#     except:  # pylint: disable=bare-except
+#         ...
+#     return release_tags
 
 
 def format_protocol_id(selected_protocol: str) -> str:
@@ -529,9 +531,9 @@ def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
     """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
     if len(pivot_keys) <= 1 or data is None:
         return data
-    data: pd.DataFrame = data.set_index(pivot_keys)
+    data = data.set_index(pivot_keys)
     while isinstance(data.index, pd.MultiIndex):
-        data = data.unstack(level=1, fill_value=0)
+        data = data.unstack(level=1, fill_value=0)  # type: ignore
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = [' '.join(x) for x in data.columns]
     return data
