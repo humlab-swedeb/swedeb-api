@@ -35,7 +35,7 @@ class IVectorizedCorpus(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def overridden_term_frequency(self) -> Dict[str, int]: ...
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
 
     @property
     @abc.abstractmethod
@@ -181,7 +181,7 @@ class IVectorizedCorpus(abc.ABC):
         bag_term_matrix: scipy.sparse.csr_matrix,
         token2id: Dict[str, int],
         document_index: pd.DataFrame,
-        overridden_term_frequency: Dict[str, int] | None = None,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
     ) -> "IVectorizedCorpus": ...
 
 
@@ -191,7 +191,7 @@ class IVectorizedCorpusProtocol(Protocol):
         bag_term_matrix: scipy.sparse.csr_matrix,
         token2id: Dict[str, int],
         document_index: pd.DataFrame,
-        overridden_term_frequency: Dict[str, int] | None = None,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
     ) -> IVectorizedCorpus: ...
 

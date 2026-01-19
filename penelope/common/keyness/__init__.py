@@ -6,6 +6,6 @@ from .metrics import (
     KeynessMetricSource,
     partitioned_significances,
     significance,
-    significance_matrix,
+    # significance_matrix,
     significance_ratio,
 )

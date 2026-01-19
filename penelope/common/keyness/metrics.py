@@ -1,5 +1,5 @@
 from enum import IntEnum, unique
-from typing import Callable, Sequence, Union
+from typing import Callable, Union
 
 import numpy as np
 import pandas as pd
@@ -100,7 +100,7 @@ def _llr(
         np.ndarray: Dunning's LLR score
     """
 
-    def ln(a: np.ndarray|float) -> np.ndarray:
+    def ln(a: np.ndarray | float) -> np.ndarray:
         if isinstance(a, float):
             return np.log(max(a, 1e-10))
         return np.log(np.clip(a, a_min=1e-10, a_max=None))

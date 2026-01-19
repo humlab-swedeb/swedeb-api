@@ -68,11 +68,11 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         )
         self._id2token: Optional[dict[int, str]] = None
         self._document_index: pd.DataFrame = self._ingest_document_index(document_index=document_index)
-        self._overridden_term_frequency: Optional[np.ndarray] | None = overridden_term_frequency
+        self._overridden_term_frequency: np.ndarray | dict[str, int] | None = overridden_term_frequency
         self._payload: dict = {**kwargs}
 
     def _ingest_document_index(self, document_index: pd.DataFrame) -> pd.DataFrame:
-        if not np.issubdtype(document_index.index.dtype, np.number):  #type: ignore
+        if not np.issubdtype(document_index.index.dtype, np.number):  # type: ignore
             logger.warning("VectorizedCorpus: supplied document index has not an integral index")
             document_index = document_index.set_index('document_id', drop=False).rename_axis('')
 
@@ -131,7 +131,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return self._bag_term_matrix.sum(axis=0).A1.ravel()
 
     @property
-    def overridden_term_frequency(self) -> np.ndarray:
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None:
         """Overridden global token frequencies (source corpus size)"""
         return self._overridden_term_frequency
 

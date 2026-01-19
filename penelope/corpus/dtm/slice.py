@@ -36,7 +36,7 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
     ) -> Tuple[IVectorizedCorpus, Mapping[int, int], Sequence[int]]: ...
 
     @property
-    def overridden_term_frequency(self) -> np.ndarray: ...
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
 
 
 class SliceMixIn(ISlicedCorpusProtocol):
@@ -136,7 +136,7 @@ class SliceMixIn(ISlicedCorpusProtocol):
         indices.sort()
 
         bag_term_matrix = self.bag_term_matrix[:, indices]
-        token2id = {self.id2token[indices[i]]: i for i in range(0, len(indices))}
+        token2id: dict[str, int] = {self.id2token[indices[i]]: i for i in range(0, len(indices))}
 
         overridden_term_frequency = (
             self._overridden_term_frequency[indices] if self._overridden_term_frequency is not None else None

@@ -32,7 +32,7 @@ def create_corpus_instance(
     bag_term_matrix: scipy.sparse.csr_matrix,
     token2id: dict[str, int],
     document_index: pd.DataFrame,
-    overridden_term_frequency: dict[str, int] = None,
+    overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
 ) -> "IVectorizedCorpus":
     """Creates a corpus instance using importlib to avoid cyclic references"""
     module = importlib.import_module(name="penelope.corpus.dtm.corpus")
@@ -93,14 +93,15 @@ def store_metadata(*, tag: str, folder: str, mode: Literal['bundle', 'files'] = 
         # return
 
     if mode.startswith('files'):
-        di: pd.DataFrame = data.get('document_index')
+        di: pd.DataFrame | None = data.get('document_index')
+        assert di is not None
         di.to_csv(jj(folder, f"{tag}_document_index.csv.gz"), sep=';', compression="gzip")
         di.to_feather(jj(folder, f"{tag}_document_index.feather"))
 
         with gzip.open(jj(folder, f"{tag}_token2id.json.gz"), 'w') as fp:  # 4. fewer bytes (i.e. gzip)
             fp.write(json.dumps(data.get('token2id')).encode('utf-8'))
 
-        term_frequency: np.ndarray = data.get('overridden_term_frequency')
+        term_frequency: np.ndarray | dict[str, int] | None = data.get('overridden_term_frequency')
         if term_frequency is not None:
             np.save(jj(folder, f"{tag}_overridden_term_frequency.npy"), term_frequency, allow_pickle=True)
 
@@ -240,10 +241,10 @@ class StoreMixIn:
 
         data: dict = load_metadata(tag=tag, folder=folder)
 
-        token2id: dict = data.get("token2id")
+        token2id: dict[str, int] = data.get("token2id") or {}
 
         """Load TF override, convert if in older (dict) format"""
-        overridden_term_frequency: np.ndarray = (
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = (
             data.get("term_frequency", None)
             or data.get("overridden_term_frequency", None)
             or data.get("term_frequency_mapping", None)
