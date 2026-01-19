@@ -53,7 +53,12 @@ class WordTrendsService:
         Returns:
             List of search terms that are in vocabulary
         """
-        return [self.word_in_vocabulary(word) for word in search_terms if self.word_in_vocabulary(word)]
+        filtered_terms: list[str] = []
+        for word in search_terms:
+            valid_word = self.word_in_vocabulary(word)
+            if valid_word:
+                filtered_terms.append(valid_word)
+        return filtered_terms
 
     def get_word_trend_results(
         self, search_terms: list[str], filter_opts: dict, normalize: bool = False
@@ -81,7 +86,7 @@ class WordTrendsService:
             normalize,
         )
 
-        trends.columns = replace_by_patterns(trends.columns, ConfigValue("display.headers.translations").resolve())
+        trends.columns = replace_by_patterns(trends.columns.to_list(), ConfigValue("display.headers.translations").resolve())
 
         return trends
 
@@ -96,7 +101,7 @@ class WordTrendsService:
             DataFrame with speeches containing the search terms
         """
         speeches: pd.DataFrame = get_speeches_by_words(
-            self._loader.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts
+            self._loader.vectorized_corpus, terms=selected_terms, filter_opts=filter_opts  # type: ignore
         )
         speeches = self._loader.person_codecs.decode_speech_index(
             speeches,
@@ -111,4 +116,4 @@ class WordTrendsService:
         vectorized_corpus = self._loader.vectorized_corpus
         search_term = search if search in vectorized_corpus.vocabulary else search.lower()
 
-        return vectorized_corpus.find_matching_words({search_term}, n_max_count=n_hits, descending=False)
+        return vectorized_corpus.find_matching_words([search_term], n_max_count=n_hits, descending=False)
