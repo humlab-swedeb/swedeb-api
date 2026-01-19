@@ -232,7 +232,7 @@ class TrendsServiceBase(abc.ABC):
         """
         if self.transformed_corpus is None:
             raise ValueError("Corpus is not transformed")
-        
+
         if len(indices) > 0:
             if isinstance(indices[0], str):
                 indices = self.transformed_corpus.find_matching_words_indices(indices, top_count, descending=descending)

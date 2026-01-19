@@ -1,7 +1,9 @@
 from typing import Any
+
 import pandas as pd
+
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
-from api_swedeb.schemas.kwic_schema import KeywordInContextResult, KeywordInContextItem
+from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
 
 
 def kwic_request_to_CQP_opts(commons, keywords, lemmatized):

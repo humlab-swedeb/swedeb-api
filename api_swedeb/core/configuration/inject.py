@@ -48,16 +48,16 @@ class ConfigValue(Generic[T]):
             return ConfigStore.config(context)  # type: ignore
         if isclass(self.key):
             return self.key()
-        
+
         cfg: Config | None = ConfigStore.config(context)
-        
+
         if self.mandatory and not self.default:
             if cfg and not cfg.exists(self.key):
                 raise ValueError(f"ConfigValue {self.key} is mandatory but missing from config")
 
         if cfg is None:
             return self.default  # type: ignore
-        
+
         value = cfg.get(*self.key.split(","), default=self.default)
         if value and self.after:
             return self.after(value)

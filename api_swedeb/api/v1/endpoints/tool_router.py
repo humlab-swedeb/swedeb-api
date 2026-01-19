@@ -8,8 +8,6 @@ from fastapi.responses import StreamingResponse
 from pandas import DataFrame
 
 from api_swedeb.api.dependencies import (
-    get_corpus_decoder,
-    get_corpus_loader,
     get_cwb_corpus,
     get_kwic_service,
     get_search_service,
@@ -21,7 +19,11 @@ from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.mappers.kwic import kwic_to_api_model
-from api_swedeb.mappers.word_trends import search_hits_to_api_model, word_trend_speeches_to_api_model, word_trends_to_api_model
+from api_swedeb.mappers.word_trends import (
+    search_hits_to_api_model,
+    word_trend_speeches_to_api_model,
+    word_trends_to_api_model,
+)
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem

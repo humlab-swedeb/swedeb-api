@@ -5,7 +5,6 @@ import os
 import re
 import sqlite3
 import time
-import types
 from functools import wraps
 from os.path import basename, dirname, splitext
 from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
@@ -242,7 +241,7 @@ def group_to_list_of_records(
     key_rows: pd.DataFrame = pd.DataFrame(
         data={
             key: df[key],
-            "data": (df[properties] if properties else df).to_dict("records"),
+            "data": (df[properties] if properties else df).to_dict("records"),  # type: ignore
         }
     )
     if ctor is not None:

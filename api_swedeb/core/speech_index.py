@@ -80,7 +80,7 @@ def get_speeches_by_speech_ids(
 def get_speeches_by_opts(speech_index: pd.DataFrame, opts: dict | PropertyValueMaskingOpts) -> pd.DataFrame:
     if not opts:
         return speech_index
-    speeches: pd.DataFrame = filter_by_opts(speech_index, opts)[COLUMNS_OF_INTEREST]
+    speeches: pd.DataFrame = filter_by_opts(speech_index, opts)[COLUMNS_OF_INTEREST]  # type: ignore
     return speeches
 
 

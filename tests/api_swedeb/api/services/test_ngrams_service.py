@@ -6,8 +6,6 @@ import pandas as pd
 
 from api_swedeb import schemas
 from api_swedeb.api.services.ngrams_service import NGramsService
-
-
 from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.schemas import NGramResult
 

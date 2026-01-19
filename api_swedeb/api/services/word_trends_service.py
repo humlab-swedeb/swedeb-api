@@ -28,7 +28,7 @@ class WordTrendsService:
     def loader(self) -> CorpusLoader:
         """Get the CorpusLoader instance. """
         return self._loader
-    
+
     def word_in_vocabulary(self, word: str) -> str | None:
         """Check if word is in vocabulary and return the correct form.
 

@@ -69,7 +69,7 @@ SPEECH_INDEX_DTYPES = {
 
 def slim_speech_index(speech_index: pd.DataFrame) -> pd.DataFrame:
     speech_index.rename(columns={'who': 'person_id', 'u_id': 'speech_id'}, inplace=True)
-    speech_index = speech_index[USED_COLUMNS].astype(SPEECH_INDEX_DTYPES)
+    speech_index = speech_index[USED_COLUMNS].astype(SPEECH_INDEX_DTYPES)  # type: ignore
     return speech_index
 
 

@@ -1,10 +1,7 @@
-from turtle import pd
 from typing import Any, Hashable
 
 from pandas import DataFrame
 
-from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.schemas.speeches_schema import SpeechesResultItemWT, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsItem, WordTrendsResult
 

@@ -3,9 +3,8 @@ from fastapi import status
 
 from api_swedeb.api.dependencies import get_corpus_decoder, get_corpus_loader, get_cwb_corpus, get_decoder_opts
 from api_swedeb.api.services.kwic_service import KWICService
-from api_swedeb.core.codecs import PersonCodecs
-from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.mappers.kwic import kwic_to_api_model
 
 # pylint: disable=redefined-outer-name
@@ -77,9 +76,9 @@ async def test_debug():
     decoder_opts = get_decoder_opts()
     person_codecs: PersonCodecs = await get_corpus_decoder(decoder_opts)  # type: ignore
     loader = get_corpus_loader()
-    
+
     kwic_service = KWICService(loader, person_codecs)
-    
+
     common_opts = {
         'office_types': None,
         'sub_office_types': None,
