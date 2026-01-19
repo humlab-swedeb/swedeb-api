@@ -207,6 +207,9 @@ class IVectorizedCorpusProtocol(Protocol):
     def bag_term_matrix(self) -> scipy.sparse.csr_matrix: ...
 
     @property
+    def data(self) -> scipy.sparse.csr_matrix: ...
+
+    @property
     def id2token(self) -> dict[int, str]: ...
 
     @property
@@ -220,3 +223,20 @@ class IVectorizedCorpusProtocol(Protocol):
     def recall(self, key: str) -> Optional[Any]: ...
 
     def nlargest(self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: ...
+
+    def get_top_n_words(
+        self, n: int = 1000, indices: Sequence[int] | None = None
+    ) -> Sequence[Tuple[str, Number]]: ...
+
+    def get_partitioned_top_n_words(
+        self,
+        *,
+        category_column: str = 'category',
+        n_top: int = 100,
+        pad: str | None = None,
+        keep_empty: bool = False,
+    ) -> dict: ...
+
+    def pick_top_tf_map(self, n_top: int) -> Dict[str, int]: ...
+
+    def slice_by_n_top(self, n_top: int) -> IVectorizedCorpus: ...
