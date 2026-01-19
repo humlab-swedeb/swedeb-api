@@ -41,7 +41,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         *,
         token2id: dict[str, int],
         document_index: pd.DataFrame,
-        overridden_term_frequency: Optional[np.ndarray] = None,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
     ):
         """Class that encapsulates a bag-of-word matrix

@@ -100,7 +100,9 @@ def _llr(
         np.ndarray: Dunning's LLR score
     """
 
-    def ln(a: np.ndarray) -> np.ndarray:
+    def ln(a: np.ndarray|float) -> np.ndarray:
+        if isinstance(a, float):
+            return np.log(max(a, 1e-10))
         return np.log(np.clip(a, a_min=1e-10, a_max=None))
 
     K = Z
@@ -304,10 +306,10 @@ METRIC_FUNCTION = {
 def significance(
     TTM: sp.csc_matrix,
     metric: Union[Callable, KeynessMetric],
-    normalize: bool = False,
-    n_contexts=None,
-    n_words=None,
-) -> sp.csc_matrix:
+    normalize: bool,
+    n_contexts: float,
+    n_words: float,
+) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """Computes statistical significance tf co-occurrences using `metric`.
 
     Args:
@@ -344,20 +346,20 @@ def significance(
         nan=0.0,
     )
 
-    nz_indices: np.ndarray = weights.nonzero()
+    nz_indices: np.ndarray = weights.nonzero()  # type: ignore
 
     return (weights[nz_indices], (ii[nz_indices], jj[nz_indices]))
 
 
-def significance_matrix(
-    TTM: sp.csc_matrix, metric: Union[Callable, KeynessMetric], normalize: bool = False
-) -> sp.csc_matrix:
-    weights, (ii, jj) = significance(TTM, metric, normalize)
+# def significance_matrix(
+#     TTM: sp.csc_matrix, metric: Union[Callable, KeynessMetric], normalize: bool = False
+# ) -> sp.csc_matrix:
+#     weights, (ii, jj) = significance(TTM, metric, normalize)
 
-    M: sp.spmatrix = sp.csc_matrix((weights, (ii, jj)), shape=TTM.shape, dtype=np.float64)
-    M.eliminate_zeros()
+#     M: sp.spmatrix = sp.csc_matrix((weights, (ii, jj)), shape=TTM.shape, dtype=np.float64)
+#     M.eliminate_zeros()
 
-    return M
+#     return M
 
 
 def partitioned_significances(
@@ -378,21 +380,23 @@ def partitioned_significances(
     Returns:
         pd.DataFrame: [description]
     """
-    vocabulary_size: int = vocabulary_size or max(co_occurrences.w1_id, co_occurrences.w2_id)
+    vocab_size: int = vocabulary_size or max(co_occurrences.w1_id.max(), co_occurrences.w2_id.max())
     co_occurrence_partitions = []
     for period in co_occurrences[pivot_key].unique():
         pivot_co_occurrences = co_occurrences[co_occurrences[pivot_key] == period]
         term_term_matrix = sp.csc_matrix(
             (pivot_co_occurrences.value, (pivot_co_occurrences.w1_id, pivot_co_occurrences.w2_id)),
-            shape=(vocabulary_size, vocabulary_size),
+            shape=(vocab_size, vocab_size),
             dtype=np.float64,
         )
+        assert document_index is not None, "document_index is required"
         n_contexts = _get_documents_count(document_index, pivot_co_occurrences)
         weights, (w1_ids, w2_ids) = significance(
             TTM=term_term_matrix,
             metric=keyness_metric,
             normalize=normalize,
             n_contexts=n_contexts,
+            n_words=vocab_size,
         )
         co_occurrence_partitions.append(
             pd.DataFrame(data={pivot_key: period, 'w1_id': w1_ids, 'w2_id': w2_ids, 'value': weights})
@@ -405,7 +409,7 @@ def _get_documents_count(document_index: pd.DataFrame, co_occurrences: pd.DataFr
     """Returns number of documents that has contributed to data in `co_occurrences`"""
     if 'document_id' not in co_occurrences.columns:
         raise ValueError("fatal: document index has no ID column")
-    documents_ids: Sequence[int] = co_occurrences.document_id.unique()
+    documents_ids: np.ndarray = co_occurrences.document_id.unique()
     if len(documents_ids) == 0:
         return 0
     if 'n_documents' in document_index.columns:
@@ -415,8 +419,8 @@ def _get_documents_count(document_index: pd.DataFrame, co_occurrences: pd.DataFr
     return n_contexts
 
 
-def significance_ratio(A: sp.spmatrix, B: sp.spmatrix) -> sp.spmatrix:
+def significance_ratio(A: sp.csr_matrix, B: sp.csr_matrix) -> sp.csr_matrix:
     """https://stackoverflow.com/posts/58446948"""
-    inv_B: sp.spmatrix = B.copy()
+    inv_B: sp.csr_matrix = B.copy()
     inv_B.data = 1 / inv_B.data
     return A.multiply(inv_B)
