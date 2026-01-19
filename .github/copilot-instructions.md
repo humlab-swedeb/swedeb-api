@@ -69,7 +69,7 @@ uv run pytest tests/
 
 # Code formatting (REQUIRED before commits)
 make tidy        # Runs black + isort
-make black       # Black with --line-length 120 --target-version py311
+make black       # Black with --line-length 120 --target-version py313
 make isort       # isort with --profile black
 
 # Coverage report
