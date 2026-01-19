@@ -6,7 +6,7 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import cached_property
 from os.path import isfile
-from typing import Any, Callable, Hashable, Literal, Mapping, Protocol, Self
+from typing import Any, Callable, Literal, Mapping, Protocol, Self
 
 import pandas as pd
 
@@ -157,7 +157,7 @@ class Codecs:
         clone.mappings = mappings
         clone.store = store
         clone.filename = self.filename
-        clone.codecs = [c for c in self.codecs]
+        clone.codecs = self.codecs
         return clone
 
     @property
@@ -219,7 +219,7 @@ class Codecs:
             return self.mappings[key]
 
         """Check if from column is index"""
-        key_column: str | Hashable | None = self.tablenames().get(table_name, table.index.name or None)
+        key_column: str | None = self.tablenames().get(table_name, table.index.name or None)  # type: ignore
         if from_column in (key_column, table.index.name):
             self.mappings[key] = table[to_column].to_dict()
             return self.mappings[key]
@@ -307,7 +307,11 @@ class Codecs:
     @cached_property
     def property_values_specs(self) -> list[dict[str, Any]]:
         return [
-            dict(text_name=d["text_name"], id_name=d["id_name"], values=self.get_mapping(d["text_name"], d["id_name"]))
+            {
+                "text_name": d["text_name"],
+                "id_name": d["id_name"],
+                "values": self.get_mapping(d["text_name"], d["id_name"]),
+            }
             for d in self.specification.get("property_values_specs", [])
         ]
 

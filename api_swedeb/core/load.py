@@ -76,7 +76,7 @@ def slim_speech_index(speech_index: pd.DataFrame) -> pd.DataFrame:
 def _to_feather(df: pd.DataFrame, filename: str) -> None:
     try:
         df.to_feather(filename)
-    except Exception as ex:
+    except Exception as ex:  # pylint: disable=broad-except
         logger.error(f"Failed to write feather file: {ex}")
 
 

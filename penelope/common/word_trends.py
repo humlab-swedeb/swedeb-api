@@ -19,7 +19,7 @@ class TrendsComputeOpts(Generic[T]):
 
     temporal_key: str
     pivot_keys_id_names: list[str] = field(default_factory=list)
-    # FIXME: Decide if it is best to apply filter in `transform` (reduce corpus) or extract (slice corpus)
+
     filter_opts: pu.PropertyValueMaskingOpts | None = None
     unstack_tabular: bool = False
 
@@ -272,7 +272,7 @@ class TrendsService(TrendsServiceBase):
             temporal_key=opts.temporal_key,
             pivot_keys=list(opts.pivot_keys_id_names),
             filter_opts=opts.filter_opts,
-            document_namer=None,  # FIXME
+            document_namer=None,
             fill_gaps=opts.fill_gaps,
             aggregate='sum',
         )

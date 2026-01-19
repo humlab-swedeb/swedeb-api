@@ -145,8 +145,8 @@ class StatsMixIn:
             'sum_over_bags': self.bag_term_matrix.sum(),
             '10_top_tokens': ' '.join(self.pick_top_tf_map(10).keys()),
         }
-        for key in stats_data:
-            logger.info(f'   {key}: {stats_data[key]}')
+        for key, value in stats_data.items():
+            logger.info(f'   {key}: {value}')
         return stats_data
 
     def to_n_top_dataframe(self: IVectorizedCorpusProtocol, n_top: int) -> pd.DataFrame:
@@ -182,7 +182,6 @@ class StatsMixIn:
         n_top = n_top or len(words)
         if len(words) < n_top:
             return words
-        # FIXME: What to do if overriden term frequency?
         fg = self.token2id.get
         tf = self.term_frequency
         token_counts = [tf[fg(w)] for w in words]

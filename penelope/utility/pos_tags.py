@@ -321,11 +321,11 @@ class PoS_Tag_Scheme:
         return group_counts
 
 
-Known_PoS_Tag_Schemes = dict(
-    SUC=PoS_Tag_Scheme(PD_SUC_PoS_tags),
-    Universal=PoS_Tag_Scheme(PD_Universal_PoS_tags),
-    PennTree=PoS_Tag_Scheme(PD_PennTree_O5_PoS_tags),
-)
+Known_PoS_Tag_Schemes = {
+    "SUC": PoS_Tag_Scheme(PD_SUC_PoS_tags),
+    "Universal": PoS_Tag_Scheme(PD_Universal_PoS_tags),
+    "PennTree": PoS_Tag_Scheme(PD_PennTree_O5_PoS_tags),
+}
 
 
 @dataclass

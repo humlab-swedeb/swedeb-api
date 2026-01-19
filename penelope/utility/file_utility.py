@@ -77,7 +77,7 @@ def find_folder(folder: str, parent: str) -> str:
 
 def read_excel(filename: str, sheet: str) -> pd.DataFrame:
     if not isfile(filename):
-        raise Exception(f"File {filename} does not exist!")
+        raise FileNotFoundError(f"File {filename} does not exist!")
     with pd.ExcelFile(filename) as xls:
         return pd.read_excel(xls, sheet)
 
@@ -98,7 +98,7 @@ def read_json(path: str, default: dict | None = None) -> Dict:
 def write_json(path: str, data: Dict, default=None):
     if default is not None:
         if not callable(default):
-            default = lambda _: default  # noqa: E731
+            default = lambda _: default  # noqa: E731 ; pylint: disable=unnecessary-lambda-assignment
 
     with open(path, 'w', encoding='utf-8') as json_file:
         json.dump(data, json_file, indent=4, default=default)

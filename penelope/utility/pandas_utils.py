@@ -271,7 +271,7 @@ def pandas_to_csv_zip(
 
 
 def pandas_read_csv_zip(zip_filename: str, pattern='*.csv', **read_csv_opts) -> dict:
-    data = dict()
+    data = {}
     with zipfile.ZipFile(zip_filename, mode='r') as zf:
         for filename in zf.namelist():
             if not fnmatch.fnmatch(filename, pattern):

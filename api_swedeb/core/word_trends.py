@@ -73,7 +73,6 @@ class SweDebTrendsData(wt.TrendsService):
         return di[pivot_keys_text_names + ([temporal_key] if temporal_key else [])].astype(str).agg('_'.join, axis=1)  # type: ignore
 
 
-# FIXME: Add this logic to penelope.VectorizedCorpus
 def get_words_per_year(corpus: pc.VectorizedCorpus) -> pd.DataFrame:
     """Cach computation of words per year"""
     stored: pd.DataFrame | None = corpus.recall("words_per_year")

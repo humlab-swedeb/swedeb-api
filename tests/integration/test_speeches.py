@@ -228,7 +228,7 @@ def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus_loader: C
 
 
 def find_a_speech_id(search_service: SearchService):
-    df = search_service._loader.document_index.sample(1)
+    df = search_service.loader.document_index.sample(1)
     return df.iloc[0]['document_name'], df.iloc[0]['speech_id']
 
 

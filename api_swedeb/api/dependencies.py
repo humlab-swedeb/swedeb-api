@@ -20,6 +20,8 @@ __ngrams_service: NGramsService | None = None
 __search_service: SearchService | None = None
 __kwic_service: KWICService | None = None
 
+# pylint: disable=global-statement
+
 
 def get_corpus_loader() -> CorpusLoader:
     """Get the singleton CorpusLoader instance."""

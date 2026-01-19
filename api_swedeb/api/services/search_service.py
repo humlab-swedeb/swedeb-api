@@ -26,6 +26,11 @@ class SearchService:
         """
         self._loader = loader
 
+    @property
+    def loader(self) -> CorpusLoader:
+        """Get the CorpusLoader instance."""
+        return self._loader
+
     def _get_filtered_speakers(self, selection_dict: dict[str, Any], df: pd.DataFrame) -> pd.DataFrame:
         """Filter speaker dataframe by selection criteria.
 

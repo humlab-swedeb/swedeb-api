@@ -60,18 +60,18 @@ class SpeechTextService:
         return (
             {}
             if len(list(utterances or [])) == 0
-            else dict(
-                speaker_note_id=utterances[0][self.id_name],
-                who=utterances[0]["who"],
-                u_id=utterances[0]["u_id"],
-                paragraphs=[p for u in utterances for p in u["paragraphs"]],
-                num_tokens=sum(x["num_tokens"] for x in utterances),
-                num_words=sum(x["num_words"] for x in utterances),
-                page_number=utterances[0]["page_number"] or "?",
-                page_number2=utterances[-1]["page_number"] or "?",
-                protocol_name=(metadata or {}).get("name", "?"),
-                date=(metadata or {}).get("date", "?"),
-            )
+            else {
+                "speaker_note_id": utterances[0][self.id_name],
+                "who": utterances[0]["who"],
+                "u_id": utterances[0]["u_id"],
+                "paragraphs": [p for u in utterances for p in u["paragraphs"]],
+                "num_tokens": sum(x["num_tokens"] for x in utterances),
+                "num_words": sum(x["num_words"] for x in utterances),
+                "page_number": utterances[0]["page_number"] or "?",
+                "page_number2": utterances[-1]["page_number"] or "?",
+                "protocol_name": (metadata or {}).get("name", "?"),
+                "date": (metadata or {}).get("date", "?"),
+            }
         )
 
 
@@ -153,7 +153,7 @@ class SpeechTextRepository:
                 speaker_notes: pd.DataFrame = read_sql_table("speaker_notes", db)
                 speaker_notes.set_index(self.service.id_name, inplace=True)
                 return speaker_notes["speaker_note"].to_dict()
-        except Exception as ex:
+        except Exception as ex:  # pylint: disable=broad-except
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
 
@@ -192,7 +192,7 @@ class SpeechTextRepository:
 
         except FileNotFoundError as ex:
             speech = {"name": f"speech {speech_name} not found", "error": str(ex)}
-        except Exception as ex:  # pylint: disable=bare-except
+        except Exception as ex:  # pylint: disable=broad-except
             speech = {"name": f"speech {speech_name}", "error": str(ex)}
 
         return Speech(speech)

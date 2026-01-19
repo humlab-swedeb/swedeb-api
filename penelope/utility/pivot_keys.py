@@ -61,7 +61,6 @@ class PivotKeys:
     @staticmethod
     def create_by_index(document_index: pd.DataFrame, *text_columns: str) -> "PivotKeys":
         """Create pivot keys from document index. For each text column an ID column is converted, and used as a pivot key."""
-        # FIXME: Extend to support existing ID columns, naming, etc
         pivot_keys: dict = {}
         for text_column in text_columns:
             id_column: str = f"{text_column}_id"

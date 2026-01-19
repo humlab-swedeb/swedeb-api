@@ -301,7 +301,7 @@ class GroupByMixIn:
             """Creates an aggregate dict to be used in groupby."""
 
             """Add for group's document ids"""
-            aggs: dict = dict(document_ids=('document_id', list))
+            aggs: dict = {'document_ids': ('document_id', list)}
 
             """Sum up all available count columns"""
             for count_column in {'n_tokens', 'n_raw_tokens', 'tokens'}.intersection(set(df.columns)):
@@ -391,7 +391,7 @@ def create_category_series(category_series: pd.Series, fill_gaps: bool = True, f
 
 def temporal_key_values_with_no_gaps(series: pd.Series, temporal_key: str):
     """Returns sorted distinct category values with gaps filled"""
-    return create_category_series(series, fill_gaps=True, fill_steps=dict(lustrum=5, decade=10).get(temporal_key, 1))
+    return create_category_series(series, fill_gaps=True, fill_steps={'lustrum': 5, 'decade': 10}.get(temporal_key, 1))
 
 
 def fill_temporal_gaps_in_group_document_index(

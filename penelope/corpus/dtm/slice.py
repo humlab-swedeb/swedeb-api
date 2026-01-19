@@ -41,12 +41,12 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
 
 class SliceMixIn(ISlicedCorpusProtocol):
     def slice_by_tf(
-        self: ISlicedCorpusProtocol, threshold: Union[int, float], inplace: bool = False
+        self: ISlicedCorpusProtocol, tf_threshold: Union[int, float], inplace: bool = False
     ) -> IVectorizedCorpus:
         """Returns subset corpus where low frequent words are filtered out"""
-        if threshold is None:
+        if tf_threshold is None:
             return self
-        indices: np.ndarray = np.argwhere(self.term_frequency >= threshold).ravel()
+        indices: np.ndarray = np.argwhere(self.term_frequency >= tf_threshold).ravel()
         if len(indices) == self.shape[1]:
             return self
         return self.slice_by_indices(indices, inplace=inplace)

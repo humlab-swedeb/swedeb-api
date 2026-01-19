@@ -1,4 +1,4 @@
-from typing import Any, Hashable
+from typing import Any
 
 from pandas import DataFrame
 
@@ -35,6 +35,6 @@ def word_trends_to_api_model(df: DataFrame) -> WordTrendsResult:
 
 
 def word_trend_speeches_to_api_model(df: DataFrame) -> SpeechesResultWT:
-    data: list[dict[Hashable, Any]] = df.to_dict(orient="records")
+    data: list[dict[Any, Any]] = df.to_dict(orient="records")
     rows: list[SpeechesResultItemWT] = [SpeechesResultItemWT(**row) for row in data]  # type: ignore
     return SpeechesResultWT(speech_list=rows)

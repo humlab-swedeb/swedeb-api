@@ -277,7 +277,7 @@ class StoreMixIn:
         json_filename = jj(folder, f"{tag}_vectorizer_data.json")
         if os.path.isfile(json_filename):
             return read_json(json_filename)
-        return dict()
+        return {}
 
     @staticmethod
     def load_metadata(*, tag: str, folder: str) -> dict:

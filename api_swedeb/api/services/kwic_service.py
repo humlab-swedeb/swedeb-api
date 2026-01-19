@@ -8,6 +8,7 @@ from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.kwic import simple
+from api_swedeb.mappers.kwic import kwic_request_to_CQP_opts
 
 
 class KWICService:
@@ -63,7 +64,6 @@ class KWICService:
         Returns:
             DataFrame with KWIC data
         """
-        from api_swedeb.mappers.kwic import kwic_request_to_CQP_opts
 
         opts = kwic_request_to_CQP_opts(commons, keywords, lemmatized)
 
