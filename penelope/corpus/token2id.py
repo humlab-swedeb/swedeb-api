@@ -34,14 +34,14 @@ class Token2Id(MutableMapping):
         self,
         data: Optional[Union[dict[str, int], defaultdict[str, int]]],
         tf: dict | None = None,
-        fallback_token: str | None = None,
+        fallback_token_id: int | None = None,
         **kwargs,
     ):
         self._data: defaultdict[str, int] = defaultdict()
         self._tf: defaultdict[int, int] | dict[int, int] | None = None
         self._is_open = True
         self._id2token: dict | None = None
-        self._fallback_token_id: str | None = fallback_token
+        self._fallback_token_id: int | None = fallback_token_id
         self._payload: dict = {**kwargs}
 
         self.replace(data=data or defaultdict(), tf=tf)
@@ -55,15 +55,12 @@ class Token2Id(MutableMapping):
                 return self._data.get(key, self._fallback_token_id)
         return self._data[key]
 
-    def __optimized__getitem__(self) -> Callable[[str], int]:
+    def __optimized__getitem__(self) -> Callable[[str], int | None]:
         """Optimises __getitem__ by wireing up a replacement closure without conditional constructs"""
-        data = self._data
-        if self._is_open:
+        data: defaultdict[str, int] = self._data
+        if self._is_open or self._fallback_token_id is None:
             return lambda w: data[w]
-        fallback_token_id = self._fallback_token_id
-        if fallback_token_id is None:
-            return lambda w: data[w]
-        return lambda key: data.get(key, fallback_token_id)
+        return lambda key: data.get(key, self._fallback_token_id)
 
     def __setitem__(self, key: str, value):
         if self._id2token:
@@ -171,11 +168,11 @@ class Token2Id(MutableMapping):
         return self._is_open
 
     @property
-    def fallback_token_id(self) -> int:
+    def fallback_token_id(self) -> int | None:
         return self._fallback_token_id
 
     @fallback_token_id.setter
-    def fallback_token_id(self, value: int) -> None:
+    def fallback_token_id(self, value: int | None) -> None:
         self._fallback_token_id = value
         self.__getitem__ = self.__optimized__getitem__()
 
@@ -377,7 +374,7 @@ class Token2Id(MutableMapping):
         if inplace:
             return self.replace(data=data, tf=tf)
 
-        token2id = Token2Id(data=data, tf=tf, fallback_token=self.fallback_token_id).sync_state(self.is_open)
+        token2id = Token2Id(data=data, tf=tf, fallback_token_id=self.fallback_token_id).sync_state(self.is_open)
 
         return token2id
 
