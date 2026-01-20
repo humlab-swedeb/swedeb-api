@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 from api_swedeb.api.dependencies import get_corpus_loader
-from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.word_trends import compute_word_trends
 from api_swedeb.mappers.word_trends import word_trends_to_api_model
 from api_swedeb.schemas.word_trends_schema import WordTrendsResult
