@@ -5,7 +5,7 @@ import zipfile
 from collections import defaultdict
 from collections.abc import MutableMapping
 from fnmatch import fnmatch
-from typing import Any, Callable, Iterable, Iterator, Mapping, Optional, Union
+from typing import Any, Callable, Iterable, Iterator, Optional, Union
 
 import pandas as pd
 from loguru import logger
@@ -18,7 +18,7 @@ from penelope.utility import path_add_suffix, pickle_to_file, replace_extension,
 class ClosedVocabularyError(Exception): ...
 
 
-def id2token2token2id(id2token: Mapping[int, str]) -> dict:
+def id2token2token2id(id2token: dict[int, str]) -> dict:
     if id2token is None:
         return None
     if hasattr(id2token, 'token2id'):
@@ -112,7 +112,7 @@ class Token2Id(MutableMapping):
         return self
 
     @property
-    def payload(self) -> Mapping[Any, Any]:
+    def payload(self) -> dict[Any, Any]:
         return self._payload
 
     def remember(self, **kwargs) -> "Token2Id":
@@ -293,7 +293,7 @@ class Token2Id(MutableMapping):
 
     # def compress(
     #     self, *, tf_threshold: int = 1, inplace=False, keeps: Container[Union[int, str]] = None
-    # ) -> tuple["Token2Id", Mapping[int, int]]:
+    # ) -> tuple["Token2Id", dict[int, int]]:
     #     """Returns a compressed version of corpus, with ID translation, where tokens below threshold are removed"""
 
     #     if tf_threshold <= 1:
@@ -313,7 +313,7 @@ class Token2Id(MutableMapping):
 
     #     """Create translation between old IDs and new IDs"""
 
-    #     translation: Mapping[int, int] = {
+    #     translation: dict[int, int] = {
     #         old_token_id: (new_token_id, v)
     #         for new_token_id, (old_token_id, v) in enumerate(
     #             (k, v) for (k, v) in tf.items() if (v >= tf_threshold or k in keeps)
@@ -362,7 +362,7 @@ class Token2Id(MutableMapping):
 
     #     return token2id
 
-    def translate(self, ids_translation: Mapping[int, int], inplace: bool = True) -> "Token2Id":
+    def translate(self, ids_translation: dict[int, int], inplace: bool = True) -> "Token2Id":
         """Translates ID in vocabulary according to mapping specified in `vocab_translation`
         Translation is a mapping from old ID to new ID.
         Old item IDs that don't exist in translation are filtered out.
