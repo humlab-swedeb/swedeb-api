@@ -9,6 +9,7 @@ from fastapi.logger import logger
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import CorpusCreateOpts
 from api_swedeb.core.kwic.singleprocess import execute_kwic_singleprocess
+from api_swedeb.core.kwic.utility import normalize_kwic_df
 from api_swedeb.core.speech_index import get_speeches_by_speech_ids
 
 from .multiprocess import execute_kwic_multiprocess
@@ -63,7 +64,7 @@ def kwic(  # pylint: disable=too-many-arguments
     """
     kwic_key: str = "multiprocess" if use_multiprocessing else "singleprocess"
     logger.info(f"Using KWIC {kwic_key}ing method.")
-    return KWIC_REGISTRY[kwic_key](
+    kwic_data: pd.DataFrame = KWIC_REGISTRY[kwic_key](
         corpus=corpus,
         opts=opts,
         words_before=words_before,
@@ -72,6 +73,8 @@ def kwic(  # pylint: disable=too-many-arguments
         cut_off=cut_off,
         num_processes=num_processes,
     )
+    kwic_data = normalize_kwic_df(kwic_data, lexical_form=p_show)
+    return kwic_data
 
 
 def kwic_with_decode(  # pylint: disable=too-many-arguments
