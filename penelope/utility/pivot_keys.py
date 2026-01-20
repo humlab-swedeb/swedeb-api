@@ -135,7 +135,7 @@ class PivotKeys:
 
     @property
     def text_names(self) -> list[str]:
-        return [x['text_name'] for x in self._pivot_keys_spec.values()]    # type: ignore
+        return [x['text_name'] for x in self._pivot_keys_spec.values()]  # type: ignore
 
     @property
     def id_names(self) -> list[str]:

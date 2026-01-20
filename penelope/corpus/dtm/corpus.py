@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Collection
 import contextlib
 import fnmatch
 import re
 import warnings
+from collections.abc import Collection
 from typing import Any, Callable, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -416,7 +416,9 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         return term_term_matrix
 
-    def find_matching_words(self, word_or_regexp: Collection[str], n_max_count: int, descending: bool = False) -> list[str]:
+    def find_matching_words(
+        self, word_or_regexp: Collection[str], n_max_count: int, descending: bool = False
+    ) -> list[str]:
         """Returns words in corpus that matches candidate tokens"""
         words = self.pick_n_top_words(
             find_matching_words_in_vocabulary(self.token2id, word_or_regexp),

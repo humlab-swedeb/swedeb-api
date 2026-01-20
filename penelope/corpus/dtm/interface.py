@@ -230,9 +230,7 @@ class IVectorizedCorpusProtocol(Protocol):
 
     def nlargest(self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: ...
 
-    def get_top_n_words(
-        self, n: int = 1000, indices: Sequence[int] | None = None
-    ) -> Sequence[Tuple[str, Number]]: ...
+    def get_top_n_words(self, n: int = 1000, indices: Sequence[int] | None = None) -> Sequence[Tuple[str, Number]]: ...
 
     def get_partitioned_top_n_words(
         self,

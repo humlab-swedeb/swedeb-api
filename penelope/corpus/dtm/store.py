@@ -172,7 +172,9 @@ class StoreMixIn:
 
     @staticmethod
     def is_dump(filename: str | None) -> bool:
-        return bool(filename) and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
+        return (
+            bool(filename) and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
+        )
 
     @staticmethod
     def find_tags(folder: str) -> list[str]:
@@ -284,7 +286,9 @@ class StoreMixIn:
     def load_metadata(*, tag: str, folder: str) -> dict:
         return load_metadata(tag=tag, folder=folder)
 
-    def store_metadata(self: IVectorizedCorpusProtocol, *, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files') -> None:
+    def store_metadata(
+        self: IVectorizedCorpusProtocol, *, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files'
+    ) -> None:
         return store_metadata(tag=tag, folder=folder, mode=mode, **self.metadata)
 
     @staticmethod

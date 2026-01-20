@@ -231,7 +231,7 @@ class TestMetadataServiceIntegration:
 
         # Setup mock codecs with all metadata
         mock_codecs = MagicMock(spec=PersonCodecs)
-        
+
         # Configure get_table to return appropriate DataFrame based on table name
         def get_table_side_effect(table_name):
             tables = {
@@ -239,10 +239,10 @@ class TestMetadataServiceIntegration:
                 "gender": pd.DataFrame({"gender": ["M", "F"]}, index=[1, 2]),
                 "chamber": pd.DataFrame({"chamber_abbrev": ["X", " "]}),
                 "office_type": pd.DataFrame({"office_type": ["Type1"]}),
-                "sub_office_type": pd.DataFrame({"sub_office_type": ["SubType1"]})
+                "sub_office_type": pd.DataFrame({"sub_office_type": ["SubType1"]}),
             }
             return tables.get(table_name, pd.DataFrame())
-        
+
         mock_codecs.get_table.side_effect = get_table_side_effect
         mock_loader.person_codecs = mock_codecs
 
