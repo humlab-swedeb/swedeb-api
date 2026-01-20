@@ -39,7 +39,7 @@ class IVectorizedCorpus(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def term_frequency(self) ->  | dict[str, int] | None: ...
+    def term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
 
     @property
     @abc.abstractmethod
