@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 import ccc
 import pandas as pd
+from fastapi.logger import logger
 
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import CorpusCreateOpts
@@ -61,6 +62,7 @@ def kwic(  # pylint: disable=too-many-arguments
         pd.DataFrame: dataframe with index speech_id and columns left_word, node_word, right_word.
     """
     kwic_key: str = "multiprocess" if use_multiprocessing else "singleprocess"
+    logger.info(f"Using KWIC {kwic_key}ing method.")
     return KWIC_REGISTRY[kwic_key](
         corpus=corpus,
         opts=opts,
