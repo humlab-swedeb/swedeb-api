@@ -1,4 +1,4 @@
-from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.params import CommonQueryParams
 
 
 def test_get_filter_opts():

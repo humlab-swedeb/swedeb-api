@@ -17,7 +17,7 @@ from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.mappers.kwic import kwic_to_api_model
 from api_swedeb.mappers.word_trends import (
     search_hits_to_api_model,

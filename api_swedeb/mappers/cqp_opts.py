@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from fastapi.params import Query
 
-from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.params import CommonQueryParams
 
 YEAR_EPOCH: int = 1850
 

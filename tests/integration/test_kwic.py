@@ -3,7 +3,7 @@ from fastapi import status
 
 from api_swedeb.api.dependencies import get_corpus_decoder, get_corpus_loader, get_cwb_corpus, get_decoder_opts
 from api_swedeb.api.services.kwic_service import KWICService
-from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.mappers.kwic import kwic_to_api_model
 
@@ -56,6 +56,7 @@ def test_kwic_non_existing_search_term(fastapi_client):
 
 
 def test_kwic_speech_id_in_search_results(fastapi_client):
+
     response = fastapi_client.get(f"{version}/tools/kwic/kärnkraft?words_before=2&words_after=2&cut_off=10")
     assert response.status_code == 200
     data: dict = response.json()
@@ -70,13 +71,13 @@ def test_kwic_speech_id_in_search_results(fastapi_client):
 
 
 @pytest.mark.asyncio
-async def test_debug():
+async def test_bug_kwic_fails_when_lemmatized_is_true():
 
     corpus = get_cwb_corpus()
     decoder_opts = get_decoder_opts()
     person_codecs: PersonCodecs = await get_corpus_decoder(decoder_opts)  # type: ignore
     loader = get_corpus_loader()
-
+    lemmatized = True
     kwic_service = KWICService(loader, person_codecs)
 
     common_opts = {
@@ -99,10 +100,10 @@ async def test_debug():
         corpus=corpus,
         commons=CommonQueryParams(**common_opts),
         keywords="kärnkraft",
-        lemmatized=True,
+        lemmatized=lemmatized,
         words_before=2,
         words_after=2,
-        p_show="lemma",
+        p_show="lemma" if lemmatized else "word",
         cut_off=10,
     )
     result = kwic_to_api_model(data)
