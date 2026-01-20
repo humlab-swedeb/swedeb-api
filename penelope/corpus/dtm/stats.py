@@ -169,7 +169,7 @@ class StatsMixIn:
         )
         return df
 
-    def spick_n_top_words(
+    def pick_n_top_words(
         self: IVectorizedCorpusProtocol,
         words: Container[str],
         n_top: int,
