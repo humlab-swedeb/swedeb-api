@@ -67,6 +67,7 @@ deb = [
     { name = "pytest-asyncio" },
 ]
 dev = [
+    { name = "pytest-asyncio" },
     { name = "vulture" },
 ]
 
@@ -96,7 +97,10 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 deb = [{ name = "pytest-asyncio", specifier = ">=1.3.0" }]
-dev = [{ name = "vulture", specifier = ">=2.14" }]
+dev = [
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "vulture", specifier = ">=2.14" },
+]
 
 [[package]]
 name = "association-measures"
