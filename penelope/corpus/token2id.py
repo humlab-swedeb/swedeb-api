@@ -49,7 +49,7 @@ class Token2Id(MutableMapping):
     def __contains__(self, key):
         return key in self._data
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> int | None:
         if not self._is_open:
             if self._fallback_token_id:
                 return self._data.get(key, self._fallback_token_id)
@@ -59,7 +59,7 @@ class Token2Id(MutableMapping):
         """Optimises __getitem__ by wireing up a replacement closure without conditional constructs"""
         data: defaultdict[str, int] = self._data
         if self._is_open or self._fallback_token_id is None:
-            return lambda w: data[w]
+            return lambda key: data[key]
         return lambda key: data.get(key, self._fallback_token_id)
 
     def __setitem__(self, key: str, value):
@@ -152,7 +152,7 @@ class Token2Id(MutableMapping):
         return self
 
     def _ingest_stream(self, tokens_stream: Iterator[Iterator[str]]) -> None:
-        tf: defaultdict = self._tf
+        tf: defaultdict[int, int] = self._tf  # type: ignore
         data = self._data
 
         for d in tokens_stream:
@@ -182,7 +182,7 @@ class Token2Id(MutableMapping):
             return None
         return self.id2token[self._fallback_token_id]
 
-    def close(self, fallback_id: int = None) -> "Token2Id":
+    def close(self, fallback_id: int | None = None) -> "Token2Id":
         if isinstance(self._data, defaultdict):
             self._data = dict(self._data)
         if isinstance(self._tf, defaultdict):
