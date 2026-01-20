@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 import contextlib
 import fnmatch
 import re
 import warnings
-from typing import Any, Callable, Iterable, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,7 +17,6 @@ from scipy.sparse import SparseEfficiencyWarning, lil_matrix
 
 from penelope import utility
 
-from ..document_index import DocumentIndex
 from .group import GroupByMixIn
 from .interface import IVectorizedCorpus, VectorizedCorpusError
 from .slice import SliceMixIn
@@ -32,15 +32,17 @@ except ImportError:
 
 warnings.simplefilter('ignore', SparseEfficiencyWarning)
 
+# pylint: disable=super-init-not-called
 
-class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVectorizedCorpus):
+
+class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
     def __init__(
         self,
         bag_term_matrix: scipy.sparse.csr_matrix,
         *,
         token2id: dict[str, int],
-        document_index: DocumentIndex,
-        overridden_term_frequency: Optional[dict[int, int]] = None,
+        document_index: pd.DataFrame,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
     ):
         """Class that encapsulates a bag-of-word matrix
@@ -48,8 +50,8 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         Args:
             bag_term_matrix (scipy.sparse.csr_matrix): Bag-of-word matrix
             token2id (dict[str, int]): Token to token/column index translation
-            document_index (DocumentIndex): Corpus document/row metadata
-            overridden_term_frequency (np.ndarrys, optional): Supplied if source TF
+            document_index (pd.DataFrame): Corpus document/row metadata
+            overridden_term_frequency (np.ndarray, optional): Supplied if source TF differs from corpus TF
         """
         self._class_name: str = "penelope.corpus.dtm.corpus.VectorizedCorpus"
 
@@ -66,12 +68,12 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             else token2id.data if hasattr(token2id, 'data') else token2id
         )
         self._id2token: Optional[dict[int, str]] = None
-        self._document_index: DocumentIndex = self._ingest_document_index(document_index=document_index)
-        self._overridden_term_frequency: Optional[np.ndarray] = overridden_term_frequency
-        self._payload: dict = dict(**kwargs)
+        self._document_index: pd.DataFrame = self._ingest_document_index(document_index=document_index)
+        self._overridden_term_frequency: np.ndarray | dict[str, int] | None = overridden_term_frequency
+        self._payload: dict = {**kwargs}
 
-    def _ingest_document_index(self, document_index: DocumentIndex):
-        if not np.issubdtype(document_index.index.dtype, np.number):
+    def _ingest_document_index(self, document_index: pd.DataFrame) -> pd.DataFrame:
+        if not np.issubdtype(document_index.index.dtype, np.number):  # type: ignore
             logger.warning("VectorizedCorpus: supplied document index has not an integral index")
             document_index = document_index.set_index('document_id', drop=False).rename_axis('')
 
@@ -118,26 +120,26 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return self._bag_term_matrix.T
 
     @property
-    def term_frequency0(self) -> np.ndarray:
+    def term_frequency0(self) -> np.ndarray | dict[str, int] | None:
         """Global TF (absolute term count), overridden prioritized"""
         if self._overridden_term_frequency is not None:
             return self._overridden_term_frequency
         return self.term_frequency
 
     @property
-    def term_frequency(self) -> np.ndarray:
+    def term_frequency(self) -> np.ndarray | dict[str, int] | None:
         """Global TF (absolute term count)"""
         return self._bag_term_matrix.sum(axis=0).A1.ravel()
 
     @property
-    def overridden_term_frequency(self) -> np.ndarray:
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None:
         """Overridden global token frequencies (source corpus size)"""
         return self._overridden_term_frequency
 
     def term_frequency_map(self) -> dict[str, int]:
         fg = self.id2token.get
         tf = self.term_frequency
-        return {fg(i): tf[i] for i in range(0, len(self.token2id))}
+        return {fg(i) or "": tf[i] for i in range(0, len(self.token2id))}
 
     @property
     def TF(self) -> np.ndarray:
@@ -169,11 +171,11 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return self._bag_term_matrix.shape[1]
 
     @property
-    def document_index(self) -> DocumentIndex:
+    def document_index(self) -> pd.DataFrame:
         """Returns number document index (part of interface)"""
         return self._document_index
 
-    def replace_document_index(self, value: DocumentIndex) -> None:
+    def replace_document_index(self, value: pd.DataFrame) -> None:
         """Special case: replace existing document index, use with care"""
         self._document_index = value
 
@@ -414,7 +416,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         return term_term_matrix
 
-    def find_matching_words(self, word_or_regexp: Set[str], n_max_count: int, descending: bool = False) -> list[str]:
+    def find_matching_words(self, word_or_regexp: Collection[str], n_max_count: int, descending: bool = False) -> list[str]:
         """Returns words in corpus that matches candidate tokens"""
         words = self.pick_n_top_words(
             find_matching_words_in_vocabulary(self.token2id, word_or_regexp),
@@ -441,8 +443,8 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     def create(
         bag_term_matrix: scipy.sparse.csr_matrix,
         token2id: dict[str, int],
-        document_index: DocumentIndex,
-        overridden_term_frequency: dict[str, int] = None,
+        document_index: pd.DataFrame,
+        overridden_term_frequency: dict[str, int] | None = None,
         **kwargs,
     ) -> "IVectorizedCorpus":
         return VectorizedCorpus(
@@ -459,7 +461,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         token2id: dict[str, int],
         document_index: pd.DataFrame,
         min_tf: int = 1,
-        max_tokens: int = None,
+        max_tokens: int | None = None,
     ) -> VectorizedCorpus:
         """Convert a stream of (document_id, Iterable[token_id]) into a VectorizedCorpus"""
 
@@ -534,7 +536,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     #     self.data.eliminate_zeros()
 
 
-def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Set[str]) -> Set[str]:
+def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Collection[str]) -> set[str]:
     words = {w for w in candidate_words if w in token2id}
 
     remaining_words = [w for w in candidate_words if w not in words and len(w) > 0]

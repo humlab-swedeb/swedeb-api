@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass, field
-from typing import Sequence, overload
+from typing import Generic, Sequence, TypeVar, overload
 
 import pandas as pd
 
@@ -9,15 +9,17 @@ from penelope import corpus as pc
 from penelope import utility as pu
 from penelope.common import keyness as pk
 
+T = TypeVar("T", bound="TrendsComputeOpts")
+
 
 @dataclass
-class TrendsComputeOpts:
+class TrendsComputeOpts(Generic[T]):
     normalize: bool
     keyness: pk.KeynessMetric
 
     temporal_key: str
     pivot_keys_id_names: list[str] = field(default_factory=list)
-    # FIXME: Decide if it is best to apply filter in `transform` (reduce corpus) or extract (slice corpus)
+
     filter_opts: pu.PropertyValueMaskingOpts | None = None
     unstack_tabular: bool = False
 
@@ -29,13 +31,13 @@ class TrendsComputeOpts:
     keyness_source: pk.KeynessMetricSource = pk.KeynessMetricSource.Full
 
     @property
-    def clone(self) -> "TrendsComputeOpts":
-        other: TrendsComputeOpts = deep_clone(self, ignores=["filter_opts"], assign_ignores=False)
+    def clone(self: T) -> T:
+        other: T = deep_clone(self, ignores=["filter_opts"], assign_ignores=False)
         if self.filter_opts is not None:
             other.filter_opts = pu.PropertyValueMaskingOpts(**self.filter_opts.props)
         return other
 
-    def invalidates_corpus(self, other: "TrendsComputeOpts") -> bool:
+    def invalidates_corpus(self: T, other: T) -> bool:
         if (
             self.normalize != other.normalize  # pylint: disable=too-many-boolean-expressions
             or self.keyness != other.keyness
@@ -48,7 +50,7 @@ class TrendsComputeOpts:
             return True
         return False
 
-    def update(self, **newdata):
+    def update(self: T, **newdata) -> None:
         for key, value in newdata.items():
             setattr(self, key, value)
 
@@ -110,11 +112,11 @@ class TrendsServiceBase(abc.ABC):
     #         self._gof_data = gof.GofData.compute(self.corpus, n_top=self.n_top)
     #     return self._gof_data
 
-    @overload
-    def find_word_indices(self, opts: TrendsComputeOpts = ...) -> list[int]: ...
+    # @overload
+    # def find_word_indices(self, opts: TrendsComputeOpts = ...) -> list[int]: ...
 
-    @overload
-    def find_word_indices(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[int]: ...
+    # @overload
+    # def find_word_indices(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[int]: ...
 
     def find_word_indices(
         self,
@@ -139,16 +141,18 @@ class TrendsServiceBase(abc.ABC):
         """
         if isinstance(opts, TrendsComputeOpts):
             return self.transform(opts).transformed_corpus.find_matching_words_indices(
-                words or opts.words,
-                top_count or opts.top_count,
+                words or opts.words or [],
+                top_count or opts.top_count or 99,
                 descending=descending if descending is not None else opts.descending,
             )
 
         if isinstance(words, list):
-            if self._transformed_corpus is None:
+            if self.transformed_corpus is None:
                 raise ValueError("Corpus is not transformed")
 
-            return self.transformed_corpus.find_matching_words_indices(words, top_count, descending=descending)
+            return self.transformed_corpus.find_matching_words_indices(
+                words, top_count or 99, descending=descending if descending is not None else False
+            )
 
         raise TypeError("Either opts or words must be provided")
 
@@ -205,21 +209,33 @@ class TrendsServiceBase(abc.ABC):
 
         return self
 
-    @overload
-    def extract(
-        self, indices: Sequence[int | str] = ..., filter_opts: pu.PropertyValueMaskingOpts = ...
-    ) -> list[str]: ...
+    # @overload
+    # def extract(
+    #     self, indices: Sequence[int | str] = ..., filter_opts: pu.PropertyValueMaskingOpts = ...
+    # ) -> list[str]: ...
 
-    @overload
-    def extract(self, indices: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
+    # @overload
+    # def extract(self, indices: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
 
     def extract(
         self,
-        indices: Sequence[int | str],
+        indices: Sequence[int] | Sequence[str],
         top_count: int | None = None,
         descending: bool | None = None,
         filter_opts: pu.PropertyValueMaskingOpts | None = None,
     ) -> pd.DataFrame:
+        """Extracts trend data for tokens ´indices` and returns a pd.DataFrame.
+        Args:
+            indices: List of token indices (int or str)
+            top_count: Maximum number of tokens to include (if indices are str)
+            descending: Whether to sort tokens by descending frequency (if indices are str)
+            filter_opts: Optional filter options to apply to the extracted data
+        Returns:
+            DataFrame with trend data
+        """
+        if self.transformed_corpus is None:
+            raise ValueError("Corpus is not transformed")
+
         if len(indices) > 0:
             if isinstance(indices[0], str):
                 indices = self.transformed_corpus.find_matching_words_indices(indices, top_count, descending=descending)
@@ -258,7 +274,7 @@ class TrendsService(TrendsServiceBase):
             temporal_key=opts.temporal_key,
             pivot_keys=list(opts.pivot_keys_id_names),
             filter_opts=opts.filter_opts,
-            document_namer=None,  # FIXME
+            document_namer=None,
             fill_gaps=opts.fill_gaps,
             aggregate='sum',
         )

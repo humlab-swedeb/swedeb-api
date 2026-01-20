@@ -4,7 +4,7 @@ from typing import Any
 
 import pandas as pd
 
-from api_swedeb.api.utils.corpus import Corpus
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.speech_index import COLUMNS_OF_INTEREST, get_speeches_by_words
@@ -12,13 +12,15 @@ from api_swedeb.core.speech_index import COLUMNS_OF_INTEREST, get_speeches_by_wo
 # pylint: disable=redefined-outer-name
 
 
-def test_word_trends_speeches_corpus2(api_corpus: Corpus):
+def test_word_trends_speeches_corpus2(corpus_loader: CorpusLoader):
     """Test get_speeches_by_words with real corpus data."""
     search_terms: list[str] = ['debatt', 'sverige']
     filter_opts: dict = {}
     filter_opts.update({"year": (1900, 2000)})
 
-    df: pd.DataFrame = get_speeches_by_words(api_corpus.vectorized_corpus, terms=search_terms, filter_opts=filter_opts)
+    df: pd.DataFrame = get_speeches_by_words(
+        corpus_loader.vectorized_corpus, terms=search_terms, filter_opts=filter_opts
+    )
     assert len(df) > 0
     assert df.columns.to_list() == [
         'document_id',

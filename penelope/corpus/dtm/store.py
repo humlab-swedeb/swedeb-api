@@ -32,7 +32,7 @@ def create_corpus_instance(
     bag_term_matrix: scipy.sparse.csr_matrix,
     token2id: dict[str, int],
     document_index: pd.DataFrame,
-    overridden_term_frequency: dict[str, int] = None,
+    overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
 ) -> "IVectorizedCorpus":
     """Creates a corpus instance using importlib to avoid cyclic references"""
     module = importlib.import_module(name="penelope.corpus.dtm.corpus")
@@ -93,14 +93,15 @@ def store_metadata(*, tag: str, folder: str, mode: Literal['bundle', 'files'] = 
         # return
 
     if mode.startswith('files'):
-        di: pd.DataFrame = data.get('document_index')
+        di: pd.DataFrame | None = data.get('document_index')
+        assert di is not None
         di.to_csv(jj(folder, f"{tag}_document_index.csv.gz"), sep=';', compression="gzip")
         di.to_feather(jj(folder, f"{tag}_document_index.feather"))
 
         with gzip.open(jj(folder, f"{tag}_token2id.json.gz"), 'w') as fp:  # 4. fewer bytes (i.e. gzip)
             fp.write(json.dumps(data.get('token2id')).encode('utf-8'))
 
-        term_frequency: np.ndarray = data.get('overridden_term_frequency')
+        term_frequency: np.ndarray | dict[str, int] | None = data.get('overridden_term_frequency')
         if term_frequency is not None:
             np.save(jj(folder, f"{tag}_overridden_term_frequency.npy"), term_frequency, allow_pickle=True)
 
@@ -157,7 +158,7 @@ class StoreMixIn:
         return self
 
     @property
-    def metadata(self) -> dict:
+    def metadata(self: IVectorizedCorpusProtocol) -> dict:
         return {
             'token2id': self.token2id,
             'overridden_term_frequency': self.overridden_term_frequency,
@@ -170,8 +171,8 @@ class StoreMixIn:
         return any(os.path.isfile(jj(folder, f"{tag}{suffix}")) for suffix in DATA_SUFFIXES)
 
     @staticmethod
-    def is_dump(filename: str) -> bool:
-        return filename and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
+    def is_dump(filename: str | None) -> bool:
+        return bool(filename) and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
 
     @staticmethod
     def find_tags(folder: str) -> list[str]:
@@ -202,7 +203,7 @@ class StoreMixIn:
                     os.unlink(filename)
 
     @staticmethod
-    def load(*, tag: str = None, folder: str = None, filename: str = None) -> IVectorizedCorpus:
+    def load(*, tag: str | None = None, folder: str | None = None, filename: str | None = None) -> IVectorizedCorpus:
         """Loads corpus with tag `tag` in folder `folder`
 
         Raises `FileNotFoundError` if any of the two files containing metadata and matrix doesn't exist.
@@ -240,10 +241,10 @@ class StoreMixIn:
 
         data: dict = load_metadata(tag=tag, folder=folder)
 
-        token2id: dict = data.get("token2id")
+        token2id: dict[str, int] = data.get("token2id") or {}
 
         """Load TF override, convert if in older (dict) format"""
-        overridden_term_frequency: np.ndarray = (
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = (
             data.get("term_frequency", None)
             or data.get("overridden_term_frequency", None)
             or data.get("term_frequency_mapping", None)
@@ -277,13 +278,13 @@ class StoreMixIn:
         json_filename = jj(folder, f"{tag}_vectorizer_data.json")
         if os.path.isfile(json_filename):
             return read_json(json_filename)
-        return dict()
+        return {}
 
     @staticmethod
     def load_metadata(*, tag: str, folder: str) -> dict:
         return load_metadata(tag=tag, folder=folder)
 
-    def store_metadata(self, *, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files') -> None:
+    def store_metadata(self: IVectorizedCorpusProtocol, *, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files') -> None:
         return store_metadata(tag=tag, folder=folder, mode=mode, **self.metadata)
 
     @staticmethod
@@ -305,8 +306,8 @@ def load_corpus(
     *,
     tag: str,
     folder: str,
-    tf_threshold: int = None,
-    n_top: int = None,
+    tf_threshold: int | None = None,
+    n_top: int | None = None,
     axis: Optional[int] = 1,
     keep_magnitude: bool = True,
     group_by_year: bool = True,

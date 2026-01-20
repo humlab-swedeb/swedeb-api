@@ -6,7 +6,8 @@ from dataclasses import dataclass, field, fields
 from inspect import isclass
 from typing import Any, Callable, Generic, Type, TypeVar
 
-from ..utility import dget
+from api_swedeb.core.utility import dget
+
 from .config import Config
 
 T = TypeVar("T", str, int, float)
@@ -47,11 +48,17 @@ class ConfigValue(Generic[T]):
             return ConfigStore.config(context)  # type: ignore
         if isclass(self.key):
             return self.key()
+
+        cfg: Config | None = ConfigStore.config(context)
+
         if self.mandatory and not self.default:
-            if not ConfigStore.config(context).exists(self.key):
+            if cfg and not cfg.exists(self.key):
                 raise ValueError(f"ConfigValue {self.key} is mandatory but missing from config")
 
-        value = ConfigStore.config(context).get(*self.key.split(","), default=self.default)
+        if cfg is None:
+            return self.default  # type: ignore
+
+        value = cfg.get(*self.key.split(","), default=self.default)
         if value and self.after:
             return self.after(value)
         return value
@@ -80,7 +87,7 @@ class ConfigStore:
     def resolve(cls, value: T | ConfigValue, context: str | None = None) -> T:
         if not isinstance(value, ConfigValue):
             return value
-        return dget(cls.config(context), value.key)
+        return dget(cls.config(context), value.key)  # type: ignore
 
     @classmethod
     def configure_context(
@@ -105,7 +112,7 @@ class ConfigStore:
             source=source or cls.store.get(context),
             context=context,
             env_filename=env_filename,
-            env_prefix=env_prefix,
+            env_prefix=env_prefix,  # type: ignore
         )
 
         return cls._set_config(context=context, cfg=cfg, switch_to_context=switch_to_context)
@@ -140,9 +147,9 @@ def resolve_arguments(fn_or_cls, args, kwargs):
 
 
 def inject_config(fn_or_cls: T) -> Callable[..., T]:
-    @functools.wraps(fn_or_cls)
+    @functools.wraps(fn_or_cls)  # type: ignore
     def decorated(*args, **kwargs):
         args, kwargs = resolve_arguments(fn_or_cls, args, kwargs)
-        return fn_or_cls(*args, **kwargs)
+        return fn_or_cls(*args, **kwargs)  # type: ignore
 
     return decorated

@@ -4,7 +4,9 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from api_swedeb.api.utils.corpus import Corpus, load_corpus
+from api_swedeb.api.dependencies import get_corpus_loader
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.codecs import PersonCodecs
 
 # pylint: disable=redefined-outer-name
@@ -21,20 +23,25 @@ def client(fastapi_app):
 
 
 @pytest.fixture(scope="module")
-def corpus() -> Corpus:
-    return load_corpus()
+def corpus() -> CorpusLoader:
+    return get_corpus_loader()
 
 
-def test_get_speakers(corpus):
-    speakers = corpus.get_speakers(selections={})
+@pytest.fixture(scope="module")
+def search_service(corpus) -> SearchService:
+    return SearchService(corpus)
+
+
+def test_get_speakers(search_service: SearchService):
+    speakers = search_service.get_speakers(selections={})
     assert len(speakers) > 0
 
 
-def test_get_filtered_speakers_by_party_int(person_codecs: PersonCodecs, corpus: Corpus):
+def test_get_filtered_speakers_by_party_int(person_codecs: PersonCodecs, search_service: SearchService):
     # party_id 9 is S
     sossarna_id: int = person_codecs.get_mapping('party_abbrev', 'party_id').get("S")
 
-    speakers: pd.DataFrame = corpus.get_speakers(selections={'party_id': [sossarna_id]})
+    speakers: pd.DataFrame = search_service.get_speakers(selections={'party_id': [sossarna_id]})
     assert len(speakers) > 0
     assert 'S' in speakers['party_abbrev'].unique()
     assert all('S' in pa for pa in speakers['party_abbrev'].unique())

@@ -28,9 +28,7 @@ class StatsMixIn:
 
         return largest_tokens
 
-    def nlargest(
-        self: IVectorizedCorpusProtocol, n_top: int, *, sort_indices: bool = False, override: bool = False
-    ) -> np.ndarray:
+    def nlargest(self: IVectorizedCorpusProtocol, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: 
         """Return indices for the `n_top` most frequent terms in DTM
         Note: indices are sorted by TF count as default."""
         n_top = min(n_top, len(self.term_frequency))
@@ -145,8 +143,8 @@ class StatsMixIn:
             'sum_over_bags': self.bag_term_matrix.sum(),
             '10_top_tokens': ' '.join(self.pick_top_tf_map(10).keys()),
         }
-        for key in stats_data:
-            logger.info(f'   {key}: {stats_data[key]}')
+        for key, value in stats_data.items():
+            logger.info(f'   {key}: {value}')
         return stats_data
 
     def to_n_top_dataframe(self: IVectorizedCorpusProtocol, n_top: int) -> pd.DataFrame:
@@ -171,7 +169,7 @@ class StatsMixIn:
         )
         return df
 
-    def pick_n_top_words(
+    def spick_n_top_words(
         self: IVectorizedCorpusProtocol,
         words: Container[str],
         n_top: int,
@@ -182,7 +180,6 @@ class StatsMixIn:
         n_top = n_top or len(words)
         if len(words) < n_top:
             return words
-        # FIXME: What to do if overriden term frequency?
         fg = self.token2id.get
         tf = self.term_frequency
         token_counts = [tf[fg(w)] for w in words]

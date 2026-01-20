@@ -9,7 +9,7 @@ from ._decorators import (
     enter_exit_log,
     mark_as_disabled,
     suppress_error,
-    try_catch,
+    # try_catch,
 )
 from .file_utility import (
     default_data_folder,

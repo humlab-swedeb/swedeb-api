@@ -32,17 +32,17 @@ class Token2Id(MutableMapping):
 
     def __init__(
         self,
-        data: Optional[Union[dict, defaultdict]] = None,
+        data: Optional[Union[dict[str, int], defaultdict[str, int]]],
         tf: dict | None = None,
         fallback_token: str | None = None,
         **kwargs,
     ):
-        self._data: defaultdict[str, int] | None = None
-        self._tf: defaultdict[str, int] | None = None
+        self._data: defaultdict[str, int] = defaultdict()
+        self._tf: defaultdict[int, int] | dict[int, int] | None = None
         self._is_open = True
         self._id2token: dict | None = None
         self._fallback_token_id: str | None = fallback_token
-        self._payload: dict = dict(**kwargs)
+        self._payload: dict = {**kwargs}
 
         self.replace(data=data or defaultdict(), tf=tf)
 
@@ -72,21 +72,21 @@ class Token2Id(MutableMapping):
             raise ClosedVocabularyError(f"cannot add item to a closed vocabulary: '{value}'")
         self._data[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key) -> None:
         del self._data[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self._data)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._data)
 
     @property
-    def data(self) -> defaultdict:
+    def data(self) -> defaultdict[str, int]:
         return self._data
 
     @property
-    def tf(self) -> dict:
+    def tf(self) -> dict[int, int] | None:
         return self._tf
 
     # @property
@@ -97,7 +97,7 @@ class Token2Id(MutableMapping):
     # def magic_token_ids(self) -> list[str]:
     #     return [self[w] for w in MAGIC_TOKENS if w in self._data]
 
-    def replace(self, *, data: Any, tf: dict = None) -> "Token2Id":
+    def replace(self, *, data: Any, tf: dict[int, int] | None = None) -> "Token2Id":
         """Replace current data with `data`"""
         if isinstance(data, defaultdict):
             self._data = data
@@ -133,7 +133,7 @@ class Token2Id(MutableMapping):
 
         self._id2token = None
 
-        data = self._data
+        data: defaultdict[str, int] = self._data
         tf = self._tf
 
         for t in tokens:
@@ -214,7 +214,6 @@ class Token2Id(MutableMapping):
 
     @property
     def id2token(self) -> dict:
-        # FIXME: Always create new reversed mapping if vocabulay is open
         if self._id2token is None or len(self) != len(self._id2token):  # or self.is_open:
             self._id2token = {v: k for k, v in self._data.items()}
         return self._id2token
@@ -247,13 +246,13 @@ class Token2Id(MutableMapping):
             logger.info(f"Token2Id.load: filename {filename} not found")
             return None
         df: pd.DataFrame = pd.read_csv(filename, sep='\t', index_col=0, na_filter=False)
-        data: dict = {t: i for t, i in zip(df.index, df.token_id)}  # pylint: disable=no-member
-        tf: defaultdict = Token2Id.load_tf(filename)
+        data: dict = dict(zip(df.index, df.token_id))
+        tf: defaultdict[int, int] | None = Token2Id.load_tf(filename)
         token2id: Token2Id = Token2Id(data=data, tf=tf)
         return token2id
 
     @staticmethod
-    def load_tf(filename: str) -> "defaultdict | None":
+    def load_tf(filename: str) -> "defaultdict[int,int] | None":
         tf_filename: str = path_add_suffix(filename, "_tf", new_extension=".pbz2")
         tf: Any = unpickle_from_file(tf_filename) if pathlib.Path(tf_filename).exists() else None
         if not isinstance(tf, defaultdict):
@@ -370,8 +369,10 @@ class Token2Id(MutableMapping):
         """
         data = defaultdict(None, {w: ids_translation[oid] for w, oid in self._data.items() if oid in ids_translation})
 
-        cg = self.tf.get
-        tf = defaultdict(int, {ids_translation[oid]: cg(oid, 0) for oid in ids_translation})
+        tf = {}
+        if self._tf is not None:
+            cg = self._tf.get
+            tf = defaultdict(int, {ids_translation[oid]: cg(oid, 0) for oid in ids_translation})
 
         if inplace:
             return self.replace(data=data, tf=tf)
@@ -380,7 +381,7 @@ class Token2Id(MutableMapping):
 
         return token2id
 
-    def sync_state(self, is_open: bool = None) -> "Token2Id":
+    def sync_state(self, is_open: bool | None = None) -> "Token2Id":
         is_open = self.is_open if is_open is None else is_open
         if is_open:
             self.open()

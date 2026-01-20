@@ -93,13 +93,13 @@ def extract_filename_metadata(filename: str, filename_fields: FilenameFieldSpecs
 
     if isinstance(filename_fields, (list, tuple)):
         # List of `key:sep:index`
-        filename_fields = _parse_indexed_fields(filename_fields)
+        filename_fields = _parse_indexed_fields(filename_fields)  # type: ignore
 
     if isinstance(filename_fields, str):
         # List of `key:sep:index`
-        filename_fields = _parse_indexed_fields(filename_fields.split('#'))
+        filename_fields = _parse_indexed_fields(filename_fields.split('#'))  # type: ignore
 
-    key_fx = {key: fxify(fx_or_re) for key, fx_or_re in filename_fields.items()}
+    key_fx = {key: fxify(fx_or_re) for key, fx_or_re in filename_fields.items()}  # type: ignore
 
     data: dict[str, int | str | None] = {'filename': basename}
     for key, fx in key_fx.items():

@@ -90,16 +90,37 @@ class Codec:
         """True if either already decoded or not decodable (missing source)."""
         return self.to_column in df.columns or self.from_column not in df.columns
 
-    def reverse(self) -> Codec:
-        """Get a reversed codec."""
-        reversed_fx_factory: Callable[[], dict] = lambda x, y: {v: k for k, v in self.get_fx().items()}
+    def reverse(self) -> "Codec":
+        """Return a codec with direction swapped and mapping inverted.
+
+        Note: This assumes the mapping is invertible (values unique).
+        """
+
+        if self.fx is not None:  # Verify that fx is invertible
+            if not isinstance(self.fx, dict):
+                raise TypeError("Codec.reverse(): can only reverse Mapping-based codecs.")
+
+        def invert_map(m: dict) -> dict:
+            inv = {}
+            for k, v in m.items():
+                if v in inv:
+                    raise ValueError(f"Codec.reverse(): mapping is not invertible; duplicate value {v!r}.")
+                inv[v] = k
+            return inv
+
+        def lazy_reversed_fx_factory(_from: str, _to: str):
+            fx = self.get_fx()
+            if not isinstance(fx, dict):
+                raise TypeError("Codec.reverse(): can only reverse Mapping-based codecs.")
+            return invert_map(fx)
+
         return Codec(
             table=self.table,
-            type='encode' if self.type == 'decode' else 'decode',
+            type="encode" if self.type == "decode" else "decode",
             from_column=self.to_column,
             to_column=self.from_column,
-            fx_factory=reversed_fx_factory if self.fx is None else None,
-            fx={v: k for k, v in self.fx.items()} if self.fx is not None else None,
+            fx_factory=None if self.fx else lazy_reversed_fx_factory,
+            fx=invert_map(self.fx) if self.fx else None,
             default=self.default,
         )
 
@@ -110,11 +131,11 @@ null_frame: pd.DataFrame = pd.DataFrame()
 class Codecs:
     def __init__(
         self,
-        specification: dict[str, str] | None = None,
+        specification: dict[str, Any] | None = None,
         store: dict[str, pd.DataFrame] | None = None,
     ) -> None:
         """Mapping specifications from configuration."""
-        self.specification: dict[str, dict[str, str]] = specification
+        self.specification: dict[str, Any] = specification or {}
 
         """Holds all loaded data tables by name."""
         self.store: dict[str, pd.DataFrame] = store or {}
@@ -136,7 +157,7 @@ class Codecs:
         clone.mappings = mappings
         clone.store = store
         clone.filename = self.filename
-        clone.codecs = [c for c in self.codecs]
+        clone.codecs = self.codecs
         return clone
 
     @property
@@ -164,6 +185,11 @@ class Codecs:
             if set((d['from_column'], d['to_column'])) == {from_column, to_column}:
                 return d['table']
         return None
+
+    def get_table(self, table_name: str) -> pd.DataFrame:
+        """Get table by name. Note that tables are also injected as attributes
+        but this is a type hint friendly access method."""
+        return self.store.get(table_name, null_frame)
 
     def get_mapping(self, from_column: str, to_column: str) -> dict[Any, Any]:
         """Get mapping dict from `from_column` to `to_column` in `tablename`."""
@@ -193,7 +219,7 @@ class Codecs:
             return self.mappings[key]
 
         """Check if from column is index"""
-        key_column: str | None = self.tablenames().get(table_name, table.index.name or None)
+        key_column: str | None = self.tablenames().get(table_name, table.index.name or None)  # type: ignore
         if from_column in (key_column, table.index.name):
             self.mappings[key] = table[to_column].to_dict()
             return self.mappings[key]
@@ -281,7 +307,11 @@ class Codecs:
     @cached_property
     def property_values_specs(self) -> list[dict[str, Any]]:
         return [
-            dict(text_name=d["text_name"], id_name=d["id_name"], values=self.get_mapping(d["text_name"], d["id_name"]))
+            {
+                "text_name": d["text_name"],
+                "id_name": d["id_name"],
+                "values": self.get_mapping(d["text_name"], d["id_name"]),
+            }
             for d in self.specification.get("property_values_specs", [])
         ]
 
@@ -295,7 +325,7 @@ class Codecs:
         Hooks are expected to implement an `execute(codecs: PersonCodecs)` method and may modify the codecs instance or its data store.
         """
         for hook in OnLoadHooks.items.values():
-            hook().execute(self)
+            hook().execute(self)  # type: ignore
         return self
 
 
@@ -343,7 +373,7 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def _speech_links(
-        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int | str] = 1
+        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int] | pd.Series[str] = 1
     ) -> pd.Series:
         """Create a series of speech links from document names and page numbers.
         The document has the following format: 'prot-YYYY--KK--NNN_MMM'
@@ -408,8 +438,8 @@ class MultiplePartyAbbrevsHook:
         codecs.store["persons_of_interest"] = persons_of_interest
 
     def _get_multi_party_abbrevs(self, codecs: PersonCodecs) -> pd.DataFrame:
-        fx: dict[int, str] = codecs.get_mapping('party_id', 'party_abbrev').get
-        person_party: pd.DataFrame = codecs.store.get("person_party")
+        fx: Callable[[int], str] = codecs.get_mapping('party_id', 'party_abbrev').get  # type: ignore
+        person_party: pd.DataFrame = codecs.get_table("person_party")
         person_party["party_abbrev"] = person_party["party_id"].map(fx).fillna("?")
         multi_party_abbrevs: pd.DataFrame = person_party.groupby("person_id").agg(
             {

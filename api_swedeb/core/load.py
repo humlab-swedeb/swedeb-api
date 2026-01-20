@@ -69,14 +69,14 @@ SPEECH_INDEX_DTYPES = {
 
 def slim_speech_index(speech_index: pd.DataFrame) -> pd.DataFrame:
     speech_index.rename(columns={'who': 'person_id', 'u_id': 'speech_id'}, inplace=True)
-    speech_index = speech_index[USED_COLUMNS].astype(SPEECH_INDEX_DTYPES)
+    speech_index = speech_index[USED_COLUMNS].astype(SPEECH_INDEX_DTYPES)  # type: ignore
     return speech_index
 
 
 def _to_feather(df: pd.DataFrame, filename: str) -> None:
     try:
         df.to_feather(filename)
-    except Exception as ex:
+    except Exception as ex:  # pylint: disable=broad-except
         logger.error(f"Failed to write feather file: {ex}")
 
 

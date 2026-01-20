@@ -15,7 +15,7 @@ def word_in_vocabulary(corpus: VectorizedCorpus, word: str) -> str | None:
     return None
 
 
-def filter_search_terms(corpus: VectorizedCorpus, terms: list[str]) -> list[str | None]:
+def filter_search_terms(corpus: VectorizedCorpus, terms: list[str]) -> list[str]:
     return [w for w in (word_in_vocabulary(corpus, word) for word in terms) if w is not None]
 
 
@@ -61,7 +61,7 @@ def get_speeches_by_speech_ids(
         return pd.DataFrame()
 
     if not join_opts:
-        join_opts = dict(left_index=True, right_index=True)
+        join_opts: dict[str, bool] = {'left_index': True, 'right_index': True}
 
     if not {'left_index', 'left_on'}.intersection(join_opts.keys()):
         join_opts['left_index'] = True
@@ -70,7 +70,7 @@ def get_speeches_by_speech_ids(
 
     if isinstance(speech_ids, pd.DataFrame):
         """Merge and keep any additional columns in `speech_ids`"""
-        speech_index = speech_index[COLUMNS_OF_INTEREST].merge(speech_ids, how='inner', **join_opts)
+        speech_index = speech_index[COLUMNS_OF_INTEREST].merge(speech_ids, how='inner', **join_opts)  # type: ignore
     else:
         speech_index = speech_index[COLUMNS_OF_INTEREST].loc[speech_ids]
 
@@ -80,7 +80,7 @@ def get_speeches_by_speech_ids(
 def get_speeches_by_opts(speech_index: pd.DataFrame, opts: dict | PropertyValueMaskingOpts) -> pd.DataFrame:
     if not opts:
         return speech_index
-    speeches: pd.DataFrame = filter_by_opts(speech_index, opts)[COLUMNS_OF_INTEREST]
+    speeches: pd.DataFrame = filter_by_opts(speech_index, opts)[COLUMNS_OF_INTEREST]  # type: ignore
     return speeches
 
 

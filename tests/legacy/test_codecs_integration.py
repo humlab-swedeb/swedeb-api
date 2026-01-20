@@ -298,7 +298,6 @@ class TestCodecs:
         ]
         assert codecs.property_values_specs == expected_specs
 
-    # TODO: Use this fixture in other tests.
     @pytest.fixture(name="codecs_instance")
     def fixture_codecs_instance(self, store: dict[str, pd.DataFrame]):
         codecs: PersonCodecs = PersonCodecs().load(store)

@@ -77,7 +77,7 @@ def find_folder(folder: str, parent: str) -> str:
 
 def read_excel(filename: str, sheet: str) -> pd.DataFrame:
     if not isfile(filename):
-        raise Exception(f"File {filename} does not exist!")
+        raise FileNotFoundError(f"File {filename} does not exist!")
     with pd.ExcelFile(filename) as xls:
         return pd.read_excel(xls, sheet)
 
@@ -98,7 +98,7 @@ def read_json(path: str, default: dict | None = None) -> Dict:
 def write_json(path: str, data: Dict, default=None):
     if default is not None:
         if not callable(default):
-            default = lambda _: default
+            default = lambda _: default  # noqa: E731 ; pylint: disable=unnecessary-lambda-assignment
 
     with open(path, 'w', encoding='utf-8') as json_file:
         json.dump(data, json_file, indent=4, default=default)
@@ -144,8 +144,8 @@ def symlink_files(source_pattern: str, target_folder: str) -> None:
 
 def read_textfile(filename: str, as_binary: bool = False) -> str:
     """Returns text content from `filename`"""
-    opts = {'mode': 'rb'} if as_binary else {'mode': 'r', 'encoding': 'utf-8'}
-    with open(filename, **opts) as f:
+    opts: Dict[str, str] = {'mode': 'rb'} if as_binary else {'mode': 'r', 'encoding': 'utf-8'}
+    with open(filename, **opts) as f:  # type: ignore
         try:
             data = f.read()
             content = data  # .decode('utf-8')

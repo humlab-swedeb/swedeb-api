@@ -70,9 +70,7 @@ class TestConfigValue:
     def test_configvalue_resolve_with_context(self):
         """Test ConfigValue.resolve with specific context."""
         ConfigStore.configure_context(context="ctx1", source={"key": "val1"}, env_prefix=None)
-        ConfigStore.configure_context(
-            context="ctx2", source={"key": "val2"}, env_prefix=None, switch_to_context=False
-        )
+        ConfigStore.configure_context(context="ctx2", source={"key": "val2"}, env_prefix=None, switch_to_context=False)
         cv = ConfigValue(key="key")
         assert cv.resolve(context="ctx2") == "val2"
 
@@ -108,6 +106,7 @@ class TestConfigurable:
     def test_configurable_resolve(self):
         """Test Configurable.resolve resolves ConfigValue fields."""
         from dataclasses import field
+
         ConfigStore.configure_context(source={"name": "TestName", "value": 42}, env_prefix=None)
 
         @dataclass
@@ -201,9 +200,7 @@ class TestConfigStore:
     def test_configstore_configure_context_no_switch(self):
         """Test ConfigStore.configure_context with switch_to_context=False."""
         original_context = ConfigStore.context
-        ConfigStore.configure_context(
-            context="temp", source={"key": "val"}, env_prefix=None, switch_to_context=False
-        )
+        ConfigStore.configure_context(context="temp", source={"key": "val"}, env_prefix=None, switch_to_context=False)
         assert ConfigStore.context == original_context
 
     def test_configstore_configure_context_raises_without_source(self):

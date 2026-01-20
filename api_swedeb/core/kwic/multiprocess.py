@@ -66,7 +66,7 @@ def kwic_worker(args: tuple) -> pd.DataFrame:
             import shutil  # pylint: disable=import-outside-toplevel
 
             shutil.rmtree(unique_data_dir, ignore_errors=True)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass  # Best effort cleanup
 
 

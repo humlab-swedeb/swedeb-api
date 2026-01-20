@@ -8,13 +8,13 @@ import scipy
 from scipy import sparse as sp
 
 from penelope import utility as pu
-
-from ..document_index import (
+from penelope.corpus.document_index import (
     KNOWN_TIME_PERIODS,
     DocumentIndexHelper,
     TemporalKeySpecifier,
     create_temporal_key_categorizer,
 )
+
 from .interface import IVectorizedCorpus, VectorizedCorpusError
 
 T = TypeVar("T", int, str)
@@ -37,9 +37,8 @@ class SupportsGroupBy(Protocol):
         token2id: dict,
         document_index: pd.DataFrame,
         overridden_term_frequency: Any,
-        **kwargs
-    ) -> IVectorizedCorpus:
-        ...
+        **kwargs,
+    ) -> IVectorizedCorpus: ...
 
     def group_by_pivot_column(
         self,
@@ -49,16 +48,14 @@ class SupportsGroupBy(Protocol):
         fill_gaps: bool = False,
         fill_steps: int = 1,
         target_column_name: str = 'category',
-    ) -> IVectorizedCorpus:
-        ...
+    ) -> IVectorizedCorpus: ...
 
     def group_by_year(
         self,
         aggregate: str = 'sum',
         fill_gaps: bool = True,
         target_column_name: str = 'category',
-    ) -> IVectorizedCorpus:
-        ...
+    ) -> IVectorizedCorpus: ...
 
     def group_by_indices_mapping(
         self,
@@ -66,8 +63,7 @@ class SupportsGroupBy(Protocol):
         category_indices: Mapping[int, List[int]],
         aggregate: str = 'sum',
         dtype: np.dtype | None = None,
-    ) -> IVectorizedCorpus:
-        ...
+    ) -> IVectorizedCorpus: ...
 
 
 class GroupByMixIn:
@@ -305,7 +301,7 @@ class GroupByMixIn:
             """Creates an aggregate dict to be used in groupby."""
 
             """Add for group's document ids"""
-            aggs: dict = dict(document_ids=('document_id', list))
+            aggs: dict = {'document_ids': ('document_id', list)}
 
             """Sum up all available count columns"""
             for count_column in {'n_tokens', 'n_raw_tokens', 'tokens'}.intersection(set(df.columns)):
@@ -395,7 +391,7 @@ def create_category_series(category_series: pd.Series, fill_gaps: bool = True, f
 
 def temporal_key_values_with_no_gaps(series: pd.Series, temporal_key: str):
     """Returns sorted distinct category values with gaps filled"""
-    return create_category_series(series, fill_gaps=True, fill_steps=dict(lustrum=5, decade=10).get(temporal_key, 1))
+    return create_category_series(series, fill_gaps=True, fill_steps={'lustrum': 5, 'decade': 10}.get(temporal_key, 1))
 
 
 def fill_temporal_gaps_in_group_document_index(

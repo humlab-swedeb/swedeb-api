@@ -1,6 +1,5 @@
 """Unit tests for api_swedeb.core.speech module."""
 
-
 from api_swedeb.core.speech import Speech
 
 
@@ -115,10 +114,7 @@ class TestSpeech:
 
     def test_speaker_note_with_id(self):
         """Test speaker_note returns note when present."""
-        speech = Speech({
-            "speaker_note_id": "note123",
-            "speaker_note": "Opening remarks"
-        })
+        speech = Speech({"speaker_note_id": "note123", "speaker_note": "Opening remarks"})
         assert speech.speaker_note == "Opening remarks"
 
     def test_speaker_note_missing_id(self):

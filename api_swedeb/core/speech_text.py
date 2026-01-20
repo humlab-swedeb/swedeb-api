@@ -37,7 +37,8 @@ class SpeechTextService:
 
     def speeches(self, *, metadata: dict, utterances: list[dict]) -> list[dict]:
         """Create list of speeches for all speeches in protocol"""
-        speech_infos: dict = self.name2info.get(metadata.get("name"))
+        name: str = metadata.get("name") or "unknown"
+        speech_infos = self.name2info.get(name) or []
         speech_lengths: np.ndarray = np.array([s.get("n_utterances", 0) for s in speech_infos])
         speech_starts: np.ndarray = np.append([0], np.cumsum(speech_lengths))
         speeches = [
@@ -59,18 +60,18 @@ class SpeechTextService:
         return (
             {}
             if len(list(utterances or [])) == 0
-            else dict(
-                speaker_note_id=utterances[0][self.id_name],
-                who=utterances[0]["who"],
-                u_id=utterances[0]["u_id"],
-                paragraphs=[p for u in utterances for p in u["paragraphs"]],
-                num_tokens=sum(x["num_tokens"] for x in utterances),
-                num_words=sum(x["num_words"] for x in utterances),
-                page_number=utterances[0]["page_number"] or "?",
-                page_number2=utterances[-1]["page_number"] or "?",
-                protocol_name=(metadata or {}).get("name", "?"),
-                date=(metadata or {}).get("date", "?"),
-            )
+            else {
+                "speaker_note_id": utterances[0][self.id_name],
+                "who": utterances[0]["who"],
+                "u_id": utterances[0]["u_id"],
+                "paragraphs": [p for u in utterances for p in u["paragraphs"]],
+                "num_tokens": sum(x["num_tokens"] for x in utterances),
+                "num_words": sum(x["num_words"] for x in utterances),
+                "page_number": utterances[0]["page_number"] or "?",
+                "page_number2": utterances[-1]["page_number"] or "?",
+                "protocol_name": (metadata or {}).get("name", "?"),
+                "date": (metadata or {}).get("date", "?"),
+            }
         )
 
 
@@ -81,7 +82,7 @@ class SpeechTextRepository:
         source: str | Loader,
         person_codecs: md.PersonCodecs,
         document_index: pd.DataFrame,
-        service: SpeechTextService = None,
+        service: SpeechTextService | None = None,
     ):
         self.source: Loader = source if isinstance(source, Loader) else ZipLoader(source)
         self.person_codecs: md.PersonCodecs = person_codecs
@@ -110,15 +111,14 @@ class SpeechTextRepository:
         if not isinstance(key, (int, str)):
             raise ValueError("key must be int or str")
 
-        key_idx: int = self.get_key_index(key)
-
         try:
+            key_idx: int = self.get_key_index(key)
             speech_info: dict = self.document_index.loc[key_idx].to_dict()
-        except KeyError as ex:
+        except (ValueError, KeyError) as ex:
             raise KeyError(f"Speech {key} not found in index") from ex
 
         try:
-            speaker_name: str = self.person_codecs[speech_info["person_id"]]["name"] if speech_info else "unknown"
+            speaker_name: str = self.person_codecs[speech_info["person_id"]]["name"] if speech_info else "unknown"  # type: ignore
         except KeyError:
             speaker_name: str = speech_info["person_id"]
 
@@ -130,14 +130,16 @@ class SpeechTextRepository:
 
         return speech_info
 
-    def get_key_index(self, key):
+    def get_key_index(self, key: int | str) -> int:
+        """Get the document index key for a given speech identifier."""
+        key_idx: int | None = None
         if isinstance(key, int) or key.isdigit():
-            key_idx: int = int(key)
+            key_idx = int(key)
         elif key.startswith('prot-'):
             key_idx = self.document_name2id.get(key)
         elif key.startswith('i-'):
             key_idx = self.speech_id2id.get(key)
-        else:
+        if key_idx is None:
             raise ValueError(f"unknown speech key {key}")
         return key_idx
 
@@ -150,7 +152,7 @@ class SpeechTextRepository:
                 speaker_notes: pd.DataFrame = read_sql_table("speaker_notes", db)
                 speaker_notes.set_index(self.service.id_name, inplace=True)
                 return speaker_notes["speaker_note"].to_dict()
-        except Exception as ex:
+        except Exception as ex:  # pylint: disable=broad-except
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
 
@@ -189,7 +191,7 @@ class SpeechTextRepository:
 
         except FileNotFoundError as ex:
             speech = {"name": f"speech {speech_name} not found", "error": str(ex)}
-        except Exception as ex:  # pylint: disable=bare-except
+        except Exception as ex:  # pylint: disable=broad-except
             speech = {"name": f"speech {speech_name}", "error": str(ex)}
 
         return Speech(speech)

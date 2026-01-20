@@ -32,11 +32,11 @@ lint: tidy ruff pylint
 tidy: black isort
 
 isort:
-	@uv run isort --profile black --float-to-top --line-length 120 --py 311 $(SOURCE_FOLDERS)
+	@uv run isort --profile black --float-to-top --line-length 120 --py 313 $(SOURCE_FOLDERS)
 
 black: 
 	@uv run black --version
-	@uv run black --line-length 120 --target-version py311 --skip-string-normalization $(SOURCE_FOLDERS)
+	@uv run black --line-length 120 --target-version py313 --skip-string-normalization $(SOURCE_FOLDERS)
 
 .PHONY: test coverage notes
 test:

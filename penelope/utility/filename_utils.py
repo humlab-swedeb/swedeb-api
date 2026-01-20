@@ -2,7 +2,7 @@ import fnmatch
 import string
 import time
 from os.path import basename, isdir, join, split, splitext
-from typing import Callable, Union
+from typing import Callable, Union, overload
 
 from .utils import now_timestamp
 
@@ -19,7 +19,7 @@ def assert_that_path_exists(path: str):
 
 
 def filename_satisfied_by(
-    filename: str, filename_filter: Union[list[str], Callable], filename_pattern: str | None = None
+    filename: str, filename_filter: list[str] | Callable[[str], bool], filename_pattern: str | None = None
 ) -> bool:
     """Returns true if filename is satisfied by filename filter, and matches pattern"""
 
@@ -47,7 +47,7 @@ def filename_satisfied_by(
 
 def filenames_satisfied_by(
     filenames: list[str],
-    filename_filter: Union[list[str], Callable] | None = None,
+    filename_filter: list[str] | Callable[[str], bool] | None = None,
     filename_pattern: str | None = None,
     sort=True,
 ) -> list[str]:
@@ -68,7 +68,7 @@ def filenames_satisfied_by(
         else [
             filename
             for filename in filenames
-            if filename_satisfied_by(filename, filename_filter)
+            if filename_satisfied_by(filename, filename_filter)  # type: ignore
             and (filename_pattern is None or fnmatch.fnmatch(filename, filename_pattern))
         ]
     )
@@ -122,14 +122,38 @@ def strip_path_and_add_counter(filename: str, i: int, n_zfill: int = 3) -> str:
     return f'{basename(strip_extensions(filename))}_{str(i).zfill(n_zfill)}.txt'
 
 
+@overload
+def strip_paths(filenames: str) -> str: ...
+
+
+@overload
+def strip_paths(filenames: list[str]) -> list[str]: ...
+
+
 def strip_paths(filenames: Union[str, list[str]]) -> Union[str, list[str]]:
     if isinstance(filenames, str):
         return basename(filenames)
     return [basename(filename) for filename in filenames]
 
 
+@overload
+def strip_path_and_extension(filename: str) -> str: ...
+
+
+@overload
+def strip_path_and_extension(filename: list[str]) -> list[str]: ...
+
+
 def strip_path_and_extension(filename: str | list[str]) -> str | list[str]:
     return strip_extensions(strip_paths(filename))
+
+
+@overload
+def strip_extensions(filename: str) -> str: ...
+
+
+@overload
+def strip_extensions(filename: list[str]) -> list[str]: ...
 
 
 def strip_extensions(filename: Union[str, list[str]]) -> str | list[str]:
@@ -143,11 +167,27 @@ def suffix_filename(filename: str, suffix: str) -> str:
     return join(folder, f"{base}_{suffix}{extension}")
 
 
+@overload
+def replace_extension(filename: str, extension: str) -> str: ...
+
+
+@overload
+def replace_extension(filename: list[str], extension: str) -> list[str]: ...
+
+
 def replace_extension(filename: str | list[str], extension: str) -> str | list[str]:
     extension = '' if extension is None else '.' + extension if not extension.startswith('.') else extension
     if isinstance(filename, list):
         return [f"{splitext(f)[0]}{extension}" for f in filename]
     return f"{splitext(filename)[0]}{extension}"
+
+
+@overload
+def replace_folder(filename: str, folder: str) -> str: ...
+
+
+@overload
+def replace_folder(filename: list[str], folder: str) -> list[str]: ...
 
 
 def replace_folder(filename: str | list[str], folder: str) -> str | list[str]:
@@ -157,6 +197,14 @@ def replace_folder(filename: str | list[str], folder: str) -> str | list[str]:
     if isinstance(filename, list):
         return [join(folder, basename(name)) for name in filename]
     return join(folder or '', basename(filename))
+
+
+@overload
+def replace_folder_and_extension(filename: str, folder: str, extension: str) -> str: ...
+
+
+@overload
+def replace_folder_and_extension(filename: list[str], folder: str, extension: str) -> list[str]: ...
 
 
 def replace_folder_and_extension(filename: str | list[str], folder: str, extension: str) -> str | list[str]:

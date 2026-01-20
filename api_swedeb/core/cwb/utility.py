@@ -75,7 +75,7 @@ class CorpusAttribs:
 
     @cached_property
     def name2id(self) -> dict[str, str]:
-        return {v["attribute"]: v["id"] for v in self.attributes.values()}
+        return {v["attribute"]: v["id"] for v in self.attributes.values()}  # type: ignore
 
     @cached_property
     def id2name(self) -> dict[str, str]:

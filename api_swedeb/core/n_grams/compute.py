@@ -47,12 +47,6 @@ def compile_n_grams(
         n_grams['documents'] = n_grams.documents.map(lambda x: ','.join(sorted(set(x.split(',')))))
         # n_grams['documents'] = n_grams.documents.str.split(',').apply(set).apply(sorted).apply(','.join)
     else:
-        # FIXME: Might be enough to rename columns and set the index
-        # n_grams: pd.DataFrame = (
-        #     windows.groupby('window')
-        #     .agg(window_count=('count', 'sum'), documents=('documents', lambda x: ','.join(sorted(set(x)))))
-        #     .rename_axis('ngram')
-        # )
         n_grams = windows.rename(columns={'window': 'ngram', 'count': 'window_count'}).set_index('ngram', drop=True)
 
     if threshold:

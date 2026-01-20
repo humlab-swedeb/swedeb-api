@@ -1,4 +1,5 @@
 """Unit tests for api_swedeb/core/word_trends.py"""
+
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -25,21 +26,31 @@ class TestSweDebComputeOpts:
 
     def test_init_with_source_folder(self):
         """Test initialization with source_folder."""
-        opts = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/to/source")
+        opts = SweDebComputeOpts(
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/to/source"
+        )
 
         assert opts.source_folder == "/path/to/source"
 
     def test_invalidates_corpus_when_source_folder_differs(self):
         """Test invalidates_corpus returns True when source_folder differs."""
-        opts1 = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/one")
-        opts2 = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/two")
+        opts1 = SweDebComputeOpts(
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/one"
+        )
+        opts2 = SweDebComputeOpts(
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/two"
+        )
 
         assert opts1.invalidates_corpus(opts2) is True
 
     def test_invalidates_corpus_when_source_folder_same(self):
         """Test invalidates_corpus checks parent class when source_folder same."""
-        opts1 = SweDebComputeOpts(normalize=True, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/one")
-        opts2 = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/one")
+        opts1 = SweDebComputeOpts(
+            normalize=True, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/one"
+        )
+        opts2 = SweDebComputeOpts(
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/one"
+        )
 
         # Parent class should detect the normalize difference
         result = opts1.invalidates_corpus(opts2)
@@ -55,7 +66,9 @@ class TestSweDebComputeOpts:
 
     def test_clone_property(self):
         """Test clone property creates a copy with source_folder."""
-        opts = SweDebComputeOpts(normalize=True, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/to/source")
+        opts = SweDebComputeOpts(
+            normalize=True, keyness=KeynessMetric.TF, temporal_key="year", source_folder="/path/to/source"
+        )
 
         cloned = opts.clone
 
@@ -98,26 +111,23 @@ class TestSweDebTrendsData:
     def test_transform_corpus_with_data(self):
         """Test _transform_corpus with actual data."""
         mock_corpus = Mock()
-        mock_corpus.document_index = pd.DataFrame({
-            "year": [2020, 2021],
-            "person_id": [1, 2]
-        })
+        mock_corpus.document_index = pd.DataFrame({"year": [2020, 2021], "person_id": [1, 2]})
         mock_corpus.replace_document_index = Mock()
 
         mock_codecs = Mock()
-        mock_codecs.decode = Mock(return_value=pd.DataFrame({
-            "year": [2020, 2021],
-            "person_id": [1, 2],
-            "name": ["Alice", "Bob"]
-        }))
+        mock_codecs.decode = Mock(
+            return_value=pd.DataFrame({"year": [2020, 2021], "person_id": [1, 2], "name": ["Alice", "Bob"]})
+        )
         mock_codecs.decoders = []
 
         trends_data = SweDebTrendsData(corpus=mock_corpus, person_codecs=mock_codecs)
 
-        opts = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=["person_id"])
+        opts = SweDebComputeOpts(
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=["person_id"]
+        )
 
         with patch.object(SweDebTrendsData.__bases__[0], '_transform_corpus', return_value=mock_corpus):
-            result = trends_data._transform_corpus(opts)
+            _ = trends_data._transform_corpus(opts)  # pylint: disable=protected-access
 
         mock_corpus.replace_document_index.assert_called_once()
 
@@ -128,7 +138,9 @@ class TestSweDebTrendsData:
 
         trends_data = SweDebTrendsData(corpus=mock_corpus, person_codecs=mock_codecs)
 
-        opts = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=None)
+        opts = SweDebComputeOpts(
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=None
+        )
         di = pd.DataFrame({"year": [2020]})
 
         result = trends_data.update_document_index(opts, di)
@@ -140,11 +152,7 @@ class TestSweDebTrendsData:
         mock_corpus = Mock()
         mock_codecs = Mock()
 
-        decoded_df = pd.DataFrame({
-            "year": [2020],
-            "person_id": [1],
-            "name": ["Alice"]
-        })
+        decoded_df = pd.DataFrame({"year": [2020], "person_id": [1], "name": ["Alice"]})
         mock_codecs.decode = Mock(return_value=decoded_df)
 
         mock_decoder = Mock()
@@ -154,7 +162,9 @@ class TestSweDebTrendsData:
 
         trends_data = SweDebTrendsData(corpus=mock_corpus, person_codecs=mock_codecs)
 
-        opts = SweDebComputeOpts(normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=["person_id"])
+        opts = SweDebComputeOpts(
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=["person_id"]
+        )
         di = pd.DataFrame({"year": [2020], "person_id": [1]})
 
         result = trends_data.update_document_index(opts, di)
@@ -175,10 +185,7 @@ class TestSweDebTrendsData:
 
         trends_data = SweDebTrendsData(corpus=mock_corpus, person_codecs=mock_codecs)
 
-        di = pd.DataFrame({
-            "year": ["2020", "2021"],
-            "name": ["Alice", "Bob"]
-        })
+        di = pd.DataFrame({"year": ["2020", "2021"], "name": ["Alice", "Bob"]})
 
         result = trends_data._generate_pivot_document_name(di, ["person_id"], "year")
 
@@ -207,10 +214,7 @@ class TestGetWordsPerYear:
         mock_corpus.remember = Mock()
 
         # Create document index with year and n_raw_tokens
-        di = pd.DataFrame({
-            "year": [2020, 2020, 2021],
-            "n_raw_tokens": [100, 150, 200]
-        })
+        di = pd.DataFrame({"year": [2020, 2020, 2021], "n_raw_tokens": [100, 150, 200]})
         mock_corpus.document_index = di
 
         result = get_words_per_year(mock_corpus)
@@ -230,9 +234,7 @@ class TestNormalizeWordPerYear:
         year_totals = pd.DataFrame({"n_raw_tokens": [1000, 2000]}, index=["2020", "2021"])
 
         # Input data with word counts per year
-        data = pd.DataFrame({
-            "word_count": [100, 200]
-        }, index=["2020", "2021"])
+        data = pd.DataFrame({"word_count": [100, 200]}, index=["2020", "2021"])
 
         with patch('api_swedeb.core.word_trends.get_words_per_year', return_value=year_totals):
             result = normalize_word_per_year(mock_corpus, data)
@@ -259,10 +261,7 @@ class TestComputeWordTrends:
         mock_trends_instance.person_codecs = mock_codecs
         mock_trends_instance.transform = Mock()
         mock_trends_instance.find_word_indices = Mock(return_value=[0, 1])
-        mock_trends_instance.extract = Mock(return_value=pd.DataFrame({
-            "year": ["2020", "2021"],
-            "count": [10, 20]
-        }))
+        mock_trends_instance.extract = Mock(return_value=pd.DataFrame({"year": ["2020", "2021"], "count": [10, 20]}))
         mock_trends_class.return_value = mock_trends_instance
 
         result = compute_word_trends(
@@ -270,7 +269,7 @@ class TestComputeWordTrends:
             person_codecs=mock_codecs,
             search_terms=["democracy"],
             filter_opts={},
-            normalize=False
+            normalize=False,
         )
 
         assert isinstance(result, pd.DataFrame)
@@ -292,10 +291,7 @@ class TestComputeWordTrends:
         # Return data with multiple years (as integers for filtering)
         # Use a fresh DataFrame so the function can modify it
         def create_trends_df(**kwargs):
-            return pd.DataFrame({
-                "year": [2018, 2019, 2020, 2021, 2022],
-                "count": [5, 10, 15, 20, 25]
-            })
+            return pd.DataFrame({"year": [2018, 2019, 2020, 2021, 2022], "count": [5, 10, 15, 20, 25]})
 
         mock_trends_instance.extract = Mock(side_effect=create_trends_df)
         mock_trends_class.return_value = mock_trends_instance
@@ -305,7 +301,7 @@ class TestComputeWordTrends:
             person_codecs=mock_codecs,
             search_terms=["democracy"],
             filter_opts={"year": (2019, 2021)},
-            normalize=False
+            normalize=False,
         )
 
         # Should filter to years 2019-2021
@@ -327,19 +323,12 @@ class TestComputeWordTrends:
         mock_trends_instance.transform = Mock()
         mock_trends_instance.find_word_indices = Mock(return_value=[0])
 
-        trends_df = pd.DataFrame({
-            "year": ["2020", "2020"],
-            "gender": ["M", "F"],
-            "count": [10, 15]
-        })
+        trends_df = pd.DataFrame({"year": ["2020", "2020"], "gender": ["M", "F"], "count": [10, 15]})
         mock_trends_instance.extract = Mock(return_value=trends_df)
         mock_trends_class.return_value = mock_trends_instance
 
         # Mock unstack to return pivoted data
-        unstacked_df = pd.DataFrame({
-            "M": [10],
-            "F": [15]
-        }, index=["2020"])
+        unstacked_df = pd.DataFrame({"M": [10], "F": [15]}, index=["2020"])
         mock_unstack.return_value = unstacked_df
 
         result = compute_word_trends(
@@ -347,7 +336,7 @@ class TestComputeWordTrends:
             person_codecs=mock_codecs,
             search_terms=["democracy"],
             filter_opts={"gender": [1, 2]},
-            normalize=False
+            normalize=False,
         )
 
         # Should add "Totalt" column
@@ -366,18 +355,15 @@ class TestComputeWordTrends:
         mock_trends_instance.person_codecs = mock_codecs
         mock_trends_instance.transform = Mock()
         mock_trends_instance.find_word_indices = Mock(return_value=[0])
-        mock_trends_instance.extract = Mock(return_value=pd.DataFrame({
-            "year": ["2020"],
-            "count": [10]
-        }))
+        mock_trends_instance.extract = Mock(return_value=pd.DataFrame({"year": ["2020"], "count": [10]}))
         mock_trends_class.return_value = mock_trends_instance
 
-        result = compute_word_trends(
+        _ = compute_word_trends(
             vectorized_corpus=mock_corpus,
             person_codecs=mock_codecs,
             search_terms=["democracy"],
             filter_opts={},
-            normalize=True
+            normalize=True,
         )
 
         # Verify normalize was passed to opts
@@ -398,11 +384,7 @@ class TestComputeWordTrends:
         mock_trends_instance.find_word_indices = Mock(return_value=[0])
 
         # Return data with 'who' column
-        trends_df = pd.DataFrame({
-            "year": ["2020"],
-            "who": ["speaker1"],
-            "count": [10]
-        })
+        trends_df = pd.DataFrame({"year": ["2020"], "who": ["speaker1"], "count": [10]})
         mock_trends_instance.extract = Mock(return_value=trends_df)
         mock_trends_class.return_value = mock_trends_instance
 
@@ -411,7 +393,7 @@ class TestComputeWordTrends:
             person_codecs=mock_codecs,
             search_terms=["democracy"],
             filter_opts={},
-            normalize=False
+            normalize=False,
         )
 
         # 'who' should be renamed to 'person_id' before returning

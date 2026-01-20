@@ -56,7 +56,7 @@ def load_cwd_dotenv():
 def fn_name(default=None):
     try:
         return inspect.stack()[1][3]
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         return default or str(uuid.uuid1())
 
 
@@ -195,7 +195,7 @@ def better_flatten2(lst) -> Iterable[Any]:
 def better_flatten(lst: Iterable[Any]) -> list[Any]:
     if isinstance(lst, (str, bytes)):
         return lst  # type: ignore
-    return [x for x in better_flatten2(lst)]
+    return list(better_flatten2(lst))
 
 
 def project_series_to_range(series: list[Number], low: Number, high: Number) -> list[Number]:
@@ -286,7 +286,7 @@ def dict_split(d: dict[Any, Any], fn: Callable[[dict[Any, Any], str], bool]) -> 
 def dict_to_list_of_tuples(d: dict) -> list[Tuple[Any, Any]]:
     if d is None:
         return []
-    return [(k, v) for (k, v) in d.items()]
+    return list(d.items())
 
 
 def revdict(d: dict) -> dict:
@@ -520,7 +520,9 @@ def assert_is_strictly_increasing(series: pd.Series) -> None:
         raise ValueError(f"series: {series.name} must be an integer typed, strictly increasing series starting from 0")
 
 
-def is_strictly_increasing(series: pd.Series, by_value=1, start_value: int = 0, sort_values: bool = True) -> bool:
+def is_strictly_increasing(
+    series: pd.Series | pd.Index, by_value=1, start_value: int = 0, sort_values: bool = True
+) -> bool:
     if len(series) == 0:
         return True
 
@@ -697,13 +699,19 @@ def try_load_function_or_class_method(name: str, **args) -> Callable[[str], str]
 
 def multiple_replace(text: str, replace_map: dict, ignore_case: bool = False) -> str:
     # Create a regular expression  from the dictionary keys
-    opts = dict(flags=re.IGNORECASE) if ignore_case else {}
+    opts = {"flags": re.IGNORECASE} if ignore_case else {}
     sorted_keys = sorted(replace_map.keys(), key=lambda k: len(replace_map[k]), reverse=True)
     regex = re.compile(f"({'|'.join(map(re.escape, sorted_keys))})", **opts)
     if ignore_case:
-        fx = lambda mo: replace_map[(mo.string[mo.start() : mo.end()]).lower()]
+
+        def fx(mo):
+            return replace_map[mo.string[mo.start() : mo.end()].lower()]
+
     else:
-        fx = lambda mo: replace_map[mo.string[mo.start() : mo.end()]]
+
+        def fx(mo):
+            return replace_map[mo.string[mo.start() : mo.end()]]
+
     return regex.sub(fx, text)
 
 

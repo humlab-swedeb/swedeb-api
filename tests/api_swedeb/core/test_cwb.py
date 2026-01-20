@@ -237,4 +237,3 @@ def test_multiple_word_pattern(words: list[str], target: str, filter_opts: list[
 
     assert query.startswith(expected_patterns)
     assert query.endswith(' within speech')
-

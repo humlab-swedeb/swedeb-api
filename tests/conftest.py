@@ -9,9 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 from loguru import logger
 
-from api_swedeb.api.v1.endpoints import tool_router
-from api_swedeb.api.utils import corpus as api_swedeb
-from api_swedeb.api.v1.endpoints import metadata_router
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.v1.endpoints import metadata_router, tool_router
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 
@@ -35,20 +34,20 @@ def corpus() -> ccc.Corpus:
 
 
 @pytest.fixture(scope="module")
-def api_corpus() -> api_swedeb.Corpus:
-    corpus: api_swedeb.Corpus = api_swedeb.Corpus()
-    _ = corpus.vectorized_corpus
-    _ = corpus.person_codecs
-    _ = corpus.document_index
-    _ = corpus.decoded_persons
-    _ = corpus.repository
-    return corpus
+def corpus_loader() -> CorpusLoader:
+    loader: CorpusLoader = CorpusLoader()
+    _ = loader.vectorized_corpus
+    _ = loader.person_codecs
+    _ = loader.document_index
+    _ = loader.decoded_persons
+    _ = loader.repository
+    return loader
 
 
 @pytest.fixture(scope="module")
-def _speech_index_cached() -> pd.DataFrame:
+def _speech_index_cached(corpus_loader: CorpusLoader) -> pd.DataFrame:
     """Cached speech index - internal use only."""
-    return api_swedeb.Corpus().vectorized_corpus.document_index
+    return corpus_loader.vectorized_corpus.document_index
 
 
 @pytest.fixture
@@ -58,8 +57,8 @@ def speech_index(_speech_index_cached: pd.DataFrame) -> pd.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def _person_codecs_cached(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
-    return api_corpus.person_codecs
+def _person_codecs_cached(corpus_loader: CorpusLoader) -> PersonCodecs:
+    return corpus_loader.person_codecs
 
 
 @pytest.fixture

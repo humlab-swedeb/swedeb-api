@@ -6,7 +6,8 @@ import numpy as np
 import scipy.sparse as sp
 from loguru import logger
 
-from ..token2id import id2token2token2id
+from penelope.corpus.token2id import id2token2token2id
+
 from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol
 
 # pylint: disable=no-member, attribute-defined-outside-init, access-member-before-definition, unused-argument
@@ -35,22 +36,31 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
     ) -> Tuple[IVectorizedCorpus, Mapping[int, int], Sequence[int]]: ...
 
     @property
-    def overridden_term_frequency(self) -> np.ndarray: ...
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
+
+    @property
+    def shape(self) -> Tuple[int, int]: ...
+
+    # Internal mutable attributes for inplace operations
+    _bag_term_matrix: sp.csr_matrix
+    _token2id: dict[str, int]
+    _id2token: dict[int, str] | None
+    _overridden_term_frequency: np.ndarray | dict[str, int] | None
 
 
 class SliceMixIn(ISlicedCorpusProtocol):
     def slice_by_tf(
-        self: ISlicedCorpusProtocol, threshold: Union[int, float], inplace: bool = False
+        self: ISlicedCorpusProtocol, tf_threshold: Union[int, float], inplace: bool = False
     ) -> IVectorizedCorpus:
         """Returns subset corpus where low frequent words are filtered out"""
-        if threshold is None:
+        if tf_threshold is None:
             return self
-        indices: np.ndarray = np.argwhere(self.term_frequency >= threshold).ravel()
+        indices: np.ndarray = np.argwhere(self.term_frequency >= tf_threshold).ravel()
         if len(indices) == self.shape[1]:
             return self
         return self.slice_by_indices(indices, inplace=inplace)
 
-    def slice_by_n_top(self: ISlicedCorpusProtocol, n_top: int, inplace: bool = False) -> IVectorizedCorpus:
+    def slice_by_n_top(self: ISlicedCorpusProtocol, n_top: int | None, inplace: bool = False) -> IVectorizedCorpus:
         """Create a subset corpus that only contains most frequent `n_top` words
 
         Parameters
@@ -135,7 +145,7 @@ class SliceMixIn(ISlicedCorpusProtocol):
         indices.sort()
 
         bag_term_matrix = self.bag_term_matrix[:, indices]
-        token2id = {self.id2token[indices[i]]: i for i in range(0, len(indices))}
+        token2id: dict[str, int] = {self.id2token[indices[i]]: i for i in range(0, len(indices))}
 
         overridden_term_frequency = (
             self._overridden_term_frequency[indices] if self._overridden_term_frequency is not None else None

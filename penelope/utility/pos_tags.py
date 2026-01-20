@@ -225,7 +225,7 @@ class PoS_Tag_Scheme:
             return x
         return list(x)
 
-    def exclude(self, excludes: Union[str, Container[str]] = None) -> List[str]:
+    def exclude(self, excludes: Union[str, Container[str]] | None = None) -> List[str]:
         _all_tags = list(self.PD_PoS_tags.index)
 
         if excludes is None:
@@ -238,7 +238,7 @@ class PoS_Tag_Scheme:
 
         return [x for x in _all_tags if x not in excludes]
 
-    def all_types_except(self, tags: Union[str, Container[str]] = None) -> List[str]:
+    def all_types_except(self, tags: Union[str, Container[str]] | None = None) -> List[str]:
         return self.exclude([tags, self.Delimiter])
 
     @property
@@ -321,11 +321,11 @@ class PoS_Tag_Scheme:
         return group_counts
 
 
-Known_PoS_Tag_Schemes = dict(
-    SUC=PoS_Tag_Scheme(PD_SUC_PoS_tags),
-    Universal=PoS_Tag_Scheme(PD_Universal_PoS_tags),
-    PennTree=PoS_Tag_Scheme(PD_PennTree_O5_PoS_tags),
-)
+Known_PoS_Tag_Schemes = {
+    "SUC": PoS_Tag_Scheme(PD_SUC_PoS_tags),
+    "Universal": PoS_Tag_Scheme(PD_Universal_PoS_tags),
+    "PennTree": PoS_Tag_Scheme(PD_PennTree_O5_PoS_tags),
+}
 
 
 @dataclass

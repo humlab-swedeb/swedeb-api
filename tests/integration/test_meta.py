@@ -2,7 +2,10 @@ import pandas as pd
 import pytest
 from fastapi import status
 
-from api_swedeb.api.utils.corpus import Corpus, load_corpus
+from api_swedeb.api.dependencies import get_corpus_loader
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.schemas.metadata_schema import (
     ChamberItem,
     ChamberList,
@@ -21,8 +24,18 @@ version = "v1"
 
 
 @pytest.fixture(scope="module")
-def corpus() -> Corpus:
-    return load_corpus()
+def corpus() -> CorpusLoader:
+    return get_corpus_loader()
+
+
+@pytest.fixture(scope="module")
+def metadata_service(corpus: CorpusLoader) -> MetadataService:
+    return MetadataService(corpus)
+
+
+@pytest.fixture(scope="module")
+def search_service(corpus: CorpusLoader) -> SearchService:
+    return SearchService(corpus)
 
 
 def test_multiple_parties(corpus):
@@ -35,20 +48,19 @@ def test_multiple_parties(corpus):
 
 
 @pytest.mark.skip("must be adjusted to new data v1.1.0")
-def test_get_speaker_with_multiple_parties(corpus):
-    _ = corpus.person_codecs["Q6178909"]
+def test_get_speaker_with_multiple_parties(search_service: SearchService):
     # Raoul Hamilton should be returned for L, FRIS and X, party_id: 5, 12, 1
-    speakers_5 = corpus.get_speakers(selections={'party_id': [5]})
-    speakers_12 = corpus.get_speakers(selections={'party_id': [12]})
-    speakers_1 = corpus.get_speakers(selections={'party_id': [1]})
+    speakers_5 = search_service.get_speakers(selections={'party_id': [5]})
+    speakers_12 = search_service.get_speakers(selections={'party_id': [12]})
+    speakers_1 = search_service.get_speakers(selections={'party_id': [1]})
 
     assert 'Raoul Hamilton' in speakers_5['name'].to_list()
     assert 'Raoul Hamilton' in speakers_12['name'].to_list()
     assert 'Raoul Hamilton' in speakers_1['name'].to_list()
 
 
-def test_meta_genders(corpus):
-    df = corpus.get_gender_meta()
+def test_meta_genders(metadata_service: MetadataService):
+    df = metadata_service.get_gender_meta()
     genders = df.to_dict(orient="records")
 
     assert len(genders) == 3
@@ -61,16 +73,16 @@ def test_meta_genders(corpus):
     assert len(gender_list.gender_list) == 3
 
 
-def test_meta_office_types(corpus):
-    df = corpus.get_office_type_meta()
+def test_meta_office_types(metadata_service: MetadataService):
+    df = metadata_service.get_office_type_meta()
     data = df.to_dict(orient="records")
     rows = [OfficeTypeItem(**row) for row in data]
     gender_list = OfficeTypeList(office_type_list=rows)
     assert gender_list is not None
 
 
-def test_meta_chamber(corpus):
-    df = corpus.get_chamber_meta()
+def test_meta_chamber(metadata_service: MetadataService):
+    df = metadata_service.get_chamber_meta()
     data = df.to_dict(orient="records")
     rows = [ChamberItem(**row) for row in data]
     chamber_list = ChamberList(chamber_list=rows)
@@ -78,8 +90,8 @@ def test_meta_chamber(corpus):
     assert 'FK' in df.chamber_abbrev.to_list()
 
 
-def test_meta_sub_office_type(corpus):
-    df = corpus.get_sub_office_type_meta()
+def test_meta_sub_office_type(metadata_service: MetadataService):
+    df = metadata_service.get_sub_office_type_meta()
     data = df.to_dict(orient="records")
     rows = [SubOfficeTypeItem(**row) for row in data]
 
@@ -88,8 +100,8 @@ def test_meta_sub_office_type(corpus):
     # return SubOfficeTypeList(sub_office_type_list=rows)
 
 
-def test_meta_parties(corpus):
-    df = corpus.get_party_meta()
+def test_meta_parties(metadata_service: MetadataService):
+    df = metadata_service.get_party_meta()
     assert 'party_abbrev' in df.columns
     assert 'party_id' in df.columns
     assert 'party' in df.columns

@@ -1,18 +1,15 @@
 import pandas as pd
-import pytest
 import requests
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 from loguru import logger
 
-from api_swedeb.api.utils.common_params import CommonQueryParams
-from api_swedeb.api.utils.corpus import Corpus
-from api_swedeb.api.utils.speech import get_speeches
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.utility import format_protocol_id
-from api_swedeb.schemas.speeches_schema import SpeechesResult
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
@@ -30,34 +27,35 @@ def check_url_availability(url):
         return False
 
 
-def test_pdf_link(api_corpus: Corpus):
+def test_pdf_link(corpus_loader: CorpusLoader):
     """
     Test that the pdf link points to available pdf"""
 
+    search_service = SearchService(corpus_loader)
     protocol_ids = [
-        find_a_speech_id(api_corpus)[0],
+        find_a_speech_id(search_service)[0],
         "prot-1867--ak--0118_001",
         "prot-19992000--001_001",
         "prot-201011--084_160",
     ]
-    test_links = [api_corpus.person_codecs.speech_link(protocol_id) for protocol_id in protocol_ids]
+    test_links = [corpus_loader.person_codecs.speech_link(protocol_id) for protocol_id in protocol_ids]
     for test_link in test_links:
         assert check_url_availability(test_link)
         print(f"Link {test_link} is available.")
 
 
-def test_pdf_link_with_series(api_corpus: Corpus):
+def test_pdf_link_with_series(corpus_loader: CorpusLoader):
     """
     Test that the pdf link points to available pdf"""
-
+    search_service = SearchService(corpus_loader)
     protocol_ids = [
-        find_a_speech_id(api_corpus)[0],
+        find_a_speech_id(search_service)[0],
         "prot-1867--ak--0118_001",
         "prot-19992000--001_001",
         "prot-201011--084_160",
     ]
     test_links_series = pd.Series(protocol_ids)
-    test_links = api_corpus.person_codecs.speech_link(test_links_series)
+    test_links = corpus_loader.person_codecs.speech_link(test_links_series)
     for test_link in test_links:
         assert check_url_availability(test_link)
         print(f"Link {test_link} is available.")
@@ -74,8 +72,9 @@ def test_speeches_get(fastapi_client: TestClient):
     assert len(data['speech_text']) > 0
 
 
-def test_get_all_protocol_ids(api_corpus: Corpus):
-    df: pd.DataFrame = api_corpus.get_anforanden(selections={'year': (1900, 2000)})
+def test_get_all_protocol_ids(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    df: pd.DataFrame = search_service.get_anforanden(selections={'year': (1900, 2000)})
     all_ids: pd.Series = df['document_name']
     for protocol_id in all_ids:
         try:
@@ -85,26 +84,29 @@ def test_get_all_protocol_ids(api_corpus: Corpus):
             assert False
 
 
-def test_get_speaker_name(api_corpus: Corpus):
-    dockument_name, speech_id = find_a_speech_id(api_corpus)
-    speaker_by_speech_id = api_corpus.get_speaker(speech_id)
+def test_get_speaker_name(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    dockument_name, speech_id = find_a_speech_id(search_service)
+    speaker_by_speech_id = search_service.get_speaker(speech_id)
     assert speaker_by_speech_id is not None
     assert len(speaker_by_speech_id) > 0
-    speaker_by_document_name = api_corpus.get_speaker(dockument_name)
+    speaker_by_document_name = search_service.get_speaker(dockument_name)
     assert speaker_by_document_name == speaker_by_speech_id
 
 
-def test_get_speaker_name_for_unknown_speaker(api_corpus: Corpus):
+def test_get_speaker_name_for_unknown_speaker(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
     speech_id = "prot-1974--136_032"
-    speaker = api_corpus.get_speaker(speech_id)
+    speaker = search_service.get_speaker(speech_id)
     assert speaker == unknown
 
 
-def test_get_speaker_name_for_non_existing_speech(api_corpus: Corpus):
+def test_get_speaker_name_for_non_existing_speech(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
     speech_id = "prot-made_up_and_missing"
-    speaker = api_corpus.get_speaker(speech_id)
+    speaker = search_service.get_speaker(speech_id)
     assert speaker == unknown
 
 
@@ -117,8 +119,9 @@ def test_format_speech_id():
     assert format_protocol_id(prot) == 'Andra kammaren 1958:17 01 001'
 
 
-def test_get_formatted_speech_id(api_corpus: Corpus):
-    df_filtered: pd.DataFrame = api_corpus.get_anforanden(
+def test_get_formatted_speech_id(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    df_filtered: pd.DataFrame = search_service.get_anforanden(
         selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
     )
     assert 'speech_name' in df_filtered.columns
@@ -135,7 +138,9 @@ def test_get_speech_by_id_page_number(fastapi_client: TestClient):
     assert data['page_number'] == 38
 
 
-def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus):  # pylint: disable=unused-argument
+def test_get_speech_by_id_client(
+    fastapi_client: TestClient, corpus_loader: CorpusLoader
+):  # pylint: disable=unused-argument
     document_name, speech_id = ('prot-197576--087_018', 'i-34625fce7c35cf80-3')
     # find_a_speech_id(api_corpus)
     response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
@@ -154,7 +159,7 @@ def test_get_speech_by_id_client(fastapi_client: TestClient, api_corpus: Corpus)
 
 
 def test_get_speech_by_id_page_number_byclient(
-    fastapi_client: TestClient, api_corpus: Corpus  # pylint: disable=unused-argument
+    fastapi_client: TestClient, corpus_loader: CorpusLoader  # pylint: disable=unused-argument
 ):
     speech_id = 'i-34625fce7c35cf80-3'
     response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
@@ -176,8 +181,8 @@ def test_speeches_get_years(fastapi_client: TestClient):
         assert speech['year'] <= end_year, 'year is greater than end_year'
 
 
-def test_speeches_zip(fastapi_client: TestClient, api_corpus: Corpus):
-    payload: list[str] = api_corpus.document_index.sample(2).document_name.to_list()
+def test_speeches_zip(fastapi_client: TestClient, corpus_loader: CorpusLoader):
+    payload: list[str] = corpus_loader.document_index.sample(2).document_name.to_list()
     response: Response = fastapi_client.post(f"{version}/tools/speech_download/", json=payload)
     assert response.status_code == status.HTTP_200_OK
     assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
@@ -185,26 +190,28 @@ def test_speeches_zip(fastapi_client: TestClient, api_corpus: Corpus):
     assert len(response.content) > 0
 
 
-def test_get_speeches_corpus(api_corpus: Corpus):
-    fx = api_corpus.person_codecs.get_mapping('party_abbrev', 'party_id').get
-    df_filtered: pd.DataFrame = api_corpus.get_anforanden(
+def test_get_speeches_corpus(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    fx = corpus_loader.person_codecs.get_mapping('party_abbrev', 'party_id').get
+    df_filtered: pd.DataFrame = search_service.get_anforanden(
         selections={'party_id': [fx(x) for x in ('L', 'S')], 'gender_id': [1, 2], 'year': (1970, 1980)}
     )
-    df_unfiltered: pd.DataFrame = api_corpus.get_anforanden(selections={'year': (1970, 1980)})
+    df_unfiltered: pd.DataFrame = search_service.get_anforanden(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
     assert 'S' in df_filtered['party_abbrev'].unique()
 
 
-def test_get_speeches_by_ids(api_corpus: Corpus):
-    speech_ids: list[str] = api_corpus.document_index.speech_id.sample(3).to_list()
-    speeches: pd.DataFrame = api_corpus.get_anforanden(selections={'speech_id': speech_ids})
+def test_get_speeches_by_ids(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    speech_ids: list[str] = corpus_loader.document_index.speech_id.sample(3).to_list()
+    speeches: pd.DataFrame = search_service.get_anforanden(selections={'speech_id': speech_ids})
     assert len(speeches) == len(speech_ids)
     assert set(speeches.speech_id) == set(speech_ids)
 
 
-def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, api_corpus: Corpus):
-    speech_ids: list[str] = api_corpus.document_index.speech_id.sample(3).to_list()
+def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus_loader: CorpusLoader):
+    speech_ids: list[str] = corpus_loader.document_index.speech_id.sample(3).to_list()
     args: str = '&'.join([f"speech_id={speech_id}" for speech_id in speech_ids])
     url: str = f"{version}/tools/speeches/?{args}"
     response: Response = fastapi_client.get(url)
@@ -220,71 +227,75 @@ def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, api_corpus: Corp
     assert response.status_code == status.HTTP_200_OK
 
 
-def find_a_speech_id(api_corpus):
-    df = api_corpus.document_index.sample(1)
+def find_a_speech_id(search_service: SearchService):
+    df = search_service.loader.document_index.sample(1)
     return df.iloc[0]['document_name'], df.iloc[0]['speech_id']
 
 
-def test_get_speech_by_id(api_corpus: Corpus):
-    document_name, speech_id = find_a_speech_id(api_corpus)
-    speech: Speech = api_corpus.get_speech(speech_id)
+def test_get_speech_by_id(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    document_name, speech_id = find_a_speech_id(search_service)
+    speech: Speech = search_service.get_speech(speech_id)
     assert speech is not None
     assert len(speech.text) > 1
-    assert speech.text == api_corpus.get_speech(document_name).text
+    assert speech.text == search_service.get_speech(document_name).text
 
 
-def test_get_speech_by_id_missing(api_corpus: Corpus):
+def test_get_speech_by_id_missing(corpus_loader: CorpusLoader):
     # non-existing speech (gives empty string as response)
+    search_service = SearchService(corpus_loader)
     speech_id: str = 'prot-1971--1_007_missing'
-    speech: Speech = api_corpus.get_speech(speech_id)
+    speech: Speech = search_service.get_speech(speech_id)
     assert speech is not None
     assert len(speech.text) == 0
 
 
-def test_speaker_note(api_corpus: Corpus):
-    document_name, speech_id = find_a_speech_id(api_corpus)
+def test_speaker_note(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    document_name, speech_id = find_a_speech_id(search_service)
 
-    speech: Speech = api_corpus.get_speech(document_name)
+    speech: Speech = search_service.get_speech(document_name)
     assert speech is not None
     assert len(speech.speaker_note) > 0
 
-    speaker_note_by_id: str = api_corpus.get_speech(speech_id).speaker_note
+    speaker_note_by_id: str = search_service.get_speech(speech_id).speaker_note
     assert speaker_note_by_id == speech.speaker_note
 
 
-def test_get_speech_by_api(fastapi_client: TestClient, api_corpus: Corpus):
-    _, speech_id = find_a_speech_id(api_corpus)
+def test_get_speech_by_api(fastapi_client: TestClient, corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    _, speech_id = find_a_speech_id(search_service)
     response: Response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}", timeout=10)
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
     assert len(response.json()['speaker_note']) > 0
 
 
-@pytest.mark.skip(reason="FIXME: This test is only used for debugging")
-def test_get_speech_party_bug():
-    dtm_folder: str = "/data/swedeb/v1.1.0/dtm/text"
-    dtm_tag: str = "text"
-    metadata_filename: str = "/data/swedeb/v1.1.0/riksprot_metadata.db"
-    tagged_corpus_folder: str = "/data/swedeb/v1.1.0/tagged_frames"
+# @pytest.mark.skip(reason="FIXME: This test is only used for debugging")
+# def test_get_speech_party_bug():
+#     dtm_folder: str = "/data/swedeb/v1.1.0/dtm/text"
+#     dtm_tag: str = "text"
+#     metadata_filename: str = "/data/swedeb/v1.1.0/riksprot_metadata.db"
+#     tagged_corpus_folder: str = "/data/swedeb/v1.1.0/tagged_frames"
 
-    corpus = Corpus(
-        dtm_tag=dtm_tag,
-        dtm_folder=dtm_folder,
-        metadata_filename=metadata_filename,
-        tagged_corpus_folder=tagged_corpus_folder,
-    )
+#     corpus = Corpus(
+#         dtm_tag=dtm_tag,
+#         dtm_folder=dtm_folder,
+#         metadata_filename=metadata_filename,
+#         tagged_corpus_folder=tagged_corpus_folder,
+#     )
 
-    df: pd.DataFrame = corpus.get_anforanden(selections={'year': (1867, 1900)})
+#     df: pd.DataFrame = corpus.get_anforanden(selections={'year': (1867, 1900)})
 
-    assert df is not None
+#     assert df is not None
 
-    di: pd.DataFrame = corpus.vectorized_corpus.document_index
-    assert len(di[di.year.between(1867, 1900)]) == len(df)
+#     di: pd.DataFrame = corpus.vectorized_corpus.document_index
+#     assert len(di[di.year.between(1867, 1900)]) == len(df)
 
-    args: CommonQueryParams = CommonQueryParams(from_year=1867, to_year=1900).resolve()
+#     args: CommonQueryParams = CommonQueryParams(from_year=1867, to_year=1900).resolve()
 
-    result: SpeechesResult = get_speeches(commons=args, corpus=corpus)
+#     result: SpeechesResult = get_speeches(commons=args, corpus=corpus)
 
-    assert len(df) == len(result.speech_list)
+#     assert len(df) == len(result.speech_list)
 
-    assert df.year.between(1867, 1900).all()
+#     assert df.year.between(1867, 1900).all()
