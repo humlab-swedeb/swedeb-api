@@ -3,8 +3,8 @@ from typing import Any
 import pytest
 from ccc import Corpus
 
+from api_swedeb.api import params as cp
 from api_swedeb.api.services.ngrams_service import NGramsService
-from api_swedeb.api.utils import common_params as cp
 from api_swedeb.schemas.ngrams_schema import NGramResult
 
 version = "v1"
