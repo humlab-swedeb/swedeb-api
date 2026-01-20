@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
@@ -489,7 +490,7 @@ class TestPersonCodecs:
         with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
             base_url: str = "https://example.com/"
             mock_config_value.return_value.resolve.return_value = base_url
-            result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(speech_index_copy)
+            result: pd.DataFrame | Any = person_codecs.decode_speech_index(speech_index_copy)
             assert 'link' in result.columns
             assert 'speech_link' in result.columns
             result = person_codecs.decode_speech_index(result)
@@ -506,7 +507,7 @@ class TestPersonCodecs:
         with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
             mock_config_value.return_value.resolve.return_value = "https://example.com/"
             value_updates: dict[str, dict[str, str]] = {'name': {'Eric Holmqvist': 'Eric Holmberg'}}
-            result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(
+            result: pd.DataFrame | Any = person_codecs.decode_speech_index(
                 speech_index_copy, value_updates=value_updates
             )
             assert 'Eric Holmberg' in result['name'].to_list()
@@ -518,6 +519,6 @@ class TestPersonCodecs:
         self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
     ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
-        result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(speech_index_copy, sort_values=True)
+        result: pd.DataFrame | Any = person_codecs.decode_speech_index(speech_index_copy, sort_values=True)
         assert result['name'].is_monotonic_increasing
         assert result['name'].is_unique
