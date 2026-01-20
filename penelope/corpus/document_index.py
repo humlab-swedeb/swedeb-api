@@ -74,9 +74,9 @@ class DocumentIndexHelper:
         return DocumentIndexHelper(_index)
 
     @staticmethod
-    def from_filenames(filenames: list[str], filename_fields: FilenameFieldSpecs) -> "DocumentIndexHelper | None":
+    def from_filenames(filenames: list[str], filename_fields: FilenameFieldSpecs) -> "DocumentIndexHelper":
         if filename_fields is None:
-            return None
+            raise DocumentIndexError("Cannot extract document index from filenames without filename_fields")
 
         if hasattr(filename_fields, 'filename_fields'):
             """Is actually a TextReaderOpts"""
