@@ -19,7 +19,7 @@ def assert_that_path_exists(path: str):
 
 
 def filename_satisfied_by(
-    filename: str, filename_filter: list[str] | Callable[[str], bool], filename_pattern: str | None = None
+    filename: str, filename_filter: list[str] | Callable[[str], bool] | None, filename_pattern: str | None = None
 ) -> bool:
     """Returns true if filename is satisfied by filename filter, and matches pattern"""
 

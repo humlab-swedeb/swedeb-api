@@ -311,7 +311,7 @@ def dotcoalesce(d: dict, *paths: str, default: Any = None) -> Any:
     return default
 
 
-def list_of_dicts_to_dict_of_lists(dl: list[dict[str, Any]]) -> dict[str, list[Any]]:
+def list_of_dicts_to_dict_of_lists(dl: list[dict[str, Any]]) -> dict[str, tuple[Any, ...]]:
     dict_of_lists = dict(zip(dl[0], zip(*[d.values() for d in dl])))
     return dict_of_lists
 

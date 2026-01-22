@@ -142,7 +142,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return {fg(i) or "": tf[i] for i in range(0, len(self.token2id))}
 
     @property
-    def TF(self) -> np.ndarray:
+    def TF(self) -> np.ndarray | dict[str, int] | None:
         """Term frequencies (TF)"""
         return self.term_frequency
 
