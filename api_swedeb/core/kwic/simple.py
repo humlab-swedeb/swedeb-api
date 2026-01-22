@@ -73,6 +73,7 @@ def kwic(  # pylint: disable=too-many-arguments
         cut_off=cut_off,
         num_processes=num_processes,
     )
+    # FIXME: Temporary fix to ensure consistent column naming, but why not use S_ATTR_RENAMES?
     kwic_data = normalize_kwic_df(kwic_data, lexical_form=p_show)
     return kwic_data
 
