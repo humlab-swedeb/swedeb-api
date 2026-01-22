@@ -294,7 +294,7 @@ class TestEnv2Dict:
         result = env2dict("TEST", lower_key=True)
         # env2dict uses dotset, so TEST_VAR_UPPER becomes {"var": {"upper": "val"}}
         assert "var" in result
-        assert result["var"]["upper"] == "val"
+        assert result["var"]["upper"] == "val"  # type: ignore
         # Cleanup
         del os.environ["TEST_VAR_UPPER"]
 
@@ -490,7 +490,7 @@ class TestUnstackData:
 
     def test_unstack_data_none_returns_none(self):
         """Test unstack_data with None returns None."""
-        result = unstack_data(None, ["key"])
+        result: pd.DataFrame = unstack_data(None, ["key"])  # type: ignore
         assert result is None
 
 

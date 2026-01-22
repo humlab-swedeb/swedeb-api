@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import patch
 
 import ccc
@@ -58,7 +58,7 @@ def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str
                 continue
 
             criteria['key'] = 'a.speech_party_id'
-            party_abbrev: str = criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
+            party_abbrev: str | list[str]= criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
             criteria['values'] = [
                 person_codecs.get_mapping('party_abbrev', 'party_id').get(party, 0) for party in party_abbrev
             ]
@@ -94,9 +94,9 @@ def test_simple_kwic_without_decode_with_multiple_terms(
     person_codecs: PersonCodecs,
     word: str | list[str],
     target: str,
-    p_show: str,
-    filter_opts: dict[str, Any],
-    expected_words: str | list[str] | None,
+    p_show: Literal["word", "lemma"],
+    filter_opts: list[dict[str, Any]],
+    expected_words: list[str],
 ):
     filter_opts = encode_party_abbrev2id(person_codecs, filter_opts)
 
@@ -133,19 +133,19 @@ def test_simple_kwic_without_decode_with_multiple_terms(
                 {"key": "a.year_year", "values": (1970, 1980)},
                 {"key": "a.speech_party_id", "values": [1, 5, 9]},
             ],
-            ["att", "Att"],
+            {"att", "Att"},
         ),
-        ("information|kunskap", "word", "word", None, ["information", "kunskap"]),
-        ("information", "lemma", "lemma", None, ["information"]),
+        ("information|kunskap", "word", "word", None, {"information", "kunskap"}),
+        ("information", "lemma", "lemma", None, {"information"}),
         (
             "information",
             "lemma",
             "lemma",
             None,
-            ["information"],
+            {"information"},
         ),
-        ("landet", "word", "lemma", None, ["land"]),
-        ("debatter", "word", "lemma", None, ["debatt"]),
+        ("landet", "word", "lemma", None, {"land"}),
+        ("debatter", "word", "lemma", None, {"debatt"}),
     ],
 )
 def test_simple_kwic_with_decode_results_for_various_setups(
@@ -156,7 +156,7 @@ def test_simple_kwic_with_decode_results_for_various_setups(
     target: str,
     p_show: str,
     criterias: list[dict[str, Any]],
-    expected_words: str | list[str] | None,
+    expected_words:set[str],
 ):
     search_opts: list[dict[str, Any]] = [
         {
@@ -182,7 +182,7 @@ def test_simple_kwic_with_decode_results_for_various_setups(
     assert data is not None
     assert len(data) > 0
 
-    assert set(data[f"node_{p_show}"].unique()) == set(expected_words)
+    assert set(data[f"node_{p_show}"].unique()) == expected_words
 
 
 def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person_codecs: PersonCodecs):

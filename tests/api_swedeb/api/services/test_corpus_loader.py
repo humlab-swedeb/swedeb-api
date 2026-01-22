@@ -178,7 +178,7 @@ class TestCorpusLoaderLazyLoading:
         # Now access document_index - should use corpus's index, not load separately
         result = loader.document_index
 
-        assert result == mock_index_df
+        assert pd.testing.assert_frame_equal(result, mock_index_df)
         mock_index.assert_not_called()
 
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
@@ -232,12 +232,12 @@ class TestCorpusLoaderLazyLoading:
         )
 
         # First access
-        result1 = loader.decoded_persons
-        assert result1 == mock_decoded
+        result1: pd.DataFrame = loader.decoded_persons
+        pd.testing.assert_frame_equal(result1, mock_decoded)
 
         # Second access - should use cached value (not call decode again)
-        result2 = loader.decoded_persons
-        assert result2 == mock_decoded
+        result2: pd.DataFrame = loader.decoded_persons
+        pd.testing.assert_frame_equal(result2, mock_decoded)
         assert mock_codecs.decode.call_count == 1  # Only called once
 
 

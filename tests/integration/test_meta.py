@@ -67,7 +67,7 @@ def test_meta_genders(metadata_service: MetadataService):
     assert genders[1].get("gender_id") == 1
     assert genders[1].get("gender_abbrev") == 'M'
 
-    rows: list[GenderItem] = [GenderItem(**row) for row in genders]
+    rows: list[GenderItem] = [GenderItem(**row) for row in genders]  # type: ignore
     gender_list = GenderList(gender_list=rows)
 
     assert len(gender_list.gender_list) == 3
@@ -76,7 +76,7 @@ def test_meta_genders(metadata_service: MetadataService):
 def test_meta_office_types(metadata_service: MetadataService):
     df = metadata_service.get_office_type_meta()
     data = df.to_dict(orient="records")
-    rows = [OfficeTypeItem(**row) for row in data]
+    rows = [OfficeTypeItem(**row) for row in data]  # type: ignore
     gender_list = OfficeTypeList(office_type_list=rows)
     assert gender_list is not None
 
@@ -84,7 +84,7 @@ def test_meta_office_types(metadata_service: MetadataService):
 def test_meta_chamber(metadata_service: MetadataService):
     df = metadata_service.get_chamber_meta()
     data = df.to_dict(orient="records")
-    rows = [ChamberItem(**row) for row in data]
+    rows = [ChamberItem(**row) for row in data]  # type: ignore
     chamber_list = ChamberList(chamber_list=rows)
     assert chamber_list is not None
     assert 'FK' in df.chamber_abbrev.to_list()
@@ -93,7 +93,7 @@ def test_meta_chamber(metadata_service: MetadataService):
 def test_meta_sub_office_type(metadata_service: MetadataService):
     df = metadata_service.get_sub_office_type_meta()
     data = df.to_dict(orient="records")
-    rows = [SubOfficeTypeItem(**row) for row in data]
+    rows = [SubOfficeTypeItem(**row) for row in data]  # type: ignore
 
     assert len(rows) > 0
 
