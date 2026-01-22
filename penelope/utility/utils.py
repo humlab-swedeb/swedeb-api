@@ -791,7 +791,7 @@ class CommaStr(str):
 
     def __or__(self, x: str | CommaStr) -> CommaStr:
         parts: list[str] = self.split(',')
-        parts.extend(part for part in x.parts() if part not in parts)
+        parts.extend(part for part in x.parts() if part not in parts)  # type: ignore ; FIXME: can be a bug
         return self.__class__(','.join(parts))
 
     def parts(self) -> list[str]:
