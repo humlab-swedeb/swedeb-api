@@ -155,7 +155,7 @@ class StoreMixIn:
         else:
             np.save(jj(folder, f"{tag}_vector_data.npy"), self.bag_term_matrix, allow_pickle=True)
 
-        return self
+        return self  # type: ignore
 
     @property
     def metadata(self: IVectorizedCorpusProtocol) -> dict:
@@ -238,6 +238,9 @@ class StoreMixIn:
         if filename:
             folder, tag = StoreMixIn.split(filename)
 
+        assert tag is not None
+        assert folder is not None
+
         if not StoreMixIn.dump_exists(tag=tag, folder=folder):
             raise FileNotFoundError(f"DTM file with tag {tag} not found in folder {folder}")
 
@@ -265,7 +268,7 @@ class StoreMixIn:
         return create_corpus_instance(
             bag_term_matrix,
             token2id=token2id,
-            document_index=data.get("document_index"),
+            document_index=data.get("document_index"),  # type: ignore
             overridden_term_frequency=overridden_term_frequency,
         )
 
@@ -302,7 +305,7 @@ class StoreMixIn:
             raise FileNotFoundError("no (unique) DTM in selected folder")
 
         md: dict = StoreMixIn.load_metadata(tag=tags[0], folder=folder)
-        di: pd.DataFrame = md.get('document_index')
+        di: pd.DataFrame = md.get('document_index')  # type: ignore
         return di
 
 
@@ -341,7 +344,7 @@ def load_corpus(
     corpus: IVectorizedCorpus = StoreMixIn.load(tag=tag, folder=folder)
 
     if group_by_year:
-        corpus = corpus.group_by_year()
+        corpus = corpus.group_by_year()  # type: ignore
 
     if tf_threshold is not None:
         corpus = corpus.slice_by_tf(tf_threshold)

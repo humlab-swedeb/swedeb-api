@@ -491,13 +491,13 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             return (self.data.data.nbytes + self.data.indptr.nbytes + self.data.indices.nbytes) / pow(1024, k)
         return None
 
-    def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]:
-        """Clears (inplace) tokens (columns) having a TF-value (column sum) less than threshold
-        Does not change shape."""
-        indices = np.argwhere(self.term_frequency < tf_threshold).ravel()
-        if len(indices) > 0:
-            self.zero_out_by_indices(indices)
-        return indices
+    # def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]:
+    #     """Clears (inplace) tokens (columns) having a TF-value (column sum) less than threshold
+    #     Does not change shape."""
+    #     indices = np.argwhere(self.term_frequency < tf_threshold).ravel()
+    #     if len(indices) > 0:
+    #         self.zero_out_by_indices(indices)
+    #     return indices
 
     def zero_out_by_others_zeros(self, other: VectorizedCorpus) -> VectorizedCorpus:
         """Zeroes out elements in `self` where corresponding element in `other` is zero

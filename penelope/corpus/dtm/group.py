@@ -96,7 +96,7 @@ class GroupByMixIn:
 
         category_series: pd.Series = self.document_index[pivot_column_name]
 
-        categories: Sequence[T] = create_category_series(category_series, fill_gaps=fill_gaps, fill_steps=fill_steps)
+        categories: Sequence = create_category_series(category_series, fill_gaps=fill_gaps, fill_steps=fill_steps)
 
         bag_term_matrix = group_DTM_by_category_series(
             bag_term_matrix=self.bag_term_matrix,
@@ -340,8 +340,12 @@ class GroupByMixIn:
 
         gdi['document_id'] = gdi.index.astype(np.int32)
 
-        gdi = pu.as_slim_types(gdi, {'n_documents', 'n_tokens', 'n_raw_tokens', 'tokens'}, np.int32)
-        gdi = pu.as_slim_types(gdi, {'year', temporal_key}, np.int16)
+        gdi = pu.as_slim_types(
+            gdi,
+            ['n_documents', 'n_tokens', 'n_raw_tokens', 'tokens'],
+            np.dtype(np.int32),
+        )
+        gdi = pu.as_slim_types(gdi, ['year', temporal_key], np.dtype(np.int16))
 
         """Set a fixed name for temporal key as well"""
         gdi['time_period'] = gdi[temporal_key]
@@ -425,7 +429,7 @@ def group_DTM_by_category_series(
     bag_term_matrix: scipy.sparse.csr_matrix,
     *,
     category_series: pd.Series,
-    categories: List[Union[int, str]],
+    categories: list[int] | list[str],
     aggregate: str,
 ) -> np.ndarray:
     """Returns a new DTM where rows having same values (as specified by category_series) are grouped.
@@ -467,9 +471,9 @@ def group_DTM_by_indices_mapping(
 
     shape: Tuple[int, int] = (n_docs, dtm.shape[1])
 
-    dtype = dtype or (np.int32 if np.issubdtype(dtm.dtype, np.integer) and aggregate == 'sum' else np.float64)
+    dtype_y = dtype or (np.int32 if np.issubdtype(dtm.dtype, np.integer) and aggregate == 'sum' else np.float64)
 
-    matrix: sp.lil_matrix = sp.lil_matrix(shape, dtype=dtype)
+    matrix: sp.lil_matrix = sp.lil_matrix(shape, dtype=dtype_y)
 
     if aggregate == 'mean':
         for document_id, indices in category_indices.items():

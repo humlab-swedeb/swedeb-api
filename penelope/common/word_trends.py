@@ -103,6 +103,11 @@ class TrendsServiceBase(abc.ABC):
         return self._transformed_corpus
 
     @property
+    def transformed_corpus2(self) -> pc.VectorizedCorpus:
+        assert self._transformed_corpus is not None
+        return self._transformed_corpus
+
+    @property
     def compute_opts(self) -> TrendsComputeOpts:
         return self._transform_opts
 
@@ -140,7 +145,7 @@ class TrendsServiceBase(abc.ABC):
             list[int]: list of word indicies
         """
         if isinstance(opts, TrendsComputeOpts):
-            return self.transform(opts).transformed_corpus.find_matching_words_indices(
+            return self.transform(opts).transformed_corpus.find_matching_words_indices(  # type: ignore
                 words or opts.words or [],
                 top_count or opts.top_count or 99,
                 descending=descending if descending is not None else opts.descending,
@@ -194,6 +199,7 @@ class TrendsServiceBase(abc.ABC):
     def get_top_terms(
         self, n_top: int = 100, kind: str = 'token+count', category_column: str = "category"
     ) -> pd.DataFrame:
+        assert self._transformed_corpus is not None
         top_terms = self._transformed_corpus.get_top_terms(category_column=category_column, n_top=n_top, kind=kind)
         return top_terms
 
@@ -244,7 +250,7 @@ class TrendsServiceBase(abc.ABC):
             corpus=self.transformed_corpus,
             temporal_key=self.compute_opts.temporal_key,
             pivot_keys_id_names=self.compute_opts.pivot_keys_id_names,
-            indices=indices,
+            indices=indices, # type: ignore ; ->  We know indices is list[int] here
         )
         if filter_opts and len(filter_opts) > 0:
             data = data[filter_opts.mask(data)]

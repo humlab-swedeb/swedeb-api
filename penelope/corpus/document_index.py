@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from io import StringIO
-from typing import Any, Callable, Optional, Sequence, TypeVar, Union
+from typing import Any, Callable, Optional, Sequence, TypeVar, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -235,12 +235,12 @@ class DocumentIndexHelper:
         # Set new index `index_values` as new index if specified, or else index
         if index_values is None:
             # Use existing index values (results from group by)
-            index_values = document_index.index
+            index_values = document_index.index  # type: ignore
 
         elif isinstance(index_values, str) and index_values == 'fill_gaps':
             # Create a strictly increasing index (fills gaps, index must be of integer type)
 
-            if not np.issubdtype(document_index.dtype, np.integer):
+            if not np.issubdtype(document_index.dtype, np.integer):  # type: ignore
                 raise DocumentIndexError(f"expected index of type int, found {type(document_index.dtype)}")
 
             index_values = np.arange(document_index.index.min(), document_index.index.max() + 1, 1)
@@ -392,7 +392,7 @@ TemporalKeySpecifier = Union[str, dict, Callable[[Any], Any]]
 
 
 def get_document_id(document_index: pd.DataFrame, document_name: str) -> int:
-    document_id = document_index.loc[document_name]['document_id']
+    document_id: int = cast(int, document_index.loc[document_name]['document_id'])
     return document_id
 
 
@@ -415,8 +415,8 @@ def create_temporal_key_categorizer(temporal_key_specifier: TemporalKeySpecifier
 
 
 def get_strictly_increasing_document_id(
-    document_index: pd.DataFrame, document_id_field: str = 'document_id'
-) -> pd.Series:
+    document_index: pd.DataFrame, document_id_field: str | None = 'document_id'
+) -> pd.Series | pd.Index:
     """[summary]
 
     Args:
@@ -493,7 +493,7 @@ def load_document_index(
 
             if filename.endswith('zip'):
                 try:
-                    filename = StringIO(read_file_content(zip_or_filename=filename, filename='document_index.csv'))
+                    filename = StringIO(read_file_content(zip_or_filename=filename, filename='document_index.csv'))  # type: ignore
                 except KeyError:
                     ...
 
@@ -565,7 +565,7 @@ def metadata_to_document_index(
         metadata = {'filename': [], 'document_id': []}
 
     document_index: pd.DataFrame = load_document_index(
-        pd.DataFrame(metadata), sep=None, document_id_field=document_id_field
+        pd.DataFrame(metadata), sep=None, document_id_field=document_id_field  # type: ignore
     )
 
     return document_index
@@ -645,7 +645,7 @@ def update_document_index_token_counts_by_corpus(document_index: pd.DataFrame, c
             document_index['n_raw_tokens'] = document_index['n_tokens']
         return document_index
 
-    n_tokens: Sequence[int] = None
+    n_tokens: Sequence[int] | None = None
 
     try:
         if hasattr(corpus, 'sparse'):
@@ -689,13 +689,13 @@ def update_document_index_properties(
         property_bag (dict[str, int]): [description]
     """
     if 'document_name' in property_bag:
-        property_bag: dict = {k: v for k, v in property_bag.items() if k != 'document_name'}
+        property_bag = {k: v for k, v in property_bag.items() if k != 'document_name'}
 
     for key in [k for k in property_bag if k not in document_index.columns]:
         document_index.insert(len(document_index.columns), key, np.nan)
 
     try:
-        document_index.loc[document_name, property_bag.keys()] = list(property_bag.values())
+        document_index.loc[document_name, property_bag.keys()] = list(property_bag.values())  # type: ignore
     except Exception as ex:  # pylint: disable=broad-except
         print(ex)
     # document_index.update(pd.DataFrame(data=property_bag, index=[document_name], dtype=np.int64))
