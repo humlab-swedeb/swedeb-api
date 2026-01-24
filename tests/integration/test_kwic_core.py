@@ -182,7 +182,9 @@ def test_simple_kwic_with_decode_results_for_various_setups(
     assert data is not None
     assert len(data) > 0
 
-    assert set(data[f"node_{p_show}"].unique()) == expected_words
+    # assert set(data[f"node_{p_show}"].unique()) == expected_words
+    # Names have been normalized to "word"
+    assert set(data[f"node_word"].unique()) == expected_words
 
 
 def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person_codecs: PersonCodecs):
