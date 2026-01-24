@@ -174,7 +174,7 @@ class StatsMixIn:
     def pick_n_top_words(
         self: IVectorizedCorpusProtocol,
         words: Container[str],
-        n_top: int,
+        n_top: int | None = None,
         descending: bool = False,
     ) -> List[str]:
         """Returns the `n_top` globally most frequent word in `tokens`"""

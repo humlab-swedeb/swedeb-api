@@ -5,7 +5,7 @@ import fnmatch
 import re
 import warnings
 from collections.abc import Collection
-from typing import Any, Callable, Iterable, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Iterable, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -366,7 +366,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         VectorizedCorpus
             The TF-IDF transformed corpus
         """
-        transformer = TfidfTransformer(norm=norm, use_idf=use_idf, smooth_idf=smooth_idf)
+        transformer = TfidfTransformer(norm=norm, use_idf=use_idf, smooth_idf=smooth_idf)  # type: ignore
 
         tfidf_bag_term_matrix = transformer.fit_transform(self._bag_term_matrix)
 
@@ -417,7 +417,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return term_term_matrix
 
     def find_matching_words(
-        self, word_or_regexp: Collection[str], n_max_count: int, descending: bool = False
+        self, word_or_regexp: Collection[str], n_max_count: int | None, descending: bool = False
     ) -> list[str]:
         """Returns words in corpus that matches candidate tokens"""
         words = self.pick_n_top_words(
@@ -428,11 +428,9 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return words
 
     def find_matching_words_indices(
-        self, word_or_regexp: list[str], n_max_count: int, descending: bool = False
+        self, word_or_regexp: list[str], n_max_count: int | None, descending: bool = False
     ) -> list[int]:
         """Returns `tokens´ indices` in corpus that matches candidate tokens"""
-
-        # FIXME: Use https://github.com/WojciechMula/pyahocorasick to search for words
 
         indices: list[int] = [
             self.token2id[token]
@@ -475,7 +473,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             token_ids, counts = np.unique(document_token_ids, return_counts=True)
             M[document_id, token_ids] = counts
 
-        corpus: VectorizedCorpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)
+        corpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)
 
         if min_tf:
             corpus = corpus.slice_by_tf(min_tf, inplace=True)
@@ -514,7 +512,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         if indices is None or len(indices) == 0:
             return indices
 
-        term_frequency = self.term_frequency
+        term_frequency = self.term_frequency or {}
 
         indices = [i for i in indices if term_frequency[i] > 0]
 
