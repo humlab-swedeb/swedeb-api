@@ -1,5 +1,6 @@
 """Unit tests for CorpusLoader service."""
 
+import re
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -178,7 +179,7 @@ class TestCorpusLoaderLazyLoading:
         # Now access document_index - should use corpus's index, not load separately
         result = loader.document_index
 
-        assert pd.testing.assert_frame_equal(result, mock_index_df)
+        assert result == mock_index_df  # type: ignore ; we are testing equality between mock objects - not dataframes
         mock_index.assert_not_called()
 
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
@@ -233,11 +234,11 @@ class TestCorpusLoaderLazyLoading:
 
         # First access
         result1: pd.DataFrame = loader.decoded_persons
-        pd.testing.assert_frame_equal(result1, mock_decoded)
+        assert result1 == mock_decoded  # type: ignore ; we are testing equality between mock objects - not dataframes
 
         # Second access - should use cached value (not call decode again)
         result2: pd.DataFrame = loader.decoded_persons
-        pd.testing.assert_frame_equal(result2, mock_decoded)
+        assert result2 == mock_decoded  # type: ignore ; we are testing equality between mock objects - not dataframes
         assert mock_codecs.decode.call_count == 1  # Only called once
 
 
