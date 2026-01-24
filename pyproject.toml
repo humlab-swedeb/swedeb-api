@@ -47,6 +47,8 @@ exclude = [
     "htmlcov",
     "coverage*",
     "tests/test_data",
+    "tests/profiling",
+    "tests/legacy",
     "data",
     "tmp",
     "deprecated",
