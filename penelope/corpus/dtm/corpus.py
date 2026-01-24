@@ -270,7 +270,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         di = di.reset_index(drop=True)
         di['document_id'] = di.index
 
-        corpus = VectorizedCorpus(bag_term_matrix=dtm, token2id=self.token2id, document_index=di, **self.payload)
+        corpus = VectorizedCorpus(bag_term_matrix=dtm, token2id=self.token2id, document_index=di, **self.payload)  # type: ignore[reportAbstractUsage]
 
         return corpus
 
@@ -303,7 +303,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             factor = self._bag_term_matrix[0, :].sum() / btm[0, :].sum()
             btm = btm * factor
 
-        corpus = VectorizedCorpus(
+        corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=btm,
             token2id=self.token2id,
             document_index=self.document_index,
@@ -321,7 +321,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         token_counts = self.document_index.n_raw_tokens.values
         btm = utility.normalize_sparse_matrix_by_vector(self._bag_term_matrix, token_counts)
-        corpus = VectorizedCorpus(
+        corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=btm,
             token2id=self.token2id,
             document_index=self.document_index,
@@ -370,7 +370,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         tfidf_bag_term_matrix = transformer.fit_transform(self._bag_term_matrix)
 
-        n_corpus = VectorizedCorpus(
+        n_corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=tfidf_bag_term_matrix,
             token2id=self.token2id,
             document_index=self.document_index,
@@ -447,7 +447,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
     ) -> "IVectorizedCorpus":
-        return VectorizedCorpus(
+        return VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=bag_term_matrix,
             token2id=token2id,
             document_index=document_index,
@@ -473,7 +473,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             token_ids, counts = np.unique(document_token_ids, return_counts=True)
             M[document_id, token_ids] = counts
 
-        corpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)
+        corpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)  # type: ignore[reportAbstractUsage]
 
         if min_tf:
             corpus = corpus.slice_by_tf(min_tf, inplace=True)
