@@ -21,13 +21,12 @@ class TestNormalizeKwicDf:
             }
         )
 
-        result = normalize_kwic_df(df, "word")
+        result = normalize_kwic_df(df, "word", target_suffix="")
 
         # Check column names are normalized
         assert "left" in result.columns
         assert "node" in result.columns
         assert "right" in result.columns
-        assert "token_attr" in result.columns
         assert "other_column" in result.columns
 
         # Check original column names are gone
@@ -39,7 +38,20 @@ class TestNormalizeKwicDf:
         assert result["left"].iloc[0] == "the cat"
         assert result["node"].iloc[0] == "sat"
         assert result["right"].iloc[0] == "on mat"
-        assert result["token_attr"].iloc[0] == "word"
+        
+        
+    def test_invalid_lexical_form(self):
+        df = pd.DataFrame(
+            {
+                "left_word": ["the cat"],
+                "node_word": ["sat"],
+                "right_word": ["on mat"],
+                "other_column": ["value"],
+            }
+        )
+        
+        with pytest.raises(ValueError, match='attr must be "word" or "lemma"'):
+            normalize_kwic_df(df, "invalid")
 
     def test_normalize_with_lemma_lexical_form(self):
         """Test normalization with 'lemma' lexical form."""
@@ -53,19 +65,17 @@ class TestNormalizeKwicDf:
             }
         )
 
-        result = normalize_kwic_df(df, "lemma")
+        result = normalize_kwic_df(df, "lemma", target_suffix="")
 
         # Check column names are normalized
         assert "left" in result.columns
         assert "node" in result.columns
         assert "right" in result.columns
-        assert "token_attr" in result.columns
 
         # Check values are preserved
         assert result["left"].iloc[0] == "the cat"
         assert result["node"].iloc[0] == "sit"
         assert result["right"].iloc[0] == "on mat"
-        assert result["token_attr"].iloc[0] == "lemma"
         assert result["speech_id"].iloc[0] == "speech_001"
 
     def test_normalize_invalid_lexical_form_raises_error(self):
@@ -93,16 +103,14 @@ class TestNormalizeKwicDf:
         )
         original_columns = df.columns.tolist()
 
-        result = normalize_kwic_df(df, "word")
+        result = normalize_kwic_df(df, "word", target_suffix="_lemma", make_copy=True)
 
         # Original DataFrame should be unchanged
         assert df.columns.tolist() == original_columns
         assert "left_word" in df.columns
-        assert "token_attr" not in df.columns
 
         # Result should have modified columns
-        assert "left" in result.columns
-        assert "token_attr" in result.columns
+        assert "left_lemma" in result.columns
 
     def test_normalize_multiple_rows(self):
         """Test normalization with multiple rows."""
@@ -115,14 +123,13 @@ class TestNormalizeKwicDf:
             }
         )
 
-        result = normalize_kwic_df(df, "word")
+        result = normalize_kwic_df(df, "word", target_suffix="")
 
         # Check all rows are preserved
         assert len(result) == 2
         assert result["left"].tolist() == ["the big", "a small"]
         assert result["node"].tolist() == ["cat", "dog"]
         assert result["right"].tolist() == ["sat down", "ran away"]
-        assert result["token_attr"].tolist() == ["word", "word"]
         assert result["year"].tolist() == [2020, 2021]
 
     def test_normalize_with_missing_columns(self):
@@ -135,15 +142,11 @@ class TestNormalizeKwicDf:
             }
         )
 
-        result = normalize_kwic_df(df, "word")
+        result = normalize_kwic_df(df, "word", target_suffix="")
 
         # Original columns should be preserved
         assert "some_column" in result.columns
         assert "another_column" in result.columns
-
-        # token_attr should be added
-        assert "token_attr" in result.columns
-        assert result["token_attr"].iloc[0] == "word"
 
         # No renaming should occur since columns don't exist
         assert "left" not in result.columns
@@ -176,7 +179,7 @@ class TestNormalizeKwicDf:
             }
         )
 
-        result = normalize_kwic_df(df, "word")
+        result = normalize_kwic_df(df, "word", target_suffix="")
 
         # Special characters should be preserved
         assert result["left"].iloc[0] == "<s>"
@@ -193,7 +196,7 @@ class TestNormalizeKwicDf:
             }
         )
 
-        result = normalize_kwic_df(df, "word")
+        result = normalize_kwic_df(df, "word", target_suffix="")
 
         # NaN values should be preserved
         assert result["left"].iloc[0] == "hello"
