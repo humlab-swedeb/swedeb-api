@@ -38,8 +38,7 @@ class TestNormalizeKwicDf:
         assert result["left"].iloc[0] == "the cat"
         assert result["node"].iloc[0] == "sat"
         assert result["right"].iloc[0] == "on mat"
-        
-        
+
     def test_invalid_lexical_form(self):
         df = pd.DataFrame(
             {
@@ -49,7 +48,7 @@ class TestNormalizeKwicDf:
                 "other_column": ["value"],
             }
         )
-        
+
         with pytest.raises(ValueError, match='attr must be "word" or "lemma"'):
             normalize_kwic_df(df, "invalid")
 

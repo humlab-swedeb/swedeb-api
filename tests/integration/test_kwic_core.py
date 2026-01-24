@@ -58,7 +58,9 @@ def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str
                 continue
 
             criteria['key'] = 'a.speech_party_id'
-            party_abbrev: str | list[str]= criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
+            party_abbrev: str | list[str] = (
+                criteria['values'] if isinstance(criteria['values'], list) else [criteria['values']]
+            )
             criteria['values'] = [
                 person_codecs.get_mapping('party_abbrev', 'party_id').get(party, 0) for party in party_abbrev
             ]
@@ -156,7 +158,7 @@ def test_simple_kwic_with_decode_results_for_various_setups(
     target: str,
     p_show: str,
     criterias: list[dict[str, Any]],
-    expected_words:set[str],
+    expected_words: set[str],
 ):
     search_opts: list[dict[str, Any]] = [
         {

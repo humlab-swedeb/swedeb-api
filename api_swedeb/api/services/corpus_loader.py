@@ -119,7 +119,7 @@ class CorpusLoader:
             return (1867, 2022)
 
     def protocol_page_range(self, document_name: str) -> tuple[int, int]:
-        """Get protocols first/last """
+        """Get protocols first/last"""
         try:
             protocol_name: str = document_name.split("_")[0] if "_" in document_name else document_name
             df: pd.DataFrame = self.document_index[self.document_index['document_name'].str.startswith(protocol_name)]

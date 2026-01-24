@@ -16,7 +16,9 @@ def empty_kwic(p_show: str) -> pd.DataFrame:
     )
 
 
-def normalize_kwic_df(df: pd.DataFrame, lexical_form: str, target_suffix: str = "_word", make_copy: bool = False) -> pd.DataFrame:
+def normalize_kwic_df(
+    df: pd.DataFrame, lexical_form: str, target_suffix: str = "_word", make_copy: bool = False
+) -> pd.DataFrame:
     """Normalize KWIC DataFrame column names."""
 
     if lexical_form not in ("word", "lemma"):

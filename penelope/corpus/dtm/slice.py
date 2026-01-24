@@ -227,7 +227,7 @@ class SliceMixIn(ISlicedCorpusProtocol):
         return indices
 
     def term_frequencies_greater_than_or_equal_to_threshold(
-        self: ISlicedCorpusProtocol, threshold: Union[int, float], keep_indices: List[int] | None= None
+        self: ISlicedCorpusProtocol, threshold: Union[int, float], keep_indices: List[int] | None = None
     ) -> np.ndarray:
         """Returns indices of words having a frequency below a given threshold"""
         indices = self.where_is_above_threshold_with_keeps(

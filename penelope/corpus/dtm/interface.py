@@ -158,7 +158,9 @@ class IVectorizedCorpus(abc.ABC):
     ) -> pd.DataFrame: ...
 
     @abc.abstractmethod
-    def find_matching_words(self, word_or_regexp: List[str], n_max_count: int | None, descending: bool) -> List[str]: ...
+    def find_matching_words(
+        self, word_or_regexp: List[str], n_max_count: int | None, descending: bool
+    ) -> List[str]: ...
 
     @abc.abstractmethod
     def find_matching_words_indices(

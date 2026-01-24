@@ -47,7 +47,9 @@ def read_file_content(*, zip_or_filename: zipfile.ZipFile, filename: str, as_bin
 
 
 @zipfile_or_filename(mode='r')
-def read_file_content2(zip_or_filename: zipfile.ZipFile, filename: str, as_binary: bool = False) -> tuple[str, bytes | str]:
+def read_file_content2(
+    zip_or_filename: zipfile.ZipFile, filename: str, as_binary: bool = False
+) -> tuple[str, bytes | str]:
     data: bytes | str = read_file_content(zip_or_filename=zip_or_filename, filename=filename, as_binary=as_binary)
     return (os.path.basename(filename), data)
 
