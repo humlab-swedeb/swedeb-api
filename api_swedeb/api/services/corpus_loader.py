@@ -109,3 +109,20 @@ class CorpusLoader:
     def decoded_persons(self) -> pd.DataFrame:
         """Get decoded persons dataframe (cached after first access)."""
         return self.person_codecs.decode(self.person_codecs.persons_of_interest, drop=False)
+
+    @cached_property
+    def year_range(self) -> tuple[int, int]:
+        """Get corpus min and max year (cached after first access)."""
+        try:
+            return self.document_index['year'].min(), self.document_index['year'].max()
+        except Exception:  # pylint: disable=broad-except
+            return (1867, 2022)
+
+    def protocol_page_range(self, document_name: str) -> tuple[int, int]:
+        """Get protocols first/last """
+        try:
+            protocol_name: str = document_name.split("_")[0] if "_" in document_name else document_name
+            df: pd.DataFrame = self.document_index[self.document_index['document_name'].str.startswith(protocol_name)]
+            return df['page_number'].min(), df['page_number'].max()
+        except Exception:  # pylint: disable=broad-except
+            return (1867, 2022)

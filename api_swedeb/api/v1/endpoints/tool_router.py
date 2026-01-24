@@ -8,12 +8,14 @@ from fastapi.responses import StreamingResponse
 from pandas import DataFrame
 
 from api_swedeb.api.dependencies import (
+    get_corpus_loader,
     get_cwb_corpus,
     get_kwic_service,
     get_search_service,
     get_word_trends_service,
 )
 from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
@@ -192,3 +194,8 @@ async def get_zip(
 @router.get("/topics")
 async def get_topics() -> dict[str, str]:
     return {"message": "Not implemented yet"}
+
+
+@router.get("/year_range", response_model=tuple[int, int])
+async def get_year_range(corpus_loader: CorpusLoader = Depends(get_corpus_loader)) -> tuple[int, int]:
+    return corpus_loader.year_range
