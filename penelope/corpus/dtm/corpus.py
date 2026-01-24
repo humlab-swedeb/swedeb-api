@@ -444,7 +444,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         bag_term_matrix: scipy.sparse.csr_matrix,
         token2id: dict[str, int],
         document_index: pd.DataFrame,
-        overridden_term_frequency: dict[str, int] | None = None,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
     ) -> "IVectorizedCorpus":
         return VectorizedCorpus(
