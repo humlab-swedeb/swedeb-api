@@ -39,7 +39,7 @@ def test_get_speakers(search_service: SearchService):
 
 def test_get_filtered_speakers_by_party_int(person_codecs: PersonCodecs, search_service: SearchService):
     # party_id 9 is S
-    sossarna_id: int = person_codecs.get_mapping('party_abbrev', 'party_id').get("S")
+    sossarna_id: int | None = person_codecs.get_mapping('party_abbrev', 'party_id').get("S")
 
     speakers: pd.DataFrame = search_service.get_speakers(selections={'party_id': [sossarna_id]})
     assert len(speakers) > 0
@@ -61,7 +61,7 @@ def test_get_speakers_api(client: TestClient):
 
 
 def test_get_speakers_api_with_params(person_codecs: PersonCodecs, client: TestClient):
-    sossarna_id: int = person_codecs.get_mapping('party_abbrev', 'party_id').get("S")
+    sossarna_id: int | None = person_codecs.get_mapping('party_abbrev', 'party_id').get("S")
     response: Response = client.get(f"{version}/metadata/speakers?party_id={sossarna_id}&gender_id=2")
     assert response.status_code == status.HTTP_200_OK
 

@@ -19,7 +19,7 @@ def test_word_trends_speeches_corpus2(corpus_loader: CorpusLoader):
     filter_opts.update({"year": (1900, 2000)})
 
     df: pd.DataFrame = get_speeches_by_words(
-        corpus_loader.vectorized_corpus, terms=search_terms, filter_opts=filter_opts
+        corpus_loader.vectorized_corpus, terms=search_terms, filter_opts=filter_opts  # type: ignore
     )
     assert len(df) > 0
     assert df.columns.to_list() == [
@@ -71,7 +71,7 @@ def test_page_number(speech_index: pd.DataFrame):
     speech_id = 'i-34625fce7c35cf80-3'
 
     assert 'page_number' in speech_index.columns
-    speeches: dict[str, dict] = speech_index.set_index('speech_id').to_dict(orient='index')
+    speeches: dict[str, dict] = speech_index.set_index('speech_id').to_dict(orient='index')  # type: ignore
 
     assert speeches is not None
 
