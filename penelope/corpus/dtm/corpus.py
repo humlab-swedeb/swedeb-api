@@ -462,7 +462,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         document_index: pd.DataFrame,
         min_tf: int = 1,
         max_tokens: int | None = None,
-    ) -> VectorizedCorpus:
+    ) -> IVectorizedCorpus:
         """Convert a stream of (document_id, Iterable[token_id]) into a VectorizedCorpus"""
 
         D, T = document_index.document_id.max() + 1, max(token2id.values()) + 1
