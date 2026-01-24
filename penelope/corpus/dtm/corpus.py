@@ -139,7 +139,8 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     def term_frequency_map(self) -> dict[str, int]:
         fg = self.id2token.get
         tf = self.term_frequency
-        return {fg(i) or "": tf[i] for i in range(0, len(self.token2id))}
+        assert isinstance(tf, np.ndarray), "term_frequency should always return ndarray"
+        return {fg(i) or "": int(tf[i]) for i in range(0, len(self.token2id))}
 
     @property
     def TF(self) -> np.ndarray | dict[str, int] | None:
@@ -320,7 +321,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             raise VectorizedCorpusError("raw count normalize attempted but no n_raw_tokens in document index")
 
         token_counts = self.document_index.n_raw_tokens.values
-        btm = utility.normalize_sparse_matrix_by_vector(self._bag_term_matrix, token_counts)
+        btm = utility.normalize_sparse_matrix_by_vector(self._bag_term_matrix, token_counts)  # type: ignore
         corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=btm,
             token2id=self.token2id,
@@ -470,7 +471,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         M: lil_matrix = lil_matrix((D, T), dtype=int)
 
         for document_id, document_token_ids in stream:
-            token_ids, counts = np.unique(document_token_ids, return_counts=True)
+            token_ids, counts = np.unique(document_token_ids, return_counts=True)  # type: ignore
             M[document_id, token_ids] = counts
 
         corpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)  # type: ignore[reportAbstractUsage]
@@ -514,7 +515,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         term_frequency = self.term_frequency or {}
 
-        indices = [i for i in indices if term_frequency[i] > 0]
+        indices = [i for i in indices if term_frequency[i] > 0]  # type: ignore
 
         if len(indices) == 0:
             return indices

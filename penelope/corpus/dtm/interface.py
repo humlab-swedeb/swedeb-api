@@ -2,7 +2,7 @@
 
 import abc
 from numbers import Number
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Self, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Protocol, Self, Sequence, Tuple
 
 import numpy as np
 import pandas as pd

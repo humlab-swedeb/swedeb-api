@@ -149,7 +149,6 @@ async def get_speeches_result(
     return SpeechesResult(speech_list=rows)
 
 
-# FIXME: rename endpoint to /speeches/{speech_id}/text
 @router.get("/speeches/{speech_id}", response_model=SpeechesTextResultItem)
 async def get_speech_by_id_result(
     speech_id: str, search_service: SearchService = Depends(get_search_service)
