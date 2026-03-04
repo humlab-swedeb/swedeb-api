@@ -14,7 +14,7 @@ The backend is built on a containerized architecture, leveraging modern Python t
 *   **[GitHub Container Registry (GHCR)](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)**: For hosting the final Docker application image.
 
 ## Related Repositories
-*   **[Swedeb Frontend](https://github.com/humlab-swedeb/swedeb-frontend)**: The frontend application for the Swedeb project, built with React.
+*   **[Swedeb Frontend](https://github.com/humlab-swedeb/swedeb-frontend)**: The frontend application for the Swedeb project, built with Vue3 and Quasar.
 *   **[Swedeb Sample Data](https://github.com/humlab-swedeb/sample-data)**: Produces data for the Swedeb infrastructure based on **[SWERIK](https://github.com/swerik)** data.
 *   **[humlab-penelope](https://github.com/humlab/humlab-penelope)**: A tools package supporting text analysis using Python.
 *   **[pyriksprot](https://github.com/humlab/pyriksprot)**: A Python package for reading and processing SWERIK parliamentary data.
