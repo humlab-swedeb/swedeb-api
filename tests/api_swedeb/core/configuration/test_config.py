@@ -196,35 +196,35 @@ class TestConfigLoad:
     def test_config_load_from_dict(self):
         """Test Config.load from dictionary."""
         data = {"key": "value"}
-        config = Config.load(source=data, env_prefix=None)
+        config = Config.load(source=data, env_prefix=None)  # type: ignore
         assert config.get("key") == "value"
 
     def test_config_load_from_yaml_file(self, tmp_path):
         """Test Config.load from YAML file."""
         yaml_file = tmp_path / "config.yml"
         yaml_file.write_text("key: value\nnumber: 42")
-        config = Config.load(source=str(yaml_file), env_prefix=None)
+        config = Config.load(source=str(yaml_file), env_prefix=None)  # type: ignore
         assert config.get("key") == "value"
         assert config.get("number") == 42
 
     def test_config_load_from_yaml_string(self):
         """Test Config.load from YAML string."""
         yaml_str = "key: value\nlist:\n  - item1\n  - item2"
-        config = Config.load(source=yaml_str, env_prefix=None)
+        config = Config.load(source=yaml_str, env_prefix=None)  # type: ignore
         assert config.get("key") == "value"
         assert config.get("list") == ["item1", "item2"]
 
     def test_config_load_from_config_object(self):
         """Test Config.load from existing Config returns same object."""
         original = Config(data={"key": "value"})
-        loaded = Config.load(source=original, env_prefix=None)
+        loaded = Config.load(source=original, env_prefix=None)  # type: ignore
         assert loaded is original
 
     def test_config_load_with_context(self, tmp_path):
         """Test Config.load sets context."""
         yaml_file = tmp_path / "config.yaml"
         yaml_file.write_text("key: value")
-        config = Config.load(source=str(yaml_file), context="production", env_prefix=None)
+        config = Config.load(source=str(yaml_file), context="production", env_prefix=None)  # type: ignore
         assert config.context == "production"
 
     def test_config_load_with_env_variables(self, tmp_path):
@@ -242,18 +242,18 @@ class TestConfigLoad:
         """Test Config.load raises TypeError for non-dict result."""
         # Valid YAML that doesn't produce a dict
         with pytest.raises(TypeError, match="expected dict"):
-            Config.load(source="- list\n- items", env_prefix=None)
+            Config.load(source="- list\n- items", env_prefix=None)  # type: ignore
 
     def test_config_load_stores_filename(self, tmp_path):
         """Test Config.load stores filename for file sources."""
         yaml_file = tmp_path / "test.yml"
         yaml_file.write_text("key: value")
-        config = Config.load(source=str(yaml_file), env_prefix=None)
+        config = Config.load(source=str(yaml_file), env_prefix=None)  # type: ignore
         assert config.filename == str(yaml_file)
 
     def test_config_load_no_filename_for_string(self):
         """Test Config.load doesn't store filename for YAML strings."""
-        config = Config.load(source="key: value", env_prefix=None)
+        config = Config.load(source="key: value", env_prefix=None)  # type: ignore
         assert config.filename is None
 
 

@@ -82,14 +82,14 @@ class TestConfigValue:
 
     def test_configvalue_with_class_type(self):
         """Test ConfigValue with class type key."""
-        cv = ConfigValue(key=list)
+        cv = ConfigValue(key=list)  # type: ignore
         assert cv.resolve() == []
 
     def test_configvalue_with_config_type(self):
         """Test ConfigValue with Config type returns config."""
         cfg = Config(data={"test": "data"})
         ConfigStore.configure_context(source=cfg, env_prefix=None)
-        cv = ConfigValue(key=Config)
+        cv = ConfigValue(key=Config)  # type: ignore
         result = cv.resolve()
         assert isinstance(result, Config)
 
@@ -184,7 +184,9 @@ class TestConfigStore:
         """Test ConfigStore.configure_context from dictionary."""
         result = ConfigStore.configure_context(source={"key": "value"}, env_prefix=None)
         assert isinstance(result, Config)
-        assert ConfigStore.config().get("key") == "value"
+        config: Config | None = ConfigStore.config()
+        assert config is not None
+        assert config.get("key") == "value"
 
     def test_configstore_configure_context_from_config(self):
         """Test ConfigStore.configure_context from Config object."""
@@ -218,7 +220,7 @@ class TestConfigStore:
     def test_configstore_set_config_raises_if_not_config(self):
         """Test ConfigStore._set_config raises if cfg is not Config."""
         with pytest.raises(ValueError, match="Expected Config"):
-            ConfigStore._set_config(context="test", cfg="not_a_config")
+            ConfigStore._set_config(context="test", cfg="not_a_config")  # type: ignore
 
     def test_configstore_set_config_stores_config(self):
         """Test ConfigStore._set_config stores config in store."""
@@ -234,7 +236,9 @@ class TestConfigureContext:
         """Test configure_context works as expected."""
         result = configure_context(source={"test": "value"}, env_prefix=None)
         assert isinstance(result, Config)
-        assert ConfigStore.config().get("test") == "value"
+        config: Config | None = ConfigStore.config()
+        assert config is not None
+        assert config.get("test") == "value"
 
 
 class TestResolveArguments:
@@ -291,7 +295,7 @@ class TestInjectConfig:
         """Test inject_config decorator resolves ConfigValue args."""
         ConfigStore.configure_context(source={"x": 10, "y": 20}, env_prefix=None)
 
-        @inject_config
+        @inject_config  # type: ignore
         def add(a, b):
             return a + b
 
@@ -302,7 +306,7 @@ class TestInjectConfig:
         """Test inject_config decorator resolves ConfigValue kwargs."""
         ConfigStore.configure_context(source={"multiplier": 5}, env_prefix=None)
 
-        @inject_config
+        @inject_config  # type: ignore
         def multiply(value, multiplier):
             return value * multiplier
 
@@ -313,7 +317,7 @@ class TestInjectConfig:
         """Test inject_config decorator resolves ConfigValue defaults."""
         ConfigStore.configure_context(source={"default": 100}, env_prefix=None)
 
-        @inject_config
+        @inject_config  # type: ignore
         def func(value, default=ConfigValue(key="default")):
             return value + default
 
@@ -324,7 +328,7 @@ class TestInjectConfig:
         """Test inject_config decorator works with classes."""
         ConfigStore.configure_context(source={"name": "TestClass"}, env_prefix=None)
 
-        @inject_config
+        @inject_config  # type: ignore
         class MyClass:
             def __init__(self, name):
                 self.name = name
@@ -335,7 +339,7 @@ class TestInjectConfig:
     def test_inject_config_preserves_function_metadata(self):
         """Test inject_config decorator preserves function metadata."""
 
-        @inject_config
+        @inject_config  # type: ignore
         def documented_func():
             """This is a docstring."""
             pass
@@ -347,7 +351,7 @@ class TestInjectConfig:
         """Test inject_config with mixed ConfigValue and regular args."""
         ConfigStore.configure_context(source={"config_val": "from_config"}, env_prefix=None)
 
-        @inject_config
+        @inject_config  # type: ignore
         def mixed(regular, from_config):
             return f"{regular}-{from_config}"
 

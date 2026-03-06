@@ -2,7 +2,7 @@
 
 import abc
 from numbers import Number
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Self, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Protocol, Self, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -39,7 +39,7 @@ class IVectorizedCorpus(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def term_frequency(self) ->  | dict[str, int] | None: ...
+    def term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
 
     @property
     @abc.abstractmethod
@@ -111,7 +111,7 @@ class IVectorizedCorpus(abc.ABC):
     def slice_by_tf(self, tf_threshold: int | None) -> "IVectorizedCorpus": ...
 
     @abc.abstractmethod
-    def slice_by_n_top(self, n_top: int | None) -> "IVectorizedCorpus": ...
+    def slice_by_n_top(self, n_top: int | None, inplace: bool = False) -> "IVectorizedCorpus": ...
 
     @abc.abstractmethod
     def slice_by_document_frequency(self, max_df=1.0, min_df=1, max_n_terms=None) -> "IVectorizedCorpus": ...
@@ -158,18 +158,20 @@ class IVectorizedCorpus(abc.ABC):
     ) -> pd.DataFrame: ...
 
     @abc.abstractmethod
-    def find_matching_words(self, word_or_regexp: List[str], n_max_count: int, descending: bool) -> List[str]: ...
+    def find_matching_words(
+        self, word_or_regexp: List[str], n_max_count: int | None, descending: bool
+    ) -> List[str]: ...
 
     @abc.abstractmethod
     def find_matching_words_indices(
-        self, word_or_regexp: List[str], n_max_count: int, descending: bool
+        self, word_or_regexp: List[str], n_max_count: int | None, descending: bool
     ) -> List[int]: ...
 
     @abc.abstractmethod
     def pick_n_top_words(self, words: List[str], n_top: int, descending: bool) -> List[str]: ...
 
-    @abc.abstractmethod
-    def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]: ...
+    # @abc.abstractmethod
+    # def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]: ...
 
     @abc.abstractmethod
     def zero_out_by_indices(self, indices: Sequence[int]) -> Sequence[int]: ...
@@ -230,9 +232,7 @@ class IVectorizedCorpusProtocol(Protocol):
 
     def nlargest(self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: ...
 
-    def get_top_n_words(
-        self, n: int = 1000, indices: Sequence[int] | None = None
-    ) -> Sequence[Tuple[str, Number]]: ...
+    def get_top_n_words(self, n: int = 1000, indices: Sequence[int] | None = None) -> Sequence[Tuple[str, Number]]: ...
 
     def get_partitioned_top_n_words(
         self,

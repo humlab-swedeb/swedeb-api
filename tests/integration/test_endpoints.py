@@ -17,7 +17,9 @@ def test_read_nonexisting(fastapi_client):
 
 
 def test_kwic(fastapi_client):
-    response = fastapi_client.get(f"{version}/tools/kwic/debatt")
+
+    response = fastapi_client.get(f"{version}/tools/kwic/debatt?from_year=1867&to_year=2020")
+
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
@@ -25,6 +27,7 @@ def test_kwic(fastapi_client):
     assert json is not None
     assert len(json) > 0
     assert "kwic_list" in json
+    assert len(json["kwic_list"]) > 0
 
     first_result = json["kwic_list"][0]
 

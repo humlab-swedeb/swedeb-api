@@ -61,7 +61,7 @@ def get_speeches_by_speech_ids(
         return pd.DataFrame()
 
     if not join_opts:
-        join_opts: dict[str, bool] = {'left_index': True, 'right_index': True}
+        join_opts = {'left_index': True, 'right_index': True}
 
     if not {'left_index', 'left_on'}.intersection(join_opts.keys()):
         join_opts['left_index'] = True

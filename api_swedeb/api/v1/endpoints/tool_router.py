@@ -8,16 +8,18 @@ from fastapi.responses import StreamingResponse
 from pandas import DataFrame
 
 from api_swedeb.api.dependencies import (
+    get_corpus_loader,
     get_cwb_corpus,
     get_kwic_service,
     get_search_service,
     get_word_trends_service,
 )
+from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.mappers.kwic import kwic_to_api_model
 from api_swedeb.mappers.word_trends import (
     search_hits_to_api_model,
@@ -147,7 +149,6 @@ async def get_speeches_result(
     return SpeechesResult(speech_list=rows)
 
 
-# FIXME: rename endpoint to /speeches/{speech_id}/text
 @router.get("/speeches/{speech_id}", response_model=SpeechesTextResultItem)
 async def get_speech_by_id_result(
     speech_id: str, search_service: SearchService = Depends(get_search_service)
@@ -192,3 +193,8 @@ async def get_zip(
 @router.get("/topics")
 async def get_topics() -> dict[str, str]:
     return {"message": "Not implemented yet"}
+
+
+@router.get("/year_range", response_model=tuple[int, int])
+async def get_year_range(corpus_loader: CorpusLoader = Depends(get_corpus_loader)) -> tuple[int, int]:
+    return corpus_loader.year_range

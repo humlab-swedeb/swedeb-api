@@ -5,7 +5,7 @@ import zipfile
 from fnmatch import fnmatch
 from functools import wraps
 from io import StringIO
-from typing import AnyStr, Callable, Iterable, List, Tuple, Union
+from typing import AnyStr, Callable, Iterable, Union
 
 import pandas as pd
 
@@ -33,31 +33,33 @@ def list_filenames(
     *,
     zip_or_filename: zipfile.ZipFile,
     filename_pattern: str = '*.txt',
-    filename_filter: Union[List[str], Callable] | None = None,
-) -> List[str]:
-    filenames: List[str] = [x for x in zip_or_filename.namelist() if fnmatch(x, filename_pattern)]
+    filename_filter: list[str] | Callable[[str], bool] | None = None,
+) -> list[str]:
+    filenames: list[str] = [x for x in zip_or_filename.namelist() if fnmatch(x, filename_pattern)]
     if filename_pattern is not None:
         filenames = [x for x in filenames if filename_satisfied_by(x, filename_filter)]
     return filenames
 
 
 @zipfile_or_filename(mode='r')
-def read_file_content(*, zip_or_filename: zipfile.ZipFile, filename: str, as_binary: bool = False) -> AnyStr:
+def read_file_content(*, zip_or_filename: zipfile.ZipFile, filename: str, as_binary: bool = False) -> bytes | str:
     return zip_or_filename.read(filename) if as_binary else zip_or_filename.read(filename).decode(encoding='utf-8')
 
 
 @zipfile_or_filename(mode='r')
-def read_file_content2(zip_or_filename: zipfile.ZipFile, filename: str, as_binary: bool = False) -> Tuple[str, AnyStr]:
-    data: AnyStr = read_file_content(zip_or_filename=zip_or_filename, filename=filename, as_binary=as_binary)
+def read_file_content2(
+    zip_or_filename: zipfile.ZipFile, filename: str, as_binary: bool = False
+) -> tuple[str, bytes | str]:
+    data: bytes | str = read_file_content(zip_or_filename=zip_or_filename, filename=filename, as_binary=as_binary)
     return (os.path.basename(filename), data)
 
 
 @zipfile_or_filename(mode='w', compression=zipfile.ZIP_DEFLATED, compresslevel=8)
-def store(*, zip_or_filename: zipfile.ZipFile, stream: Iterable[Tuple[str, Union[str, Iterable[str]]]]):
+def store(*, zip_or_filename: zipfile.ZipFile, stream: Iterable[tuple[str, Union[str, Iterable[str]]]]):
     """Stores token stream to archive
     Args:
         zf (zipfile.ZipFile): [description]
-        stream (Iterable[Tuple[str, Iterable[str]]]): [description]
+        stream (Iterable[tuple[str, Iterable[str]]]): [description]
     """
     for filename, document in stream:
         data: str = document if isinstance(document, str) else ' '.join(document)
@@ -103,6 +105,6 @@ def read_json(*, zip_or_filename: zipfile.ZipFile, filename: str, as_binary: boo
 def read_dataframe(
     *, zip_or_filename: zipfile.ZipFile, filename: str, sep: str = '\t', quoting: int = csv.QUOTE_NONE
 ) -> pd.DataFrame:
-    data_str = read_file_content(zip_or_filename=zip_or_filename, filename=filename, as_binary=False)
-    df = pd.read_csv(StringIO(data_str), sep=sep, quoting=quoting, index_col=0)
+    data_str: bytes | str = read_file_content(zip_or_filename=zip_or_filename, filename=filename, as_binary=False)
+    df: pd.DataFrame = pd.read_csv(StringIO(data_str), sep=sep, quoting=quoting, index_col=0)  # type: ignore
     return df

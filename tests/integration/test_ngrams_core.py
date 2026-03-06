@@ -1,7 +1,7 @@
 """Integration tests for api_swedeb.core.n_grams with real CWB corpus."""
 
 from collections import Counter, defaultdict
-from typing import Iterable
+from typing import Any, Iterable
 
 import pandas as pd
 from ccc import Corpus
@@ -16,19 +16,19 @@ def test_compute_n_grams2(corpus: Corpus):
 
     windows: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts=keyword, context_size=n, p_show="word")
 
-    ngram_counter: Counter = defaultdict(int)
-    ngram_documents: Counter = defaultdict(set)
+    ngram_counter: Counter | defaultdict[str, int] = defaultdict(int)
+    ngram_documents: Counter | defaultdict[str, set[str]] = defaultdict(set)
 
-    cx: dict[int, int] = windows['count'].to_dict().get
+    windows_count: dict[int, int] = windows['count'].to_dict()
 
     n_grams: Iterable[tuple[int, str, str]] = (
-        (index, ngram, row['documents'])
+        (int(index), ngram, row['documents'])  # type: ignore
         for index, row in windows.iterrows()
         for ngram in ng.to_n_grams(row['window'], n)
     )
 
     for index, ngram, documents in n_grams:
-        ngram_counter[ngram] += cx(index)
+        ngram_counter[ngram] += windows_count.get(int(index), 0)
         ngram_documents['documents'] |= set(documents.split(','))
 
     assert ngram_counter is not None

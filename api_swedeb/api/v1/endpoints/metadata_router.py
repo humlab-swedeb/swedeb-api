@@ -5,9 +5,9 @@ from fastapi import Depends
 from pandas import DataFrame
 
 from api_swedeb.api.dependencies import get_corpus_loader, get_metadata_service, get_search_service
+from api_swedeb.api.params import SpeakerQueryParams
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.search_service import SearchService
-from api_swedeb.api.utils.common_params import SpeakerQueryParams
 from api_swedeb.schemas.metadata_schema import (
     ChamberItem,
     ChamberList,

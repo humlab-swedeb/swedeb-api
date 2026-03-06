@@ -139,7 +139,7 @@ class TestSweDebTrendsData:
         trends_data = SweDebTrendsData(corpus=mock_corpus, person_codecs=mock_codecs)
 
         opts = SweDebComputeOpts(
-            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=None
+            normalize=False, keyness=KeynessMetric.TF, temporal_key="year", pivot_keys_id_names=None  # type: ignore
         )
         di = pd.DataFrame({"year": [2020]})
 

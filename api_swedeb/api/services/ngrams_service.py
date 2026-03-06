@@ -6,7 +6,7 @@ import ccc
 import pandas as pd
 
 from api_swedeb import mappers, schemas
-from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.core import n_grams
 
 

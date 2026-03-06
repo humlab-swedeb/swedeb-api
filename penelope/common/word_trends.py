@@ -103,6 +103,11 @@ class TrendsServiceBase(abc.ABC):
         return self._transformed_corpus
 
     @property
+    def transformed_corpus2(self) -> pc.VectorizedCorpus:
+        assert self._transformed_corpus is not None
+        return self._transformed_corpus
+
+    @property
     def compute_opts(self) -> TrendsComputeOpts:
         return self._transform_opts
 
@@ -140,8 +145,9 @@ class TrendsServiceBase(abc.ABC):
             list[int]: list of word indicies
         """
         if isinstance(opts, TrendsComputeOpts):
-            return self.transform(opts).transformed_corpus.find_matching_words_indices(
-                words or opts.words or [],
+            search_words: list[str] = words or opts.words or []
+            return self.transform(opts).transformed_corpus.find_matching_words_indices(  # type: ignore
+                search_words,
                 top_count or opts.top_count or 99,
                 descending=descending if descending is not None else opts.descending,
             )
@@ -160,7 +166,13 @@ class TrendsServiceBase(abc.ABC):
     def find_words(self, opts: TrendsComputeOpts = ...) -> list[str]: ...
 
     @overload
-    def find_words(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
+    def find_words(
+        self,
+        opts: TrendsComputeOpts | None,
+        words: list[str] | None = ...,
+        top_count: int | None = ...,
+        descending: bool | None = ...,
+    ) -> list[str]: ...
 
     def find_words(
         self,
@@ -184,16 +196,23 @@ class TrendsServiceBase(abc.ABC):
             list[str]: list of words
         """
         if isinstance(opts, TrendsComputeOpts):
-            return self.transform(opts).transformed_corpus.find_matching_words(
-                words or opts.words, top_count or opts.top_count, descending=descending or opts.descending
+            return self.transform(opts).transformed_corpus.find_matching_words(  # type: ignore
+                words or opts.words,  # type: ignore
+                top_count or opts.top_count,
+                descending=descending or opts.descending,
             )
         if isinstance(words, list):
-            return self.transformed_corpus.find_matching_words(words, top_count, descending=descending)
+            return self.transformed_corpus.find_matching_words(  # type: ignore
+                words,
+                top_count,
+                descending=descending or False,
+            )
         raise TypeError("Either opts or words must be provided")
 
     def get_top_terms(
         self, n_top: int = 100, kind: str = 'token+count', category_column: str = "category"
     ) -> pd.DataFrame:
+        assert self._transformed_corpus is not None
         top_terms = self._transformed_corpus.get_top_terms(category_column=category_column, n_top=n_top, kind=kind)
         return top_terms
 
@@ -238,13 +257,15 @@ class TrendsServiceBase(abc.ABC):
 
         if len(indices) > 0:
             if isinstance(indices[0], str):
-                indices = self.transformed_corpus.find_matching_words_indices(indices, top_count, descending=descending)
+                indices = self.transformed_corpus.find_matching_words_indices(
+                    list(indices), top_count, descending=descending  # type: ignore[arg-type]
+                )
 
         data: pd.DataFrame = self.tabular_compiler.compile(
             corpus=self.transformed_corpus,
             temporal_key=self.compute_opts.temporal_key,
             pivot_keys_id_names=self.compute_opts.pivot_keys_id_names,
-            indices=indices,
+            indices=indices,  # type: ignore ; ->  We know indices is list[int] here
         )
         if filter_opts and len(filter_opts) > 0:
             data = data[filter_opts.mask(data)]
@@ -263,14 +284,14 @@ class TrendsService(TrendsServiceBase):
 
     def _transform_corpus(self, opts: TrendsComputeOpts) -> pc.VectorizedCorpus:
         corpus: pc.VectorizedCorpus = (
-            self.corpus.tf_idf()
+            self.corpus.tf_idf()  # type: ignore
             if opts.keyness == pk.KeynessMetric.TF_IDF
             else (
-                self.corpus.normalize_by_raw_counts() if opts.keyness == pk.KeynessMetric.TF_normalized else self.corpus
+                self.corpus.normalize_by_raw_counts() if opts.keyness == pk.KeynessMetric.TF_normalized else self.corpus  # type: ignore
             )
         )
 
-        corpus = corpus.group_by_pivot_keys(
+        corpus = corpus.group_by_pivot_keys(  # type: ignore
             temporal_key=opts.temporal_key,
             pivot_keys=list(opts.pivot_keys_id_names),
             filter_opts=opts.filter_opts,

@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 from api_swedeb.api.dependencies import get_corpus_loader
+from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.core.word_trends import compute_word_trends
 from api_swedeb.mappers.word_trends import word_trends_to_api_model
 from api_swedeb.schemas.word_trends_schema import WordTrendsResult
@@ -55,7 +55,7 @@ def test_bug_with_get_word_trends():
     normalize = False
 
     df = word_trends_service.get_word_trend_results(
-        search_terms=search.split(","), filter_opts=commons.get_filter_opts(include_year=True), normalize=normalize
+        search_terms=search.split(","), filter_opts=commons.get_filter_opts(include_year=True), normalize=normalize  # type: ignore
     )
     result = word_trends_to_api_model(df)
 
@@ -74,7 +74,7 @@ def test_bug_with_corpus__get_word_trend_results():
     query: str = 'sverige'
     search_terms = query.split(",")
     df: pd.DataFrame = word_trends_service.get_word_trend_results(
-        search_terms=search_terms, filter_opts=filter_opts, normalize=normalize
+        search_terms=search_terms, filter_opts=filter_opts, normalize=normalize  # type: ignore
     )
 
     assert not df.empty
@@ -93,7 +93,7 @@ def test_bug_with_get_word_trends_even_deeper():
     search_terms = word_trends_service.filter_search_terms(search_terms)
 
     trends: pd.DataFrame = compute_word_trends(
-        loader.vectorized_corpus, loader.person_codecs, search_terms, filter_opts, normalize
+        loader.vectorized_corpus, loader.person_codecs, search_terms, filter_opts, normalize  # type: ignore
     )
     assert not trends.empty
     assert 'sverige S Moderaterna' not in trends.columns

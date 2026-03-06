@@ -5,7 +5,7 @@ import zipfile
 from collections import defaultdict
 from collections.abc import MutableMapping
 from fnmatch import fnmatch
-from typing import Any, Callable, Iterable, Iterator, Mapping, Optional, Union
+from typing import Any, Callable, Iterable, Iterator, Optional, Union
 
 import pandas as pd
 from loguru import logger
@@ -18,11 +18,11 @@ from penelope.utility import path_add_suffix, pickle_to_file, replace_extension,
 class ClosedVocabularyError(Exception): ...
 
 
-def id2token2token2id(id2token: Mapping[int, str]) -> dict:
+def id2token2token2id(id2token: dict[int, str]) -> dict:
     if id2token is None:
         return None
     if hasattr(id2token, 'token2id'):
-        return id2token.token2id
+        return getattr(id2token, 'token2id')
     token2id: dict = {v: int(k) for k, v in id2token.items()}
     return token2id
 
@@ -34,14 +34,14 @@ class Token2Id(MutableMapping):
         self,
         data: Optional[Union[dict[str, int], defaultdict[str, int]]],
         tf: dict | None = None,
-        fallback_token: str | None = None,
+        fallback_token_id: int | None = None,
         **kwargs,
     ):
-        self._data: defaultdict[str, int] = defaultdict()
+        self._data: defaultdict[str, int] | dict[str, int] = defaultdict()
         self._tf: defaultdict[int, int] | dict[int, int] | None = None
         self._is_open = True
         self._id2token: dict | None = None
-        self._fallback_token_id: str | None = fallback_token
+        self._fallback_token_id: int | None = fallback_token_id
         self._payload: dict = {**kwargs}
 
         self.replace(data=data or defaultdict(), tf=tf)
@@ -49,21 +49,18 @@ class Token2Id(MutableMapping):
     def __contains__(self, key):
         return key in self._data
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> int | None:
         if not self._is_open:
             if self._fallback_token_id:
                 return self._data.get(key, self._fallback_token_id)
         return self._data[key]
 
-    def __optimized__getitem__(self) -> Callable[[str], int]:
+    def __optimized__getitem__(self) -> Callable[[str], int | None]:
         """Optimises __getitem__ by wireing up a replacement closure without conditional constructs"""
-        data = self._data
-        if self._is_open:
-            return lambda w: data[w]
-        fallback_token_id = self._fallback_token_id
-        if fallback_token_id is None:
-            return lambda w: data[w]
-        return lambda key: data.get(key, fallback_token_id)
+        data: defaultdict[str, int] | dict[str, int] = self._data
+        if self._is_open or self._fallback_token_id is None:
+            return lambda key: data[key]
+        return lambda key: data.get(key, self._fallback_token_id)
 
     def __setitem__(self, key: str, value):
         if self._id2token:
@@ -82,7 +79,7 @@ class Token2Id(MutableMapping):
         return len(self._data)
 
     @property
-    def data(self) -> defaultdict[str, int]:
+    def data(self) -> defaultdict[str, int] | dict[str, int]:
         return self._data
 
     @property
@@ -112,7 +109,7 @@ class Token2Id(MutableMapping):
         return self
 
     @property
-    def payload(self) -> Mapping[Any, Any]:
+    def payload(self) -> dict[Any, Any]:
         return self._payload
 
     def remember(self, **kwargs) -> "Token2Id":
@@ -133,7 +130,7 @@ class Token2Id(MutableMapping):
 
         self._id2token = None
 
-        data: defaultdict[str, int] = self._data
+        data: defaultdict[str, int] | dict[str, int] = self._data
         tf = self._tf
 
         for t in tokens:
@@ -150,12 +147,12 @@ class Token2Id(MutableMapping):
 
         self._id2token = None
 
-        self._ingest_stream(tokens_stream)
+        self._ingest_stream(tokens_stream)  # type: ignore
         # self._tf.update(data[t] for tokens in tokens_stream for t in tokens )
         return self
 
     def _ingest_stream(self, tokens_stream: Iterator[Iterator[str]]) -> None:
-        tf: defaultdict = self._tf
+        tf: defaultdict[int, int] = self._tf  # type: ignore
         data = self._data
 
         for d in tokens_stream:
@@ -171,13 +168,13 @@ class Token2Id(MutableMapping):
         return self._is_open
 
     @property
-    def fallback_token_id(self) -> int:
+    def fallback_token_id(self) -> int | None:
         return self._fallback_token_id
 
     @fallback_token_id.setter
-    def fallback_token_id(self, value: int) -> None:
+    def fallback_token_id(self, value: int | None) -> None:
         self._fallback_token_id = value
-        self.__getitem__ = self.__optimized__getitem__()
+        self.__getitem__ = self.__optimized__getitem__()  # type: ignore
 
     @property
     def fallback_token(self) -> str | None:
@@ -185,14 +182,14 @@ class Token2Id(MutableMapping):
             return None
         return self.id2token[self._fallback_token_id]
 
-    def close(self, fallback_id: int = None) -> "Token2Id":
+    def close(self, fallback_id: int | None = None) -> "Token2Id":
         if isinstance(self._data, defaultdict):
             self._data = dict(self._data)
         if isinstance(self._tf, defaultdict):
             self._tf = dict(self._tf)
         self._fallback_token_id = fallback_id if fallback_id is not None else self._fallback_token_id
         self._is_open = False
-        self.__getitem__ = self.__optimized__getitem__()
+        self.__getitem__ = self.__optimized__getitem__()  # type: ignore
         return self
 
     def open(self) -> "Token2Id":
@@ -203,14 +200,14 @@ class Token2Id(MutableMapping):
 
         self._id2token = None
         self._is_open = True
-        self.__getitem__ = self.__optimized__getitem__()
+        self.__getitem__ = self.__optimized__getitem__()  # type: ignore
         return self
 
-    def default(self, value: int) -> "Token2Id":
-        self._data.default_factory = lambda: value
-        self._is_open = False
-        self.__getitem__ = self.__optimized__getitem__()
-        return self
+    # def default(self, value: int) -> "Token2Id":
+    #     self._data.default_factory = lambda: value
+    #     self._is_open = False
+    #     self.__getitem__ = self.__optimized__getitem__()  # type: ignore
+    #     return self
 
     @property
     def id2token(self) -> dict:
@@ -293,7 +290,7 @@ class Token2Id(MutableMapping):
 
     # def compress(
     #     self, *, tf_threshold: int = 1, inplace=False, keeps: Container[Union[int, str]] = None
-    # ) -> tuple["Token2Id", Mapping[int, int]]:
+    # ) -> tuple["Token2Id", dict[int, int]]:
     #     """Returns a compressed version of corpus, with ID translation, where tokens below threshold are removed"""
 
     #     if tf_threshold <= 1:
@@ -313,7 +310,7 @@ class Token2Id(MutableMapping):
 
     #     """Create translation between old IDs and new IDs"""
 
-    #     translation: Mapping[int, int] = {
+    #     translation: dict[int, int] = {
     #         old_token_id: (new_token_id, v)
     #         for new_token_id, (old_token_id, v) in enumerate(
     #             (k, v) for (k, v) in tf.items() if (v >= tf_threshold or k in keeps)
@@ -362,7 +359,7 @@ class Token2Id(MutableMapping):
 
     #     return token2id
 
-    def translate(self, ids_translation: Mapping[int, int], inplace: bool = True) -> "Token2Id":
+    def translate(self, ids_translation: dict[int, int], inplace: bool = True) -> "Token2Id":
         """Translates ID in vocabulary according to mapping specified in `vocab_translation`
         Translation is a mapping from old ID to new ID.
         Old item IDs that don't exist in translation are filtered out.
@@ -377,7 +374,7 @@ class Token2Id(MutableMapping):
         if inplace:
             return self.replace(data=data, tf=tf)
 
-        token2id = Token2Id(data=data, tf=tf, fallback_token=self.fallback_token_id).sync_state(self.is_open)
+        token2id = Token2Id(data=data, tf=tf, fallback_token_id=self.fallback_token_id).sync_state(self.is_open)
 
         return token2id
 
@@ -389,24 +386,24 @@ class Token2Id(MutableMapping):
             self.close()
         return self
 
-    @staticmethod
-    def id2token_to_dataframe(id2token: dict | pd.DataFrame) -> pd.DataFrame:
-        """Convert id-to-word mapping `id2token` as a pandas DataFrane. Add DFS id exists."""
+    # @staticmethod
+    # def id2token_to_dataframe(id2token: dict | pd.DataFrame) -> pd.DataFrame:
+    #     """Convert id-to-word mapping `id2token` as a pandas DataFrane. Add DFS id exists."""
 
-        if isinstance(id2token, pd.DataFrame):
-            return id2token
+    #     if isinstance(id2token, pd.DataFrame):
+    #         return id2token
 
-        assert id2token is not None, 'id2token is empty'
+    #     assert id2token is not None, 'id2token is empty'
 
-        dfs = list(id2token.dfs.values()) or 0 if hasattr(id2token, 'dfs') else 0
+    #     dfs = list(id2token.dfs.values()) or 0 if hasattr(id2token, 'dfs') else 0
 
-        token_ids, tokens = list(zip(*id2token.items()))
+    #     token_ids, tokens = list(zip(*id2token.items()))
 
-        data: pd.DataFrame = pd.DataFrame({'token_id': token_ids, 'token': tokens, 'dfs': dfs}).set_index('token_id')[
-            ['token', 'dfs']
-        ]
+    #     data: pd.DataFrame = pd.DataFrame({'token_id': token_ids, 'token': tokens, 'dfs': dfs}).set_index('token_id')[
+    #         ['token', 'dfs']
+    #     ]
 
-        return data
+    #     return data
 
     @staticmethod
     def any_to_id2token(id2token: Any) -> dict:

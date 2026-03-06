@@ -1,11 +1,13 @@
 """Unit tests for CorpusLoader service."""
 
+import re
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
+from api_swedeb.core.configuration.inject import ConfigStore
 from api_swedeb.core.speech_text import SpeechTextRepository
 
 
@@ -178,7 +180,7 @@ class TestCorpusLoaderLazyLoading:
         # Now access document_index - should use corpus's index, not load separately
         result = loader.document_index
 
-        assert result == mock_index_df
+        assert result == mock_index_df  # type: ignore ; we are testing equality between mock objects - not dataframes
         mock_index.assert_not_called()
 
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
@@ -232,12 +234,12 @@ class TestCorpusLoaderLazyLoading:
         )
 
         # First access
-        result1 = loader.decoded_persons
-        assert result1 == mock_decoded
+        result1: pd.DataFrame = loader.decoded_persons
+        assert result1 == mock_decoded  # type: ignore ; we are testing equality between mock objects - not dataframes
 
         # Second access - should use cached value (not call decode again)
-        result2 = loader.decoded_persons
-        assert result2 == mock_decoded
+        result2: pd.DataFrame = loader.decoded_persons
+        assert result2 == mock_decoded  # type: ignore ; we are testing equality between mock objects - not dataframes
         assert mock_codecs.decode.call_count == 1  # Only called once
 
 
@@ -299,3 +301,38 @@ class TestCorpusLoaderCaching:
 
         # Load function should only be called once
         mock_codecs_instance.load.assert_called_once()
+
+class TestIntegrationFullCorpus:
+
+    def test_full_corpus_properties(self):
+        """Integration test to verify CorpusLoader with actual data files."""
+
+        ConfigStore.configure_context(source='config/dev_swedeb.yml')
+        loader = CorpusLoader(
+            dtm_tag="text",
+            dtm_folder="/data/swedeb/v1.4.1/dtm/text",
+            metadata_filename="/data/swedeb/metadata/riksprot_metadata.v1.1.3.db",
+            tagged_corpus_folder="/data/swedeb/v1.4.1/tagged_frames/**/prot-*.zip",
+        )
+        doc_index = loader.document_index
+        assert isinstance(doc_index, pd.DataFrame)
+        
+        # Access vectorized corpus
+        corpus = loader.vectorized_corpus
+        assert corpus is not None
+
+        # Access person codecs
+        codecs = loader.person_codecs
+        assert codecs is not None
+
+        # Access document index
+        doc_index = loader.document_index
+        assert isinstance(doc_index, pd.DataFrame)
+
+        # Access speech repository
+        repo = loader.repository
+        assert repo is not None
+
+        # Access decoded persons
+        decoded_persons = loader.decoded_persons
+        assert isinstance(decoded_persons, pd.DataFrame)

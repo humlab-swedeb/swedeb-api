@@ -131,7 +131,7 @@ class TestCorpusAttribs:
     def test_corpus_attribs_invalid_type_raises(self):
         """Test CorpusAttribs raises ValueError for invalid type."""
         with pytest.raises(ValueError, match="Invalid type"):
-            CorpusAttribs("invalid")
+            CorpusAttribs("invalid")  # type: ignore
 
     def test_corpus_attribs_positional_attributes(self):
         """Test positional_attributes filters p-Att."""

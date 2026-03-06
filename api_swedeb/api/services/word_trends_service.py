@@ -112,7 +112,7 @@ class WordTrendsService:
         )
         return speeches
 
-    def get_search_hits(self, search: str, n_hits: int) -> list[str]:
+    def get_search_hits(self, search: str, n_hits: int | None) -> list[str]:
         """Find matching vocabulary entries for autocomplete/suggestions."""
 
         vectorized_corpus = self._loader.vectorized_corpus

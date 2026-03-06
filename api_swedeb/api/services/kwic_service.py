@@ -3,8 +3,8 @@
 import ccc
 import pandas as pd
 
+from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.api.utils.common_params import CommonQueryParams
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.kwic import simple

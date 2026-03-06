@@ -311,7 +311,7 @@ def dotcoalesce(d: dict, *paths: str, default: Any = None) -> Any:
     return default
 
 
-def list_of_dicts_to_dict_of_lists(dl: list[dict[str, Any]]) -> dict[str, list[Any]]:
+def list_of_dicts_to_dict_of_lists(dl: list[dict[str, Any]]) -> dict[str, tuple[Any, ...]]:
     dict_of_lists = dict(zip(dl[0], zip(*[d.values() for d in dl])))
     return dict_of_lists
 
@@ -791,7 +791,7 @@ class CommaStr(str):
 
     def __or__(self, x: str | CommaStr) -> CommaStr:
         parts: list[str] = self.split(',')
-        parts.extend(part for part in x.parts() if part not in parts)
+        parts.extend(part for part in x.parts() if part not in parts)  # type: ignore ; FIXME: can be a bug
         return self.__class__(','.join(parts))
 
     def parts(self) -> list[str]:

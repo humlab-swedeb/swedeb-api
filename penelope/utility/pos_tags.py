@@ -206,7 +206,7 @@ PD_PennTree_O5_PoS_tags = (
 class PoS_Tag_Scheme:
     def __init__(self, df: pd.DataFrame) -> None:
         self.PD_PoS_tags: pd.DataFrame = df
-        self.PD_PoS_groups: pd.DataFrame = df.groupby('tag_group_name')['tag'].agg(list)
+        self.PD_PoS_groups: pd.DataFrame | pd.Series = df.groupby('tag_group_name')['tag'].agg(list)
         self.pos_to_id: dict = df['pos_id'].to_dict()
         self.id_to_pos: dict = {v: k for k, v in self.pos_to_id.items()}
         self.groups: Dict[str, List[str]] = self.PD_PoS_groups.to_dict()
@@ -234,12 +234,12 @@ class PoS_Tag_Scheme:
         if isinstance(excludes, str):
             excludes = [excludes]
 
-        excludes = set(collapse(map(self.unwrap, excludes)))
+        excludes = set(collapse(map(self.unwrap, excludes)))  # type: ignore
 
         return [x for x in _all_tags if x not in excludes]
 
     def all_types_except(self, tags: Union[str, Container[str]] | None = None) -> List[str]:
-        return self.exclude([tags, self.Delimiter])
+        return self.exclude([tags, self.Delimiter])  # type: ignore
 
     @property
     def Pronoun(self) -> List[str]:
@@ -299,7 +299,7 @@ class PoS_Tag_Scheme:
             tag_counts[PoS] += 1
 
         """Convert to strings if PoS-sequence is integers"""
-        if np.issubdtype(PoS_sequence.dtype, np.integer):
+        if np.issubdtype(PoS_sequence.dtype, np.integer):  # type: ignore
             ig = self.id_to_pos.get
             tag_counts = {ig(k, 'XYZ'): v for k, v in tag_counts.items()}
 
@@ -308,7 +308,7 @@ class PoS_Tag_Scheme:
         tg = self.tag_to_group.get
         n_tokens: int = 0
         for k, v in tag_counts.items():
-            group_name: str = tg(k)
+            group_name: str = tg(k)  # type: ignore
             if group_name:
                 group_counts[group_name] += v
             else:
@@ -341,7 +341,7 @@ Known_PoS_Tag_Schemes = asdict(PoS_TAGS_SCHEMES)
 
 
 def get_pos_schema(name: str) -> PoS_Tag_Scheme:
-    return Known_PoS_Tag_Schemes.get(name, None)
+    return Known_PoS_Tag_Schemes.get(name, None)  # type: ignore
 
 
 def pos_tags_to_str(tags: List[str]) -> str:

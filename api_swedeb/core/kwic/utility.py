@@ -16,6 +16,25 @@ def empty_kwic(p_show: str) -> pd.DataFrame:
     )
 
 
+def normalize_kwic_df(
+    df: pd.DataFrame, lexical_form: str, target_suffix: str = "_word", make_copy: bool = False
+) -> pd.DataFrame:
+    """Normalize KWIC DataFrame column names."""
+
+    if lexical_form not in ("word", "lemma"):
+        raise ValueError('attr must be "word" or "lemma"')
+
+    # lexical_form is "lemma" or "word"
+    mapping: dict[str, str] = {
+        f"left_{lexical_form}": f"left{target_suffix}",
+        f"node_{lexical_form}": f"node{target_suffix}",
+        f"right_{lexical_form}": f"right{target_suffix}",
+    }
+    out: pd.DataFrame = df.rename(columns=mapping)
+    # out["token_attr"] = lexical_form
+    return out.copy() if make_copy else out
+
+
 def extract_year_range(
     opts: dict[str, Any] | list[dict[str, Any]], default_min: int, default_max: int
 ) -> tuple[int, int]:

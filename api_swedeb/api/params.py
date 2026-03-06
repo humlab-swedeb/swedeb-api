@@ -1,3 +1,5 @@
+"""Query parameter classes for FastAPI endpoints."""
+
 from typing import List, Self
 
 import fastapi.params
