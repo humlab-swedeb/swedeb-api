@@ -7,6 +7,7 @@ import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
+from api_swedeb.core.configuration.inject import ConfigStore
 from api_swedeb.core.speech_text import SpeechTextRepository
 
 
@@ -300,3 +301,38 @@ class TestCorpusLoaderCaching:
 
         # Load function should only be called once
         mock_codecs_instance.load.assert_called_once()
+
+class TestIntegrationFullCorpus:
+
+    def test_full_corpus_properties(self):
+        """Integration test to verify CorpusLoader with actual data files."""
+
+        ConfigStore.configure_context(source='config/dev_swedeb.yml')
+        loader = CorpusLoader(
+            dtm_tag="text",
+            dtm_folder="/data/swedeb/v1.4.1/dtm/text",
+            metadata_filename="/data/swedeb/metadata/riksprot_metadata.v1.1.3.db",
+            tagged_corpus_folder="/data/swedeb/v1.4.1/tagged_frames/**/prot-*.zip",
+        )
+        doc_index = loader.document_index
+        assert isinstance(doc_index, pd.DataFrame)
+        
+        # Access vectorized corpus
+        corpus = loader.vectorized_corpus
+        assert corpus is not None
+
+        # Access person codecs
+        codecs = loader.person_codecs
+        assert codecs is not None
+
+        # Access document index
+        doc_index = loader.document_index
+        assert isinstance(doc_index, pd.DataFrame)
+
+        # Access speech repository
+        repo = loader.repository
+        assert repo is not None
+
+        # Access decoded persons
+        decoded_persons = loader.decoded_persons
+        assert isinstance(decoded_persons, pd.DataFrame)
