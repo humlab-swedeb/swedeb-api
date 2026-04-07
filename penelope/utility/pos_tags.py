@@ -299,7 +299,7 @@ class PoS_Tag_Scheme:
             tag_counts[PoS] += 1
 
         """Convert to strings if PoS-sequence is integers"""
-        if np.issubdtype(PoS_sequence.dtype, np.integer):  # type: ignore
+        if pd.api.types.is_integer_dtype(PoS_sequence.dtype):
             ig = self.id_to_pos.get
             tag_counts = {ig(k, 'XYZ'): v for k, v in tag_counts.items()}
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sqlite3
+from collections import defaultdict
+from collections.abc import Generator, Iterable
 from functools import cached_property
 
 import numpy as np
@@ -21,7 +23,10 @@ class SpeechTextService:
 
     def __init__(self, document_index: pd.DataFrame):
         self.speech_index: pd.DataFrame = document_index
-        self.speech_index["protocol_name"] = self.speech_index["document_name"].str.split("_").str[0]
+        # Pandas + pyarrow may produce list<item: string>[pyarrow] after split,
+        # which does not support chained `.str[...]` access consistently.
+        document_names = self.speech_index["document_name"].astype("string[python]")
+        self.speech_index["protocol_name"] = document_names.str.split("_").str[0]
         self.speech_index.rename(columns={"speach_index": "speech_index"}, inplace=True, errors="ignore")
 
         """Name of speaker note reference was changed from v0.4.3 (speaker_hash => speaker_note_id)"""
@@ -95,7 +100,7 @@ class SpeechTextRepository:
 
     @cached_property
     def speech_id2id(self) -> dict[str, int]:
-        return self.document_index.reset_index().set_index("speech_id")["document_id"].to_dict()
+        return self.document_index.reset_index().set_index("speech_id")["document_id"].to_dict()  # type: ignore
 
     # def load_protocol(self, protocol_name: str) -> tuple[dict, list[dict]]:
     #     return self.source.load(protocol_name)
@@ -156,25 +161,16 @@ class SpeechTextRepository:
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
 
-    def speech(self, speech_name: str) -> Speech:
+    def _build_speech(self, speech_name: str, metadata: dict, utterances: list[dict]) -> Speech:
+        """Build a Speech from pre-loaded protocol data (avoids reopening the ZIP)."""
+        protocol_name: str = speech_name.split("_")[0]
+        speech_nr: int = int(speech_name.split("_")[1])
         try:
-            """Load speech data from speech corpus"""
-            if not speech_name.startswith("prot-"):
-                key_index: int = self.get_key_index(speech_name)
-                document_item: dict = self.document_index.loc[key_index].to_dict()
-                speech_name = document_item["document_name"]
-
-            protocol_name: str = speech_name.split("_")[0]
-            speech_nr: int = int(speech_name.split("_")[1])
-
-            metadata, utterances = self.source.load(protocol_name)
             speech: dict = self.service.nth(metadata=metadata, utterances=utterances, n=speech_nr - 1)
-
             speech_info: dict = self.get_speech_info(speech_name)
             speech.update(**speech_info)
             speech.update(protocol_name=protocol_name)
             speech.update(page_number=speech.get("page_number", 1) if utterances else None)
-
             speech["office_type"] = self.person_codecs.get_mapping("office_type_id", "office").get(
                 speech["office_type_id"], "Okänt"
             )
@@ -188,13 +184,48 @@ class SpeechTextRepository:
             speech["party_abbrev"] = self.person_codecs.get_mapping("party_id", "party_abbrev").get(
                 speech["party_id"], "Okänt"
             )
-
-        except FileNotFoundError as ex:
-            speech = {"name": f"speech {speech_name} not found", "error": str(ex)}
         except Exception as ex:  # pylint: disable=broad-except
             speech = {"name": f"speech {speech_name}", "error": str(ex)}
-
         return Speech(speech)
+
+    def speech(self, speech_name: str) -> Speech:
+        """Load a single speech by name or id."""
+        try:
+            if not speech_name.startswith("prot-"):
+                key_index: int = self.get_key_index(speech_name)
+                speech_name = str(self.document_index.loc[key_index, "document_name"])
+            protocol_name: str = speech_name.split("_")[0]
+            metadata, utterances = self.source.load(protocol_name)
+        except FileNotFoundError as ex:
+            return Speech({"name": f"speech {speech_name} not found", "error": str(ex)})
+        except Exception as ex:  # pylint: disable=broad-except
+            return Speech({"name": f"speech {speech_name}", "error": str(ex)})
+        return self._build_speech(speech_name, metadata, utterances)
+
+    def speeches_batch(self, document_ids: Iterable[int]) -> Generator[tuple[int, Speech], None, None]:
+        """Yield (document_id, Speech) pairs, opening each protocol ZIP at most once.
+
+        Speeches are grouped by protocol so that a ZIP containing multiple requested
+        speeches is only opened and parsed once.
+        """
+        by_protocol: dict[str, list[tuple[int, str]]] = defaultdict(list)
+
+        for doc_id in document_ids:
+            try:
+                doc_name: str = str(self.document_index.loc[int(doc_id), "document_name"])
+                by_protocol[doc_name.split("_")[0]].append((int(doc_id), doc_name))
+            except KeyError:
+                yield doc_id, Speech({"name": f"speech {doc_id} not found", "error": "not in index"})
+
+        for protocol_name, id_name_pairs in by_protocol.items():
+            try:
+                metadata, utterances = self.source.load(protocol_name)
+            except FileNotFoundError as ex:
+                for doc_id, doc_name in id_name_pairs:
+                    yield doc_id, Speech({"name": f"speech {doc_name} not found", "error": str(ex)})
+                continue
+            for doc_id, doc_name in id_name_pairs:
+                yield doc_id, self._build_speech(doc_name, metadata, utterances)
 
     def to_text(self, speech: dict) -> str:
         paragraphs: list[str] = speech.get("paragraphs", [])

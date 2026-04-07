@@ -526,21 +526,23 @@ def is_strictly_increasing(
     if len(series) == 0:
         return True
 
-    if not np.issubdtype(series.dtype, np.integer):  # type: ignore
+    if not pd.api.types.is_integer_dtype(series.dtype):
         return False
 
     if sort_values:
         series = series.sort_values()
 
+    values = series.to_numpy(dtype=np.int64, copy=False)
+
     if start_value is not None:
-        if series[0] != start_value:
+        if values[0] != start_value:
             return False
 
     if not series.is_monotonic_increasing:
         return False
 
     if by_value is not None:
-        if not np.all((series[1:].values - series[:-1].values) == by_value):  # type: ignore
+        if not np.all(np.diff(values) == by_value):
             return False
 
     return True

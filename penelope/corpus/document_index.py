@@ -240,8 +240,8 @@ class DocumentIndexHelper:
         elif isinstance(index_values, str) and index_values == 'fill_gaps':
             # Create a strictly increasing index (fills gaps, index must be of integer type)
 
-            if not np.issubdtype(document_index.dtype, np.integer):  # type: ignore
-                raise DocumentIndexError(f"expected index of type int, found {type(document_index.dtype)}")
+            if not pd.api.types.is_integer_dtype(document_index.index.dtype):
+                raise DocumentIndexError(f"expected index of type int, found {document_index.index.dtype}")
 
             index_values = np.arange(document_index.index.min(), document_index.index.max() + 1, 1)
 
