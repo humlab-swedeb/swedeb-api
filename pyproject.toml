@@ -195,7 +195,7 @@ warn_return_any = false
 # pytest
 # --------------------
 [tool.pytest.ini_options]
-addopts = "-q -ra --strict-markers"
+addopts = "-q -ra --strict-markers --durations=0 --durations-min=0.05"
 # addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::DeprecationWarning"
 testpaths = ["tests"]
 # python_classes = "Test*"
