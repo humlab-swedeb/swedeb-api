@@ -122,10 +122,20 @@ def load_speech_index(folder: str, tag: str, write_feather: bool = True) -> pd.D
 
 
 @time_call
-def load_dtm_corpus(folder: str, tag: str) -> VectorizedCorpus:
-    """Load DTM corpus"""
+def load_dtm_corpus(folder: str, tag: str, prepped_document_index: pd.DataFrame | None = None) -> VectorizedCorpus:
+    """Load DTM corpus.
+
+    Args:
+        folder: Folder containing DTM files
+        tag: Tag for the corpus
+        prepped_document_index: Optional pre-loaded and pre-slimmed document index.
+                               If provided, replaces corpus.document_index to avoid re-processing.
+    """
     corpus: VectorizedCorpus = VectorizedCorpus.load(folder=folder, tag=tag)  # type: ignore
-    slim_speech_index(corpus.document_index)
+    if prepped_document_index is not None:
+        corpus.document_index = prepped_document_index
+    else:
+        slim_speech_index(corpus.document_index)
     return corpus
 
 

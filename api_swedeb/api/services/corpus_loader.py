@@ -60,9 +60,12 @@ class CorpusLoader:
         self.metadata_filename: str = metadata_filename or ConfigValue("metadata.filename").resolve()
         self.tagged_corpus_folder: str = tagged_corpus_folder or ConfigValue("vrt.folder").resolve()
 
+        # Cache for sharing pre-loaded document index between lazy-loaded resources
+        self._cached_document_index: pd.DataFrame | None = None
+
         # Lazy-loaded resources
         self.__lazy_vectorized_corpus: Lazy[IVectorizedCorpus] = Lazy[IVectorizedCorpus](
-            lambda: load_dtm_corpus(folder=self.dtm_folder, tag=self.dtm_tag)
+            self._load_vectorized_corpus
         )
         self.__lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy[md.PersonCodecs](
             lambda: md.PersonCodecs().load(source=self.metadata_filename),
@@ -75,7 +78,24 @@ class CorpusLoader:
             )
         )
         self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](
-            lambda: load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
+            self._load_document_index
+        )
+
+    def _load_document_index(self) -> pd.DataFrame:
+        """Load and cache the document index."""
+        self._cached_document_index = load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
+        return self._cached_document_index
+
+    def _load_vectorized_corpus(self) -> IVectorizedCorpus:
+        """Load vectorized corpus, reusing cached document_index if already loaded.
+
+        This optimization avoids redundant index slimming when document_index
+        is accessed before vectorized_corpus.
+        """
+        return load_dtm_corpus(
+            folder=self.dtm_folder,
+            tag=self.dtm_tag,
+            prepped_document_index=self._cached_document_index,
         )
 
     @property
@@ -89,10 +109,13 @@ class CorpusLoader:
         Get the document index.
 
         Returns the index from the vectorized corpus if loaded,
+        otherwise returns cached instance if loaded separately,
         otherwise loads it separately for better performance.
         """
         if self.__lazy_vectorized_corpus.is_initialized:  # pylint: disable=using-constant-test
             return self.vectorized_corpus.document_index
+        if self._cached_document_index is not None:
+            return self._cached_document_index
         return self.__lazy_document_index.value
 
     @property
