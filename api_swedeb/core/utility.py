@@ -265,7 +265,10 @@ def download_url_to_file(url: str, target_name: str, force: bool = False) -> Non
 
 def probe_filename(filename: list[str], exts: list[str] | None = None) -> str | None:
     """Probes existence of filename with any of given extensions in folder"""
-    probe_names: set[str] = {filename} | {replace_extension(f, ext) for f in filename for ext in (exts or [])}  # type: ignore
+    if not isinstance(filename, list):
+        filename = [filename]
+
+    probe_names: set[str] = set(filename) | {replace_extension(f, ext) for f in filename for ext in (exts or [])}
     for probe_name in probe_names:
         if probe_name and os.path.isfile(probe_name):
             return probe_name
