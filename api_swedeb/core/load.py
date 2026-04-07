@@ -133,7 +133,7 @@ def load_dtm_corpus(folder: str, tag: str, prepped_document_index: pd.DataFrame 
     """
     corpus: VectorizedCorpus = VectorizedCorpus.load(folder=folder, tag=tag)  # type: ignore
     if prepped_document_index is not None:
-        corpus.document_index = prepped_document_index
+        corpus.replace_document_index(prepped_document_index)
     else:
         slim_speech_index(corpus.document_index)
     return corpus
