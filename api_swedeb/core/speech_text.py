@@ -91,7 +91,7 @@ class SpeechTextRepository:
 
     @cached_property
     def document_name2id(self) -> dict[str, int]:
-        return self.document_index.reset_index().set_index("document_name")["document_id"].to_dict()
+        return self.document_index.reset_index().set_index("document_name")["document_id"].to_dict()  # type: ignore
 
     @cached_property
     def speech_id2id(self) -> dict[str, int]:

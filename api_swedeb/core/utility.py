@@ -247,7 +247,7 @@ def group_to_list_of_records(
     if ctor is not None:
         key_rows["data"] = key_rows["data"].apply(lambda x: ctor(**x))
 
-    return key_rows.groupby(key)["data"].apply(list).to_dict()
+    return key_rows.groupby(key)["data"].apply(list).to_dict()  # type: ignore
 
 
 def download_url_to_file(url: str, target_name: str, force: bool = False) -> None:
