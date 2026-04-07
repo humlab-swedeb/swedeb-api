@@ -300,8 +300,10 @@ class GroupByMixIn:
         def _document_index_aggregates(df: pd.DataFrame, grouping_keys: List[str]) -> dict:
             """Creates an aggregate dict to be used in groupby."""
 
+            document_id_column = '_document_id_np' if '_document_id_np' in df.columns else 'document_id'
+
             """Add for group's document ids"""
-            aggs: dict = {'document_ids': ('document_id', list)}
+            aggs: dict = {'document_ids': (document_id_column, list)}
 
             """Sum up all available count columns"""
             for count_column in {'n_tokens', 'n_raw_tokens', 'tokens'}.intersection(set(df.columns)):
@@ -313,7 +315,7 @@ class GroupByMixIn:
 
             """Add counter for number of documents in each group"""
             if 'n_documents' not in df.columns:
-                aggs.update(n_documents=('document_id', 'nunique'))
+                aggs.update(n_documents=(document_id_column, 'nunique'))
             else:
                 aggs.update(n_documents=('n_documents', 'sum'))
 
@@ -324,6 +326,12 @@ class GroupByMixIn:
 
         di: pd.DataFrame = self.document_index
         fdi: pd.DataFrame = di if not pivot_keys or len(filter_opts or []) == 0 else di[filter_opts.mask(di)]
+
+        # Pandas with pyarrow backend may fail casting list aggregation results back
+        # to the original Arrow integer dtype; aggregate from a NumPy-backed helper.
+        if 'document_id' in fdi.columns:
+            fdi = fdi.copy()
+            fdi['_document_id_np'] = pd.Series(fdi['document_id'].to_numpy(dtype=np.int64, copy=False), index=fdi.index)
 
         if temporal_key not in fdi.columns:
             fdi[temporal_key] = fdi['year'].apply(create_temporal_key_categorizer(temporal_key))
