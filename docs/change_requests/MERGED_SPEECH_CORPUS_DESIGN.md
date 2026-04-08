@@ -77,7 +77,7 @@ The existing corpus files
 │       │   │   ├── ...individual VRT files...                      #   VRT files (one file per record file)
 │       │   │   ├── document_index.feather                          #   VRT document index 
 │       │   │   └── token2id.feather
-│       │   ├── text_speeches_base.zip                              # Speech text corpus (one file per speech)
+│       │   ├── 'text_speeches_base.zip'                              # Speech text corpus (one file per speech)
 │       ├── speech-index.csv.gz                                     # Speech index
 │       ├── speech-index.feather                                    #   Speech index (feather format)
 │       └── tagged_frames                                           # Tagged corpus (uuterance level)
