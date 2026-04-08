@@ -110,6 +110,17 @@ Target outcomes:
 
 ## Phase 2: Corpus Builder and Disk Artifacts
 
+### Critical Constraint: Feather Filename Naming
+
+The output Feather file for each protocol **must** use the basename of the source ZIP file, not any filename that may appear in metadata.json. The two may differ; the ZIP basename is authoritative.
+
+Example:
+- Source ZIP: `tagged_frames/1867/prot-1867--ak--0001.zip`
+- Output Feather: `bootstrap_corpus/1867/prot-1867--ak--0001.feather`
+- Derive with: `Path(zip_path).stem + ".feather"`
+
+The manifest should record the ZIP→Feather mapping for audit.
+
 ### Tasks
 
 1. Implement offline builder workflow
@@ -117,6 +128,7 @@ Target outcomes:
 - Iterate tagged_frames ZIP files.
 - Produce per-protocol Feather outputs in:
   - data/v{corpus_version}/speeches/bootstrap_corpus/{year}/prot-*.feather
+- Derive Feather filename from ZIP basename (`Path(zip_path).stem + ".feather"`), not from metadata.json.
 
 2. Build lookup files
 - speech_index.feather: one row per speech with retrieval and metadata columns.
@@ -355,30 +367,33 @@ Target outcomes:
 
 ### Phase 2: Corpus Builder and Disk Artifacts
 
-- [ ] Create api_swedeb/workflows/build_speech_corpus.py module
-- [ ] Implement protocol iterator from tagged_frames folder
-- [ ] Implement per-protocol ZIP loader
-- [ ] Integrate speech_merge.py into protocol processing
-- [ ] Implement Feather writer for per-protocol speech rows
-- [ ] Create directory structure: data/v{version}/speeches/bootstrap_corpus/{year}/
-- [ ] Implement speech_index.feather builder (one row per speech)
-- [ ] Implement speech_lookup.feather builder (key-to-file mapping)
-- [ ] Implement manifest.json writer with:
-  - [ ] corpus_version
-  - [ ] metadata_version
-  - [ ] schema_version
-  - [ ] build_timestamp
-  - [ ] row counts
-  - [ ] source paths
-  - [ ] checksums
-- [ ] Implement multiprocessing for parallel protocol processing
-- [ ] Implement failure tracking and build report generation
-- [ ] Add make target: make build-speech-corpus
-- [ ] Test on sample-data corpus or small subset
-- [ ] Verify all protocol ZIPs processed
-- [ ] Verify output directory structure matches design
-- [ ] Verify manifest integrity
-- [ ] Generate builder report with success/failure summary
+**Naming rule**: Feather filename = ZIP basename with `.feather` extension. Do NOT use the filename from metadata.json — it may differ from the actual ZIP filename.
+
+- [x] Create api_swedeb/workflows/build_speech_corpus.py module
+- [x] Implement protocol iterator from tagged_frames folder
+- [x] Implement per-protocol ZIP loader
+- [x] Derive Feather output filename from ZIP basename (not metadata.json)
+- [x] Integrate speech_merge.py into protocol processing
+- [x] Implement Feather writer for per-protocol speech rows
+- [x] Create directory structure: data/v{version}/speeches/bootstrap_corpus/{year}/
+- [x] Implement speech_index.feather builder (one row per speech)
+- [x] Implement speech_lookup.feather builder (key-to-file mapping)
+- [x] Implement manifest.json writer with:
+  - [x] corpus_version
+  - [x] metadata_version
+  - [x] schema_version
+  - [x] build_timestamp
+  - [x] row counts
+  - [x] source paths
+  - [x] checksums
+- [x] Implement multiprocessing for parallel protocol processing
+- [x] Implement failure tracking and build report generation
+- [x] Add make target: make build-speech-corpus
+- [x] Test on sample-data corpus or small subset (5files: 4/5 ok, 10files: 9/9 ok with --num-processes 2)
+- [x] Verify all protocol ZIPs processed
+- [x] Verify output directory structure matches design
+- [x] Verify manifest integrity
+- [x] Generate builder report with success/failure summary
 
 **Acceptance**: Complete bootstrap_corpus artifacts generated, build report clean.
 
