@@ -1,3 +1,4 @@
+from pathlib import Path
 import sqlite3
 import sys
 
@@ -23,14 +24,31 @@ logger.remove()
 logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 
-@pytest.fixture(scope='module')
-def corpus() -> ccc.Corpus:
-    # Use shared data_dir for better performance and disk efficiency.
-    # CWB-CCC creates corpus-specific subdirectories, so multiple processes can safely share.
-    data_dir: str = '/tmp/ccc-swedeb-test'
+@pytest.fixture(scope='session')
+def corpus(tmp_path_factory):
+    # # Use shared data_dir for better performance and disk efficiency.
+    # # CWB-CCC creates corpus-specific subdirectories, so multiple processes can safely share.
+    # data_dir: str = '/tmp/ccc-swedeb-test'
+    # corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
+    # registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
+    # return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)
+
+    # Creates a unique temp dir for this test module run
+    data_dir: Path = tmp_path_factory.mktemp("ccc-swedeb-test")
+
     corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
     registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
-    return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)
+
+    corpus = ccc.Corpora(
+        registry_dir=registry_dir
+    ).corpus(
+        corpus_name=corpus_name,
+        data_dir=str(data_dir),
+    )
+
+    yield corpus
+
+    # shutil.rmtree(data_dir, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")

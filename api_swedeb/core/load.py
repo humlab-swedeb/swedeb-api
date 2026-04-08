@@ -11,40 +11,29 @@ from penelope.corpus import VectorizedCorpus
 
 from .utility import time_call
 
-USED_COLUMNS: list[str] = [
-    'document_id',
-    'document_name',
-    'speech_id',  # u_id
-    'speech_index',
-    'speech_name',
-    'year',
-    'chamber_abbrev',
-    'person_id',  # who
-    'gender_id',
-    'party_id',
-    'speaker_note_id',
-    'office_type_id',
-    'sub_office_type_id',
-    'n_utterances',
-    'n_tokens',
-    'n_raw_tokens',
-    'page_number',
-    # 'protocol_name', missing?
-]
-SKIP_COLUMNS = [
-    'filename',
-    'Adjective',
-    'Adverb',
-    'Conjunction',
-    'Delimiter',
-    'Noun',
-    'Numeral',
-    'Other',
-    'Preposition',
-    'Pronoun',
-    'Verb',
+RENAME_COLUMNS: dict[str, str] = {'who': 'person_id', 'u_id': 'speech_id'}
+
+FEATHER_COLUMNS: list[str] = [
+    "document_id",
+    "document_name",
+    "u_id",
+    "speech_index",
+    "speech_name",
+    "year",
+    "chamber_abbrev",
+    "who",
+    "gender_id",
+    "party_id",
+    "speaker_note_id",
+    "office_type_id",
+    "sub_office_type_id",
+    "n_utterances",
+    "n_tokens",
+    "n_raw_tokens",
+    "page_number",
 ]
 
+PREPPED_FEATHER_COLUMNS: list[str] = [ RENAME_COLUMNS.get(col, col) for col in FEATHER_COLUMNS ]
 
 SPEECH_INDEX_DTYPES = {
     # 'document_name': object,          # object
@@ -68,16 +57,22 @@ SPEECH_INDEX_DTYPES = {
 
 
 def slim_speech_index(speech_index: pd.DataFrame) -> pd.DataFrame:
-    speech_index.rename(columns={'who': 'person_id', 'u_id': 'speech_id'}, inplace=True)
-    speech_index = speech_index[USED_COLUMNS].astype(SPEECH_INDEX_DTYPES)  # type: ignore
+    speech_index = speech_index.rename(columns={'who': 'person_id', 'u_id': 'speech_id'})
+    speech_index = speech_index[PREPPED_FEATHER_COLUMNS]
+    speech_index = speech_index.astype(SPEECH_INDEX_DTYPES)
     return speech_index
 
 
 def _to_feather(df: pd.DataFrame, filename: str) -> None:
-    try:
-        df.to_feather(filename)
-    except Exception as ex:  # pylint: disable=broad-except
-        logger.error(f"Failed to write feather file: {ex}")
+    df.to_feather(filename, version=2, compression="lz4")
+
+
+def _load_feather(filename: str, columns: list[str]) -> pd.DataFrame:
+    return pd.read_feather(
+        filename,
+        columns=columns,
+        dtype_backend="pyarrow",
+    )
 
 
 def _memory_usage(document_index: pd.DataFrame) -> float:
@@ -93,22 +88,23 @@ def is_invalidated(source_path: str, target_path: str) -> bool:
 
 @time_call
 def load_speech_index(folder: str, tag: str, write_feather: bool = True) -> pd.DataFrame:
+    """Load speech index dataframe."""
     document_index: pd.DataFrame | None = None
 
-    prepped_feather_path: str = join(folder, f"{tag}_document_index.prepped.feather")
-    feather_path: str = join(folder, f"{tag}_document_index.feather")
     csv_path: str = join(folder, f"{tag}_document_index.csv.gz")
+    feather_path: str = join(folder, f"{tag}_document_index.feather")
+    prepped_feather_path: str = join(folder, f"{tag}_document_index.prepped.feather")
 
     if not is_invalidated(feather_path, prepped_feather_path):
-        document_index = pd.read_feather(prepped_feather_path)
+        document_index = _load_feather(prepped_feather_path, PREPPED_FEATHER_COLUMNS)
 
     elif not is_invalidated(csv_path, feather_path):
-        document_index = slim_speech_index(pd.read_feather(feather_path))
+        document_index = slim_speech_index(_load_feather(feather_path, FEATHER_COLUMNS))
         if write_feather:
             _to_feather(document_index, prepped_feather_path)
 
     elif isfile(csv_path):
-        document_index = pd.read_csv(join(folder, csv_path), sep=';', compression="gzip", index_col=0)
+        document_index = pd.read_csv(csv_path, sep=';', compression="gzip", index_col=0)
         if write_feather:
             _to_feather(document_index, feather_path)
         document_index = slim_speech_index(document_index)
