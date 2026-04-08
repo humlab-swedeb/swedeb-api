@@ -4,7 +4,7 @@ import re
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-
+import pyarrow.feather as feather
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigStore
@@ -303,6 +303,26 @@ class TestCorpusLoaderCaching:
         mock_codecs_instance.load.assert_called_once()
 
 class TestIntegrationFullCorpus:
+
+    # def test_document_index_load_time(self):
+    #     import time
+
+    #     path: str = "/data/swedeb/v1.4.1/dtm/text/text_document_index.feather"
+    #     t0 = time.perf_counter()
+    #     df1 = pd.read_feather(path)
+    #     print("pandas default:", time.perf_counter() - t0)
+
+    #     t0 = time.perf_counter()
+    #     df2 = pd.read_feather(path, dtype_backend="pyarrow")
+    #     print("pandas pyarrow backend:", time.perf_counter() - t0)
+
+    #     t0 = time.perf_counter()
+    #     tbl = feather.read_table(path, memory_map=True, use_threads=True)
+    #     print("arrow table:", time.perf_counter() - t0)
+
+    #     t0 = time.perf_counter()
+    #     df3 = feather.read_feather(path, memory_map=True, use_threads=True)
+    #     print("pyarrow -> pandas:", time.perf_counter() - t0)
 
     def test_full_corpus_properties(self):
         """Integration test to verify CorpusLoader with actual data files."""
