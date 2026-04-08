@@ -1,0 +1,5117 @@
+{
+  "meta": {
+    "seed": 42,
+    "generated_utc": "2026-04-08T13:19:47.940461+00:00",
+    "source_rows": 997606
+  },
+  "random_cross_year_chamber": [
+    {
+      "document_id": 511,
+      "document_name": "prot-1867--ak--0227_005",
+      "speech_id": "i-TenzJVgV4eGHvuEu4fYLky",
+      "year": 1867,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 51,
+      "document_name": "prot-1867--ak--0122_022",
+      "speech_id": "i-5Pnv4zu62dKvp7wJx5vD44",
+      "year": 1867,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 1171,
+      "document_name": "prot-1867--ak--0318_026",
+      "speech_id": "i-4Uepqqu4ooV68oHfPkZ1wx",
+      "year": 1867,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 3864,
+      "document_name": "prot-1867--fk--0302_025",
+      "speech_id": "i-U9FBhwfKeV34XnaWiVAS7G",
+      "year": 1867,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 3653,
+      "document_name": "prot-1867--fk--0213_001",
+      "speech_id": "i-P2mitVeY9UwmvdeMnM4ynK",
+      "year": 1867,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 5128,
+      "document_name": "prot-1867--fk--0416_074",
+      "speech_id": "i-SyckjNYz4vVDZrHEFQbygj",
+      "year": 1867,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 6931,
+      "document_name": "prot-1868--ak--0313_029",
+      "speech_id": "i-2njKoaTLY2YcSD662us1Tw",
+      "year": 1868,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 6352,
+      "document_name": "prot-1868--ak--0303_001",
+      "speech_id": "i-PrxpPpCHoFCDKEu6E5KJPX",
+      "year": 1868,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 6850,
+      "document_name": "prot-1868--ak--0311_063",
+      "speech_id": "i-2LyERLHC7JCRvmmPFM8NZe",
+      "year": 1868,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 9195,
+      "document_name": "prot-1868--fk--0313_048",
+      "speech_id": "i-4Fp2sQMm1reUg1xJ1Xo1ca",
+      "year": 1868,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 8976,
+      "document_name": "prot-1868--fk--0310_018",
+      "speech_id": "i-AjdW5M3PAHUdVB2Xzuzmc6",
+      "year": 1868,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 9945,
+      "document_name": "prot-1868--fk--0506_057",
+      "speech_id": "i-GRBBY7RC98szJ4GdshGWs5",
+      "year": 1868,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 11473,
+      "document_name": "prot-1869--ak--0410_009",
+      "speech_id": "i-RpccJnPVfThtpKbZWNquJY",
+      "year": 1869,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 12156,
+      "document_name": "prot-1869--ak--0430_031",
+      "speech_id": "i-T5qN3XaY2TNCwmeH4kqbYC",
+      "year": 1869,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 11687,
+      "document_name": "prot-1869--ak--0417_088",
+      "speech_id": "i-DaMtjGZCZRaetg3LLwa6W6",
+      "year": 1869,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 13315,
+      "document_name": "prot-1869--fk--0311_060",
+      "speech_id": "i-7gDPztx3sgPwhLQabft7j1",
+      "year": 1869,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 14014,
+      "document_name": "prot-1869--fk--0417_075",
+      "speech_id": "i-XMsRRYHNid4qxMB1mi6n1i",
+      "year": 1869,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 14581,
+      "document_name": "prot-1869--fk--0508_001",
+      "speech_id": "i-EVq4ajQcVzdR834rpRSfXf",
+      "year": 1869,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 15263,
+      "document_name": "prot-1870--ak--0312_029",
+      "speech_id": "i-YN1E3LFdNbjmwiwpPgajEg",
+      "year": 1870,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 16189,
+      "document_name": "prot-1870--ak--0421_036",
+      "speech_id": "i-NbD2wkyzAn4xWNHrUELcRd",
+      "year": 1870,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 15116,
+      "document_name": "prot-1870--ak--0307_014",
+      "speech_id": "i-3qJBhayeFu9eVVqUtBUnX6",
+      "year": 1870,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 17388,
+      "document_name": "prot-1870--fk--0318_052",
+      "speech_id": "i-Jx52cs9xsmAVmyiN3H53jw",
+      "year": 1870,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 17923,
+      "document_name": "prot-1870--fk--0427_005",
+      "speech_id": "i-XN3QLvdmnWVb16w8gW7o5k",
+      "year": 1870,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 18296,
+      "document_name": "prot-1870--fk--0510_016",
+      "speech_id": "i-W4anxHL2QMWQDRbiSo6p4",
+      "year": 1870,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 18752,
+      "document_name": "prot-1871--ak--0311_006",
+      "speech_id": "i-Wz9viVRjEyMNK8Bj9b76Fh",
+      "year": 1871,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 19718,
+      "document_name": "prot-1871--ak--0422_072",
+      "speech_id": "i-4mVL75JPzko66M7rHJqnFj",
+      "year": 1871,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 20245,
+      "document_name": "prot-1871--ak--0510_072",
+      "speech_id": "i-6TwTaoXRvB33UXXbZHAASW",
+      "year": 1871,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 21098,
+      "document_name": "prot-1871--fk--0401_003",
+      "speech_id": "i-ExeJ1xUpXQ7NpZpKvuqv9D",
+      "year": 1871,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 22609,
+      "document_name": "prot-1871-urtima-fk--0930_001",
+      "speech_id": "i-RNxoie6QBM3c9yEoE3AjRe",
+      "year": 1871,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 20974,
+      "document_name": "prot-1871--fk--0315_062",
+      "speech_id": "i-J7LKEeBeN39Gd6g1jx9UKR",
+      "year": 1871,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 24017,
+      "document_name": "prot-1872--ak--0417_084",
+      "speech_id": "i-NByB3ie9MqPJUB3bqbu8KH",
+      "year": 1872,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 23715,
+      "document_name": "prot-1872--ak--0322_061",
+      "speech_id": "i-3HwoDjKhLM28vGWov5SDJT",
+      "year": 1872,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 24275,
+      "document_name": "prot-1872--ak--0424_052",
+      "speech_id": "i-2Pp9U6caRZMe5nj34eU6RG",
+      "year": 1872,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 25702,
+      "document_name": "prot-1872--fk--0420_035",
+      "speech_id": "i-U85QEVY8miDe6TQFwvD2h1",
+      "year": 1872,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 25056,
+      "document_name": "prot-1872--fk--0304_040",
+      "speech_id": "i-RryzGHgjwHbUKnU7cAxUMJ",
+      "year": 1872,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 25030,
+      "document_name": "prot-1872--fk--0304_014",
+      "speech_id": "i-X2tHXqRR1ooWP55cW8ZeAE",
+      "year": 1872,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 28199,
+      "document_name": "prot-1873--ak--0507_066",
+      "speech_id": "i-AMC5GVLXf4yz55GLWkW5G8",
+      "year": 1873,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 26887,
+      "document_name": "prot-1873--ak--0319_009",
+      "speech_id": "i-TT986U3ujz3Q1EKvYUpHV2",
+      "year": 1873,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 28400,
+      "document_name": "prot-1873--ak--0510_117",
+      "speech_id": "i-FKvkR9sZ8VE444kPsqQgwJ",
+      "year": 1873,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 29720,
+      "document_name": "prot-1873--fk--0423_004",
+      "speech_id": "i-3LoP2ezwkhBpdeeGYDpmyF",
+      "year": 1873,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 29924,
+      "document_name": "prot-1873--fk--0503_050",
+      "speech_id": "i-CHMVmbEQexKWpGC3GMQprP",
+      "year": 1873,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 29899,
+      "document_name": "prot-1873--fk--0503_025",
+      "speech_id": "i-CiPTjGNwrDTGxUmHxpx9ki",
+      "year": 1873,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 32454,
+      "document_name": "prot-1874--ak--0513_087",
+      "speech_id": "i-4FQLGu8YJc7jVmVky2xhyi",
+      "year": 1874,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 32212,
+      "document_name": "prot-1874--ak--0506_106",
+      "speech_id": "i-XovAhivfdk3vCwMRNagC5K",
+      "year": 1874,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 30499,
+      "document_name": "prot-1874--ak--0225_018",
+      "speech_id": "i-XEUzFwtuqKHHqhdSEoUgdh",
+      "year": 1874,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 32825,
+      "document_name": "prot-1874--fk--0130_005",
+      "speech_id": "i-VZ4uJfwPES9Up5EPV5PYRB",
+      "year": 1874,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 33872,
+      "document_name": "prot-1874--fk--0513_020",
+      "speech_id": "i-RwAn33c1gmai491EjtQcio",
+      "year": 1874,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 33270,
+      "document_name": "prot-1874--fk--0326_053",
+      "speech_id": "i-XQiZAopwmUKCEXsdeURjeK",
+      "year": 1874,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 35851,
+      "document_name": "prot-1875--ak--042_025",
+      "speech_id": "i-2vgmsi7NUgJ88zZoccQec3",
+      "year": 1875,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 36156,
+      "document_name": "prot-1875--ak--052_022",
+      "speech_id": "i-Q54zpEdoT6iBe9ZZr6yVMd",
+      "year": 1875,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 35561,
+      "document_name": "prot-1875--ak--035_034",
+      "speech_id": "i-TzfhkecsiMkiQGsw3v6bwr",
+      "year": 1875,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 36519,
+      "document_name": "prot-1875--fk--004_015",
+      "speech_id": "i-88i3iNvfyW3NbWAFb4Cv2V",
+      "year": 1875,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 37566,
+      "document_name": "prot-1875--fk--036_008",
+      "speech_id": "i-NNSdZF2F2gxYu6nNm7s3EM",
+      "year": 1875,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 37778,
+      "document_name": "prot-1875--fk--045_002",
+      "speech_id": "i-8i281wDCgB5Axm4R9nrTn7",
+      "year": 1875,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 39313,
+      "document_name": "prot-1876--ak--043_005",
+      "speech_id": "i-Eky5GYMQLnpnpp8hBdW3ws",
+      "year": 1876,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 39790,
+      "document_name": "prot-1876--ak--055_036",
+      "speech_id": "i-JqC6GfJTQB2VB4TDcWdv3Z",
+      "year": 1876,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 39161,
+      "document_name": "prot-1876--ak--040_015",
+      "speech_id": "i-GerL8zkfpxRAqn2GE1FjpD",
+      "year": 1876,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 40327,
+      "document_name": "prot-1876--fk--016_003",
+      "speech_id": "i-Wus9LVipqp5KBBhMeqA26C",
+      "year": 1876,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 40430,
+      "document_name": "prot-1876--fk--019_029",
+      "speech_id": "i-UGBA7jxzSxFLw7jKP9Bw1A",
+      "year": 1876,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 39947,
+      "document_name": "prot-1876--fk--005_004",
+      "speech_id": "i-Nfo1dB9rFKWiqC8WyNQsV1",
+      "year": 1876,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 42556,
+      "document_name": "prot-1877--ak--048_040",
+      "speech_id": "i-8kL6dDrYyXqzctSaY9nNgU",
+      "year": 1877,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 41453,
+      "document_name": "prot-1877--ak--019_020",
+      "speech_id": "i-47VzNSdAqCzcvrXoUvt7sV",
+      "year": 1877,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 41099,
+      "document_name": "prot-1877--ak--009_002",
+      "speech_id": "i-GrKpD85x3NVnTurkFLNY5G",
+      "year": 1877,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 44397,
+      "document_name": "prot-1877--fk--043_013",
+      "speech_id": "i-PRQ7yJzUmnQtAp7jeUayip",
+      "year": 1877,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 44235,
+      "document_name": "prot-1877--fk--039_028",
+      "speech_id": "i-6fPdAa51Bv7L1LENx3xTPF",
+      "year": 1877,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 43322,
+      "document_name": "prot-1877--fk--010_002",
+      "speech_id": "i-Aoupsi3UTMF9U53SxHnX6y",
+      "year": 1877,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 44603,
+      "document_name": "prot-1878--ak--013_018",
+      "speech_id": "i-4zk5jpphwPzMUP3Mc5T1xh",
+      "year": 1878,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 46143,
+      "document_name": "prot-1878--ak--054_071",
+      "speech_id": "i-CVUE3qFAvTar6kZ8LRdpfm",
+      "year": 1878,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 44670,
+      "document_name": "prot-1878--ak--015_004",
+      "speech_id": "i-ERdHnGR3JidtL94wW7ea38",
+      "year": 1878,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 47471,
+      "document_name": "prot-1878--fk--043_017",
+      "speech_id": "i-RmY8TbhtuGp3fjrb4zvq9T",
+      "year": 1878,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 46576,
+      "document_name": "prot-1878--fk--011_016",
+      "speech_id": "i-4abrBs6MVDSk53qbP4bKou",
+      "year": 1878,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 46961,
+      "document_name": "prot-1878--fk--024_030",
+      "speech_id": "i-Q2RwxWTz3PJ59o8YbVEdHu",
+      "year": 1878,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 49204,
+      "document_name": "prot-1879--ak--055_013",
+      "speech_id": "i-VyQQSu92sMcRhkjz3Wp11A",
+      "year": 1879,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 48996,
+      "document_name": "prot-1879--ak--048_050",
+      "speech_id": "i-2qpHZvRHKrxmJ6kX2fm5Ai",
+      "year": 1879,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 48567,
+      "document_name": "prot-1879--ak--037_014",
+      "speech_id": "i-Eywv1XqCobU8tPaBmNFV66",
+      "year": 1879,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 50059,
+      "document_name": "prot-1879--fk--025_004",
+      "speech_id": "i-hYRjJGjB2EApXbYB9Lxtx",
+      "year": 1879,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 50275,
+      "document_name": "prot-1879--fk--032_020",
+      "speech_id": "i-NPQ5nbcCio48M7wEEBSTrK",
+      "year": 1879,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 50278,
+      "document_name": "prot-1879--fk--032_023",
+      "speech_id": "i-FcCgQfTKoP2k3QwiMXmp6o",
+      "year": 1879,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 52098,
+      "document_name": "prot-1880--ak--054_005",
+      "speech_id": "i-FXwPog7zVBK1rFPmpxd2tG",
+      "year": 1880,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 50750,
+      "document_name": "prot-1880--ak--015_019",
+      "speech_id": "i-G6AYs8ZoQXtjPCQzCWhwZo",
+      "year": 1880,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 52124,
+      "document_name": "prot-1880--ak--054_031",
+      "speech_id": "i-TVmK2jYgJFWaopskvAR5pN",
+      "year": 1880,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 52966,
+      "document_name": "prot-1880--fk--026_049",
+      "speech_id": "i-QnS18nNDE6LHCUi4Er2d4x",
+      "year": 1880,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 52732,
+      "document_name": "prot-1880--fk--018_001",
+      "speech_id": "i-8u5NTAaYT3n35se1kg9Tm9",
+      "year": 1880,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 52497,
+      "document_name": "prot-1880--fk--011_019",
+      "speech_id": "i-YV7XMzYvK1rBcudPpGQ6Hk",
+      "year": 1880,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 53799,
+      "document_name": "prot-1881--ak--018_013",
+      "speech_id": "i-HiYFqfMQR54qX9sRt4ay1P",
+      "year": 1881,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 54436,
+      "document_name": "prot-1881--ak--036_037",
+      "speech_id": "i-7HL4xMqQLGBBeQUGeWrVWe",
+      "year": 1881,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 54661,
+      "document_name": "prot-1881--ak--046_018",
+      "speech_id": "i-hYhKuNTCv7DPbWFBqMRyu",
+      "year": 1881,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 55355,
+      "document_name": "prot-1881--fk--033_025",
+      "speech_id": "i-46WvFY2N6snmF2WnWmtVKJ",
+      "year": 1881,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 55440,
+      "document_name": "prot-1881--fk--038_008",
+      "speech_id": "i-V4GCn8Suijz1JBvU8pwiAS",
+      "year": 1881,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 54728,
+      "document_name": "prot-1881--fk--010_015",
+      "speech_id": "i-RKh3hRJvFu7kPPhri5Lk9t",
+      "year": 1881,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 56136,
+      "document_name": "prot-1882--ak--030_039",
+      "speech_id": "i-FJ1x6u2Gs46Szeb5bv6sS4",
+      "year": 1882,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 57050,
+      "document_name": "prot-1882--ak--059_027",
+      "speech_id": "i-4QAL1Mx2xZNX1E3FitqEVJ",
+      "year": 1882,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 56443,
+      "document_name": "prot-1882--ak--040_006",
+      "speech_id": "i-5uZzcCP6jP3jvbccgqzVAv",
+      "year": 1882,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 57357,
+      "document_name": "prot-1882--fk--016_013",
+      "speech_id": "i-BnkFvgWT7P3VXqfpuVPgz6",
+      "year": 1882,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 57929,
+      "document_name": "prot-1882--fk--041_012",
+      "speech_id": "i-LHYPHsXTzzNCEHUFAQzb19",
+      "year": 1882,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 57943,
+      "document_name": "prot-1882--fk--041_026",
+      "speech_id": "i-3mvpyFrf9zkW8TmSt4G3mH",
+      "year": 1882,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 59618,
+      "document_name": "prot-1883--ak--054_029",
+      "speech_id": "i-3qMh6tpUYWJmhpAzEXAg3T",
+      "year": 1883,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 58566,
+      "document_name": "prot-1883--ak--022_019",
+      "speech_id": "i-Vouzt8i4PB1rieRw46CEUn",
+      "year": 1883,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 58991,
+      "document_name": "prot-1883--ak--034_012",
+      "speech_id": "i-BJrPREXJ669CfRoMZiczQJ",
+      "year": 1883,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 60522,
+      "document_name": "prot-1883--fk--045_004",
+      "speech_id": "i-Ep7nVfvogiPXG9PTt1WHiu",
+      "year": 1883,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 60251,
+      "document_name": "prot-1883--fk--029_015",
+      "speech_id": "i-64Neqw52s7gMDkTBLV3h1H",
+      "year": 1883,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 60336,
+      "document_name": "prot-1883--fk--032_016",
+      "speech_id": "i-GSvKGJg3ZABG8xJPJECm9u",
+      "year": 1883,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 61954,
+      "document_name": "prot-1884--ak--049_028",
+      "speech_id": "i-SAH1aSxEQP5Xx6PrdfWMSD",
+      "year": 1884,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 61040,
+      "document_name": "prot-1884--ak--017_029",
+      "speech_id": "i-FnXpoNZqG7xvzPsTCLPhQH",
+      "year": 1884,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 61645,
+      "document_name": "prot-1884--ak--039_029",
+      "speech_id": "i-6W2U1cKa2BgkdSsU9nkYf5",
+      "year": 1884,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 62506,
+      "document_name": "prot-1884--fk--031_015",
+      "speech_id": "i-NrdUxt8ZVjpffjFxkp2V5E",
+      "year": 1884,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 62351,
+      "document_name": "prot-1884--fk--023_005",
+      "speech_id": "i-VHDQTnjWGHcKStazpcRKqu",
+      "year": 1884,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 62104,
+      "document_name": "prot-1884--fk--010_030",
+      "speech_id": "i-9NUVMWNrXSBXr1fRGECZpf",
+      "year": 1884,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 63443,
+      "document_name": "prot-1885--ak--030_001",
+      "speech_id": "i-XPscJYfpqUmXR66RN6iTb3",
+      "year": 1885,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 63776,
+      "document_name": "prot-1885--ak--040_035",
+      "speech_id": "i-NF4xw1EL7G2c9NiacDPwFK",
+      "year": 1885,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 63472,
+      "document_name": "prot-1885--ak--030_030",
+      "speech_id": "i-RiuWDYJB6HZAN4hS2gefQF",
+      "year": 1885,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 64666,
+      "document_name": "prot-1885--fk--014_004",
+      "speech_id": "i-S1nWmSJGHgmqq1L984eXzU",
+      "year": 1885,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 64835,
+      "document_name": "prot-1885--fk--019_012",
+      "speech_id": "i-EVwcAAAJm1NZhkeQJaCdHa",
+      "year": 1885,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 65380,
+      "document_name": "prot-1885--fk--039_025",
+      "speech_id": "i-FpuB6zryr1w2N9ByYtKbvE",
+      "year": 1885,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 66762,
+      "document_name": "prot-1886--ak--041_027",
+      "speech_id": "i-SzBs9UtBUCJGtRpeQSnJHY",
+      "year": 1886,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 66567,
+      "document_name": "prot-1886--ak--036_016",
+      "speech_id": "i-FS2xWW188yh2ijKictUr9f",
+      "year": 1886,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 67257,
+      "document_name": "prot-1886--ak--055_015",
+      "speech_id": "i-Rr1NeLcfnfZpo4MeEVcnmF",
+      "year": 1886,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 67649,
+      "document_name": "prot-1886--fk--016_016",
+      "speech_id": "i-9qVy9ySTNVtLWvrgUU7BEH",
+      "year": 1886,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 67991,
+      "document_name": "prot-1886--fk--032_023",
+      "speech_id": "i-UNuVGonisSQhaqdxhpHdAB",
+      "year": 1886,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 67629,
+      "document_name": "prot-1886--fk--015_022",
+      "speech_id": "i-75U4shFXTTWHcDbH8tRuHr",
+      "year": 1886,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 68648,
+      "document_name": "prot-1887-majjul-ak--005_004",
+      "speech_id": "i-Us3WsdUi4qe3UZf7r7HLaf",
+      "year": 1887,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 69431,
+      "document_name": "prot-1887-majjul-ak--025_011",
+      "speech_id": "i-SEvUrYY7QRJYbdcSyNXCWy",
+      "year": 1887,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 69303,
+      "document_name": "prot-1887-majjul-ak--021_037",
+      "speech_id": "i-JCqSUU4gVRWH2pPfvAwwWV",
+      "year": 1887,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 70235,
+      "document_name": "prot-1887-majjul-fk--025_007",
+      "speech_id": "i-SzJKH77YP7dznbmk8j4dF8",
+      "year": 1887,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 69879,
+      "document_name": "prot-1887-majjul-fk--010_017",
+      "speech_id": "i-7srUmG5dXrvZ6xxo7eLydX",
+      "year": 1887,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 69898,
+      "document_name": "prot-1887-majjul-fk--011_010",
+      "speech_id": "i-QCTYFZdcGxN8duCt31U4wm",
+      "year": 1887,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 70512,
+      "document_name": "prot-1888--ak--012_013",
+      "speech_id": "i-QBdouk67RMoWemiEpX3XcP",
+      "year": 1888,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 71558,
+      "document_name": "prot-1888--ak--040_049",
+      "speech_id": "i-98bZgHhUgGkxY2WyL9BeMK",
+      "year": 1888,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 71828,
+      "document_name": "prot-1888--ak--047_013",
+      "speech_id": "i-AZkbszsRxyBxqKXU2RWCzf",
+      "year": 1888,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 72307,
+      "document_name": "prot-1888--fk--013_020",
+      "speech_id": "i-D6G4LotPGHWzp5VD42jQrQ",
+      "year": 1888,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 72425,
+      "document_name": "prot-1888--fk--021_009",
+      "speech_id": "i-QkGGAHkLGEWuoHq7yvEaMx",
+      "year": 1888,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 72595,
+      "document_name": "prot-1888--fk--025_037",
+      "speech_id": "i-4SzW4iAoh3pfHqAHpLvqWs",
+      "year": 1888,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 74645,
+      "document_name": "prot-1889--ak--046_016",
+      "speech_id": "i-U6oJzDvvbChyzgFPwNbep1",
+      "year": 1889,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 73298,
+      "document_name": "prot-1889--ak--011_030",
+      "speech_id": "i-RvfBzwR2Uz6VxVWftWNZD4",
+      "year": 1889,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 74768,
+      "document_name": "prot-1889--ak--049_015",
+      "speech_id": "i-BtnJ6t4Hn8Cbf9Uvu8mfYr",
+      "year": 1889,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 75174,
+      "document_name": "prot-1889--fk--021_020",
+      "speech_id": "i-PcqZjQncAuMy9StGkPiG2J",
+      "year": 1889,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 75712,
+      "document_name": "prot-1889--fk--039_032",
+      "speech_id": "i-XxkjQM8j7okSj7a7KePx7G",
+      "year": 1889,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 74881,
+      "document_name": "prot-1889--fk--007_008",
+      "speech_id": "i-JY2zP7ppx6YMoo9V4bTCKE",
+      "year": 1889,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 77008,
+      "document_name": "prot-1890--ak--033_015",
+      "speech_id": "i-WG1RiFJNAfoNcdLYfreRmm",
+      "year": 1890,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 75995,
+      "document_name": "prot-1890--ak--010_014",
+      "speech_id": "i-Eszb9HeaPvyjBAxGCRzgZ7",
+      "year": 1890,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 77543,
+      "document_name": "prot-1890--ak--047_002",
+      "speech_id": "i-EDECUygCRsGETD6c9f6ZEr",
+      "year": 1890,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 77962,
+      "document_name": "prot-1890--fk--020_022",
+      "speech_id": "i-VHd7gCDayBk2oarVVHfZnM",
+      "year": 1890,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 77634,
+      "document_name": "prot-1890--fk--008_026",
+      "speech_id": "i-R31q5uvygTRcrMzf3P7ofU",
+      "year": 1890,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 78063,
+      "document_name": "prot-1890--fk--025_008",
+      "speech_id": "i-GW65s9k8ZMdAzbuuWyUS4",
+      "year": 1890,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 79998,
+      "document_name": "prot-1891--ak--047_007",
+      "speech_id": "i-CqrzUFFbiYWxMUsGqpGVLk",
+      "year": 1891,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 78651,
+      "document_name": "prot-1891--ak--012_013",
+      "speech_id": "i-6ZqmbnTArH7v3zoKSYpmny",
+      "year": 1891,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 80121,
+      "document_name": "prot-1891--ak--050_007",
+      "speech_id": "i-Y949JygK77mK4wddWxcic",
+      "year": 1891,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 80290,
+      "document_name": "prot-1891--fk--008_027",
+      "speech_id": "i-DpK7w59gcP3Xcm3VNhXjjt",
+      "year": 1891,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 80635,
+      "document_name": "prot-1891--fk--023_031",
+      "speech_id": "i-K79f7troKAQmTr3w3Kreah",
+      "year": 1891,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 81002,
+      "document_name": "prot-1891--fk--036_019",
+      "speech_id": "i-KwuXhvGrSULs4acnaQAkLq",
+      "year": 1891,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 82625,
+      "document_name": "prot-1892--ak--045_029",
+      "speech_id": "i-YWd9ur21Vb6XEjMsrfcBhz",
+      "year": 1892,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 82291,
+      "document_name": "prot-1892--ak--037_048",
+      "speech_id": "i-75YkpqhhireVph1xc26cff",
+      "year": 1892,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 81092,
+      "document_name": "prot-1892--ak--007_007",
+      "speech_id": "i-UjgaQivZ8Dk2pvaR56avdr",
+      "year": 1892,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 83136,
+      "document_name": "prot-1892--fk--028_017",
+      "speech_id": "i-P6iNYmvXzkFsYBVAvw2CbV",
+      "year": 1892,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 83241,
+      "document_name": "prot-1892--fk--033_001",
+      "speech_id": "i-JjjiNPgKAjDoRKTtoTvNmJ",
+      "year": 1892,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 83096,
+      "document_name": "prot-1892--fk--026_009",
+      "speech_id": "i-91FurUnCVptia1iaHP3Brf",
+      "year": 1892,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 85107,
+      "document_name": "prot-1893--ak--035_035",
+      "speech_id": "i-hT1oC7VuHsPLcHeQgNxKW",
+      "year": 1893,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 84632,
+      "document_name": "prot-1893--ak--021_006",
+      "speech_id": "i-AYG9DyEgPxL6ie5miubnPm",
+      "year": 1893,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 84411,
+      "document_name": "prot-1893--ak--016_006",
+      "speech_id": "i-HmDQ2gaqkziG1frqa8EVex",
+      "year": 1893,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 85984,
+      "document_name": "prot-1893--fk--026_012",
+      "speech_id": "i-UzMC578vynixnxWSuCtLYs",
+      "year": 1893,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 85706,
+      "document_name": "prot-1893--fk--013_010",
+      "speech_id": "i-YD4qWdAjFFAGRHRL9BDoVb",
+      "year": 1893,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 86113,
+      "document_name": "prot-1893--fk--030_008",
+      "speech_id": "i-2R4KkwxHhKmXFYMPpDke51",
+      "year": 1893,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 86951,
+      "document_name": "prot-1894--ak--023_017",
+      "speech_id": "i-9D4whg1NXAQuHchKbUAR67",
+      "year": 1894,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 86448,
+      "document_name": "prot-1894--ak--008_039",
+      "speech_id": "i-TLThptJnzT79bQ3LVMtpMd",
+      "year": 1894,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 86468,
+      "document_name": "prot-1894--ak--009_001",
+      "speech_id": "i-Kd8mFwks5zyoQYFTG5egEM",
+      "year": 1894,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 88099,
+      "document_name": "prot-1894--fk--008_020",
+      "speech_id": "i-7bvkZSJzaX4eAnZCdBYQnn",
+      "year": 1894,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 88856,
+      "document_name": "prot-1894--fk--037_018",
+      "speech_id": "i-9iDSP36UyRo5b7iBQEE6rJ",
+      "year": 1894,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 88260,
+      "document_name": "prot-1894--fk--013_033",
+      "speech_id": "i-B3SzQxsErU7suzTZRy1FGX",
+      "year": 1894,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 90192,
+      "document_name": "prot-1895--ak--035_031",
+      "speech_id": "i-VaGG7oCmNYpWfRzBCLwxP7",
+      "year": 1895,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 90614,
+      "document_name": "prot-1895--ak--046_026",
+      "speech_id": "i-P1VgekHqhEmcX8vWQkZngz",
+      "year": 1895,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 90485,
+      "document_name": "prot-1895--ak--042_042",
+      "speech_id": "i-XimDAXZQFZidiTZK3Eu7pc",
+      "year": 1895,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 91337,
+      "document_name": "prot-1895--fk--030_021",
+      "speech_id": "i-2oWSVFCz8twT5WSppkXSUn",
+      "year": 1895,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 91227,
+      "document_name": "prot-1895--fk--027_003",
+      "speech_id": "i-4xs5ajaevXHQvrncb6eQJc",
+      "year": 1895,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 90742,
+      "document_name": "prot-1895--fk--010_007",
+      "speech_id": "i-CdKeXNRCgdMXRF42qTMyL",
+      "year": 1895,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 92300,
+      "document_name": "prot-1896--ak--028_030",
+      "speech_id": "i-FehqTSDL7Gj9UxHPXgmE9J",
+      "year": 1896,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 92651,
+      "document_name": "prot-1896--ak--036_010",
+      "speech_id": "i-DSH4xaXxFY6Vegw4RGjir6",
+      "year": 1896,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 92918,
+      "document_name": "prot-1896--ak--043_001",
+      "speech_id": "i-Gue6XBbzJixNaorgVHGvWT",
+      "year": 1896,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 93720,
+      "document_name": "prot-1896--fk--022_024",
+      "speech_id": "i-Ewb3xxq5r4zQTKuQfoeovY",
+      "year": 1896,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 93930,
+      "document_name": "prot-1896--fk--029_012",
+      "speech_id": "i-CbVcGXtf4cPbHjexgkeASo",
+      "year": 1896,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 93400,
+      "document_name": "prot-1896--fk--014_019",
+      "speech_id": "i-QK98WDw9SscdK7V1uPqYAn",
+      "year": 1896,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 94745,
+      "document_name": "prot-1897--ak--024_016",
+      "speech_id": "i-B9acjvvTFP8TU9Qoa3xz6i",
+      "year": 1897,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 94067,
+      "document_name": "prot-1897--ak--007_012",
+      "speech_id": "i-TCwBDoKMTNtmoqJXo4CwsQ",
+      "year": 1897,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 94293,
+      "document_name": "prot-1897--ak--011_001",
+      "speech_id": "i-K1Kv2LV8HR4JwUeMDbrnYR",
+      "year": 1897,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 96204,
+      "document_name": "prot-1897--fk--026_038",
+      "speech_id": "i-7VesoCzosx6YtFg43nXogc",
+      "year": 1897,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 95903,
+      "document_name": "prot-1897--fk--016_026",
+      "speech_id": "i-Hyk9hhJ4wm68g1Mbk3CZki",
+      "year": 1897,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 95650,
+      "document_name": "prot-1897--fk--007_039",
+      "speech_id": "i-DqfAnbF42kDGpXcNE9tokS",
+      "year": 1897,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 97152,
+      "document_name": "prot-1898--ak--027_016",
+      "speech_id": "i-2W5QCQGcDFwx9BQg1WGdYR",
+      "year": 1898,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 97275,
+      "document_name": "prot-1898--ak--029_058",
+      "speech_id": "i-VqvJMLA85UkhmjmMcE6hCz",
+      "year": 1898,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 97278,
+      "document_name": "prot-1898--ak--029_061",
+      "speech_id": "i-8vTQ9yN9tKuaXqAMfii2LJ",
+      "year": 1898,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 97924,
+      "document_name": "prot-1898--fk--014_001",
+      "speech_id": "i-SxFb6SzAnDerBshKvrDy21",
+      "year": 1898,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 98446,
+      "document_name": "prot-1898--fk--031_008",
+      "speech_id": "i-EDcM9gnGkBZgzWvceYGJ56",
+      "year": 1898,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 98361,
+      "document_name": "prot-1898--fk--027_047",
+      "speech_id": "i-fNtYjyUur1HRvNFc3RAgf",
+      "year": 1898,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 99803,
+      "document_name": "prot-1899--ak--037_006",
+      "speech_id": "i-AwdLiscQnPfvbb6whHN416",
+      "year": 1899,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 99393,
+      "document_name": "prot-1899--ak--025_025",
+      "speech_id": "i-6rPmAHXETbgum6yaWxj7FF",
+      "year": 1899,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 99013,
+      "document_name": "prot-1899--ak--015_021",
+      "speech_id": "i-SmiTHjLXspvpEF4sgjH6Mp",
+      "year": 1899,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 100505,
+      "document_name": "prot-1899--fk--028_017",
+      "speech_id": "i-CJ6sN52AE4rHiyNGdt6CCb",
+      "year": 1899,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 100195,
+      "document_name": "prot-1899--fk--018_001",
+      "speech_id": "i-W3QUZ7CaYK2igeooevwtqN",
+      "year": 1899,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 99922,
+      "document_name": "prot-1899--fk--008_012",
+      "speech_id": "i-D8o1nikjrJU3VztzB4TqaU",
+      "year": 1899,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 101133,
+      "document_name": "prot-1900--ak--033_022",
+      "speech_id": "i-CZyiNiWkrWYbBJGnnd9vjG",
+      "year": 1900,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 101252,
+      "document_name": "prot-1900--ak--035_049",
+      "speech_id": "i-Eezfp6GZQRyar7Ui1BzoE2",
+      "year": 1900,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 101458,
+      "document_name": "prot-1900--ak--044_003",
+      "speech_id": "i-6oW5WvVEsQVBKqpEkzxDBH",
+      "year": 1900,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 102119,
+      "document_name": "prot-1900--fk--024_011",
+      "speech_id": "i-6dycFTQVHu85Qn6Fy1BHp4",
+      "year": 1900,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 102021,
+      "document_name": "prot-1900--fk--019_002",
+      "speech_id": "i-Y3JnoeAMrrvHR9g47LeLW6",
+      "year": 1900,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 102513,
+      "document_name": "prot-1900--fk--040_007",
+      "speech_id": "i-9kAzEpA9g72xDArnviCvnj",
+      "year": 1900,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 102737,
+      "document_name": "prot-1901--ak--012_034",
+      "speech_id": "i-nPa7DsymogwvH5rKL6Msj",
+      "year": 1901,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 102585,
+      "document_name": "prot-1901--ak--006_021",
+      "speech_id": "i-T5fxG6jjRKHD56oDyp6CMc",
+      "year": 1901,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 103470,
+      "document_name": "prot-1901--ak--037_023",
+      "speech_id": "i-BsfSKKDEcEz8YpnaKZXHSe",
+      "year": 1901,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 103997,
+      "document_name": "prot-1901--fk--018_024",
+      "speech_id": "i-3W2XYg9J5msWTZ5nVHKb1d",
+      "year": 1901,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 104038,
+      "document_name": "prot-1901--fk--020_001",
+      "speech_id": "i-2Ph7KkPFwkG1DwvStEat4n",
+      "year": 1901,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 103934,
+      "document_name": "prot-1901--fk--016_024",
+      "speech_id": "i-J8m9tXayXmMzYmuNxCfgMg",
+      "year": 1901,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 104568,
+      "document_name": "prot-1902--ak--012_024",
+      "speech_id": "i-24XdTFVwKJ22iVuZRP312r",
+      "year": 1902,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 104877,
+      "document_name": "prot-1902--ak--023_044",
+      "speech_id": "i-4oEyq2pNUFVp4e2Qdw8ZC1",
+      "year": 1902,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 105478,
+      "document_name": "prot-1902--ak--040_047",
+      "speech_id": "i-K3UBzVVN3aYqMT2aWWt2DF",
+      "year": 1902,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 106540,
+      "document_name": "prot-1902--fk--029_021",
+      "speech_id": "i-RXzc9N4HAgkq1RzFKhyA63",
+      "year": 1902,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 106751,
+      "document_name": "prot-1902--fk--037_022",
+      "speech_id": "i-RkWABzfaLmueUV1nkdmvY3",
+      "year": 1902,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 106220,
+      "document_name": "prot-1902--fk--020_021",
+      "speech_id": "i-LeBF2QXPB8MhY25ZaNNzva",
+      "year": 1902,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 107261,
+      "document_name": "prot-1903--ak--031_002",
+      "speech_id": "i-XmYDnFRALQGoQkr5KQmdXN",
+      "year": 1903,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 108024,
+      "document_name": "prot-1903--ak--060_036",
+      "speech_id": "i-9vEmvbag596BRhfrd1k29C",
+      "year": 1903,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 107175,
+      "document_name": "prot-1903--ak--027_012",
+      "speech_id": "i-7MTdS86y3wRCgwV22QvsHe",
+      "year": 1903,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 108915,
+      "document_name": "prot-1903--fk--053_017",
+      "speech_id": "i-KWQ6tXfJPYNfShtRf2a8zZ",
+      "year": 1903,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 108886,
+      "document_name": "prot-1903--fk--051_047",
+      "speech_id": "i-GZMTsUuakJJXFoTgidwAP",
+      "year": 1903,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 108281,
+      "document_name": "prot-1903--fk--015_007",
+      "speech_id": "i-Xarj89QMotZHaYkUf6p46u",
+      "year": 1903,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 109070,
+      "document_name": "prot-1904--ak--015_009",
+      "speech_id": "i-K7Nw2jaGz6kGgzgEuzBnLQ",
+      "year": 1904,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 109995,
+      "document_name": "prot-1904--ak--048_029",
+      "speech_id": "i-QaHupjjgSQyL5Cm3SnxryH",
+      "year": 1904,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 109203,
+      "document_name": "prot-1904--ak--022_016",
+      "speech_id": "i-JcBrK19L2xhmD1ioyuovFu",
+      "year": 1904,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 111187,
+      "document_name": "prot-1904--fk--049_014",
+      "speech_id": "i-6soZ8JDH1WrxzFTm7Ax1DZ",
+      "year": 1904,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 110886,
+      "document_name": "prot-1904--fk--035_037",
+      "speech_id": "i-qqd2rfTfha9H3vnmAebhm",
+      "year": 1904,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 110633,
+      "document_name": "prot-1904--fk--022_011",
+      "speech_id": "i-P1WT3M4qow5hnfPPgVLAoe",
+      "year": 1904,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 113802,
+      "document_name": "prot-1905-urtima-ak--007_001",
+      "speech_id": "i-Q3QLD3H6cKHYugXLibw2L6",
+      "year": 1905,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 111992,
+      "document_name": "prot-1905--ak--034_004",
+      "speech_id": "i-Eadpez4hfH2cBTmw3zzqyh",
+      "year": 1905,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 111723,
+      "document_name": "prot-1905--ak--023_037",
+      "speech_id": "i-3nM8quLRhmr9R7B17JkFbG",
+      "year": 1905,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 113708,
+      "document_name": "prot-1905--fk--046_011",
+      "speech_id": "i-9sJxJbn868oQGr4kZowsXL",
+      "year": 1905,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 113349,
+      "document_name": "prot-1905--fk--033_009",
+      "speech_id": "i-HN2hU7ty7w3gDr6j7tkR4c",
+      "year": 1905,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 113222,
+      "document_name": "prot-1905--fk--024_027",
+      "speech_id": "i-Rw4iSmaeMRszxfBe22ikVB",
+      "year": 1905,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 114091,
+      "document_name": "prot-1906--ak--021_009",
+      "speech_id": "i-6e48hNMGTRYcTqrqNcA8xP",
+      "year": 1906,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 114213,
+      "document_name": "prot-1906--ak--026_035",
+      "speech_id": "i-XLnT86xFV5j2yrhSAHrgyM",
+      "year": 1906,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 114998,
+      "document_name": "prot-1906--ak--059_014",
+      "speech_id": "i-45mxzGGAvDeibzruKwumKB",
+      "year": 1906,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 115853,
+      "document_name": "prot-1906--fk--046_019",
+      "speech_id": "i-GuhsFoMtxVVdDXmF4rQ3Ym",
+      "year": 1906,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 115583,
+      "document_name": "prot-1906--fk--033_006",
+      "speech_id": "i-Tihzkxcm4UMTRC2L2xFSWx",
+      "year": 1906,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 115668,
+      "document_name": "prot-1906--fk--037_015",
+      "speech_id": "i-5HYuaweQV6BbJ3imk46ywh",
+      "year": 1906,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 117160,
+      "document_name": "prot-1907--ak--058_019",
+      "speech_id": "i-GPwkAUuPLUdjjWK1mBskmL",
+      "year": 1907,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 116849,
+      "document_name": "prot-1907--ak--046_001",
+      "speech_id": "i-4ZNSckoXELZ4aWPyRfgmb1",
+      "year": 1907,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 117211,
+      "document_name": "prot-1907--ak--060_015",
+      "speech_id": "i-LbjZLrxZe2RGzhzk9WnNFo",
+      "year": 1907,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 118406,
+      "document_name": "prot-1907--fk--048_023",
+      "speech_id": "i-YMSuD84GJqWRxyow4Lnnj",
+      "year": 1907,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 118114,
+      "document_name": "prot-1907--fk--035_017",
+      "speech_id": "i-FPyc5whHdyXc2f1ipC62ZW",
+      "year": 1907,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 117756,
+      "document_name": "prot-1907--fk--016_029",
+      "speech_id": "i-Bh3gv3nRXDeuCanLictg5c",
+      "year": 1907,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 118831,
+      "document_name": "prot-1908--ak--017_013",
+      "speech_id": "i-UwSgMdQ1DYfu18e4bRixZ2",
+      "year": 1908,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 120164,
+      "document_name": "prot-1908--ak--066_058",
+      "speech_id": "i-Lscih7Dm7PGAYEfxnymQL3",
+      "year": 1908,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 119084,
+      "document_name": "prot-1908--ak--030_019",
+      "speech_id": "i-J6ah6wVKC96RqRRNaqVTj4",
+      "year": 1908,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 121215,
+      "document_name": "prot-1908--fk--052_005",
+      "speech_id": "i-9Aew5Prgvfuxwc9br4E6Zk",
+      "year": 1908,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 120909,
+      "document_name": "prot-1908--fk--033_007",
+      "speech_id": "i-9FFveDjeqCqSZ5BsrrcmjN",
+      "year": 1908,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 121235,
+      "document_name": "prot-1908--fk--052_025",
+      "speech_id": "i-BPTrzZEKrioy4Dtc8eAyXE",
+      "year": 1908,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 123108,
+      "document_name": "prot-1909--ak--064_018",
+      "speech_id": "i-7RiptFocRMCgvC36s9VtTW",
+      "year": 1909,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 122282,
+      "document_name": "prot-1909--ak--033_027",
+      "speech_id": "i-Q4TQyqLVLeX72VWd5wJPWU",
+      "year": 1909,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 121737,
+      "document_name": "prot-1909--ak--013_022",
+      "speech_id": "i-D1pxJggFkG9JGUQWmtuEb6",
+      "year": 1909,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 123737,
+      "document_name": "prot-1909--fk--022_004",
+      "speech_id": "i-FBr3xSANq9bC2gpaobSAsk",
+      "year": 1909,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 123795,
+      "document_name": "prot-1909--fk--027_001",
+      "speech_id": "i-9R4pQGm6nmah3kWvok3gMY",
+      "year": 1909,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 123956,
+      "document_name": "prot-1909--fk--035_033",
+      "speech_id": "i-CRukD4HBwkxQ11cG2maidz",
+      "year": 1909,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 125647,
+      "document_name": "prot-1910--ak--038_005",
+      "speech_id": "i-AvCZp8NwXfRE4wfxYkVBo",
+      "year": 1910,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 126331,
+      "document_name": "prot-1910--ak--052_024",
+      "speech_id": "i-PDSMkkrpwMF6YMiz8h9Juh",
+      "year": 1910,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 126817,
+      "document_name": "prot-1910--ak--063_010",
+      "speech_id": "i-WvYZYh8kPaPbKQ8Ah3tCYs",
+      "year": 1910,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 127648,
+      "document_name": "prot-1910--fk--031_006",
+      "speech_id": "i-NBfUj3UkFCrn1A6HfsHMNA",
+      "year": 1910,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 127915,
+      "document_name": "prot-1910--fk--036_031",
+      "speech_id": "i-YSMn6o64q4qrpWZCmgpeWQ",
+      "year": 1910,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 128028,
+      "document_name": "prot-1910--fk--038_009",
+      "speech_id": "i-H2LLbZkP6NpH2grDNWGP9k",
+      "year": 1910,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 128982,
+      "document_name": "prot-1911--ak--028_003",
+      "speech_id": "i-LgmYrsa1bKZ5gF2Z5Gg8Fq",
+      "year": 1911,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 128252,
+      "document_name": "prot-1911--ak--010_025",
+      "speech_id": "i-p71DgQYb3Ur7BK8cGw1y4",
+      "year": 1911,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 129114,
+      "document_name": "prot-1911--ak--030_069",
+      "speech_id": "i-Bt5GMXaVcVHmqPN5LXUTra",
+      "year": 1911,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 130573,
+      "document_name": "prot-1911--fk--014_030",
+      "speech_id": "i-GUJbt98kyDj7ppppkdCJD6",
+      "year": 1911,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 130982,
+      "document_name": "prot-1911--fk--025_058",
+      "speech_id": "i-6fTRKxkoKfn5wZn4zW3wit",
+      "year": 1911,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 130306,
+      "document_name": "prot-1911--fk--006_013",
+      "speech_id": "i-5NgkGLeHkWa7T3RMB7Ggi9",
+      "year": 1911,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 132304,
+      "document_name": "prot-1912--ak--026_007",
+      "speech_id": "i-Kb8JUkQdVpJ3JyHgGC8A3M",
+      "year": 1912,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 131574,
+      "document_name": "prot-1912--ak--009_029",
+      "speech_id": "i-HfWpGFPY3c2W92XhkAN9ff",
+      "year": 1912,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 132436,
+      "document_name": "prot-1912--ak--029_004",
+      "speech_id": "i-M4Kqjt5vz4Ty89HCUYbgkR",
+      "year": 1912,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 134812,
+      "document_name": "prot-1912--fk--042_001",
+      "speech_id": "i-8Gmy7MULJwLS8iqCajrmme",
+      "year": 1912,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 134760,
+      "document_name": "prot-1912--fk--040_013",
+      "speech_id": "i-NDcvzNFAfcbAinRFou77EP",
+      "year": 1912,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 134133,
+      "document_name": "prot-1912--fk--023_034",
+      "speech_id": "i-WwjwTRHJL77DSYGoosz2cp",
+      "year": 1912,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 136512,
+      "document_name": "prot-1913--ak--039_026",
+      "speech_id": "i-TFrJRdoTUZGYV5bHARGoSd",
+      "year": 1913,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 136399,
+      "document_name": "prot-1913--ak--037_014",
+      "speech_id": "i-221dWe5YygiMHCM4aFVpa1",
+      "year": 1913,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 135946,
+      "document_name": "prot-1913--ak--027_057",
+      "speech_id": "i-2VtxeEmgdu5HP48yZLJuV2",
+      "year": 1913,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 138512,
+      "document_name": "prot-1913--fk--037_021",
+      "speech_id": "i-Mk5KeNtLffqzxaQ7LaYUKq",
+      "year": 1913,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 137853,
+      "document_name": "prot-1913--fk--019_043",
+      "speech_id": "i-7Yb6EuEBXq3bfHAPSTNqL2",
+      "year": 1913,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 138183,
+      "document_name": "prot-1913--fk--028_010",
+      "speech_id": "i-XH9we6vobgA4hWRB4eQXNs",
+      "year": 1913,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 140477,
+      "document_name": "prot-1914-b-ak--062_004",
+      "speech_id": "i-C91BWZXj4hpQsdRHCgtLdk",
+      "year": 1914,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 140381,
+      "document_name": "prot-1914-b-ak--059_049",
+      "speech_id": "i-4vPM2WZj9d2Vy8WX6H2cTb",
+      "year": 1914,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 139638,
+      "document_name": "prot-1914-b-ak--031_030",
+      "speech_id": "i-56BQxkBEEfrdSDnUqa6cPZ",
+      "year": 1914,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 139279,
+      "document_name": "prot-1914-a-fk--029_030",
+      "speech_id": "i-8LTWHR8hctMvaQunZGVeMK",
+      "year": 1914,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 141711,
+      "document_name": "prot-1914-b-fk--052_047",
+      "speech_id": "i-GwbwvHcAcyL2T6dPta7Xid",
+      "year": 1914,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 141426,
+      "document_name": "prot-1914-b-fk--036_015",
+      "speech_id": "i-2N6renUE4WQUFvoJGcLWFu",
+      "year": 1914,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 143935,
+      "document_name": "prot-1915--ak--087_021",
+      "speech_id": "i-K1bVaHb1KkY8vwtVsuyf63",
+      "year": 1915,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 143997,
+      "document_name": "prot-1915--ak--088_029",
+      "speech_id": "i-2BdDDayXiduyjV6jNcs5Px",
+      "year": 1915,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 142786,
+      "document_name": "prot-1915--ak--043_015",
+      "speech_id": "i-JUHyGCkBDzV7qdZot4MGUK",
+      "year": 1915,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 145176,
+      "document_name": "prot-1915--fk--079_065",
+      "speech_id": "i-DRYvUY63BS4j2WwZqmMm7u",
+      "year": 1915,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 144983,
+      "document_name": "prot-1915--fk--074_019",
+      "speech_id": "i-GKtq3M5Ltqv7VgkDKYL2K9",
+      "year": 1915,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 144824,
+      "document_name": "prot-1915--fk--066_006",
+      "speech_id": "i-Y3Wx3h9wSh1QaCNwBiuivo",
+      "year": 1915,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 146823,
+      "document_name": "prot-1916--ak--083_051",
+      "speech_id": "i-Fwe4AtR7fCFmevTobLWgdS",
+      "year": 1916,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 146615,
+      "document_name": "prot-1916--ak--076_037",
+      "speech_id": "i-R5Bv3pC1fW9vMrCKPsBA9i",
+      "year": 1916,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 146931,
+      "document_name": "prot-1916--ak--087_045",
+      "speech_id": "i-VodjoH1RyEVP2t5Rfs6sCp",
+      "year": 1916,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 147940,
+      "document_name": "prot-1916--fk--074_035",
+      "speech_id": "i-7k7EGq1HmyaAVqnyBrpnW5",
+      "year": 1916,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 148055,
+      "document_name": "prot-1916--fk--081_017",
+      "speech_id": "i-WgUo7UXCDhnWauwbRZoi9s",
+      "year": 1916,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 147570,
+      "document_name": "prot-1916--fk--045_032",
+      "speech_id": "i-RH7DoagH8YZpKNL8GWp27L",
+      "year": 1916,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 149315,
+      "document_name": "prot-1917--ak--040_017",
+      "speech_id": "i-LUdrvvnT9SxRJJW1vWC9ow",
+      "year": 1917,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 150696,
+      "document_name": "prot-1917--ak--074_044",
+      "speech_id": "i-ThhFyAVEBThpoxw8uhbJgD",
+      "year": 1917,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 148740,
+      "document_name": "prot-1917--ak--027_008",
+      "speech_id": "i-YJfCLKKy5Z7jthY3wD3Gif",
+      "year": 1917,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 151734,
+      "document_name": "prot-1917--fk--038_012",
+      "speech_id": "i-VsYqL1nncfNa7PvxS1u5K2",
+      "year": 1917,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 151292,
+      "document_name": "prot-1917--fk--020_017",
+      "speech_id": "i-Hz2GSQWZr6RK2enWvTnU3J",
+      "year": 1917,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 151511,
+      "document_name": "prot-1917--fk--028_004",
+      "speech_id": "i-67UC4GgJbQuo9eKUr2YioE",
+      "year": 1917,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 153470,
+      "document_name": "prot-1918--ak--042_013",
+      "speech_id": "i-Tqjf4tTyfQcrzWt9TTKUHw",
+      "year": 1918,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 156812,
+      "document_name": "prot-1918-urtima-ak--019_009",
+      "speech_id": "i-DgGjRZL4c7WDdQm4VYqvHh",
+      "year": 1918,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 154514,
+      "document_name": "prot-1918--ak--069_022",
+      "speech_id": "i-PARN86oZvZvSsqCjGAyus",
+      "year": 1918,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 155232,
+      "document_name": "prot-1918--fk--018_008",
+      "speech_id": "i-33RS3T1AsTmyPo1FxaXCSw",
+      "year": 1918,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 155318,
+      "document_name": "prot-1918--fk--021_013",
+      "speech_id": "i-DVAhSuYqFqmiDWF3gXPmsa",
+      "year": 1918,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 155315,
+      "document_name": "prot-1918--fk--021_010",
+      "speech_id": "i-4guNUTTafrbkdnNt47y9fF",
+      "year": 1918,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 157318,
+      "document_name": "prot-1919--ak--020_005",
+      "speech_id": "i-NJkoBeCLmkMnGf9n5zsQa8",
+      "year": 1919,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 157346,
+      "document_name": "prot-1919--ak--020_033",
+      "speech_id": "i-Qw1NyWvW8mxpxJX4KX6MN5",
+      "year": 1919,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 158246,
+      "document_name": "prot-1919--ak--043_010",
+      "speech_id": "i-MSb3drrvoq8QJUDG4tZrtq",
+      "year": 1919,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 159691,
+      "document_name": "prot-1919--fk--013_014",
+      "speech_id": "i-VUrkVhk7SQXoEtnd8k2Y4d",
+      "year": 1919,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 160019,
+      "document_name": "prot-1919--fk--023_033",
+      "speech_id": "i-6nf41jzdixJVkoMkfQBvFF",
+      "year": 1919,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 160804,
+      "document_name": "prot-1919--fk--041_018",
+      "speech_id": "i-7JtHR8yHjU27VRmf3uaN2o",
+      "year": 1919,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 164171,
+      "document_name": "prot-1920--ak--082_020",
+      "speech_id": "i-8af9958a0430cc41-35",
+      "year": 1920,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 163248,
+      "document_name": "prot-1920--ak--054_011",
+      "speech_id": "i-1e0734fa8a037711-40",
+      "year": 1920,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 162548,
+      "document_name": "prot-1920--ak--038_003",
+      "speech_id": "i-c991b59060960214-5",
+      "year": 1920,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 165129,
+      "document_name": "prot-1920--fk--035_053",
+      "speech_id": "i-15eaa433655a16ad-12",
+      "year": 1920,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 164671,
+      "document_name": "prot-1920--fk--023_070",
+      "speech_id": "i-60c3bbbb4cc3deee-10",
+      "year": 1920,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 164770,
+      "document_name": "prot-1920--fk--026_036",
+      "speech_id": "i-9770a422f75bc3db-7",
+      "year": 1920,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 166737,
+      "document_name": "prot-1921--ak--016_020",
+      "speech_id": "i-1ae56155592094c6-16",
+      "year": 1921,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 168250,
+      "document_name": "prot-1921--ak--044_015",
+      "speech_id": "i-14f03cbef89db9c4-0",
+      "year": 1921,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 168269,
+      "document_name": "prot-1921--ak--044_034",
+      "speech_id": "i-5eb2ec003ab54bd2-11",
+      "year": 1921,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 169204,
+      "document_name": "prot-1921--fk--006_018",
+      "speech_id": "i-cbdec1411a733a57-0",
+      "year": 1921,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 170509,
+      "document_name": "prot-1921--fk--036_044",
+      "speech_id": "i-8faf704fac4da33a-1",
+      "year": 1921,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 171102,
+      "document_name": "prot-1921--fk--045_009",
+      "speech_id": "i-e2361499d95c7cf3-0",
+      "year": 1921,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 172634,
+      "document_name": "prot-1922--ak--037_018",
+      "speech_id": "i-cf56a89574fcd541-5",
+      "year": 1922,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 173358,
+      "document_name": "prot-1922--ak--049_051",
+      "speech_id": "i-fca1c3ac7b6a4fb1-8",
+      "year": 1922,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 172024,
+      "document_name": "prot-1922--ak--023_007",
+      "speech_id": "i-58dc42b57f5763ed-1",
+      "year": 1922,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 174531,
+      "document_name": "prot-1922--fk--034_011",
+      "speech_id": "i-aceefb1b74a2c00b-0",
+      "year": 1922,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 174721,
+      "document_name": "prot-1922--fk--037_057",
+      "speech_id": "i-1b3a13aee9cba564-18",
+      "year": 1922,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 174898,
+      "document_name": "prot-1922--fk--039_015",
+      "speech_id": "i-f6c3d318d0262058-0",
+      "year": 1922,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 176837,
+      "document_name": "prot-1923--ak--044_055",
+      "speech_id": "i-be6f8c700cbd672a-27",
+      "year": 1923,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 176785,
+      "document_name": "prot-1923--ak--044_003",
+      "speech_id": "i-be6f8c700cbd672a-0",
+      "year": 1923,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 176025,
+      "document_name": "prot-1923--ak--028_004",
+      "speech_id": "i-00b5518fb026f303-0",
+      "year": 1923,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 177859,
+      "document_name": "prot-1923--fk--032_010",
+      "speech_id": "i-9b754253668f7fb8-0",
+      "year": 1923,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 177047,
+      "document_name": "prot-1923--fk--008_006",
+      "speech_id": "i-ebaf517d43aa87d0-0",
+      "year": 1923,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 177287,
+      "document_name": "prot-1923--fk--015_019",
+      "speech_id": "i-b9ab09d231d2d487-0",
+      "year": 1923,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 178715,
+      "document_name": "prot-1924--ak--013_039",
+      "speech_id": "i-1839b7ae7facadbf-3",
+      "year": 1924,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 179277,
+      "document_name": "prot-1924--ak--025_034",
+      "speech_id": "i-386d7faae8556022-6",
+      "year": 1924,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 178691,
+      "document_name": "prot-1924--ak--013_015",
+      "speech_id": "i-1ab5acf28690f7bf-4",
+      "year": 1924,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 181257,
+      "document_name": "prot-1924--fk--031_004",
+      "speech_id": "i-89f9536f3b284b9a-7",
+      "year": 1924,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 182169,
+      "document_name": "prot-1924--fk--045_023",
+      "speech_id": "i-SAEYpQfMBKqviromN9zNCA",
+      "year": 1924,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 181564,
+      "document_name": "prot-1924--fk--036_023",
+      "speech_id": "i-58986e779504d304-1",
+      "year": 1924,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 183839,
+      "document_name": "prot-1925--ak--041_015",
+      "speech_id": "i-17efdb2bd2029252-0",
+      "year": 1925,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 182328,
+      "document_name": "prot-1925--ak--011_010",
+      "speech_id": "i-645ab45d6f4cf6d5-2",
+      "year": 1925,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 182771,
+      "document_name": "prot-1925--ak--021_069",
+      "speech_id": "i-340e069785422ab3-13",
+      "year": 1925,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 185061,
+      "document_name": "prot-1925--fk--031_039",
+      "speech_id": "i-4910726a24a886fb-18",
+      "year": 1925,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 185108,
+      "document_name": "prot-1925--fk--031_086",
+      "speech_id": "i-129f643cd85a3fb8-4",
+      "year": 1925,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 184525,
+      "document_name": "prot-1925--fk--019_040",
+      "speech_id": "i-b8a70ff71036f74b-14",
+      "year": 1925,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 187223,
+      "document_name": "prot-1926--ak--035_014",
+      "speech_id": "i-3ffadc170da36c01-0",
+      "year": 1926,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 186132,
+      "document_name": "prot-1926--ak--013_046",
+      "speech_id": "i-AxKXvdBc8z8SocQQnH7L9c",
+      "year": 1926,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 186774,
+      "document_name": "prot-1926--ak--026_011",
+      "speech_id": "i-92327b2301afb9c9-0",
+      "year": 1926,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 189256,
+      "document_name": "prot-1926--fk--034_049",
+      "speech_id": "i-fb6ca94f9e3bb7f7-0",
+      "year": 1926,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 189599,
+      "document_name": "prot-1926--fk--039_009",
+      "speech_id": "i-e6f21ba8319bef62-9",
+      "year": 1926,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 189042,
+      "document_name": "prot-1926--fk--030_046",
+      "speech_id": "i-84e5124e16a65569-3",
+      "year": 1926,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 191210,
+      "document_name": "prot-1927--ak--031_049",
+      "speech_id": "i-b9dd477196e716a0-1",
+      "year": 1927,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 190585,
+      "document_name": "prot-1927--ak--020_042",
+      "speech_id": "i-b7a6b57f6c856d6c-0",
+      "year": 1927,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 190530,
+      "document_name": "prot-1927--ak--019_029",
+      "speech_id": "i-6bc3376e6b8dbfc6-0",
+      "year": 1927,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 193532,
+      "document_name": "prot-1927--fk--037_083",
+      "speech_id": "i-24e6aafab9c1821b-2",
+      "year": 1927,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 193324,
+      "document_name": "prot-1927--fk--035_015",
+      "speech_id": "i-12e03a5130bf8f10-16",
+      "year": 1927,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 193640,
+      "document_name": "prot-1927--fk--038_092",
+      "speech_id": "i-4bf9a30a7c66f694-52",
+      "year": 1927,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 195921,
+      "document_name": "prot-1928--ak--038_018",
+      "speech_id": "i-0b8f775be4cc3bc5-0",
+      "year": 1928,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 195679,
+      "document_name": "prot-1928--ak--035_077",
+      "speech_id": "i-7e4eb0a84209e5d3-2",
+      "year": 1928,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 193966,
+      "document_name": "prot-1928--ak--009_021",
+      "speech_id": "i-e5fdf7a3a71a9d26-1",
+      "year": 1928,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 197193,
+      "document_name": "prot-1928--fk--026_065",
+      "speech_id": "i-c6297f643c680f0a-0",
+      "year": 1928,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 197710,
+      "document_name": "prot-1928--fk--033_005",
+      "speech_id": "i-970b1a2efc1757ed-0",
+      "year": 1928,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 196852,
+      "document_name": "prot-1928--fk--021_015",
+      "speech_id": "i-bf4add70556e3bd5-3",
+      "year": 1928,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 199650,
+      "document_name": "prot-1929--ak--035_001",
+      "speech_id": "i-Pk9CjmtatzPcLW4pEER6Sn",
+      "year": 1929,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 198609,
+      "document_name": "prot-1929--ak--018_018",
+      "speech_id": "i-b7952422952592a4-0",
+      "year": 1929,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 198255,
+      "document_name": "prot-1929--ak--010_003",
+      "speech_id": "i-c15d4c97b66b5c37-0",
+      "year": 1929,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 201697,
+      "document_name": "prot-1929--fk--028_053",
+      "speech_id": "i-093395d34fe76091-0",
+      "year": 1929,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 200989,
+      "document_name": "prot-1929--fk--018_052",
+      "speech_id": "i-8252e8448e0b5ab1-14",
+      "year": 1929,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 201342,
+      "document_name": "prot-1929--fk--022_012",
+      "speech_id": "i-6d64a048904f618c-2",
+      "year": 1929,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 203721,
+      "document_name": "prot-1930--ak--031_036",
+      "speech_id": "i-edb0c0fef1132aa1-12",
+      "year": 1930,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 203388,
+      "document_name": "prot-1930--ak--024_014",
+      "speech_id": "i-ab534ddefe355288-0",
+      "year": 1930,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 203338,
+      "document_name": "prot-1930--ak--023_067",
+      "speech_id": "i-d54b6198db61be88-14",
+      "year": 1930,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 206352,
+      "document_name": "prot-1930--fk--034_118",
+      "speech_id": "i-b2092db414fb0c30-4",
+      "year": 1930,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 206000,
+      "document_name": "prot-1930--fk--029_009",
+      "speech_id": "i-5aaf1ceefb84dc7d-0",
+      "year": 1930,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 205124,
+      "document_name": "prot-1930--fk--013_035",
+      "speech_id": "i-ef1f7564cf0db486-0",
+      "year": 1930,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 207221,
+      "document_name": "prot-1931--ak--014_021",
+      "speech_id": "i-d809517067efbc41-0",
+      "year": 1931,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 208761,
+      "document_name": "prot-1931--ak--039_029",
+      "speech_id": "i-4f014d25924c8040-0",
+      "year": 1931,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 207288,
+      "document_name": "prot-1931--ak--016_023",
+      "speech_id": "i-16e9ac014fb8816d-0",
+      "year": 1931,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 210905,
+      "document_name": "prot-1931--fk--042_076",
+      "speech_id": "i-17c8a7da656e5afc-0",
+      "year": 1931,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 210148,
+      "document_name": "prot-1931--fk--030_050",
+      "speech_id": "i-dc38a587e4de906c-16",
+      "year": 1931,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 209228,
+      "document_name": "prot-1931--fk--011_055",
+      "speech_id": "i-1f60c660c94a6ef8-0",
+      "year": 1931,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 213142,
+      "document_name": "prot-1932--ak--052_054",
+      "speech_id": "i-2a6ea30a4260f0f7-0",
+      "year": 1932,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 212723,
+      "document_name": "prot-1932--ak--045_026",
+      "speech_id": "i-34beeb9bb51c1917-0",
+      "year": 1932,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 212158,
+      "document_name": "prot-1932--ak--034_019",
+      "speech_id": "i-7b2aca35653709e3-0",
+      "year": 1932,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 215500,
+      "document_name": "prot-1932--fk--042_070",
+      "speech_id": "i-a0997ec3fb68f7a4-0",
+      "year": 1932,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 214055,
+      "document_name": "prot-1932--fk--018_030",
+      "speech_id": "i-366456b32e56a6cc-7",
+      "year": 1932,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 214956,
+      "document_name": "prot-1932--fk--035_021",
+      "speech_id": "i-b10b1b53d2e2d316-0",
+      "year": 1932,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 218174,
+      "document_name": "prot-1933--ak--048_135",
+      "speech_id": "i-49a386187e913277-0",
+      "year": 1933,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 217720,
+      "document_name": "prot-1933--ak--043_001",
+      "speech_id": "i-b14bcb3e9101427c-0",
+      "year": 1933,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 216757,
+      "document_name": "prot-1933--ak--028_017",
+      "speech_id": "i-d3d7f19b3a7dc460-6",
+      "year": 1933,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 219926,
+      "document_name": "prot-1933--fk--044_049",
+      "speech_id": "i-3c804730ab1595b7-7",
+      "year": 1933,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 219514,
+      "document_name": "prot-1933--fk--036_032",
+      "speech_id": "i-3a458d49c13a89d7-2",
+      "year": 1933,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 219153,
+      "document_name": "prot-1933--fk--027_048",
+      "speech_id": "i-485544b752d8f67a-0",
+      "year": 1933,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 222148,
+      "document_name": "prot-1934--ak--040_064",
+      "speech_id": "i-c0acd2b94a0a095f-0",
+      "year": 1934,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 221679,
+      "document_name": "prot-1934--ak--033_002",
+      "speech_id": "i-713a69ce1823a292-0",
+      "year": 1934,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 221286,
+      "document_name": "prot-1934--ak--028_048",
+      "speech_id": "i-5fc5eb08f8650b74-9",
+      "year": 1934,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 223226,
+      "document_name": "prot-1934--fk--025_002",
+      "speech_id": "i-6c3bbf04eaaa7cfa-0",
+      "year": 1934,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 223983,
+      "document_name": "prot-1934--fk--039_016",
+      "speech_id": "i-f479c6a810dd3d6d-0",
+      "year": 1934,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 224290,
+      "document_name": "prot-1934--fk--043_059",
+      "speech_id": "i-3a96b2a0eb5778b1-18",
+      "year": 1934,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 225841,
+      "document_name": "prot-1935--ak--033_074",
+      "speech_id": "i-44c55cd0b5884603-11",
+      "year": 1935,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 225058,
+      "document_name": "prot-1935--ak--023_009",
+      "speech_id": "i-39da846c0e706367-0",
+      "year": 1935,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 224465,
+      "document_name": "prot-1935--ak--009_034",
+      "speech_id": "i-8d1970918e1ba87f-2",
+      "year": 1935,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 227012,
+      "document_name": "prot-1935--fk--024_044",
+      "speech_id": "i-196547f20a751295-12",
+      "year": 1935,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 227294,
+      "document_name": "prot-1935--fk--030_027",
+      "speech_id": "i-9d298ca0ab212525-0",
+      "year": 1935,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 227047,
+      "document_name": "prot-1935--fk--024_079",
+      "speech_id": "i-5E7s7P2674AKv3T1K51Ros",
+      "year": 1935,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 229336,
+      "document_name": "prot-1936--ak--034_022",
+      "speech_id": "i-2983e085b88cda7d-0",
+      "year": 1936,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 229100,
+      "document_name": "prot-1936--ak--030_031",
+      "speech_id": "i-2bff474ca27f3cb4-7",
+      "year": 1936,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 228883,
+      "document_name": "prot-1936--ak--026_017",
+      "speech_id": "i-7bb68bb9d4df8b07-6",
+      "year": 1936,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 231648,
+      "document_name": "prot-1936--fk--042_054",
+      "speech_id": "i-6e51d746b34fcb17-5",
+      "year": 1936,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 231355,
+      "document_name": "prot-1936--fk--037_028",
+      "speech_id": "i-4ca1d08ea3398b02-19",
+      "year": 1936,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 231623,
+      "document_name": "prot-1936--fk--042_029",
+      "speech_id": "i-d03d73f2bd201e1c-2",
+      "year": 1936,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 233378,
+      "document_name": "prot-1937--ak--034_002",
+      "speech_id": "i-6f6296e1e1d46c9b-0",
+      "year": 1937,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 232670,
+      "document_name": "prot-1937--ak--019_046",
+      "speech_id": "i-1cade04edbe22932-2",
+      "year": 1937,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 233023,
+      "document_name": "prot-1937--ak--027_012",
+      "speech_id": "i-124d43682bfd11e1-0",
+      "year": 1937,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 235447,
+      "document_name": "prot-1937--fk--040_028",
+      "speech_id": "i-a81f4f611fa2d819-0",
+      "year": 1937,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 234940,
+      "document_name": "prot-1937--fk--031_059",
+      "speech_id": "i-162b9d3a22739486-0",
+      "year": 1937,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 234387,
+      "document_name": "prot-1937--fk--019_049",
+      "speech_id": "i-57018f1a97642210-4",
+      "year": 1937,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 236893,
+      "document_name": "prot-1938--ak--037_039",
+      "speech_id": "i-031f896922cbabed-0",
+      "year": 1938,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 235590,
+      "document_name": "prot-1938--ak--011_003",
+      "speech_id": "i-7b34e9952b19a827-0",
+      "year": 1938,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 236225,
+      "document_name": "prot-1938--ak--025_053",
+      "speech_id": "i-f06163baaadd9d90-0",
+      "year": 1938,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 237981,
+      "document_name": "prot-1938--fk--028_070",
+      "speech_id": "i-9817675d7aedce11-16",
+      "year": 1938,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 237540,
+      "document_name": "prot-1938--fk--018_014",
+      "speech_id": "i-6f170360d97fc14e-4",
+      "year": 1938,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 238279,
+      "document_name": "prot-1938--fk--036_003",
+      "speech_id": "i-ecc1c541fb4d2680-0",
+      "year": 1938,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 240471,
+      "document_name": "prot-1939--ak--038_022",
+      "speech_id": "i-267c86f41b119078-0",
+      "year": 1939,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 239467,
+      "document_name": "prot-1939--ak--024_004",
+      "speech_id": "i-46199e2ebd1cb40c-0",
+      "year": 1939,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 238913,
+      "document_name": "prot-1939--ak--012_026",
+      "speech_id": "i-GZoQ8J9h5BEoum9tvgYuA2",
+      "year": 1939,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 241129,
+      "document_name": "prot-1939--fk--025_021",
+      "speech_id": "i-T9dDMguDucpWpNdAqjHUbq",
+      "year": 1939,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 242752,
+      "document_name": "prot-1939-urtima-fk--015_007",
+      "speech_id": "i-205c37f50e04409d-0",
+      "year": 1939,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 241597,
+      "document_name": "prot-1939--fk--034_073",
+      "speech_id": "i-4a27619934bd6924-0",
+      "year": 1939,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 243218,
+      "document_name": "prot-1940--ak--019_007",
+      "speech_id": "i-624a5d4dfe5b151f-1",
+      "year": 1940,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 243435,
+      "document_name": "prot-1940--ak--022_065",
+      "speech_id": "i-44484428e672e876-0",
+      "year": 1940,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 244186,
+      "document_name": "prot-1940--ak--040_001",
+      "speech_id": "i-2a96042d551851bc-0",
+      "year": 1940,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 246254,
+      "document_name": "prot-1940-urtima-fk--018_005",
+      "speech_id": "i-d354c4761463bbe9-5",
+      "year": 1940,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 245296,
+      "document_name": "prot-1940--fk--035_113",
+      "speech_id": "i-668e61b87ff53d96-17",
+      "year": 1940,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 244743,
+      "document_name": "prot-1940--fk--024_022",
+      "speech_id": "i-1054a451258c26ee-2",
+      "year": 1940,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 247937,
+      "document_name": "prot-1941--ak--043_006",
+      "speech_id": "i-baf2ff334ea9e8b5-0",
+      "year": 1941,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 247437,
+      "document_name": "prot-1941--ak--033_014",
+      "speech_id": "i-8fea3e7820c3bd35-0",
+      "year": 1941,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 246765,
+      "document_name": "prot-1941--ak--017_018",
+      "speech_id": "i-ffdf310194e7495d-0",
+      "year": 1941,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 248300,
+      "document_name": "prot-1941--fk--019_010",
+      "speech_id": "i-fbd9b199c3e351f7-7",
+      "year": 1941,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 248660,
+      "document_name": "prot-1941--fk--033_016",
+      "speech_id": "i-4042a021523321a3-0",
+      "year": 1941,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 248385,
+      "document_name": "prot-1941--fk--021_048",
+      "speech_id": "i-d3625350c9a96778-2",
+      "year": 1941,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 250280,
+      "document_name": "prot-1942--ak--023_019",
+      "speech_id": "i-803ca40639bcc884-0",
+      "year": 1942,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 250268,
+      "document_name": "prot-1942--ak--023_007",
+      "speech_id": "i-ef436b068d50f00f-0",
+      "year": 1942,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 249864,
+      "document_name": "prot-1942--ak--018_025",
+      "speech_id": "i-4b79d7077a202ade-11",
+      "year": 1942,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 251342,
+      "document_name": "prot-1942--fk--015_004",
+      "speech_id": "i-863655356d9bf636-0",
+      "year": 1942,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 252105,
+      "document_name": "prot-1942--fk--026_010",
+      "speech_id": "i-b94e7d0862afc778-4",
+      "year": 1942,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 251256,
+      "document_name": "prot-1942--fk--013_065",
+      "speech_id": "i-6ac6a462e6ee5e3d-0",
+      "year": 1942,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 253693,
+      "document_name": "prot-1943--ak--025_021",
+      "speech_id": "i-0c9b9fb088e740b4-2",
+      "year": 1943,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 253042,
+      "document_name": "prot-1943--ak--015_031",
+      "speech_id": "i-f8e38a6d86430a5b-0",
+      "year": 1943,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 253905,
+      "document_name": "prot-1943--ak--027_021",
+      "speech_id": "i-c432b6fdd619ca0f-0",
+      "year": 1943,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 254721,
+      "document_name": "prot-1943--fk--019_037",
+      "speech_id": "i-8f10ccbb94095521-2",
+      "year": 1943,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 254770,
+      "document_name": "prot-1943--fk--022_001",
+      "speech_id": "i-G5oQF1wg124ppFHr7BbGZJ",
+      "year": 1943,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 254025,
+      "document_name": "prot-1943--fk--003_013",
+      "speech_id": "i-X7CwkDteYTaRnJ8HTnwKBj",
+      "year": 1943,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 256771,
+      "document_name": "prot-1944--ak--024_075",
+      "speech_id": "i-3ac8e3d3ada69fe6-6",
+      "year": 1944,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 256917,
+      "document_name": "prot-1944--ak--026_019",
+      "speech_id": "i-183ac7e985b91882-1",
+      "year": 1944,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 256707,
+      "document_name": "prot-1944--ak--024_011",
+      "speech_id": "i-92b5ca837ca01f0e-5",
+      "year": 1944,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 258164,
+      "document_name": "prot-1944--fk--024_086",
+      "speech_id": "i-772cdea4c32d2b95-0",
+      "year": 1944,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 258229,
+      "document_name": "prot-1944--fk--025_046",
+      "speech_id": "i-7c7fe8b83bbf27e2-31",
+      "year": 1944,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 257506,
+      "document_name": "prot-1944--fk--012_106",
+      "speech_id": "i-93d3310829353b0c-9",
+      "year": 1944,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 259982,
+      "document_name": "prot-1945--ak--026_034",
+      "speech_id": "i-d19cc9d3d25011f3-2",
+      "year": 1945,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 259405,
+      "document_name": "prot-1945--ak--019_111",
+      "speech_id": "i-872f366b33540994-7",
+      "year": 1945,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 259936,
+      "document_name": "prot-1945--ak--025_056",
+      "speech_id": "i-fa56d1052fa54539-0",
+      "year": 1945,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 260740,
+      "document_name": "prot-1945--fk--004_015",
+      "speech_id": "i-9e28dd362d7e26f8-52",
+      "year": 1945,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 261665,
+      "document_name": "prot-1945--fk--022_075",
+      "speech_id": "i-11ae1153889a5af6-170",
+      "year": 1945,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 260873,
+      "document_name": "prot-1945--fk--011_011",
+      "speech_id": "i-36293fbc9448ee47-17",
+      "year": 1945,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 263453,
+      "document_name": "prot-1946--ak--023_096",
+      "speech_id": "i-7ed9c51189c55d6f-2",
+      "year": 1946,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 263817,
+      "document_name": "prot-1946--ak--028_037",
+      "speech_id": "i-da00478286d6fc9e-0",
+      "year": 1946,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 262805,
+      "document_name": "prot-1946--ak--015_023",
+      "speech_id": "i-e22fedd9c7f54adf-5",
+      "year": 1946,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 264239,
+      "document_name": "prot-1946--fk--009_008",
+      "speech_id": "i-e787a482c9118322-0",
+      "year": 1946,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 264548,
+      "document_name": "prot-1946--fk--014_025",
+      "speech_id": "i-e51116ac2405be2e-22",
+      "year": 1946,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 265149,
+      "document_name": "prot-1946--fk--024_023",
+      "speech_id": "i-686e9c4ee71ce796-1",
+      "year": 1946,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 267213,
+      "document_name": "prot-1947--ak--032_040",
+      "speech_id": "i-c07dcbe20f4bed39-3",
+      "year": 1947,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 267004,
+      "document_name": "prot-1947--ak--030_012",
+      "speech_id": "i-012269c0d3cc8701-0",
+      "year": 1947,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 266574,
+      "document_name": "prot-1947--ak--023_062",
+      "speech_id": "i-ac538ccad5ec9b13-17",
+      "year": 1947,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 268584,
+      "document_name": "prot-1947--fk--030_028",
+      "speech_id": "i-a0cedf26b8f09549-8",
+      "year": 1947,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 268672,
+      "document_name": "prot-1947--fk--031_045",
+      "speech_id": "i-90c901b247360c82-0",
+      "year": 1947,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 268545,
+      "document_name": "prot-1947--fk--029_062",
+      "speech_id": "i-2d83e7edc48a62d9-8",
+      "year": 1947,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 270487,
+      "document_name": "prot-1948--ak--021_065",
+      "speech_id": "i-f968e673c50dfeea-8",
+      "year": 1948,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 270808,
+      "document_name": "prot-1948--ak--024_096",
+      "speech_id": "i-83d95eadf102cca0-4",
+      "year": 1948,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 270347,
+      "document_name": "prot-1948--ak--020_007",
+      "speech_id": "i-748f3d854d509fb4-7",
+      "year": 1948,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 272962,
+      "document_name": "prot-1948--fk--027_035",
+      "speech_id": "i-64841042292a32c9-20",
+      "year": 1948,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 272690,
+      "document_name": "prot-1948--fk--024_066",
+      "speech_id": "i-7cc4b66d9665cc97-9",
+      "year": 1948,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 272241,
+      "document_name": "prot-1948--fk--018_032",
+      "speech_id": "i-86429a424a865a90-16",
+      "year": 1948,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 273558,
+      "document_name": "prot-1949--ak--009_005",
+      "speech_id": "i-71362baa9fe84b86-7",
+      "year": 1949,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 273855,
+      "document_name": "prot-1949--ak--011_126",
+      "speech_id": "i-ca9114eae3e6f469-22",
+      "year": 1949,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 274546,
+      "document_name": "prot-1949--ak--017_066",
+      "speech_id": "i-5TbFSpnk3oMnji2cftVTUV",
+      "year": 1949,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 276203,
+      "document_name": "prot-1949--fk--019_055",
+      "speech_id": "i-LtF6gCZJNst1eVWreVdVg1",
+      "year": 1949,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 276238,
+      "document_name": "prot-1949--fk--019_090",
+      "speech_id": "i-b23470263228ee0c-54",
+      "year": 1949,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 275885,
+      "document_name": "prot-1949--fk--015_026",
+      "speech_id": "i-3d08a4f1665154b0-0",
+      "year": 1949,
+      "chamber_abbrev": "fk"
+    },
+    {
+      "document_id": 277080,
+      "document_name": "prot-1950--ak--012_120",
+      "speech_id": "i-a600cd0213a14f97-2",
+      "year": 1950,
+      "chamber_abbrev": "ak"
+    },
+    {
+      "document_id": 278458,
+      "document_name": "prot-1950--ak--024_037",
+      "speech_id": "i-cccee3427c12f5ee-11",
+      "year": 1950,
+      "chamber_abbrev": "ak"
+    }
+  ],
+  "edge_cases": {
+    "speaker_note_missing": [
+      {
+        "document_id": 0,
+        "document_name": "prot-1867--ak--0118_001",
+        "speech_id": "i-V7wj6YbxCSAxzon2nhdBwy"
+      },
+      {
+        "document_id": 1,
+        "document_name": "prot-1867--ak--0118_002",
+        "speech_id": "i-QMJpN9uzcJKN5aDAykc6e2"
+      },
+      {
+        "document_id": 11,
+        "document_name": "prot-1867--ak--0118_012",
+        "speech_id": "i-Bx3uVe5LoRfaqD8cHuEv4a"
+      },
+      {
+        "document_id": 14,
+        "document_name": "prot-1867--ak--0121_001",
+        "speech_id": "i-L9NHtMK6XpBWWFeMwJLqNn"
+      },
+      {
+        "document_id": 21,
+        "document_name": "prot-1867--ak--0121_008",
+        "speech_id": "i-3CEkUNkrE6QGvRWYG4cpza"
+      },
+      {
+        "document_id": 30,
+        "document_name": "prot-1867--ak--0122_001",
+        "speech_id": "i-Aoivi2vs3LN5mdkuUZWUw"
+      },
+      {
+        "document_id": 60,
+        "document_name": "prot-1867--ak--0124_007",
+        "speech_id": "i-282x1hHWeWxqPpA8pn2wLF"
+      },
+      {
+        "document_id": 61,
+        "document_name": "prot-1867--ak--0126_001",
+        "speech_id": "i-Dk9PkUnU74caFq74VsJmtv"
+      },
+      {
+        "document_id": 62,
+        "document_name": "prot-1867--ak--0126_002",
+        "speech_id": "i-GxUoBYY3BVt42rmRTDMxpR"
+      },
+      {
+        "document_id": 127,
+        "document_name": "prot-1867--ak--0128_029",
+        "speech_id": "i-7h5L13Rzb84c9ujcBG2J6e"
+      },
+      {
+        "document_id": 128,
+        "document_name": "prot-1867--ak--0128_030",
+        "speech_id": "i-JodAoNQ4s4qheZtHNVDp6J"
+      },
+      {
+        "document_id": 143,
+        "document_name": "prot-1867--ak--0129_005",
+        "speech_id": "i-HD9F8BQibxvSfp3YsxbNAj"
+      },
+      {
+        "document_id": 145,
+        "document_name": "prot-1867--ak--0129_007",
+        "speech_id": "i-Fm4nSHTyzJVUKVJhrsMNFc"
+      },
+      {
+        "document_id": 148,
+        "document_name": "prot-1867--ak--0130_001",
+        "speech_id": "i-XRrDFaUStrFeNeHjp4ESZ6"
+      },
+      {
+        "document_id": 174,
+        "document_name": "prot-1867--ak--0130_027",
+        "speech_id": "i-WbrnhfdjAim4UYBPPqhZKM"
+      },
+      {
+        "document_id": 265,
+        "document_name": "prot-1867--ak--0209_001",
+        "speech_id": "i-CZvU45HVo2iemiWtqkQstJ"
+      },
+      {
+        "document_id": 284,
+        "document_name": "prot-1867--ak--0213_009",
+        "speech_id": "i-7PdhcfJ4Zawn74Swj551gZ"
+      },
+      {
+        "document_id": 286,
+        "document_name": "prot-1867--ak--0216_001",
+        "speech_id": "i-Lw6ASgvGRMkjWNxhAbk7VV"
+      },
+      {
+        "document_id": 396,
+        "document_name": "prot-1867--ak--0220_021",
+        "speech_id": "i-9kDceFf2CgmBNhn3i6sgCS"
+      },
+      {
+        "document_id": 517,
+        "document_name": "prot-1867--ak--0227_011",
+        "speech_id": "i-ABfxVWRHSvX3ehsnc685ft"
+      },
+      {
+        "document_id": 545,
+        "document_name": "prot-1867--ak--0228_001",
+        "speech_id": "i-UBYMLeXJb3oRRBVnBGHgpN"
+      },
+      {
+        "document_id": 546,
+        "document_name": "prot-1867--ak--0228_002",
+        "speech_id": "i-Fxts18VvdmmbecBKNQ3AJY"
+      },
+      {
+        "document_id": 865,
+        "document_name": "prot-1867--ak--0309_069",
+        "speech_id": "i-PLNuhPyUBoqT2yBxyFUom4"
+      },
+      {
+        "document_id": 927,
+        "document_name": "prot-1867--ak--0311_001",
+        "speech_id": "i-2FreC7QgRZ8k1tCEeKeoVX"
+      },
+      {
+        "document_id": 928,
+        "document_name": "prot-1867--ak--0311_002",
+        "speech_id": "i-7stZaoePKb5W2UEtx4hDL8"
+      },
+      {
+        "document_id": 962,
+        "document_name": "prot-1867--ak--0311_036",
+        "speech_id": "i-7YRe6nFwEu3dkqBfuYPeyp"
+      },
+      {
+        "document_id": 1004,
+        "document_name": "prot-1867--ak--0313_038",
+        "speech_id": "i-M8F7xS4sHjzJCngs2YTf7N"
+      },
+      {
+        "document_id": 1035,
+        "document_name": "prot-1867--ak--0313_069",
+        "speech_id": "i-NazkWqEY2VPBR6F4NAnTCy"
+      },
+      {
+        "document_id": 1062,
+        "document_name": "prot-1867--ak--0313_096",
+        "speech_id": "i-Af7k3q2kR5xo45iuQHrQAb"
+      },
+      {
+        "document_id": 1081,
+        "document_name": "prot-1867--ak--0316_001",
+        "speech_id": "i-oxhFbsRcvq3tBNWDcChds"
+      },
+      {
+        "document_id": 1253,
+        "document_name": "prot-1867--ak--0320_001",
+        "speech_id": "i-TZDULP2KmcWkue9m1zyL6i"
+      },
+      {
+        "document_id": 1285,
+        "document_name": "prot-1867--ak--0320_033",
+        "speech_id": "i-T253TmTQ3kNoGtRbinu7sG"
+      },
+      {
+        "document_id": 1294,
+        "document_name": "prot-1867--ak--0326_008",
+        "speech_id": "i-Gxp8bGTFnsSRBHmULSppGC"
+      },
+      {
+        "document_id": 1426,
+        "document_name": "prot-1867--ak--0327_066",
+        "speech_id": "i-AdBwqbEhNAZLLh7WgFtLA9"
+      },
+      {
+        "document_id": 1688,
+        "document_name": "prot-1867--ak--0330_001",
+        "speech_id": "i-QYzujt5ed9pGWHHJYzEr6D"
+      },
+      {
+        "document_id": 1771,
+        "document_name": "prot-1867--ak--0401_001",
+        "speech_id": "i-MeJEv3DiYpcUi9BHMobzMX"
+      },
+      {
+        "document_id": 1773,
+        "document_name": "prot-1867--ak--0401_003",
+        "speech_id": "i-W1K3NUBAYUqKbgPXDdCgG5"
+      },
+      {
+        "document_id": 1969,
+        "document_name": "prot-1867--ak--0404_001",
+        "speech_id": "i-8yK4q8qrWn9Drs2bLE6ZYy"
+      },
+      {
+        "document_id": 2005,
+        "document_name": "prot-1867--ak--0404_037",
+        "speech_id": "i-CVwcn2cRLWnda1WHgsCwkk"
+      },
+      {
+        "document_id": 2065,
+        "document_name": "prot-1867--ak--0406_017",
+        "speech_id": "i-V9DFquw989Xv93oNjc3t5m"
+      },
+      {
+        "document_id": 2117,
+        "document_name": "prot-1867--ak--0406_069",
+        "speech_id": "i-S6hFv6NBq63NRwDcw1Xf64"
+      },
+      {
+        "document_id": 2118,
+        "document_name": "prot-1867--ak--0408_001",
+        "speech_id": "i-2THi3hMYDP5v4NjoVj1GMW"
+      },
+      {
+        "document_id": 2158,
+        "document_name": "prot-1867--ak--0410_001",
+        "speech_id": "i-GD4NK58M9677SV14ZMPAWk"
+      },
+      {
+        "document_id": 2198,
+        "document_name": "prot-1867--ak--0411_001",
+        "speech_id": "i-8u2ayMYCVY3AHJUs7fDX8r"
+      },
+      {
+        "document_id": 2199,
+        "document_name": "prot-1867--ak--0411_002",
+        "speech_id": "i-Lgzx5yWpVFFqntVGptJBxV"
+      },
+      {
+        "document_id": 2203,
+        "document_name": "prot-1867--ak--0411_006",
+        "speech_id": "i-LtwEfF8VBZyUiwHhQ3HpHE"
+      },
+      {
+        "document_id": 2208,
+        "document_name": "prot-1867--ak--0411_011",
+        "speech_id": "i-28JDPJ1aU8NyxRZbUudSx5"
+      },
+      {
+        "document_id": 2313,
+        "document_name": "prot-1867--ak--0412_021",
+        "speech_id": "i-9tMBgQzNo8eHQNZfC2xpmw"
+      },
+      {
+        "document_id": 2480,
+        "document_name": "prot-1867--ak--0413_078",
+        "speech_id": "i-UwY7bX2gUEecEDpEvQAxQY"
+      },
+      {
+        "document_id": 2497,
+        "document_name": "prot-1867--ak--0415_001",
+        "speech_id": "i-NT4gMS8CrKsP1iHrk3bmGo"
+      },
+      {
+        "document_id": 2498,
+        "document_name": "prot-1867--ak--0416_001",
+        "speech_id": "i-Y1bJfUVaebG83MvPh1PZTM"
+      },
+      {
+        "document_id": 2556,
+        "document_name": "prot-1867--ak--0417_001",
+        "speech_id": "i-BBqgGiZmuhyZHEp3qTFw3P"
+      },
+      {
+        "document_id": 2987,
+        "document_name": "prot-1867--ak--0427_029",
+        "speech_id": "i-KiCp25MTUvGFH6nrMnoGfT"
+      },
+      {
+        "document_id": 2995,
+        "document_name": "prot-1867--ak--0427_037",
+        "speech_id": "i-9YvJpBtMjNkh46bt7YWX7h"
+      },
+      {
+        "document_id": 3061,
+        "document_name": "prot-1867--ak--0427_103",
+        "speech_id": "i-DixYDm97GKsWeZwoJ84mQX"
+      },
+      {
+        "document_id": 3078,
+        "document_name": "prot-1867--ak--0429_017",
+        "speech_id": "i-6PcQEtT5YPWJQGwFtDbXm8"
+      },
+      {
+        "document_id": 3149,
+        "document_name": "prot-1867--ak--0501_001",
+        "speech_id": "i-R9xVpk2zAyVcRxvn2LYR5J"
+      },
+      {
+        "document_id": 3160,
+        "document_name": "prot-1867--ak--0502_001",
+        "speech_id": "i-4RfEd2aKmST9hYvva2oCbj"
+      },
+      {
+        "document_id": 3161,
+        "document_name": "prot-1867--ak--0504_001",
+        "speech_id": "i-NXaDH9fvwLHGb4StoquQvS"
+      },
+      {
+        "document_id": 3162,
+        "document_name": "prot-1867--ak--0504_002",
+        "speech_id": "i-XG74XCsHDB4oXKSUcWMiVW"
+      },
+      {
+        "document_id": 3182,
+        "document_name": "prot-1867--ak--0504_022",
+        "speech_id": "i-PSVQ1ozBsWQTDW9K6w1ZvB"
+      },
+      {
+        "document_id": 3298,
+        "document_name": "prot-1867--ak--0508_001",
+        "speech_id": "i-FPpGrMnuTgtjQQaJd48AEB"
+      },
+      {
+        "document_id": 3341,
+        "document_name": "prot-1867--ak--0509_017",
+        "speech_id": "i-M6rvq9VmKaXnveqHtX3vLF"
+      },
+      {
+        "document_id": 3362,
+        "document_name": "prot-1867--ak--0511_001",
+        "speech_id": "i-QJ4VKJXFbL9az2xUjc7MvP"
+      },
+      {
+        "document_id": 3388,
+        "document_name": "prot-1867--ak--0513_002",
+        "speech_id": "i-FZFgnDKagE4ADXw9eriMYY"
+      },
+      {
+        "document_id": 3444,
+        "document_name": "prot-1867--ak--0515_001",
+        "speech_id": "i-MS3gSGaf8YPZp7p8Dk2VXk"
+      },
+      {
+        "document_id": 3447,
+        "document_name": "prot-1867--ak--0515_004",
+        "speech_id": "i-RNzRaVgBbm1Qb4Fv2VUS1z"
+      },
+      {
+        "document_id": 3451,
+        "document_name": "prot-1867--ak--0516_001",
+        "speech_id": "i-Vt5rqpby1NY66hsLdrHGEd"
+      },
+      {
+        "document_id": 3452,
+        "document_name": "prot-1867--ak--0516_002",
+        "speech_id": "i-DwAtapfpNHDsfBwmwctmvR"
+      },
+      {
+        "document_id": 3453,
+        "document_name": "prot-1867--ak--0605_001",
+        "speech_id": "i-wxvKzLZWPdPj34acGaiV9"
+      },
+      {
+        "document_id": 3483,
+        "document_name": "prot-1867--fk--0123_001",
+        "speech_id": "i-PSrfhWe5keVnb4Y2HUDfGP"
+      },
+      {
+        "document_id": 3499,
+        "document_name": "prot-1867--fk--0126_001",
+        "speech_id": "i-SmQNHzJDABKEoPcfVe3r6o"
+      },
+      {
+        "document_id": 3654,
+        "document_name": "prot-1867--fk--0216_001",
+        "speech_id": "i-ifzsboQEUpu3YweH6if7U"
+      },
+      {
+        "document_id": 4006,
+        "document_name": "prot-1867--fk--0316_001",
+        "speech_id": "i-EcjZmRjB8inXrgug1dvkV5"
+      },
+      {
+        "document_id": 4214,
+        "document_name": "prot-1867--fk--0326_001",
+        "speech_id": "i-S3HhuQtEGJywMTxg4xaX8J"
+      },
+      {
+        "document_id": 4288,
+        "document_name": "prot-1867--fk--0327_001",
+        "speech_id": "i-HQCHGTXa3dCJDzhXonnsec"
+      },
+      {
+        "document_id": 4606,
+        "document_name": "prot-1867--fk--0401_001",
+        "speech_id": "i-5FdWMYKzHyrLSHFEgbXKNH"
+      },
+      {
+        "document_id": 4926,
+        "document_name": "prot-1867--fk--0412_001",
+        "speech_id": "i-3LsXfgghfqoe3MezzXw1G2"
+      },
+      {
+        "document_id": 4998,
+        "document_name": "prot-1867--fk--0413_001",
+        "speech_id": "i-CJ5AfkdB5ktW7Muj5r5W6q"
+      },
+      {
+        "document_id": 5053,
+        "document_name": "prot-1867--fk--0415_001",
+        "speech_id": "i-JMjcLbQNX44Gd7X9FQA7Po"
+      },
+      {
+        "document_id": 5169,
+        "document_name": "prot-1867--fk--0417_001",
+        "speech_id": "i-P58m5uhdYEMNckyRWCwa5i"
+      },
+      {
+        "document_id": 5311,
+        "document_name": "prot-1867--fk--0425_001",
+        "speech_id": "i-KHS52BexSiiEyVuTqM8yLA"
+      },
+      {
+        "document_id": 5368,
+        "document_name": "prot-1867--fk--0426_001",
+        "speech_id": "i-8DiKWVvwkz9itZqLCEfX26"
+      },
+      {
+        "document_id": 5511,
+        "document_name": "prot-1867--fk--0429_001",
+        "speech_id": "i-FKQo8FwNuyREo1KPSh3T3w"
+      },
+      {
+        "document_id": 5515,
+        "document_name": "prot-1867--fk--0430_001",
+        "speech_id": "i-MRZdEefhnVqUEjSZWVszbR"
+      },
+      {
+        "document_id": 5547,
+        "document_name": "prot-1867--fk--0504_001",
+        "speech_id": "i-CVjtB6F5QWkxDU3WcJ5w3i"
+      },
+      {
+        "document_id": 5618,
+        "document_name": "prot-1867--fk--0507_001",
+        "speech_id": "i-HsKUpeuA3v8gNYT3EcVN2m"
+      },
+      {
+        "document_id": 5643,
+        "document_name": "prot-1867--fk--0508_001",
+        "speech_id": "i-QuqqR7RWeXyGg8b2smm9GX"
+      },
+      {
+        "document_id": 5724,
+        "document_name": "prot-1867--fk--0510_001",
+        "speech_id": "i-QLQyKvJcNd5DmgKsxxpPJ8"
+      },
+      {
+        "document_id": 5832,
+        "document_name": "prot-1867--fk--0514_001",
+        "speech_id": "i-XkBgL5yA6NC3C5hx12jsgq"
+      },
+      {
+        "document_id": 5874,
+        "document_name": "prot-1868--ak--0116_001",
+        "speech_id": "i-Th1JFGnEsCJYj9sXw6PJ76"
+      },
+      {
+        "document_id": 5876,
+        "document_name": "prot-1868--ak--0116_003",
+        "speech_id": "i-Fc4QwPqJyqz1iQGA5ewnD9"
+      },
+      {
+        "document_id": 5877,
+        "document_name": "prot-1868--ak--0116_004",
+        "speech_id": "i-FSLtojUetCAig3QeeAopkS"
+      },
+      {
+        "document_id": 5878,
+        "document_name": "prot-1868--ak--0117_001",
+        "speech_id": "i-FJHbD2wPXp2ZkuyKuajdsw"
+      },
+      {
+        "document_id": 5879,
+        "document_name": "prot-1868--ak--0118_001",
+        "speech_id": "i-6APhHw69vuufi16DuwdWvo"
+      },
+      {
+        "document_id": 5880,
+        "document_name": "prot-1868--ak--0120_001",
+        "speech_id": "i-BhpuNp2FRjpicuyZXtoMoy"
+      },
+      {
+        "document_id": 5881,
+        "document_name": "prot-1868--ak--0121_001",
+        "speech_id": "i-9gFBAaYSsUufimavkbi8jw"
+      },
+      {
+        "document_id": 5949,
+        "document_name": "prot-1868--ak--0124_007",
+        "speech_id": "i-EJ2op4GLeFpRhvHZFJv853"
+      },
+      {
+        "document_id": 5964,
+        "document_name": "prot-1868--ak--0125_015",
+        "speech_id": "i-FZg3dp7xyD581qYcpfTt7J"
+      },
+      {
+        "document_id": 5991,
+        "document_name": "prot-1868--ak--0127_004",
+        "speech_id": "i-N6PUYvoadSr4ptpGCTdLpP"
+      }
+    ],
+    "person_unknown": [
+      {
+        "document_id": 0,
+        "document_name": "prot-1867--ak--0118_001",
+        "speech_id": "i-V7wj6YbxCSAxzon2nhdBwy"
+      },
+      {
+        "document_id": 1,
+        "document_name": "prot-1867--ak--0118_002",
+        "speech_id": "i-QMJpN9uzcJKN5aDAykc6e2"
+      },
+      {
+        "document_id": 14,
+        "document_name": "prot-1867--ak--0121_001",
+        "speech_id": "i-L9NHtMK6XpBWWFeMwJLqNn"
+      },
+      {
+        "document_id": 30,
+        "document_name": "prot-1867--ak--0122_001",
+        "speech_id": "i-Aoivi2vs3LN5mdkuUZWUw"
+      },
+      {
+        "document_id": 31,
+        "document_name": "prot-1867--ak--0122_002",
+        "speech_id": "i-83TzxoZknrm8yH1qdakrMm"
+      },
+      {
+        "document_id": 37,
+        "document_name": "prot-1867--ak--0122_008",
+        "speech_id": "i-TdaNu1jhoSdBgCMFVsS6BW"
+      },
+      {
+        "document_id": 40,
+        "document_name": "prot-1867--ak--0122_011",
+        "speech_id": "i-NDXTogAhYhKzjoR23N8sQJ"
+      },
+      {
+        "document_id": 50,
+        "document_name": "prot-1867--ak--0122_021",
+        "speech_id": "i-Uc5sS6uEm3oMXkaGfJrDcZ"
+      },
+      {
+        "document_id": 57,
+        "document_name": "prot-1867--ak--0124_004",
+        "speech_id": "i-G8Rb9xgzYNcNx9Emq9LHPH"
+      },
+      {
+        "document_id": 61,
+        "document_name": "prot-1867--ak--0126_001",
+        "speech_id": "i-Dk9PkUnU74caFq74VsJmtv"
+      },
+      {
+        "document_id": 62,
+        "document_name": "prot-1867--ak--0126_002",
+        "speech_id": "i-GxUoBYY3BVt42rmRTDMxpR"
+      },
+      {
+        "document_id": 70,
+        "document_name": "prot-1867--ak--0126_010",
+        "speech_id": "i-Ejkoo81xmVR6jq1nV7j2jF"
+      },
+      {
+        "document_id": 88,
+        "document_name": "prot-1867--ak--0126_028",
+        "speech_id": "i-Rd1jPGSmHuaECfMzwnqhLe"
+      },
+      {
+        "document_id": 95,
+        "document_name": "prot-1867--ak--0126_035",
+        "speech_id": "i-7WnyVrD3a9Uyy2M3zx3uh1"
+      },
+      {
+        "document_id": 96,
+        "document_name": "prot-1867--ak--0126_036",
+        "speech_id": "i-NiSupb5Rth3EN6EVZogzW1"
+      },
+      {
+        "document_id": 97,
+        "document_name": "prot-1867--ak--0126_037",
+        "speech_id": "i-8G4Nt8xPkFDBvLm8a2avtS"
+      },
+      {
+        "document_id": 98,
+        "document_name": "prot-1867--ak--0126_038",
+        "speech_id": "i-FQ1AWEikYeRGDwMCwUuot2"
+      },
+      {
+        "document_id": 101,
+        "document_name": "prot-1867--ak--0128_003",
+        "speech_id": "i-SxvXtrjUq5b5ogmoWo1Be5"
+      },
+      {
+        "document_id": 111,
+        "document_name": "prot-1867--ak--0128_013",
+        "speech_id": "i-E2pmwsEJQ2ZubxGEaFEsNW"
+      },
+      {
+        "document_id": 112,
+        "document_name": "prot-1867--ak--0128_014",
+        "speech_id": "i-5fP9QPfey94VtfHV72orA2"
+      },
+      {
+        "document_id": 115,
+        "document_name": "prot-1867--ak--0128_017",
+        "speech_id": "i-D1UbJaqVE85CMLMonZttj5"
+      },
+      {
+        "document_id": 116,
+        "document_name": "prot-1867--ak--0128_018",
+        "speech_id": "i-PQ2Ade91LBupFSYnzJUQec"
+      },
+      {
+        "document_id": 119,
+        "document_name": "prot-1867--ak--0128_021",
+        "speech_id": "i-RaeRgDYeRry4seUHX6bHL5"
+      },
+      {
+        "document_id": 120,
+        "document_name": "prot-1867--ak--0128_022",
+        "speech_id": "i-4KbBXLuXFoWaEL9VmGvzyL"
+      },
+      {
+        "document_id": 123,
+        "document_name": "prot-1867--ak--0128_025",
+        "speech_id": "i-7BHywSDvNWniTnVqcQ3Wom"
+      },
+      {
+        "document_id": 144,
+        "document_name": "prot-1867--ak--0129_006",
+        "speech_id": "i-SU8vWY3t7rmQmBu6MmYPFa"
+      },
+      {
+        "document_id": 145,
+        "document_name": "prot-1867--ak--0129_007",
+        "speech_id": "i-Fm4nSHTyzJVUKVJhrsMNFc"
+      },
+      {
+        "document_id": 146,
+        "document_name": "prot-1867--ak--0129_008",
+        "speech_id": "i-2wZy9kPot4f7eXFG8ESK7J"
+      },
+      {
+        "document_id": 147,
+        "document_name": "prot-1867--ak--0129_009",
+        "speech_id": "i-175jfiipwYWGG7kgA9PGmy"
+      },
+      {
+        "document_id": 148,
+        "document_name": "prot-1867--ak--0130_001",
+        "speech_id": "i-XRrDFaUStrFeNeHjp4ESZ6"
+      },
+      {
+        "document_id": 157,
+        "document_name": "prot-1867--ak--0130_010",
+        "speech_id": "i-HEzM51sHTxU3AEFm4MgWBq"
+      },
+      {
+        "document_id": 163,
+        "document_name": "prot-1867--ak--0130_016",
+        "speech_id": "i-Wg9qnP5CkqJM2iu5dho42S"
+      },
+      {
+        "document_id": 168,
+        "document_name": "prot-1867--ak--0130_021",
+        "speech_id": "i-X5q55HkMDA4SQDnqvNpfHL"
+      },
+      {
+        "document_id": 188,
+        "document_name": "prot-1867--ak--0130_041",
+        "speech_id": "i-tP9KP5fMsMpznZBZGsfu9"
+      },
+      {
+        "document_id": 190,
+        "document_name": "prot-1867--ak--0130_043",
+        "speech_id": "i-Hch5qeEakAEB2uG21sPdhC"
+      },
+      {
+        "document_id": 203,
+        "document_name": "prot-1867--ak--0131_012",
+        "speech_id": "i-WaW1mHt4PS4HoV1p2vS7ZC"
+      },
+      {
+        "document_id": 206,
+        "document_name": "prot-1867--ak--0131_015",
+        "speech_id": "i-PnsgoJm3K4do2Apapjn4nK"
+      },
+      {
+        "document_id": 210,
+        "document_name": "prot-1867--ak--0131_019",
+        "speech_id": "i-P2TR7mjqJrNQz86fqugQnu"
+      },
+      {
+        "document_id": 214,
+        "document_name": "prot-1867--ak--0131_023",
+        "speech_id": "i-FBH5TeYHuNVRbDHPPYmmpp"
+      },
+      {
+        "document_id": 217,
+        "document_name": "prot-1867--ak--0131_026",
+        "speech_id": "i-A6JbHccYsBKhPJDSsWFbj5"
+      },
+      {
+        "document_id": 222,
+        "document_name": "prot-1867--ak--0131_031",
+        "speech_id": "i-49WjMZqQJFpWGpwvpEZxWU"
+      },
+      {
+        "document_id": 232,
+        "document_name": "prot-1867--ak--0131_041",
+        "speech_id": "i-M5UNUWtYC8wjBT1GorKhYp"
+      },
+      {
+        "document_id": 245,
+        "document_name": "prot-1867--ak--0131_054",
+        "speech_id": "i-R1dnEeK5hwrgZbtg7jN7Ny"
+      },
+      {
+        "document_id": 246,
+        "document_name": "prot-1867--ak--0131_055",
+        "speech_id": "i-GiUHhegUoM9nG9XyZ2GVR2"
+      },
+      {
+        "document_id": 251,
+        "document_name": "prot-1867--ak--0131_060",
+        "speech_id": "i-XJtHm2W5q8TdudqZ9FuzRW"
+      },
+      {
+        "document_id": 253,
+        "document_name": "prot-1867--ak--0131_062",
+        "speech_id": "i-9rdzXJf77jtE42mCJe59ig"
+      },
+      {
+        "document_id": 257,
+        "document_name": "prot-1867--ak--0131_066",
+        "speech_id": "i-QdEncqP4LcK27UvVFqUFcF"
+      },
+      {
+        "document_id": 259,
+        "document_name": "prot-1867--ak--0131_068",
+        "speech_id": "i-7Eu88q9xCHFva3keNcX7z1"
+      },
+      {
+        "document_id": 261,
+        "document_name": "prot-1867--ak--0131_070",
+        "speech_id": "i-JToCLuf2SUQxU8t5U1jWwa"
+      },
+      {
+        "document_id": 265,
+        "document_name": "prot-1867--ak--0209_001",
+        "speech_id": "i-CZvU45HVo2iemiWtqkQstJ"
+      },
+      {
+        "document_id": 266,
+        "document_name": "prot-1867--ak--0209_002",
+        "speech_id": "i-XkKY4zRYQYTuXhCEJrPjyR"
+      },
+      {
+        "document_id": 270,
+        "document_name": "prot-1867--ak--0209_006",
+        "speech_id": "i-NmAtGEzo51HE9Y4SK9GgML"
+      },
+      {
+        "document_id": 275,
+        "document_name": "prot-1867--ak--0209_011",
+        "speech_id": "i-UbxjNafAuwPUC3okbsx9BH"
+      },
+      {
+        "document_id": 276,
+        "document_name": "prot-1867--ak--0213_001",
+        "speech_id": "i-8ZFx72z2LcAEjSAmHBEuVf"
+      },
+      {
+        "document_id": 278,
+        "document_name": "prot-1867--ak--0213_003",
+        "speech_id": "i-RhjRS5Y1KtrBSuVy4VACnf"
+      },
+      {
+        "document_id": 285,
+        "document_name": "prot-1867--ak--0213_010",
+        "speech_id": "i-74hNNGoLjoXXUXHeiTANJW"
+      },
+      {
+        "document_id": 286,
+        "document_name": "prot-1867--ak--0216_001",
+        "speech_id": "i-Lw6ASgvGRMkjWNxhAbk7VV"
+      },
+      {
+        "document_id": 291,
+        "document_name": "prot-1867--ak--0216_006",
+        "speech_id": "i-YcEjQF9CPKsGFo5r6sVqWL"
+      },
+      {
+        "document_id": 295,
+        "document_name": "prot-1867--ak--0216_010",
+        "speech_id": "i-7JuW2HtKg36zVd8PjpxWnp"
+      },
+      {
+        "document_id": 302,
+        "document_name": "prot-1867--ak--0216_017",
+        "speech_id": "i-Ssju7jAWMpQX88Mhyid4QD"
+      },
+      {
+        "document_id": 305,
+        "document_name": "prot-1867--ak--0216_020",
+        "speech_id": "i-E2oTk29cfjBG82tgzKgczG"
+      },
+      {
+        "document_id": 306,
+        "document_name": "prot-1867--ak--0216_021",
+        "speech_id": "i-KuthwPdwWr3SAi3Ms8C6fx"
+      },
+      {
+        "document_id": 313,
+        "document_name": "prot-1867--ak--0216_028",
+        "speech_id": "i-VAZZa49niniVmkGnQADyBW"
+      },
+      {
+        "document_id": 323,
+        "document_name": "prot-1867--ak--0216_038",
+        "speech_id": "i-Y2CLMxf8XgotEpAqmsDwJX"
+      },
+      {
+        "document_id": 324,
+        "document_name": "prot-1867--ak--0216_039",
+        "speech_id": "i-T3J36qUvchKwf7reYN2Xmy"
+      },
+      {
+        "document_id": 335,
+        "document_name": "prot-1867--ak--0216_050",
+        "speech_id": "i-TWB5KgzCbKDQoFjgfMLMih"
+      },
+      {
+        "document_id": 340,
+        "document_name": "prot-1867--ak--0216_055",
+        "speech_id": "i-RHfsysALtEwsMhEMaCim1U"
+      },
+      {
+        "document_id": 346,
+        "document_name": "prot-1867--ak--0216_061",
+        "speech_id": "i-PHsaoPe1siTu8w2aQEM4d6"
+      },
+      {
+        "document_id": 347,
+        "document_name": "prot-1867--ak--0216_062",
+        "speech_id": "i-XeazPXnewwWQGKvxYPybkr"
+      },
+      {
+        "document_id": 349,
+        "document_name": "prot-1867--ak--0216_064",
+        "speech_id": "i-Xo3ENCH6fYohCqceqKBn3"
+      },
+      {
+        "document_id": 353,
+        "document_name": "prot-1867--ak--0216_068",
+        "speech_id": "i-MrU3sRZfwHMQ1YSAmnaoGT"
+      },
+      {
+        "document_id": 359,
+        "document_name": "prot-1867--ak--0216_074",
+        "speech_id": "i-Y6m6jgtovfYAjmM4tdH9fU"
+      },
+      {
+        "document_id": 360,
+        "document_name": "prot-1867--ak--0216_075",
+        "speech_id": "i-BVCcyh5Ezy23X9R4p1fG4s"
+      },
+      {
+        "document_id": 392,
+        "document_name": "prot-1867--ak--0220_017",
+        "speech_id": "i-6FK2u6cnGnspePvqwEKPxu"
+      },
+      {
+        "document_id": 393,
+        "document_name": "prot-1867--ak--0220_018",
+        "speech_id": "i-2wjECyqKnV81DMUu8rsDuW"
+      },
+      {
+        "document_id": 411,
+        "document_name": "prot-1867--ak--0220_036",
+        "speech_id": "i-7bSoSdtgxZB3UkTKjxK3dc"
+      },
+      {
+        "document_id": 412,
+        "document_name": "prot-1867--ak--0220_037",
+        "speech_id": "i-Jc8urByGK8tYST3wBMbcrx"
+      },
+      {
+        "document_id": 415,
+        "document_name": "prot-1867--ak--0220_040",
+        "speech_id": "i-JRWZTJzUtKk9Wi6NYWY41N"
+      },
+      {
+        "document_id": 417,
+        "document_name": "prot-1867--ak--0220_042",
+        "speech_id": "i-2PFQo65A4jEkZ4ZKfwzAid"
+      },
+      {
+        "document_id": 420,
+        "document_name": "prot-1867--ak--0220_045",
+        "speech_id": "i-TZFXQ8J5JsMKCAC1BPp8tD"
+      },
+      {
+        "document_id": 423,
+        "document_name": "prot-1867--ak--0220_048",
+        "speech_id": "i-7LNoJd2dQGabJ7ZeZ4TVaB"
+      },
+      {
+        "document_id": 434,
+        "document_name": "prot-1867--ak--0220_059",
+        "speech_id": "i-QGcNRq7dzXHLxjd6UgsQN"
+      },
+      {
+        "document_id": 441,
+        "document_name": "prot-1867--ak--0223_003",
+        "speech_id": "i-FcBgerJNWRwxCoiz5X3QQm"
+      },
+      {
+        "document_id": 449,
+        "document_name": "prot-1867--ak--0223_011",
+        "speech_id": "i-J3oi9VcHaxqNn4mw5Dm3kL"
+      },
+      {
+        "document_id": 456,
+        "document_name": "prot-1867--ak--0223_018",
+        "speech_id": "i-GB54aBmDTicBrrbWAriAvf"
+      },
+      {
+        "document_id": 458,
+        "document_name": "prot-1867--ak--0223_020",
+        "speech_id": "i-USdgySxjsfmwqm45R21SgS"
+      },
+      {
+        "document_id": 460,
+        "document_name": "prot-1867--ak--0223_022",
+        "speech_id": "i-MHjJmArfw5pJQAUBHjhVJ9"
+      },
+      {
+        "document_id": 476,
+        "document_name": "prot-1867--ak--0223_038",
+        "speech_id": "i-QCDDbnecbhoGRZoKzVUTY7"
+      },
+      {
+        "document_id": 479,
+        "document_name": "prot-1867--ak--0223_041",
+        "speech_id": "i-934kMpCt37EuZ5mwUqGtYG"
+      },
+      {
+        "document_id": 508,
+        "document_name": "prot-1867--ak--0227_002",
+        "speech_id": "i-PR9UnrvurVNUVE7QnVdmQz"
+      },
+      {
+        "document_id": 519,
+        "document_name": "prot-1867--ak--0227_013",
+        "speech_id": "i-QQdfFaK8SkmitwdFgN3Sfk"
+      },
+      {
+        "document_id": 524,
+        "document_name": "prot-1867--ak--0227_018",
+        "speech_id": "i-V5yJa34KwCWs2bMZD944oD"
+      },
+      {
+        "document_id": 526,
+        "document_name": "prot-1867--ak--0227_020",
+        "speech_id": "i-RnSDk7tVYbxys77ubdiUaV"
+      },
+      {
+        "document_id": 529,
+        "document_name": "prot-1867--ak--0227_023",
+        "speech_id": "i-NnbcLswRsJXLCw7re1UasL"
+      },
+      {
+        "document_id": 531,
+        "document_name": "prot-1867--ak--0227_025",
+        "speech_id": "i-YuVW8EsXvbgrLY5o7aTT3"
+      },
+      {
+        "document_id": 535,
+        "document_name": "prot-1867--ak--0227_029",
+        "speech_id": "i-2pbpdxTjvSeTWbc3jKrgSY"
+      },
+      {
+        "document_id": 538,
+        "document_name": "prot-1867--ak--0227_032",
+        "speech_id": "i-zKdibanPV6pBQ4VBKHn65"
+      },
+      {
+        "document_id": 543,
+        "document_name": "prot-1867--ak--0227_037",
+        "speech_id": "i-FZYsgQu1jQHsg4fDHKcY7E"
+      },
+      {
+        "document_id": 544,
+        "document_name": "prot-1867--ak--0227_038",
+        "speech_id": "i-C3o8xFi9w1gQGYfhwnxP8X"
+      },
+      {
+        "document_id": 545,
+        "document_name": "prot-1867--ak--0228_001",
+        "speech_id": "i-UBYMLeXJb3oRRBVnBGHgpN"
+      }
+    ],
+    "long_speeches_top_num_words": [
+      {
+        "document_id": 692597,
+        "document_name": "prot-200001--061_141",
+        "speech_id": "i-3e1cf5ceefc1ebd6-1182",
+        "n_tokens": 19065
+      },
+      {
+        "document_id": 187854,
+        "document_name": "prot-1926--ak--044_001",
+        "speech_id": "i-1620abe6bd927754-0",
+        "n_tokens": 15662
+      },
+      {
+        "document_id": 375947,
+        "document_name": "prot-1970--fk--029_082",
+        "speech_id": "i-42dcb4fc099ee57d-19",
+        "n_tokens": 14883
+      },
+      {
+        "document_id": 128049,
+        "document_name": "prot-1911--ak--002_001",
+        "speech_id": "i-3q5unnKJP5fbQFuNvVVyCg",
+        "n_tokens": 13563
+      },
+      {
+        "document_id": 167852,
+        "document_name": "prot-1921--ak--035_001",
+        "speech_id": "i-d3e64dabd9f10ce7-0",
+        "n_tokens": 13449
+      },
+      {
+        "document_id": 197887,
+        "document_name": "prot-1928--fk--035_002",
+        "speech_id": "i-2d97c670cc7073f7-0",
+        "n_tokens": 12631
+      },
+      {
+        "document_id": 289228,
+        "document_name": "prot-1953--ak--019_001",
+        "speech_id": "i-DuFycGr8vYzPQzxCTwUtxY",
+        "n_tokens": 11962
+      },
+      {
+        "document_id": 189821,
+        "document_name": "prot-1926--fk--042_001",
+        "speech_id": "i-428d2248088da6be-0",
+        "n_tokens": 11695
+      },
+      {
+        "document_id": 134659,
+        "document_name": "prot-1912--fk--037_024",
+        "speech_id": "i-Qnq1kMkD7qycrGsdU9U2Eg",
+        "n_tokens": 11254
+      },
+      {
+        "document_id": 357578,
+        "document_name": "prot-1968--ak--002_004",
+        "speech_id": "i-634ad7ce448d3e69-0",
+        "n_tokens": 11132
+      },
+      {
+        "document_id": 191949,
+        "document_name": "prot-1927--fk--003_015",
+        "speech_id": "i-97977354ec3efdac-0",
+        "n_tokens": 11086
+      },
+      {
+        "document_id": 380629,
+        "document_name": "prot-1971--097_072",
+        "speech_id": "i-717df9fe2a26efb1-12",
+        "n_tokens": 10578
+      },
+      {
+        "document_id": 198010,
+        "document_name": "prot-1928--fk--037_002",
+        "speech_id": "i-a5574b2f27ae5c40-0",
+        "n_tokens": 10559
+      },
+      {
+        "document_id": 193168,
+        "document_name": "prot-1927--fk--031_008",
+        "speech_id": "i-5266d05abe2d66b1-0",
+        "n_tokens": 10447
+      },
+      {
+        "document_id": 357049,
+        "document_name": "prot-1967--fk--028_037",
+        "speech_id": "i-2a2b6a4b21c466cb-0",
+        "n_tokens": 10398
+      },
+      {
+        "document_id": 136916,
+        "document_name": "prot-1913--ak--048_013",
+        "speech_id": "i-KReAzLQRreFwM1pxGzkcYW",
+        "n_tokens": 10383
+      },
+      {
+        "document_id": 270860,
+        "document_name": "prot-1948--ak--025_025",
+        "speech_id": "i-82a699162052f5f4-0",
+        "n_tokens": 10336
+      },
+      {
+        "document_id": 156981,
+        "document_name": "prot-1919--ak--005_002",
+        "speech_id": "i-RnEVGxB9ezFAkiBBMYVynF",
+        "n_tokens": 10146
+      },
+      {
+        "document_id": 345880,
+        "document_name": "prot-1966--ak--002_032",
+        "speech_id": "i-2ebb266a23e96a44-0",
+        "n_tokens": 10103
+      },
+      {
+        "document_id": 156825,
+        "document_name": "prot-1918-urtima-fk--003_002",
+        "speech_id": "i-GQsj4ZBuYcqrtiY5xmfAyH",
+        "n_tokens": 10090
+      },
+      {
+        "document_id": 272779,
+        "document_name": "prot-1948--fk--025_033",
+        "speech_id": "i-1492f1fd1a310d45-24",
+        "n_tokens": 10050
+      },
+      {
+        "document_id": 156560,
+        "document_name": "prot-1918-urtima-ak--003_002",
+        "speech_id": "i-XwtQSjcYDgjrRG1TX9HMMd",
+        "n_tokens": 10023
+      },
+      {
+        "document_id": 122444,
+        "document_name": "prot-1909--ak--042_018",
+        "speech_id": "i-X5EkVBsj3oaXXQsikyfgmm",
+        "n_tokens": 9928
+      },
+      {
+        "document_id": 68560,
+        "document_name": "prot-1887-janmar-fk--008_005",
+        "speech_id": "i-PUCAWy5fe6bdtZqT6mrsG2",
+        "n_tokens": 9891
+      },
+      {
+        "document_id": 144502,
+        "document_name": "prot-1915--fk--050_003",
+        "speech_id": "i-FXSejrnfuycyfBG4eSKCXG",
+        "n_tokens": 9827
+      },
+      {
+        "document_id": 166468,
+        "document_name": "prot-1921--ak--004_004",
+        "speech_id": "i-2c9830e1de4ad35e-0",
+        "n_tokens": 9795
+      },
+      {
+        "document_id": 397402,
+        "document_name": "prot-1973--108_006",
+        "speech_id": "i-a2204f2f9580d47f-0",
+        "n_tokens": 9680
+      },
+      {
+        "document_id": 129606,
+        "document_name": "prot-1911--ak--044_003",
+        "speech_id": "i-G8hJPn7VD6C7dkiGPveU2A",
+        "n_tokens": 9675
+      },
+      {
+        "document_id": 375468,
+        "document_name": "prot-1970--fk--025_012",
+        "speech_id": "i-feb57e346e21d0f0-0",
+        "n_tokens": 9675
+      },
+      {
+        "document_id": 158190,
+        "document_name": "prot-1919--ak--042_001",
+        "speech_id": "i-Dn5sg4pJ71GSEcho3EHnjz",
+        "n_tokens": 9661
+      },
+      {
+        "document_id": 185801,
+        "document_name": "prot-1926--ak--003_003",
+        "speech_id": "i-f5d42eecee8103e2-1",
+        "n_tokens": 9604
+      },
+      {
+        "document_id": 383002,
+        "document_name": "prot-1971--140_024",
+        "speech_id": "i-376775aa3c305a5a-0",
+        "n_tokens": 9583
+      },
+      {
+        "document_id": 239251,
+        "document_name": "prot-1939--ak--020_009",
+        "speech_id": "i-8adcd7b4b85c0c27-0",
+        "n_tokens": 9534
+      },
+      {
+        "document_id": 271321,
+        "document_name": "prot-1948--ak--031_014",
+        "speech_id": "i-5810282e860a9114-0",
+        "n_tokens": 9495
+      },
+      {
+        "document_id": 373635,
+        "document_name": "prot-1970--ak--031_021",
+        "speech_id": "i-9aed603f67a57f1d-14",
+        "n_tokens": 9275
+      },
+      {
+        "document_id": 88902,
+        "document_name": "prot-1894--fk--039_009",
+        "speech_id": "i-JGhFm7wzL5rnDGYPZueqyP",
+        "n_tokens": 9275
+      },
+      {
+        "document_id": 181749,
+        "document_name": "prot-1924--fk--040_001",
+        "speech_id": "i-6c13ad9ef1b640af-0",
+        "n_tokens": 9252
+      },
+      {
+        "document_id": 381622,
+        "document_name": "prot-1971--118_018",
+        "speech_id": "i-62290b1bf86cb4ef-0",
+        "n_tokens": 9242
+      },
+      {
+        "document_id": 115128,
+        "document_name": "prot-1906--ak--064_006",
+        "speech_id": "i-6bijNjsQm1Dpz44tQzuHVd",
+        "n_tokens": 9181
+      },
+      {
+        "document_id": 191252,
+        "document_name": "prot-1927--ak--032_009",
+        "speech_id": "i-86c27a1c32cc6cf4-0",
+        "n_tokens": 9146
+      },
+      {
+        "document_id": 136915,
+        "document_name": "prot-1913--ak--048_012",
+        "speech_id": "i-7CEendKhBbjPwUV8hnbbgd",
+        "n_tokens": 9088
+      },
+      {
+        "document_id": 269062,
+        "document_name": "prot-1948--ak--003_015",
+        "speech_id": "i-e62630c8e07cfcb8-0",
+        "n_tokens": 8921
+      },
+      {
+        "document_id": 164128,
+        "document_name": "prot-1920--ak--080_010",
+        "speech_id": "i-a062d4b6f2fa58b4-96",
+        "n_tokens": 8916
+      },
+      {
+        "document_id": 215870,
+        "document_name": "prot-1933--ak--004_007",
+        "speech_id": "i-UWCjiLj9TdRPxXTcungEDk",
+        "n_tokens": 8891
+      },
+      {
+        "document_id": 268869,
+        "document_name": "prot-1947--fk--035_016",
+        "speech_id": "i-0761ff3200bf516d-0",
+        "n_tokens": 8874
+      },
+      {
+        "document_id": 376903,
+        "document_name": "prot-1971--034_021",
+        "speech_id": "i-b531c684debf6fba-0",
+        "n_tokens": 8818
+      },
+      {
+        "document_id": 162057,
+        "document_name": "prot-1920--ak--023_003",
+        "speech_id": "i-78cae6d66e268e23-90",
+        "n_tokens": 8807
+      },
+      {
+        "document_id": 258373,
+        "document_name": "prot-1945--ak--003_027",
+        "speech_id": "i-a905fa049274cee1-0",
+        "n_tokens": 8804
+      },
+      {
+        "document_id": 156138,
+        "document_name": "prot-1918--fk--044_007",
+        "speech_id": "i-6pZK1HfHfqkf8e19UHV845",
+        "n_tokens": 8758
+      },
+      {
+        "document_id": 340953,
+        "document_name": "prot-1965--ak--003_007",
+        "speech_id": "i-6bcb7748312e01eb-0",
+        "n_tokens": 8757
+      },
+      {
+        "document_id": 391654,
+        "document_name": "prot-1972--140_017",
+        "speech_id": "i-33a512413d6e0353-0",
+        "n_tokens": 8711
+      },
+      {
+        "document_id": 384603,
+        "document_name": "prot-1972--031_020",
+        "speech_id": "i-6f0f9782399d1f65-0",
+        "n_tokens": 8665
+      },
+      {
+        "document_id": 269186,
+        "document_name": "prot-1948--ak--005_004",
+        "speech_id": "i-LhCuumPteGekNdGvpZQnif",
+        "n_tokens": 8641
+      },
+      {
+        "document_id": 271581,
+        "document_name": "prot-1948--fk--005_008",
+        "speech_id": "i-VxYF224P4pTMrusJXCqUH7",
+        "n_tokens": 8620
+      },
+      {
+        "document_id": 152644,
+        "document_name": "prot-1918--ak--016_004",
+        "speech_id": "i-LDYxvRN1eJcUG36jtiW2tW",
+        "n_tokens": 8620
+      },
+      {
+        "document_id": 364111,
+        "document_name": "prot-1969--ak--004_004",
+        "speech_id": "i-4b0e2151013c688d-0",
+        "n_tokens": 8609
+      },
+      {
+        "document_id": 139329,
+        "document_name": "prot-1914-b-ak--008_003",
+        "speech_id": "i-C8yMQt8bSvcAnoG4UXwkty",
+        "n_tokens": 8584
+      },
+      {
+        "document_id": 351470,
+        "document_name": "prot-1967--ak--002_004",
+        "speech_id": "i-6775d08bc3e08dbc-0",
+        "n_tokens": 8584
+      },
+      {
+        "document_id": 215869,
+        "document_name": "prot-1933--ak--004_006",
+        "speech_id": "i-27a447511522851a-0",
+        "n_tokens": 8583
+      },
+      {
+        "document_id": 168575,
+        "document_name": "prot-1921--ak--049_037",
+        "speech_id": "i-97f4cdffc82e02c2-0",
+        "n_tokens": 8582
+      },
+      {
+        "document_id": 197002,
+        "document_name": "prot-1928--fk--024_005",
+        "speech_id": "i-ca8d94e9761d9fdf-0",
+        "n_tokens": 8577
+      },
+      {
+        "document_id": 29968,
+        "document_name": "prot-1873--fk--0509_006",
+        "speech_id": "i-Fj22PDoD2vKYXKZv1SqLSm",
+        "n_tokens": 8569
+      },
+      {
+        "document_id": 145238,
+        "document_name": "prot-1916--ak--006_007",
+        "speech_id": "i-T9KzV3gSKGs8ZYxJKcfCXm",
+        "n_tokens": 8500
+      },
+      {
+        "document_id": 138389,
+        "document_name": "prot-1913--fk--034_003",
+        "speech_id": "i-PrkgP4h61QosdHTWustH8p",
+        "n_tokens": 8471
+      },
+      {
+        "document_id": 254009,
+        "document_name": "prot-1943--fk--002_021",
+        "speech_id": "i-8ed7be384fd4261c-41",
+        "n_tokens": 8464
+      },
+      {
+        "document_id": 335483,
+        "document_name": "prot-1964--ak--003_011",
+        "speech_id": "i-eae6c2296a5280ab-0",
+        "n_tokens": 8433
+      },
+      {
+        "document_id": 145245,
+        "document_name": "prot-1916--ak--007_007",
+        "speech_id": "i-4TGCLFFeCsB6wuFfCDRiVS",
+        "n_tokens": 8421
+      },
+      {
+        "document_id": 376062,
+        "document_name": "prot-1970--fk--031_004",
+        "speech_id": "i-32ac5a3f63497cc2-0",
+        "n_tokens": 8411
+      },
+      {
+        "document_id": 420439,
+        "document_name": "prot-197576--147_017",
+        "speech_id": "i-ea351a65b3b2c194-0",
+        "n_tokens": 8370
+      },
+      {
+        "document_id": 167979,
+        "document_name": "prot-1921--ak--038_005",
+        "speech_id": "i-046138cac7670269-0",
+        "n_tokens": 8310
+      },
+      {
+        "document_id": 396808,
+        "document_name": "prot-1973--098_068",
+        "speech_id": "i-b8d070f5b82ca4d5-0",
+        "n_tokens": 8301
+      },
+      {
+        "document_id": 75157,
+        "document_name": "prot-1889--fk--021_003",
+        "speech_id": "i-6LLKmVfb1dFbCd7Qm1vnLC",
+        "n_tokens": 8275
+      },
+      {
+        "document_id": 289230,
+        "document_name": "prot-1953--ak--019_003",
+        "speech_id": "i-2a863e9af4b32d83-0",
+        "n_tokens": 8259
+      },
+      {
+        "document_id": 208997,
+        "document_name": "prot-1931--ak--044_010",
+        "speech_id": "i-1f7b9a18a35b143e-0",
+        "n_tokens": 8259
+      },
+      {
+        "document_id": 263177,
+        "document_name": "prot-1946--ak--021_015",
+        "speech_id": "i-7809687d8e9d9cd8-7",
+        "n_tokens": 8257
+      },
+      {
+        "document_id": 112401,
+        "document_name": "prot-1905--ak--050_002",
+        "speech_id": "i-PA9u2FUxSHYPjhspCxVfB5",
+        "n_tokens": 8244
+      },
+      {
+        "document_id": 184256,
+        "document_name": "prot-1925--fk--012_003",
+        "speech_id": "i-087b3decfd7454a5-3",
+        "n_tokens": 8233
+      },
+      {
+        "document_id": 68467,
+        "document_name": "prot-1887-janmar-ak--017_016",
+        "speech_id": "i-QXVwhMestmy9sYKdmPc75x",
+        "n_tokens": 8214
+      },
+      {
+        "document_id": 193675,
+        "document_name": "prot-1927--fk--039_004",
+        "speech_id": "i-b3a472ed8eaedb9b-0",
+        "n_tokens": 8173
+      },
+      {
+        "document_id": 161028,
+        "document_name": "prot-1919--fk--047_004",
+        "speech_id": "i-YHyRhmaJT3M7zBtAUzcdAY",
+        "n_tokens": 8141
+      },
+      {
+        "document_id": 315623,
+        "document_name": "prot-1959--ak--022_033",
+        "speech_id": "i-3a8f787aacafb401-0",
+        "n_tokens": 8105
+      },
+      {
+        "document_id": 154570,
+        "document_name": "prot-1918--ak--071_012",
+        "speech_id": "i-RPa5kkyuSiga4ptHPWvYxJ",
+        "n_tokens": 8089
+      },
+      {
+        "document_id": 264140,
+        "document_name": "prot-1946--fk--002_016",
+        "speech_id": "i-cc9f71338a08a08a-0",
+        "n_tokens": 8088
+      },
+      {
+        "document_id": 349252,
+        "document_name": "prot-1966--ak--027_092",
+        "speech_id": "i-7f97e50e21f12ffa-0",
+        "n_tokens": 8066
+      },
+      {
+        "document_id": 175765,
+        "document_name": "prot-1923--ak--021_011",
+        "speech_id": "i-Leo3mXnkDezW3hsnXxgiZE",
+        "n_tokens": 8051
+      },
+      {
+        "document_id": 424051,
+        "document_name": "prot-197677--082_025",
+        "speech_id": "i-93c395e188257440-0",
+        "n_tokens": 8049
+      },
+      {
+        "document_id": 233325,
+        "document_name": "prot-1937--ak--032_006",
+        "speech_id": "i-50e579708947fe74-0",
+        "n_tokens": 8020
+      },
+      {
+        "document_id": 367803,
+        "document_name": "prot-1969--ak--030_033",
+        "speech_id": "i-1f862eb7c92c8493-0",
+        "n_tokens": 8011
+      },
+      {
+        "document_id": 411885,
+        "document_name": "prot-1975--097_024",
+        "speech_id": "i-dfbf875e51327ef1-0",
+        "n_tokens": 8002
+      },
+      {
+        "document_id": 156563,
+        "document_name": "prot-1918-urtima-ak--003_005",
+        "speech_id": "i-68SVMMc3NtuqavCSSTorii",
+        "n_tokens": 8001
+      },
+      {
+        "document_id": 117025,
+        "document_name": "prot-1907--ak--053_006",
+        "speech_id": "i-Jvc8i2kWf4EbNa18UMYuAz",
+        "n_tokens": 7998
+      },
+      {
+        "document_id": 88332,
+        "document_name": "prot-1894--fk--018_002",
+        "speech_id": "i-XnRcjZYs9XHC5DSvpAv6tD",
+        "n_tokens": 7994
+      },
+      {
+        "document_id": 336742,
+        "document_name": "prot-1964--ak--017_011",
+        "speech_id": "i-6e90a777639b2e55-13",
+        "n_tokens": 7984
+      },
+      {
+        "document_id": 396670,
+        "document_name": "prot-1973--096_029",
+        "speech_id": "i-7a4839bb7210ff68-0",
+        "n_tokens": 7891
+      },
+      {
+        "document_id": 129602,
+        "document_name": "prot-1911--ak--043_032",
+        "speech_id": "i-6561c1in59YmwVd6CVYcUQ",
+        "n_tokens": 7875
+      },
+      {
+        "document_id": 164502,
+        "document_name": "prot-1920--fk--020_005",
+        "speech_id": "i-ab68ce91c3618381-0",
+        "n_tokens": 7821
+      },
+      {
+        "document_id": 171342,
+        "document_name": "prot-1922--ak--003_007",
+        "speech_id": "i-523515f1159fbc76-0",
+        "n_tokens": 7811
+      },
+      {
+        "document_id": 291184,
+        "document_name": "prot-1953--fk--023_062",
+        "speech_id": "i-a1b626679967481b-205",
+        "n_tokens": 7786
+      },
+      {
+        "document_id": 159256,
+        "document_name": "prot-1919--ak--064_014",
+        "speech_id": "i-AmECA1BrKzaQSLmx174Zfv",
+        "n_tokens": 7780
+      },
+      {
+        "document_id": 100283,
+        "document_name": "prot-1899--fk--020_010",
+        "speech_id": "i-Jxcn6FVhkgBTzU86PFw9MH",
+        "n_tokens": 7778
+      }
+    ]
+  }
+}
