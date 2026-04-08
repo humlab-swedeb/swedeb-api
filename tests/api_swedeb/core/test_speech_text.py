@@ -1,6 +1,7 @@
 """Unit tests for api_swedeb/core/speech_text.py"""
 
 from unittest.mock import Mock, patch
+import zipfile
 
 import pandas as pd
 import pytest
@@ -41,6 +42,25 @@ def create_mock_service():
     )
     return service
 
+# def test_index_diffs():
+#     """Verify that document index in text corpus is the same as the one in vectorized corpus."""
+
+#     # extract document_index.csv from the zip archive and load it as a DataFrame
+#     zip_filename = "data/v1.4.1/speeches/text_speeches_base.zip"
+#     with zipfile.ZipFile(zip_filename, 'r') as zip_file:
+#         with zip_file.open("document_index.csv") as f:
+#             df_text_corpus: pd.DataFrame = pd.read_csv(f, sep="\t", index_col=0)
+    
+#     # Load DRM document index using the loader
+#     dtm_filename = "data/v1.4.1/dtm/text/text_document_index.prepped.feather"
+#     df_dtm_corpus: pd.DataFrame = pd.read_feather(dtm_filename, dtype_backend="pyarrow")
+
+#     assert not df_dtm_corpus.empty, "Document index from DTM corpus is empty"
+
+
+#     df_diff = df_text_corpus[~df_text_corpus.u_id.isin(df_dtm_corpus.speech_id)]
+    
+#     assert True
 
 class TestSpeechTextService:
     """Tests for SpeechTextService class."""
@@ -1216,6 +1236,53 @@ class TestSpeechTextRepository:
 
         assert isinstance(speech, Speech)
 
+    def test_speech_with_speech_id_prefix(self):
+        """Test speech method converts i- speech_id to document_name."""
+        mock_loader = Mock(spec_set=Loader)
+        mock_loader.load.return_value = (
+            {"name": "prot-1234", "date": "2020-01-01"},
+            [
+                {
+                    "speaker_note_id": "note1",
+                    "who": "Alice",
+                    "u_id": "u1",
+                    "paragraphs": ["p1"],
+                    "num_tokens": 10,
+                    "num_words": 8,
+                    "page_number": 1,
+                }
+            ],
+        )
+
+        mock_codecs = Mock()
+        mock_codecs.__getitem__ = Mock(return_value={"name": "Alice Smith"})
+        mock_codecs.get_mapping = Mock(return_value={1: "value"})
+
+        df = pd.DataFrame(
+            {
+                "document_id": [0],
+                "document_name": ["prot-1234_1"],
+                "speech_id": ["i-001"],
+                "person_id": ["p1"],
+                "speaker_note_id": ["note1"],
+                "n_utterances": [1],
+                "office_type_id": [1],
+                "sub_office_type_id": [1],
+                "gender_id": [1],
+                "party_id": [1],
+            }
+        )
+
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
+
+        with patch.object(repo, 'speaker_note_id2note', {}):
+            speech = repo.speech("i-001")
+
+        assert isinstance(speech, Speech)
+        assert speech.protocol_name == "prot-1234"
+
     def test_speech_file_not_found(self):
         """Test speech method handles FileNotFoundError."""
         mock_loader = Mock(spec_set=Loader)
@@ -1248,6 +1315,81 @@ class TestSpeechTextRepository:
         speech = repo.speech("prot-1234_1")
         assert speech.error is not None
         assert "Invalid data" in speech.error
+
+    def test_speeches_batch_groups_by_protocol_and_loads_each_once(self):
+        """Test speeches_batch groups document ids by protocol and reuses loaded ZIP data."""
+        mock_loader = Mock(spec_set=Loader)
+        mock_loader.load.side_effect = [
+            (
+                {"name": "prot-1234", "date": "2020-01-01"},
+                [{"paragraphs": ["p1"]}],
+            ),
+            (
+                {"name": "prot-5678", "date": "2020-01-02"},
+                [{"paragraphs": ["p2"]}],
+            ),
+        ]
+
+        mock_codecs = Mock()
+        df = pd.DataFrame(
+            {
+                "document_id": [1, 2, 3],
+                "document_name": ["prot-1234_1", "prot-1234_2", "prot-5678_1"],
+            }
+        ).set_index("document_id", drop=False)
+
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
+        repo._build_speech = Mock(side_effect=[Speech({"paragraphs": ["one"]}), Speech({"paragraphs": ["two"]}), Speech({"paragraphs": ["three"]})])  # type: ignore[attr-defined]
+
+        result = list(repo.speeches_batch([1, 2, 3]))
+
+        assert [doc_id for doc_id, _ in result] == [1, 2, 3]
+        assert mock_loader.load.call_count == 2
+        mock_loader.load.assert_any_call("prot-1234")
+        mock_loader.load.assert_any_call("prot-5678")
+
+    def test_speeches_batch_yields_not_found_for_missing_document_id(self):
+        """Test speeches_batch yields an error speech for missing document ids."""
+        mock_loader = Mock(spec_set=Loader)
+        mock_codecs = Mock()
+        df = pd.DataFrame({"document_id": [1], "document_name": ["prot-1234_1"]}).set_index(
+            "document_id", drop=False
+        )
+
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
+
+        result = list(repo.speeches_batch([999]))
+
+        assert len(result) == 1
+        assert result[0][0] == 999
+        assert result[0][1].error == "not in index"
+        mock_loader.load.assert_not_called()
+
+    def test_speeches_batch_yields_not_found_when_protocol_archive_missing(self):
+        """Test speeches_batch yields an error speech when a protocol ZIP is missing."""
+        mock_loader = Mock(spec_set=Loader)
+        mock_loader.load.side_effect = FileNotFoundError("missing archive")
+        mock_codecs = Mock()
+        df = pd.DataFrame(
+            {
+                "document_id": [1, 2],
+                "document_name": ["prot-1234_1", "prot-1234_2"],
+            }
+        ).set_index("document_id", drop=False)
+
+        repo = SpeechTextRepository(
+            source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
+        )
+
+        result = list(repo.speeches_batch([1, 2]))
+
+        assert [doc_id for doc_id, _ in result] == [1, 2]
+        assert all(speech.error == "missing archive" for _, speech in result)
+        mock_loader.load.assert_called_once_with("prot-1234")
 
     @patch('api_swedeb.core.speech_text.fix_whitespace')
     def test_to_text(self, mock_fix_whitespace):

@@ -9,9 +9,7 @@ import pandas as pd
 import pytest
 
 from api_swedeb.core.load import (
-    SKIP_COLUMNS,
     SPEECH_INDEX_DTYPES,
-    USED_COLUMNS,
     ZipLoader,
     _memory_usage,
     _to_feather,
@@ -25,18 +23,6 @@ from api_swedeb.core.load import (
 
 class TestConstants:
     """Tests for module constants."""
-
-    def test_used_columns_contains_required_fields(self):
-        """Test USED_COLUMNS has essential fields."""
-        required = ["document_id", "speech_id", "year", "person_id", "party_id"]
-        for field in required:
-            assert field in USED_COLUMNS
-
-    def test_skip_columns_has_pos_tags(self):
-        """Test SKIP_COLUMNS includes POS tag columns."""
-        pos_tags = ["Noun", "Verb", "Adjective"]
-        for tag in pos_tags:
-            assert tag in SKIP_COLUMNS
 
     def test_speech_index_dtypes_has_category_fields(self):
         """Test SPEECH_INDEX_DTYPES defines category fields."""
@@ -144,12 +130,12 @@ class TestToFeather:
         loaded = pd.read_feather(target)
         pd.testing.assert_frame_equal(df, loaded)
 
-    def test_to_feather_handles_error(self, tmp_path):
+    def test_to_feather_no_existing_folder_raises_error(self, tmp_path):
         """Test _to_feather handles errors gracefully without crashing."""
         df = pd.DataFrame({"a": [1, 2, 3]})
         invalid_path = "/nonexistent/path/file.feather"
-        # Should not raise - error is logged and caught
-        _to_feather(df, invalid_path)
+        with pytest.raises(OSError):
+            _to_feather(df, invalid_path)
 
 
 class TestMemoryUsage:
