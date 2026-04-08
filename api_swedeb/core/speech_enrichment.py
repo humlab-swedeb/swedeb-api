@@ -92,7 +92,7 @@ class SpeakerLookups:
             self.terms_of_office: list[tuple[str, int, int, int, int]] = []
             for row in con.execute(
                 "SELECT person_id, start_year, end_year, office_type_id, sub_office_type_id "
-                "FROM terms_of_office ORDER BY person_id, start_year"
+                "FROM terms_of_office ORDER BY person_id, terms_of_office_id"
             ):
                 self.terms_of_office.append(
                     (
@@ -104,10 +104,46 @@ class SpeakerLookups:
                     )
                 )
 
+            # person_party: time-resolved party fallback for persons whose
+            # persons_of_interest.party_id is NULL (changed party over time).
+            # Rows loaded in person_party_id order; closed intervals stored before open ones.
+            _closed: dict[str, list[tuple[int, int, int]]] = {}
+            _open: dict[str, list[tuple[int, int, int]]] = {}
+            for row in con.execute(
+                "SELECT person_id, party_id, start_year, end_year "
+                "FROM person_party ORDER BY person_id, person_party_id"
+            ):
+                pid = row["person_id"]
+                sy = int(row["start_year"] or 0)
+                ey = int(row["end_year"] or 9999)
+                pv = int(row["party_id"] or 0)
+                is_open = (sy == 0) or (row["end_year"] is None)
+                if is_open:
+                    _open.setdefault(pid, []).append((sy, ey, pv))
+                else:
+                    _closed.setdefault(pid, []).append((sy, ey, pv))
+            # Merge: closed first, then open — mirrors pyriksprot Person.party_at() priority
+            all_pids = set(_closed) | set(_open)
+            self._party_rows_by_person: dict[str, list[tuple[int, int, int]]] = {
+                pid: _closed.get(pid, []) + _open.get(pid, []) for pid in all_pids
+            }
+
         # Pre-index terms_of_office by person_id for O(n_terms_per_person) lookup
         self._terms_by_person: dict[str, list[tuple[int, int, int, int]]] = {}
         for person_id, start_year, end_year, ot_id, sot_id in self.terms_of_office:
             self._terms_by_person.setdefault(person_id, []).append((start_year, end_year, ot_id, sot_id))
+
+    def party_for(self, person_id: str, year: int) -> int:
+        """Return party_id for person_id at given year using time-resolved lookup.
+
+        Closed intervals (bounded start and end) take priority over open-ended ones,
+        mirroring pyriksprot's ``Person.party_at()`` semantics.  Returns 0 when no
+        record covers the year.
+        """
+        for start_year, end_year, party_id in self._party_rows_by_person.get(person_id, []):
+            if start_year <= year <= end_year:
+                return party_id
+        return UNKNOWN_INT
 
     def office_for(self, person_id: str, year: int) -> tuple[int, int]:
         """Return (office_type_id, sub_office_type_id) for person_id in given year.
@@ -166,6 +202,8 @@ def enrich_speech_rows(
             quality["missing_gender"] += 1
 
         party_id: int = lookups.person_to_party_id.get(person_id, UNKNOWN_INT)
+        if not party_id and person_id != UNKNOWN_PERSON_ID:
+            party_id = lookups.party_for(person_id, year)
         party_abbrev: str = lookups.party_id_to_abbrev.get(party_id, UNKNOWN_STR)
         if party_id == UNKNOWN_INT and person_id != UNKNOWN_PERSON_ID:
             quality["missing_party"] += 1

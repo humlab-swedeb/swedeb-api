@@ -83,6 +83,25 @@ def _iter_zip_paths(tagged_frames_folder: str) -> list[Path]:
     return sorted(root.rglob("*.zip"))
 
 
+def _year_from_protocol_name(protocol_name: str) -> int:
+    """Extract the start year from a protocol name.
+
+    Protocol names follow the pattern ``prot-YYYY--...`` or
+    ``prot-YYYYZZ--...`` (session-year spanning two calendar years, e.g.
+    ``prot-197576--087``).  The legacy speech index always uses the first four
+    digits (the start year) for office-type lookups, so we do the same.
+
+    Examples::
+
+        _year_from_protocol_name("prot-1970--ak--029")  → 1970
+        _year_from_protocol_name("prot-197576--087")    → 1975
+    """
+    try:
+        return int(protocol_name[5:9])
+    except (ValueError, IndexError):
+        return 0
+
+
 def _load_zip(zip_path: Path) -> tuple[dict, list[dict]]:
     """Load metadata and utterances from a tagged-frames ZIP.
 
@@ -193,6 +212,13 @@ def _process_zip(args: tuple) -> dict[str, Any]:
         feather_rel = os.path.join(year, f"{protocol_stem}.feather")
         feather_abs = output_root / feather_rel
 
+        # The start year is derived from the protocol name (first 4 digits
+        # after "prot-"), matching the convention used by the legacy speech
+        # index.  Using the date from metadata.json would give the wrong year
+        # for session-year protocols such as "prot-197576--..." whose actual
+        # debate date falls in the second calendar year of the session.
+        year_int: int = _year_from_protocol_name(protocol_stem)
+
         # Build per-speech full payload table (paragraphs + annotation stored as strings)
         full_rows = []
         for row_idx, s in enumerate(speeches):
@@ -202,7 +228,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
                     "document_name": f"{s.get('protocol_name')}_{s.get('speech_index')}",
                     "protocol_name": s.get("protocol_name") or "",
                     "date": s.get("date") or "",
-                    "year": int(s["date"][:4]) if s.get("date") else 0,
+                    "year": year_int,
                     "speaker_id": s.get("speaker_id") or "",
                     "speaker_note_id": s.get("speaker_note_id") or "",
                     "speech_index": int(s.get("speech_index") or 0),

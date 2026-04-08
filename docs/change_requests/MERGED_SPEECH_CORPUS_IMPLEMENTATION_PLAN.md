@@ -420,7 +420,7 @@ The manifest should record the ZIP→Feather mapping for audit.
   - [x] Track missing party mappings
 - [x] Append quality report to build output
 - [x] Validate on sample set for field coverage
-- [ ] Compare enriched output against current SpeechTextRepository for parity sample
+- [x] Compare enriched output against current SpeechTextRepository for parity sample
 
 **Acceptance**: Enrichment parity acceptable, missing rates within bounds, quality report generated.
 
