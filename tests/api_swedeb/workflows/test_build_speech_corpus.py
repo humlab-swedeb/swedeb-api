@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import zipfile
 from pathlib import Path
 
@@ -99,7 +100,7 @@ class TestProcessZip:
         ]
         zip_path = _make_zip(tmp_path, "1867", "prot-1867--ak--001", utts)
         output_root = tmp_path / "out"
-        result = _process_zip((zip_path, output_root, str(output_root)))
+        result = _process_zip((zip_path, output_root, str(output_root), None))
         assert result["ok"] is True
         assert result["row_count"] == 1
         assert result["error"] is None
@@ -109,7 +110,7 @@ class TestProcessZip:
         utts = [_make_utterance("u-1", None, None)]
         zip_path = _make_zip(tmp_path, "1867", "prot-1867--ak--001", utts)
         output_root = tmp_path / "out"
-        result = _process_zip((zip_path, output_root, str(output_root)))
+        result = _process_zip((zip_path, output_root, str(output_root), None))
         assert result["ok"] is True
         feather_path = Path(result["feather_path"])
         assert feather_path.stem == "prot-1867--ak--001"
@@ -121,7 +122,7 @@ class TestProcessZip:
         bad_zip.parent.mkdir(parents=True)
         bad_zip.write_bytes(b"not a zip")
         output_root = tmp_path / "out"
-        result = _process_zip((bad_zip, output_root, str(output_root)))
+        result = _process_zip((bad_zip, output_root, str(output_root), None))
         assert result["ok"] is False
         assert result["error"] is not None
 
@@ -130,7 +131,7 @@ class TestProcessZip:
         empty_zip.parent.mkdir(parents=True)
         empty_zip.write_bytes(b"")
         output_root = tmp_path / "out"
-        result = _process_zip((empty_zip, output_root, str(output_root)))
+        result = _process_zip((empty_zip, output_root, str(output_root), None))
         assert result["ok"] is True
         assert result["skipped"] is True
         assert result["error"] is None
@@ -144,7 +145,7 @@ class TestProcessZip:
         ]
         zip_path = _make_zip(tmp_path, "1867", "prot-1867--ak--001", utts)
         output_root = tmp_path / "out"
-        result = _process_zip((zip_path, output_root, str(output_root)))
+        result = _process_zip((zip_path, output_root, str(output_root), None))
         assert result["ok"] is True
         # u-2 starts a new speech while previous ended cleanly — no warning here
         assert result["row_count"] == 2
@@ -254,3 +255,121 @@ class TestSpeechCorpusBuilder:
         assert report["failures"] == 0
         manifest = json.loads((output_root / "manifest.json").read_text())
         assert manifest["total_protocols_skipped"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Helpers shared by enrichment tests
+# ---------------------------------------------------------------------------
+
+
+def _make_metadata_db(tmp_path: Path, speaker_id: str = "Q1") -> str:
+    db_path = str(tmp_path / "test_meta.db")
+    con = sqlite3.connect(db_path)
+    con.executescript(
+        f"""
+        CREATE TABLE persons_of_interest (
+            person_id TEXT PRIMARY KEY, name TEXT, gender_id INTEGER, party_id INTEGER, wiki_id TEXT
+        );
+        INSERT INTO persons_of_interest VALUES
+            ('{speaker_id}', 'Test Speaker', 2, 3, 'Q999'),
+            ('unknown', 'Okänd', 0, 0, 'unknown');
+
+        CREATE TABLE gender (
+            gender_id INTEGER PRIMARY KEY, gender TEXT, gender_abbrev TEXT
+        );
+        INSERT INTO gender VALUES (0,'Okänt','?'),(1,'Man','M'),(2,'Kvinna','K');
+
+        CREATE TABLE party (
+            party_id INTEGER PRIMARY KEY, party_abbrev TEXT
+        );
+        INSERT INTO party VALUES (0,'Okänt'),(1,'S'),(3,'M');
+
+        CREATE TABLE office_type (
+            office_type_id INTEGER PRIMARY KEY, office TEXT
+        );
+        INSERT INTO office_type VALUES (0,'unknown'),(1,'Ledamot');
+
+        CREATE TABLE sub_office_type (
+            sub_office_type_id INTEGER PRIMARY KEY, description TEXT
+        );
+        INSERT INTO sub_office_type VALUES (0,'unknown'),(1,'Ledamot av första kammaren');
+
+        CREATE TABLE terms_of_office (
+            terms_of_office_id INTEGER PRIMARY KEY,
+            person_id TEXT, start_year INTEGER, end_year INTEGER,
+            office_type_id INTEGER, sub_office_type_id INTEGER
+        );
+        INSERT INTO terms_of_office VALUES (1,'{speaker_id}',1860,1900,1,1);
+        """
+    )
+    con.commit()
+    con.close()
+    return db_path
+
+
+# ---------------------------------------------------------------------------
+# Enrichment integration tests
+# ---------------------------------------------------------------------------
+
+
+class TestSpeechCorpusBuilderEnrichment:
+    def _make_corpus(self, tmp_path: Path) -> tuple[Path, Path]:
+        tagged = tmp_path / "tagged_frames"
+        utts = [_make_utterance("u-1", None, "u-2", who="Q1"), _make_utterance("u-2", "u-1", None, who="Q1")]
+        _make_zip(tagged, "1867", "prot-1867--ak--001", utts)
+        output_root = tmp_path / "corpus_out"
+        return tagged, output_root
+
+    def test_enrichment_adds_speaker_fields_to_speech_index(self, tmp_path):
+        tagged, output_root = self._make_corpus(tmp_path)
+        db = _make_metadata_db(tmp_path)
+        builder = SpeechCorpusBuilder(str(tagged), str(output_root), "v1.0.0", "v1.0.0", metadata_db_path=db)
+        builder.build()
+        df = feather.read_table(str(output_root / "speech_index.feather")).to_pandas()
+        assert "name" in df.columns
+        assert "gender" in df.columns
+        assert "party_abbrev" in df.columns
+        assert df.loc[0, "name"] == "Test Speaker"
+        assert df.loc[0, "gender"] == "Kvinna"
+        assert df.loc[0, "party_abbrev"] == "M"
+
+    def test_enrichment_adds_speaker_fields_to_per_protocol_feather(self, tmp_path):
+        tagged, output_root = self._make_corpus(tmp_path)
+        db = _make_metadata_db(tmp_path)
+        builder = SpeechCorpusBuilder(str(tagged), str(output_root), "v1.0.0", "v1.0.0", metadata_db_path=db)
+        builder.build()
+        df = feather.read_table(str(output_root / "1867" / "prot-1867--ak--001.feather")).to_pandas()
+        assert "name" in df.columns
+        assert df.loc[0, "name"] == "Test Speaker"
+
+    def test_enrichment_office_fields_populated(self, tmp_path):
+        tagged, output_root = self._make_corpus(tmp_path)
+        db = _make_metadata_db(tmp_path)
+        builder = SpeechCorpusBuilder(str(tagged), str(output_root), "v1.0.0", "v1.0.0", metadata_db_path=db)
+        builder.build()
+        df = feather.read_table(str(output_root / "speech_index.feather")).to_pandas()
+        assert "office_type" in df.columns
+        assert df.loc[0, "office_type"] == "Ledamot"
+
+    def test_enrichment_quality_in_manifest(self, tmp_path):
+        tagged, output_root = self._make_corpus(tmp_path)
+        db = _make_metadata_db(tmp_path)
+        builder = SpeechCorpusBuilder(str(tagged), str(output_root), "v1.0.0", "v1.0.0", metadata_db_path=db)
+        builder.build()
+        manifest = json.loads((output_root / "manifest.json").read_text())
+        assert "enrichment_quality" in manifest
+        q = manifest["enrichment_quality"]
+        assert "unresolved_person_ids" in q
+        assert q["unresolved_person_ids"] == 0
+
+    def test_build_without_metadata_db_has_null_enrichment_columns(self, tmp_path):
+        tagged, output_root = self._make_corpus(tmp_path)
+        builder = SpeechCorpusBuilder(str(tagged), str(output_root), "v1.0.0", "v1.0.0")
+        builder.build()
+        df = feather.read_table(str(output_root / "speech_index.feather")).to_pandas()
+        # Schema is consistent: enrichment columns present but all null when no DB given
+        assert "name" in df.columns
+        assert df["name"].isna().all()
+        assert "gender" in df.columns
+        assert df["gender"].isna().all()
+

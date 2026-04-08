@@ -36,6 +36,7 @@ import pyarrow as pa
 import pyarrow.feather as feather
 from loguru import logger
 
+from api_swedeb.core.speech_enrichment import SpeakerLookups, enrich_speech_rows
 from api_swedeb.core.speech_merge import merge_protocol_utterances
 
 # ---------------------------------------------------------------------------
@@ -56,6 +57,16 @@ _SPEECH_INDEX_COLUMNS = [
     "page_number_end",
     "num_tokens",
     "num_words",
+    "name",
+    "gender_id",
+    "gender",
+    "gender_abbrev",
+    "party_id",
+    "party_abbrev",
+    "office_type_id",
+    "office_type",
+    "sub_office_type_id",
+    "sub_office_type",
     "feather_file",
     "feather_row",
 ]
@@ -87,20 +98,20 @@ def _load_zip(zip_path: Path) -> tuple[dict, list[dict]]:
     return metadata, utterances
 
 
-def _speech_rows_to_arrow(speeches: list[dict[str, Any]], feather_file_rel: str) -> pa.Table:
-    """Convert a list of speech dicts to an Arrow table with feather_file column."""
-    if not speeches:
+def _speech_rows_to_arrow(full_rows: list[dict[str, Any]], feather_file_rel: str) -> pa.Table:
+    """Convert enriched full_rows dicts to an Arrow index table with location columns."""
+    if not full_rows:
         return pa.table({col: pa.array([], type=pa.string()) for col in _SPEECH_INDEX_COLUMNS})
 
     rows = []
-    for row_idx, s in enumerate(speeches):
+    for row_idx, s in enumerate(full_rows):
         rows.append(
             {
                 "speech_id": s.get("speech_id"),
-                "document_name": f"{s.get('protocol_name')}_{s.get('speech_index')}",
+                "document_name": s.get("document_name"),
                 "protocol_name": s.get("protocol_name"),
                 "date": s.get("date"),
-                "year": int(s["date"][:4]) if s.get("date") else None,
+                "year": s.get("year"),
                 "speaker_id": s.get("speaker_id"),
                 "speaker_note_id": s.get("speaker_note_id"),
                 "speech_index": s.get("speech_index"),
@@ -108,6 +119,16 @@ def _speech_rows_to_arrow(speeches: list[dict[str, Any]], feather_file_rel: str)
                 "page_number_end": s.get("page_number_end"),
                 "num_tokens": s.get("num_tokens"),
                 "num_words": s.get("num_words"),
+                "name": s.get("name"),
+                "gender_id": s.get("gender_id"),
+                "gender": s.get("gender"),
+                "gender_abbrev": s.get("gender_abbrev"),
+                "party_id": s.get("party_id"),
+                "party_abbrev": s.get("party_abbrev"),
+                "office_type_id": s.get("office_type_id"),
+                "office_type": s.get("office_type"),
+                "sub_office_type_id": s.get("sub_office_type_id"),
+                "sub_office_type": s.get("sub_office_type"),
                 "feather_file": feather_file_rel,
                 "feather_row": row_idx,
             }
@@ -133,13 +154,18 @@ def _write_feather(table: pa.Table, path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _process_zip(args: tuple[Path, Path, str]) -> dict[str, Any]:
+def _process_zip(args: tuple) -> dict[str, Any]:
     """Process one ZIP file and write a Feather.
 
-    Returns a result dict with keys: zip_path, ok, feather_path, row_count,
-    warnings, error.
+    Args:
+        args: (zip_path, output_root, output_root_str, lookups_or_none)
+            where ``lookups_or_none`` is a :class:`SpeakerLookups` instance or
+            ``None`` when enrichment is disabled.
+
+    Returns a result dict with keys: zip_path, ok, skipped, feather_path,
+    row_count, warnings, quality, error.
     """
-    zip_path, output_root, output_root_str = args
+    zip_path, output_root, output_root_str, lookups = args
     result: dict[str, Any] = {
         "zip_path": str(zip_path),
         "ok": False,
@@ -147,6 +173,7 @@ def _process_zip(args: tuple[Path, Path, str]) -> dict[str, Any]:
         "feather_path": None,
         "row_count": 0,
         "warnings": [],
+        "quality": {},
         "error": None,
     }
 
@@ -166,7 +193,7 @@ def _process_zip(args: tuple[Path, Path, str]) -> dict[str, Any]:
         feather_rel = os.path.join(year, f"{protocol_stem}.feather")
         feather_abs = output_root / feather_rel
 
-        # Build per-utterance full payload table (paragraphs + annotation stored as strings)
+        # Build per-speech full payload table (paragraphs + annotation stored as strings)
         full_rows = []
         for row_idx, s in enumerate(speeches):
             full_rows.append(
@@ -188,14 +215,19 @@ def _process_zip(args: tuple[Path, Path, str]) -> dict[str, Any]:
                 }
             )
 
+        quality: dict[str, int] = {}
+        if lookups is not None and full_rows:
+            full_rows, quality = enrich_speech_rows(full_rows, lookups)
+        result["quality"] = quality
+
         table = pa.Table.from_pylist(full_rows) if full_rows else pa.table({})
         _write_feather(table, feather_abs)
 
         result["ok"] = True
         result["feather_path"] = str(feather_abs)
         result["feather_rel"] = feather_rel
-        result["row_count"] = len(speeches)
-        result["index_table"] = _speech_rows_to_arrow(speeches, feather_rel)
+        result["row_count"] = len(full_rows)
+        result["index_table"] = _speech_rows_to_arrow(full_rows, feather_rel)
 
     except Exception:  # pylint: disable=broad-except
         result["error"] = traceback.format_exc()
@@ -216,6 +248,9 @@ class SpeechCorpusBuilder:
         output_root: Root folder for bootstrap_corpus output.
         corpus_version: Version string for the corpus (e.g. "v1.1.0").
         metadata_version: Version string for the metadata (e.g. "v1.1.0").
+        metadata_db_path: Optional path to riksprot SQLite metadata DB.  When
+            provided speaker metadata (name, gender, party, office type) is
+            joined into every speech row and the speech_index.
         num_processes: Number of parallel workers (0 = sequential).
     """
 
@@ -225,12 +260,14 @@ class SpeechCorpusBuilder:
         output_root: str,
         corpus_version: str,
         metadata_version: str,
+        metadata_db_path: str | None = None,
         num_processes: int = 0,
     ):
         self.tagged_frames_folder = Path(tagged_frames_folder)
         self.output_root = Path(output_root)
         self.corpus_version = corpus_version
         self.metadata_version = metadata_version
+        self.metadata_db_path = metadata_db_path
         self.num_processes = num_processes
 
     # ------------------------------------------------------------------
@@ -241,11 +278,17 @@ class SpeechCorpusBuilder:
         """Run the full build and return a summary report dict."""
         self.output_root.mkdir(parents=True, exist_ok=True)
 
+        lookups: SpeakerLookups | None = None
+        if self.metadata_db_path:
+            logger.info(f"Loading speaker lookups from {self.metadata_db_path}")
+            lookups = SpeakerLookups(self.metadata_db_path)
+            logger.info(f"  {len(lookups.person_to_name)} persons loaded")
+
         zip_paths = _iter_zip_paths(str(self.tagged_frames_folder))
         total = len(zip_paths)
         logger.info(f"Found {total} ZIPs under {self.tagged_frames_folder}")
 
-        args = [(p, self.output_root, str(self.output_root)) for p in zip_paths]
+        args = [(p, self.output_root, str(self.output_root), lookups) for p in zip_paths]
         results = self._run(args, total)
 
         skipped = [r for r in results if r.get("skipped")]
@@ -253,13 +296,20 @@ class SpeechCorpusBuilder:
         failures = [r for r in results if not r["ok"]]
         all_warnings = [w for r in successes for w in r.get("warnings", [])]
 
+        quality_totals: dict[str, int] = {}
+        for r in successes:
+            for k, v in r.get("quality", {}).items():
+                quality_totals[k] = quality_totals.get(k, 0) + v
+
         logger.info(
             f"Processed {len(successes)}/{total} protocols "
             f"({len(skipped)} empty/skipped, {len(failures)} failures, {len(all_warnings)} warnings)"
         )
+        if quality_totals:
+            logger.info(f"Enrichment quality: {quality_totals}")
 
         self._write_indexes(successes)
-        manifest = self._write_manifest(total, successes, skipped, failures, all_warnings)
+        manifest = self._write_manifest(total, successes, skipped, failures, all_warnings, quality_totals)
 
         return {
             "total": total,
@@ -267,6 +317,7 @@ class SpeechCorpusBuilder:
             "skipped": len(skipped),
             "failures": len(failures),
             "warnings": len(all_warnings),
+            "quality": quality_totals,
             "failures_detail": [{"zip": r["zip_path"], "error": r["error"]} for r in failures],
             "manifest": manifest,
         }
@@ -321,6 +372,7 @@ class SpeechCorpusBuilder:
         skipped: list[dict],
         failures: list[dict],
         all_warnings: list[str],
+        quality_totals: dict[str, int] | None = None,
     ) -> dict:
         speech_index_path = self.output_root / "speech_index.feather"
         speech_lookup_path = self.output_root / "speech_lookup.feather"
@@ -338,6 +390,7 @@ class SpeechCorpusBuilder:
             "total_protocols_failed": len(failures),
             "total_speeches": sum(r["row_count"] for r in successes),
             "total_warnings": len(all_warnings),
+            "enrichment_quality": quality_totals or {},
             "checksums": {
                 "speech_index.feather": _feather_checksum(speech_index_path) if speech_index_path.exists() else None,
                 "speech_lookup.feather": _feather_checksum(speech_lookup_path) if speech_lookup_path.exists() else None,

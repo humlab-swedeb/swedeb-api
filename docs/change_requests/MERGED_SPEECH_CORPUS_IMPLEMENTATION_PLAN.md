@@ -399,27 +399,27 @@ The manifest should record the ZIP→Feather mapping for audit.
 
 ### Phase 3: Speaker Metadata Enrichment
 
-- [ ] Add enrichment logic to build_speech_corpus.py
-- [ ] Implement join with speech_index to get speaker ids
-- [ ] Implement person_codecs lookups for:
-  - [ ] name (person_id → name)
-  - [ ] office_type_id and office_type
-  - [ ] sub_office_type_id and sub_office_type
-  - [ ] gender_id, gender, gender_abbrev
-  - [ ] party_id, party_abbrev
-- [ ] Implement fallback policy for missing lookups:
-  - [ ] person_id → "unknown"
-  - [ ] office_type → "Okänt"
-  - [ ] gender → "Okänt"
-  - [ ] party_abbrev → "Okänt"
-- [ ] Persist enriched fields in protocol Feather rows
-- [ ] Implement data quality reporting:
-  - [ ] Track unresolved person_ids
-  - [ ] Track missing office_type mappings
-  - [ ] Track missing gender mappings
-  - [ ] Track missing party mappings
-- [ ] Append quality report to build output
-- [ ] Validate on sample set for field coverage
+- [x] Add enrichment logic to build_speech_corpus.py
+- [x] Implement join with speech_index to get speaker ids
+- [x] Implement person_codecs lookups for:
+  - [x] name (person_id → name)
+  - [x] office_type_id and office_type
+  - [x] sub_office_type_id and sub_office_type
+  - [x] gender_id, gender, gender_abbrev
+  - [x] party_id, party_abbrev
+- [x] Implement fallback policy for missing lookups:
+  - [x] person_id → "unknown"
+  - [x] office_type → "Okänt"
+  - [x] gender → "Okänt"
+  - [x] party_abbrev → "Okänt"
+- [x] Persist enriched fields in protocol Feather rows
+- [x] Implement data quality reporting:
+  - [x] Track unresolved person_ids
+  - [x] Track missing office_type mappings
+  - [x] Track missing gender mappings
+  - [x] Track missing party mappings
+- [x] Append quality report to build output
+- [x] Validate on sample set for field coverage
 - [ ] Compare enriched output against current SpeechTextRepository for parity sample
 
 **Acceptance**: Enrichment parity acceptable, missing rates within bounds, quality report generated.

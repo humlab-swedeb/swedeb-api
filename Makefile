@@ -97,11 +97,13 @@ profile-kwic-pyinstrument:
 #   BOOTSTRAP_CORPUS_ROOT - destination root for bootstrap_corpus output
 #   CORPUS_VERSION        - corpus version string, e.g. v1.1.0
 #   METADATA_VERSION      - metadata version string, e.g. v1.1.0
+#   METADATA_DB           - (optional) path to riksprot SQLite DB for speaker enrichment
 #   NUM_PROCESSES         - parallel workers (0 = sequential, default)
 CORPUS_VERSION		  ?= v1.4.1
 METADATA_VERSION      ?= v1.1.3
 TAGGED_FRAMES_FOLDER  ?= /home/roger/source/swedeb/sample-data/data/1867-2020/$(CORPUS_VERSION)/tagged_frames/
 BOOTSTRAP_CORPUS_ROOT ?= /home/roger/source/swedeb/sample-data/data/1867-2020/$(CORPUS_VERSION)/speeches/bootstrap_corpus
+METADATA_DB           ?=
 NUM_PROCESSES         ?= 8
 
 build-speech-corpus:
@@ -113,6 +115,7 @@ build-speech-corpus:
 		--output-root     "$(BOOTSTRAP_CORPUS_ROOT)" \
 		--corpus-version  "$(CORPUS_VERSION)" \
 		--metadata-version "$(METADATA_VERSION)" \
+		$(if $(METADATA_DB),--metadata-db "$(METADATA_DB)",) \
 		--num-processes   $(NUM_PROCESSES)
 
 .PHONY: build-speech-corpus

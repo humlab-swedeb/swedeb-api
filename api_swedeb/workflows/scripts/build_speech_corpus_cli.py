@@ -29,6 +29,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-root", required=True, help="Destination root for bootstrap_corpus output")
     parser.add_argument("--corpus-version", required=True, help="Corpus version string (e.g. v1.1.0)")
     parser.add_argument("--metadata-version", required=True, help="Metadata version string (e.g. v1.1.0)")
+    parser.add_argument("--metadata-db", default=None, help="Path to riksprot SQLite metadata DB for speaker enrichment")
     parser.add_argument("--num-processes", type=int, default=0, help="Parallel workers (0 = sequential, default)")
     return parser.parse_args()
 
@@ -40,6 +41,7 @@ def main() -> None:
         output_root=args.output_root,
         corpus_version=args.corpus_version,
         metadata_version=args.metadata_version,
+        metadata_db_path=args.metadata_db,
         num_processes=args.num_processes,
     )
     report = builder.build()
