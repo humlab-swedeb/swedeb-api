@@ -77,7 +77,7 @@ For detailed developer workflow instructions, see the [Workflow Guide](./WORKFLO
                                   ▼
 ┌─────────────────────────────────────────────────┐
 │           GitHub Container Registry             │
-│    ghcr.io/humlab-swedeb/swedeb-api            │
+│    ghcr.io/humlab-swedeb/swedeb-api             │
 │    (test, staging, production tags)             │
 └─────────────────────────────────┼───────────────┘
                                   ▼
