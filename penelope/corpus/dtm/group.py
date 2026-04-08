@@ -358,7 +358,7 @@ class GroupByMixIn:
         """Set a fixed name for temporal key as well"""
         gdi['time_period'] = gdi[temporal_key]
 
-        category_indices: Mapping[int, List[int]] = gdi['document_ids'].to_dict()
+        category_indices: Mapping[int, List[int]] = gdi['document_ids'].to_dict()  # type: ignore
 
         if drop_group_ids:
             gdi.drop(columns='document_ids', inplace=True, errors='ignore')
