@@ -62,16 +62,16 @@ class SpeechRepositoryFast:
         document_index: pd.DataFrame,
         metadata_db_path: str | None = None,
     ) -> None:
-        self._store = store
-        self._document_index = document_index
-        self._metadata_db_path = metadata_db_path
+        self._store: SpeechStore = store
+        self._document_index: pd.DataFrame = document_index
+        self._metadata_db_path: str | None = metadata_db_path
 
         # Pre-build key resolution dicts from the legacy document_index
         idx_reset = document_index.reset_index()
-        self._document_name2id: dict[str, int] = (
+        self._document_name2id: dict[str, int] = (  # type: ignore[assignment]
             idx_reset.set_index("document_name")["document_id"].to_dict()
         )
-        self._speech_id2id: dict[str, int] = (
+        self._speech_id2id: dict[str, int] = (  # type: ignore[assignment]
             idx_reset.set_index("speech_id")["document_id"].to_dict()
         )
 
@@ -231,7 +231,7 @@ class SpeechRepositoryFast:
         if key.startswith("prot-"):
             return _normalize_document_name(key)
         if key.startswith("i-"):
-            doc_id = self._speech_id2id.get(key)
+            doc_id: int | None = self._speech_id2id.get(key)
             if doc_id is not None:
                 raw = str(self._document_index.loc[doc_id, "document_name"])
                 return _normalize_document_name(raw)
