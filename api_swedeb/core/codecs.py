@@ -76,7 +76,8 @@ class Codec:
         if self.default is not None:
             out = out.fillna(self.default)
 
-        df[self.to_column] = out
+        # Use .loc assignment to avoid chained-assignment ambiguity.
+        df.loc[:, self.to_column] = out
         return df
 
     def is_decoded(self, df: pd.DataFrame) -> bool:
@@ -279,6 +280,11 @@ class Codecs:
         ignores: list[str] | None = None,
     ) -> pd.DataFrame:
         """Applies codecs to DataFrame. Ignores target columns in `ignores` and keeps columns in `keeps`."""
+        # Avoid an unconditional deep copy for large frames. Only detach when this
+        # dataframe likely originates from chained indexing / slicing.
+        if getattr(df, "_is_copy", None) is not None:
+            df = df.copy(deep=False)
+
         for codec in codecs:
             if ignores and codec.to_column in ignores:
                 continue
@@ -382,8 +388,11 @@ class PersonCodecs(Codecs):
            NNN is the protocol number as zero-padded integer.
            MMM is the page number as zero-padded integer.
         """
-        year: pd.Series[str] = document_names.str.split('-').str[1]
-        base_filename: pd.Series[str] = document_names.str.split('_').str[0] + ".pdf"
+        # Pandas + pyarrow can return list-typed extension arrays after split,
+        # which do not support chained `.str[...]` reliably.
+        doc_names = document_names.astype("string[python]")
+        year: pd.Series[str] = doc_names.str.split('-').str[1]
+        base_filename: pd.Series[str] = doc_names.str.split('_').str[0] + ".pdf"
         page_nrs = page_nrs.astype(str) if isinstance(page_nrs, pd.Series) else str(page_nrs)
         return base_url + year + "/" + base_filename + "#page=" + page_nrs
 

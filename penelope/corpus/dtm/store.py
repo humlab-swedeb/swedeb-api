@@ -65,14 +65,15 @@ def load_metadata(*, tag: str, folder: str) -> dict:
         'overridden_term_frequency': term_frequency,
     }
 
+PROBES: list[tuple[str, Callable[[str], pd.DataFrame]]] = [
+    ("prepped.feather", lambda f: pd.read_feather(f, dtype_backend="pyarrow")),
+    ("feather", lambda f: pd.read_feather(f, dtype_backend="pyarrow")),
+    ("csv.gz", lambda f: pd.read_csv(f, sep=';', compression="gzip", index_col=0)),
+]
 
 def load_document_index(tag: str, folder: str) -> pd.DataFrame:
 
-    probes: list[tuple[str, Callable[[str], pd.DataFrame]]] = [
-        ("feather", pd.read_feather),
-        ("csv.gz", lambda f: pd.read_csv(f, sep=';', compression="gzip", index_col=0)),
-    ]
-    for ext, fx in probes:
+    for ext, fx in PROBES:
         filename: str = jj(folder, f"{tag}_document_index.{ext}")
         if os.path.isfile(filename):
             return fx(filename)
@@ -96,7 +97,7 @@ def store_metadata(*, tag: str, folder: str, mode: Literal['bundle', 'files'] = 
         di: pd.DataFrame | None = data.get('document_index')
         assert di is not None
         di.to_csv(jj(folder, f"{tag}_document_index.csv.gz"), sep=';', compression="gzip")
-        di.to_feather(jj(folder, f"{tag}_document_index.feather"))
+        di.to_feather(jj(folder, f"{tag}_document_index.feather"), version=2, compression="lz4")
 
         with gzip.open(jj(folder, f"{tag}_token2id.json.gz"), 'w') as fp:  # 4. fewer bytes (i.e. gzip)
             fp.write(json.dumps(data.get('token2id')).encode('utf-8'))

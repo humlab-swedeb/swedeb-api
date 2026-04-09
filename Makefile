@@ -91,6 +91,36 @@ profile-kwic-pyinstrument:
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_kwic.html \
 			tests/profile_kwic.py
 
+# --- Bootstrap corpus build ---------------------------------------------------
+# Required environment variables (set in .env or export before running):
+#   TAGGED_FRAMES_FOLDER  - root folder of tagged-frames ZIPs (year sub-dirs)
+#   BOOTSTRAP_CORPUS_ROOT - destination root for bootstrap_corpus output
+#   CORPUS_VERSION        - corpus version string, e.g. v1.1.0
+#   METADATA_VERSION      - metadata version string, e.g. v1.1.0
+#   METADATA_DB           - (optional) path to riksprot SQLite DB for speaker enrichment
+#   NUM_PROCESSES         - parallel workers (0 = sequential, default)
+CORPUS_VERSION		  ?= v1.4.1
+METADATA_VERSION      ?= v1.1.3
+TAGGED_FRAMES_FOLDER  ?= /home/roger/source/swedeb/sample-data/data/1867-2020/$(CORPUS_VERSION)/tagged_frames/
+BOOTSTRAP_CORPUS_ROOT ?= /home/roger/source/swedeb/sample-data/data/1867-2020/$(CORPUS_VERSION)/speeches/bootstrap_corpus
+METADATA_DB           ?=
+NUM_PROCESSES         ?= 8
+
+build-speech-corpus:
+	@echo "Building bootstrap speech corpus..."
+	@echo "  Source : $(TAGGED_FRAMES_FOLDER)"
+	@echo "  Output : $(BOOTSTRAP_CORPUS_ROOT)"
+	@rm -rf "$(BOOTSTRAP_CORPUS_ROOT)"
+	@uv run python -m api_swedeb.workflows.scripts.build_speech_corpus_cli \
+		--tagged-frames   "$(TAGGED_FRAMES_FOLDER)" \
+		--output-root     "$(BOOTSTRAP_CORPUS_ROOT)" \
+		--corpus-version  "$(CORPUS_VERSION)" \
+		--metadata-version "$(METADATA_VERSION)" \
+		$(if $(METADATA_DB),--metadata-db "$(METADATA_DB)",) \
+		--num-processes   $(NUM_PROCESSES)
+
+.PHONY: build-speech-corpus
+
 clean-dev:
 	@rm -rf .pytest_cache build dist .eggs *.egg-info
 	@rm -rf .coverage coverage.xml htmlcov report.xml .tox

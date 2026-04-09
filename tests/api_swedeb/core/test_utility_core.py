@@ -345,27 +345,30 @@ class TestGroupToListOfRecords:
 class TestProbeFilename:
     """Tests for probe_filename function."""
 
+    def test_probe_filename_accepts_string(self, tmp_path):
+        """Test probe_filename accepts a single filename string."""
+        test_file = tmp_path / "single.txt"
+        test_file.write_text("content")
+        result = probe_filename(str(test_file))  # type: ignore[arg-type]
+        assert result == str(test_file)
+
     def test_probe_filename_finds_existing(self, tmp_path):
-        """Test probe_filename finds existing file from list."""
+        """Test probe_filename finds an existing explicit filename."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("content")
-        # probe_filename signature has a bug - it expects list but tries to add it to set
-        # The actual usage in codebase likely passes single strings, not lists
-        # We'll test what the code actually does
-        with pytest.raises(TypeError, match="unhashable type"):
-            probe_filename([str(test_file)])
+        result = probe_filename([str(test_file)])
+        assert result == str(test_file)
 
     def test_probe_filename_with_extensions(self, tmp_path):
-        """Test probe_filename signature issue with extensions."""
+        """Test probe_filename probes candidate extensions."""
         test_file = tmp_path / "test.md"
         test_file.write_text("content")
-        # Same signature issue - expects list but can't hash it
-        with pytest.raises(TypeError, match="unhashable type"):
-            probe_filename([str(tmp_path / "test")], exts=[".txt", ".md"])
+        result = probe_filename([str(tmp_path / "test")], exts=[".txt", ".md"])
+        assert result == str(test_file)
 
     def test_probe_filename_raises_not_found(self):
-        """Test probe_filename signature bug."""
-        with pytest.raises(TypeError, match="unhashable type"):
+        """Test probe_filename raises when no candidate exists."""
+        with pytest.raises(FileNotFoundError):
             probe_filename(["/nonexistent/file.txt"])
 
 

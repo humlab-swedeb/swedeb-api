@@ -1,5 +1,6 @@
 """Search and speech retrieval service for parliamentary speech data."""
 
+from collections.abc import Generator, Iterable
 from typing import Any
 
 import numpy as np
@@ -104,6 +105,14 @@ class SearchService:
         """
         speech: Speech = self._loader.repository.speech(speech_name=document_name)
         return speech
+
+    def get_speeches_batch(self, document_ids: Iterable[int]) -> Generator[tuple[int, Speech], None, None]:
+        """Yield (document_id, Speech) pairs grouped by protocol for efficient ZIP access.
+
+        Each protocol ZIP is opened at most once, regardless of how many speeches
+        from that protocol are in document_ids.
+        """
+        return self._loader.repository.speeches_batch(document_ids)
 
     def get_speaker(self, document_name: str) -> str:
         """Get speaker name for a given document.

@@ -26,6 +26,22 @@ class TestSearchServiceInit:
 class TestSearchServiceMethods:
     """Tests for SearchService methods."""
 
+    def test_get_speeches_batch_delegates_to_repository(self):
+        """Test get_speeches_batch delegates to repository batch loader."""
+        mock_loader = MagicMock()
+        expected = [
+            (1, Speech({"paragraphs": ["first speech"]})),
+            (2, Speech({"paragraphs": ["second speech"]})),
+        ]
+        mock_loader.repository.speeches_batch.return_value = iter(expected)
+
+        service = SearchService(loader=mock_loader)
+
+        result = list(service.get_speeches_batch([1, 2]))
+
+        assert result == expected
+        mock_loader.repository.speeches_batch.assert_called_once_with([1, 2])
+
     @patch('api_swedeb.api.services.search_service.SearchService')
     def test_get_speech(self, mock_service_class):
         """Test get_speech returns Speech object."""

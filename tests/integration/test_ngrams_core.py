@@ -19,7 +19,7 @@ def test_compute_n_grams2(corpus: Corpus):
     ngram_counter: Counter | defaultdict[str, int] = defaultdict(int)
     ngram_documents: Counter | defaultdict[str, set[str]] = defaultdict(set)
 
-    windows_count: dict[int, int] = windows['count'].to_dict()
+    windows_count: dict[int, int] = windows['count'].to_dict()  # type: ignore
 
     n_grams: Iterable[tuple[int, str, str]] = (
         (int(index), ngram, row['documents'])  # type: ignore

@@ -1,18 +1,13 @@
-"""Unit tests for api_swedeb.core.load module."""
+"""Unit tests for active shared loader helpers in api_swedeb.core.load."""
 
-import json
 import time
-import zipfile
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from api_swedeb.core.load import (
-    SKIP_COLUMNS,
     SPEECH_INDEX_DTYPES,
-    USED_COLUMNS,
-    ZipLoader,
     _memory_usage,
     _to_feather,
     is_invalidated,
@@ -25,18 +20,6 @@ from api_swedeb.core.load import (
 
 class TestConstants:
     """Tests for module constants."""
-
-    def test_used_columns_contains_required_fields(self):
-        """Test USED_COLUMNS has essential fields."""
-        required = ["document_id", "speech_id", "year", "person_id", "party_id"]
-        for field in required:
-            assert field in USED_COLUMNS
-
-    def test_skip_columns_has_pos_tags(self):
-        """Test SKIP_COLUMNS includes POS tag columns."""
-        pos_tags = ["Noun", "Verb", "Adjective"]
-        for tag in pos_tags:
-            assert tag in SKIP_COLUMNS
 
     def test_speech_index_dtypes_has_category_fields(self):
         """Test SPEECH_INDEX_DTYPES defines category fields."""
@@ -144,12 +127,12 @@ class TestToFeather:
         loaded = pd.read_feather(target)
         pd.testing.assert_frame_equal(df, loaded)
 
-    def test_to_feather_handles_error(self, tmp_path):
+    def test_to_feather_no_existing_folder_raises_error(self, tmp_path):
         """Test _to_feather handles errors gracefully without crashing."""
         df = pd.DataFrame({"a": [1, 2, 3]})
         invalid_path = "/nonexistent/path/file.feather"
-        # Should not raise - error is logged and caught
-        _to_feather(df, invalid_path)
+        with pytest.raises(OSError):
+            _to_feather(df, invalid_path)
 
 
 class TestMemoryUsage:
@@ -362,73 +345,3 @@ class TestZeroFillFilenameSequence:
         assert zero_fill_filename_sequence("filename") == "filename"
 
 
-class TestZipLoader:
-    """Tests for ZipLoader class."""
-
-    def test_ziploader_init(self):
-        """Test ZipLoader initialization."""
-        loader = ZipLoader("/path/to/folder")
-        assert loader.folder == "/path/to/folder"
-
-    def test_ziploader_load_from_zip(self, tmp_path):
-        """Test ZipLoader.load reads from zip file."""
-        protocol_name = "prot-2020-001"
-        metadata = {"name": "prot-2020-001", "date": "2020-01-01"}
-        utterances = [{"speaker": "P1", "text": "Hello"}]
-
-        # Create zip file
-        zip_path = tmp_path / f"{protocol_name}.zip"
-        with zipfile.ZipFile(zip_path, "w") as zf:
-            zf.writestr(f"{protocol_name}.json", json.dumps(utterances))
-            zf.writestr("metadata.json", json.dumps(metadata))
-
-        loader = ZipLoader(str(tmp_path))
-        loaded_metadata, loaded_utterances = loader.load(protocol_name)
-
-        assert loaded_metadata["name"] == "prot-2020-001"
-        assert len(loaded_utterances) == 1
-        assert loaded_utterances[0]["speaker"] == "P1"
-
-    def test_ziploader_load_from_subfolder(self, tmp_path):
-        """Test ZipLoader.load finds zip in subfolder."""
-        protocol_name = "prot-2020-001"
-        subfolder = tmp_path / "2020"
-        subfolder.mkdir()
-
-        metadata = {"name": "prot-2020-1"}
-        utterances = [{"text": "test"}]
-
-        zip_path = subfolder / f"{protocol_name}.zip"
-        with zipfile.ZipFile(zip_path, "w") as zf:
-            zf.writestr(f"{protocol_name}.json", json.dumps(utterances))
-            zf.writestr("metadata.json", json.dumps(metadata))
-
-        loader = ZipLoader(str(tmp_path))
-        loaded_metadata, loaded_utterances = loader.load(protocol_name)
-
-        assert loaded_metadata["name"] == "prot-2020-001"  # zero-filled
-        assert len(loaded_utterances) == 1
-
-    def test_ziploader_load_tries_zero_padded_variants(self, tmp_path):
-        """Test ZipLoader.load tries zero-padded filename variants."""
-        protocol_name = "prot-2020-1"
-        padded_name = "prot-2020-001"
-
-        metadata = {"name": "prot-2020-1"}
-        utterances = [{"text": "test"}]
-
-        zip_path = tmp_path / f"{padded_name}.zip"
-        with zipfile.ZipFile(zip_path, "w") as zf:
-            zf.writestr(f"{protocol_name}.json", json.dumps(utterances))
-            zf.writestr("metadata.json", json.dumps(metadata))
-
-        loader = ZipLoader(str(tmp_path))
-        loaded_metadata, loaded_utterances = loader.load(protocol_name)
-
-        assert loaded_metadata["name"] == "prot-2020-001"
-
-    def test_ziploader_load_raises_filenotfound(self, tmp_path):
-        """Test ZipLoader.load raises FileNotFoundError when zip missing."""
-        loader = ZipLoader(str(tmp_path))
-        with pytest.raises(FileNotFoundError, match="prot-9999-999"):
-            loader.load("prot-9999-999")

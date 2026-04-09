@@ -1,5 +1,6 @@
 import io
 import zipfile
+from collections.abc import Generator
 from typing import Annotated, Any, Literal
 
 import fastapi
@@ -33,6 +34,35 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultIte
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
+
+
+class _ZipStreamWriter(io.RawIOBase):
+    """Non-seekable write buffer that accumulates bytes for incremental streaming.
+
+    Python's zipfile writes data descriptors instead of seeking back to update
+    local file headers when the target is not seekable, so ZIP_DEFLATED works
+    correctly without requiring random access.
+    """
+
+    def __init__(self) -> None:
+        self._chunks: list[bytes] = []
+
+    def write(self, b: bytes | bytearray) -> int:  # type: ignore[override]
+        self._chunks.append(bytes(b))
+        return len(b)
+
+    def seekable(self) -> bool:
+        return False
+
+    def readable(self) -> bool:
+        return False
+
+    def pop(self) -> bytes:
+        """Return and clear all bytes written since the last pop()."""
+        data = b"".join(self._chunks)
+        self._chunks.clear()
+        return data
+
 
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
 
@@ -147,6 +177,36 @@ async def get_speeches_result(
     df: DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
     rows: list[SpeechesResultItem] = [SpeechesResultItem(**row) for row in df.to_dict(orient="records")]  # type: ignore
     return SpeechesResult(speech_list=rows)
+
+
+@router.post("/speeches/download")
+async def get_speeches_download_result(
+    commons: CommonParams, search_service: SearchService = Depends(get_search_service)
+) -> StreamingResponse:
+    """Find speeches matching filter criteria and return them as a streamed ZIP file."""
+    df: DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
+
+    id_to_name: dict[int, str] = dict(zip(df["document_id"], df["name"]))
+    doc_ids: list[int] = df["document_id"].tolist()
+
+    def _generate() -> Generator[bytes, None, None]:
+        writer = _ZipStreamWriter()
+        with zipfile.ZipFile(writer, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+            for doc_id, speech in search_service.get_speeches_batch(doc_ids):
+                speaker: str = id_to_name.get(doc_id, "unknown")
+                zf.writestr(f"{speaker}_{doc_id}.txt", speech.text.encode("utf-8"))
+                chunk: bytes = writer.pop()
+                if chunk:
+                    yield chunk
+        chunk = writer.pop()
+        if chunk:
+            yield chunk
+
+    return StreamingResponse(
+        _generate(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=speeches.zip"},
+    )
 
 
 @router.get("/speeches/{speech_id}", response_model=SpeechesTextResultItem)
