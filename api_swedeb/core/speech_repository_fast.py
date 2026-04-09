@@ -80,13 +80,13 @@ class SpeechRepositoryFast:
     # ------------------------------------------------------------------
 
     @cached_property
-    def speaker_note_id2note(self) -> dict[str, str]:
+    def speaker_note_id2note(self) -> dict[str, str | None]:
         if not self._metadata_db_path or not Path(self._metadata_db_path).is_file():
             return {}
         try:
             with sqlite3.connect(self._metadata_db_path) as db:
                 cursor = db.execute("SELECT speaker_note_id, speaker_note FROM speaker_notes")
-                return {str(row[0]): str(row[1]) for row in cursor.fetchall()}
+                return {str(row[0]): row[1] for row in cursor.fetchall()}
         except Exception as ex:  # pylint: disable=broad-except
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
