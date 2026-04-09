@@ -491,8 +491,8 @@ The manifest should record the ZIP→Feather mapping for audit.
 
 ### Phase 6: Rollout
 
-- [ ] Ensure all Phase 4-5 sign-offs are complete
-- [ ] Set speech.storage_backend = legacy in config (default)
+- [x] Ensure all Phase 4-5 sign-offs are complete
+- [x] Set speech.storage_backend = legacy in config (default)
 - [ ] Deploy to dev branch with feature flag in code
 - [ ] Enable prebuilt backend in dev environment
 - [ ] Monitor dev logs for 48 hours
