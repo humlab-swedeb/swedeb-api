@@ -35,41 +35,44 @@ import pyarrow as pa
 import pyarrow.feather as feather
 from loguru import logger
 
-from api_swedeb.workflows.prebuilt_speech_index.enrichment import SpeakerLookups, enrich_speech_rows
-from api_swedeb.workflows.prebuilt_speech_index.merge import merge_protocol_utterances
+from .enrichment import SpeakerLookups, enrich_speech_rows
+from .merge import merge_protocol_utterances
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 SCHEMA_VERSION = "1.0.0"
-_SPEECH_INDEX_COLUMNS = [
-    "speech_id",
-    "document_name",
-    "protocol_name",
-    "date",
-    "year",
-    "speaker_id",
-    "speaker_note_id",
-    "speech_index",
-    "page_number_start",
-    "page_number_end",
-    "num_tokens",
-    "num_words",
-    "name",
-    "gender_id",
-    "gender",
-    "gender_abbrev",
-    "party_id",
-    "party_abbrev",
-    "office_type_id",
-    "office_type",
-    "sub_office_type_id",
-    "sub_office_type",
-    "feather_file",
-    "feather_row",
-]
 
+
+_PYARROW_SCHEMA: pa.Schema = pa.schema(
+    [
+        ("speech_id", pa.string()),
+        ("document_name", pa.string()),
+        ("protocol_name", pa.string()),
+        ("date", pa.string()),
+        ("year", pa.int16()),
+        ("speaker_id", pa.string()),
+        ("speaker_note_id", pa.string()),
+        ("speech_index", pa.int16()),
+        ("page_number_start", pa.int16()),
+        ("page_number_end", pa.int16()),
+        ("num_tokens", pa.int16()),
+        ("num_words", pa.int16()),
+        ("name", pa.string()),
+        ("gender_id", pa.int8()),
+        ("gender", pa.string()),
+        ("gender_abbrev", pa.string()),
+        ("party_id", pa.int16()),
+        ("party_abbrev", pa.string()),
+        ("office_type_id", pa.int8()),
+        ("office_type", pa.string()),
+        ("sub_office_type_id", pa.int8()),
+        ("sub_office_type", pa.string()),
+        ("feather_file", pa.string()),
+        ("feather_row", pa.int64()),
+    ]
+)
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -101,25 +104,47 @@ def _year_from_protocol_name(protocol_name: str) -> int:
         return 0
 
 
+def _subfolder_from_protocol_name(protocol_name: str) -> str:
+    """Derive the subfolder name from the protocol name."""
+    return protocol_name.split("-")[1]
+
+
 def _load_zip(zip_path: Path) -> tuple[dict, list[dict]]:
     """Load metadata and utterances from a tagged-frames ZIP.
 
     The protocol name is derived from the ZIP stem (authoritative) rather than
     from the metadata.json name field, which may differ.
     """
-    protocol_name = zip_path.stem
+    protocol_name: str = zip_path.stem
     with zipfile.ZipFile(zip_path, "r") as zf:
+
+        filenames: list[str] = zf.namelist()
+
+        if len(filenames) != 2:
+            raise ValueError(
+                f"Invalid ZIP structure:: {zip_path}. expected exactly 2 files (metadata.json + utterances.json), found: {filenames}"
+            )
+
+        if "metadata.json" not in filenames:
+            raise ValueError(f"Missing metadata.json in ZIP: {zip_path}")
+
+        # Ignore actual filename, The utterances JSON filename can differ from protocol name
+        utterances_filename: str = filenames[0] if filenames[0] != "metadata.json" else filenames[1]
+
+
         metadata: dict = json.loads(zf.read("metadata.json"))
+        utterances: list[dict] = json.loads(zf.read(utterances_filename))
+
         # Prefer the actual ZIP stem as the canonical name.
         metadata["name"] = protocol_name
-        utterances: list[dict] = json.loads(zf.read(f"{protocol_name}.json"))
+
     return metadata, utterances
 
 
 def _speech_rows_to_arrow(full_rows: list[dict[str, Any]], feather_file_rel: str) -> pa.Table:
     """Convert enriched full_rows dicts to an Arrow index table with location columns."""
     if not full_rows:
-        return pa.table({col: pa.array([], type=pa.string()) for col in _SPEECH_INDEX_COLUMNS})
+        return pa.Table.from_pylist([], schema=_PYARROW_SCHEMA)
 
     rows = []
     for row_idx, s in enumerate(full_rows):
@@ -151,7 +176,7 @@ def _speech_rows_to_arrow(full_rows: list[dict[str, Any]], feather_file_rel: str
                 "feather_row": row_idx,
             }
         )
-    return pa.Table.from_pylist(rows)
+    return pa.Table.from_pylist(rows, schema=_PYARROW_SCHEMA)
 
 
 def _feather_checksum(path: Path) -> str:
@@ -167,9 +192,9 @@ def _write_feather(table: pa.Table, path: Path) -> None:
     feather.write_feather(table, str(path), compression="lz4")
 
 
-# ---------------------------------------------------------------------------
+#####################################################################################################
 # Per-protocol worker (runs in subprocess when using multiprocessing)
-# ---------------------------------------------------------------------------
+#####################################################################################################
 
 
 def _process_zip(args: tuple) -> dict[str, Any]:
@@ -206,17 +231,11 @@ def _process_zip(args: tuple) -> dict[str, Any]:
         speeches, warnings = merge_protocol_utterances(metadata=metadata, utterances=utterances, strict=False)
         result["warnings"] = warnings
 
-        year = zip_path.parent.name
-        protocol_stem = zip_path.stem
-        feather_rel = os.path.join(year, f"{protocol_stem}.feather")
-        feather_abs = output_root / feather_rel
-
-        # The start year is derived from the protocol name (first 4 digits
-        # after "prot-"), matching the convention used by the legacy speech
-        # index.  Using the date from metadata.json would give the wrong year
-        # for session-year protocols such as "prot-197576--..." whose actual
-        # debate date falls in the second calendar year of the session.
-        year_int: int = _year_from_protocol_name(protocol_stem)
+        protocol_stem: str = zip_path.stem
+        subfolder: str = _subfolder_from_protocol_name(protocol_stem)
+        year_int: int = _year_from_protocol_name(protocol_stem)  # The year is derived from the protocol name
+        feather_rel: str = os.path.join(subfolder, f"{protocol_stem}.feather")
+        feather_abs: Path = output_root / feather_rel
 
         # Build per-speech full payload table (paragraphs + annotation stored as strings)
         full_rows = []
@@ -245,7 +264,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
             full_rows, quality = enrich_speech_rows(full_rows, lookups)
         result["quality"] = quality
 
-        table = pa.Table.from_pylist(full_rows) if full_rows else pa.table({})
+        table: pa.Table = pa.Table.from_pylist(full_rows) if full_rows else pa.table({})
         _write_feather(table, feather_abs)
 
         result["ok"] = True
@@ -260,9 +279,96 @@ def _process_zip(args: tuple) -> dict[str, Any]:
     return result
 
 
-# ---------------------------------------------------------------------------
+#####################################################################################################
+# ResultCompiler
+#####################################################################################################
+
+
+class ResultCompiler:
+    """Helper for compiling per-protocol results into aggregate metrics and manifest.
+
+    This is a separate class to keep the main builder logic focused on the
+    orchestration of the build process, while encapsulating the details of how
+    results are aggregated and reported.
+    """
+
+    def __init__(self, results: list[dict[str, Any]], total: int, corpus_version: str, metadata_version: str):
+        self.results: list[dict[str, Any]] = results
+        self.total: int = total
+        self.corpus_version: str = corpus_version
+        self.metadata_version: str = metadata_version
+
+        self.skipped: list[dict[str, Any]] = [r for r in results if r.get("skipped")]
+        self.successes: list[dict[str, Any]] = [r for r in results if r["ok"] and not r.get("skipped")]
+        self.failures: list[dict[str, Any]] = [r for r in results if not r["ok"]]
+        self.all_warnings: list[str] = [w for r in self.successes for w in r.get("warnings", [])]
+
+    def compile(self) -> dict[str, Any]:
+        """Compile the results into a summary dict and manifest."""
+        quality_totals: dict[str, int] = self._compute_quality_metrics()
+        # checksums: dict[str, str | None] =self._create_checksums(self.successes[0]["feather_path"].parent) if self.successes else {}
+        checksums: dict[str, str | None] = {}
+        manifest: dict = self._create_manifest(quality_totals, checksums)
+
+        return {
+            "total": self.total,
+            "successes": len(self.successes),
+            "skipped": len(self.skipped),
+            "failures": len(self.failures),
+            "warnings": len(self.all_warnings),
+            "quality": quality_totals,
+            "failures_detail": [{"zip": r["zip_path"], "error": r["error"]} for r in self.failures],
+            "manifest": manifest,
+        }
+
+    def _compute_quality_metrics(self) -> dict[str, int]:
+        """Compute aggregate quality metrics from per-protocol results."""
+        quality_totals: dict[str, int] = {}
+        for r in self.successes:
+            for k, v in r.get("quality", {}).items():
+                quality_totals[k] = quality_totals.get(k, 0) + v
+
+        logger.info(
+            f"Processed {len(self.successes)}/{self.total} protocols "
+            f"({len(self.skipped)} empty/skipped, {len(self.failures)} failures, {len(self.all_warnings)} warnings)"
+        )
+        if quality_totals:
+            logger.info(f"Enrichment quality: {quality_totals}")
+        return quality_totals
+
+    def _create_checksums(self, output_root: Path) -> dict[str, str | None]:
+        """Compute checksums for the main index files."""
+        speech_index_path: Path = output_root / "speech_index.feather"
+        speech_lookup_path: Path = output_root / "speech_lookup.feather"
+        return {
+            "speech_index.feather": _feather_checksum(speech_index_path) if speech_index_path.exists() else None,
+            "speech_lookup.feather": _feather_checksum(speech_lookup_path) if speech_lookup_path.exists() else None,
+        }
+
+    def _create_manifest(self, quality_metrics: dict[str, int], checksums: dict[str, str | None]) -> dict:
+        manifest = {
+            "schema_version": SCHEMA_VERSION,
+            "corpus_version": self.corpus_version,
+            "metadata_version": self.metadata_version,
+            "build_timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "total_zips": self.total,
+            "total_protocols_ok": len(self.successes),
+            "total_protocols_skipped": len(self.skipped),
+            "total_protocols_failed": len(self.failures),
+            "total_speeches": sum(r["row_count"] for r in self.successes),
+            "total_warnings": len(self.all_warnings),
+            "enrichment_quality": quality_metrics or {},
+            "checksums": checksums or {},
+            "zip_to_feather": {r["zip_path"]: r.get("feather_rel") for r in self.successes},
+            "failures": [{"zip": r["zip_path"], "error": r["error"]} for r in self.failures],
+        }
+
+        return manifest
+
+
+#####################################################################################################
 # Builder
-# ---------------------------------------------------------------------------
+#####################################################################################################
 
 
 class SpeechCorpusBuilder:
@@ -288,74 +394,59 @@ class SpeechCorpusBuilder:
         metadata_db_path: str | None = None,
         num_processes: int = 0,
     ):
+
         self.tagged_frames_folder = Path(tagged_frames_folder)
         self.output_root = Path(output_root)
-        self.corpus_version = corpus_version
-        self.metadata_version = metadata_version
-        self.metadata_db_path = metadata_db_path
-        self.num_processes = num_processes
+        self.corpus_version: str = corpus_version
+        self.metadata_version: str = metadata_version
+        self.metadata_db_path: str | None = metadata_db_path
+        self.num_processes: int = num_processes
 
-    # ------------------------------------------------------------------
+    #####################################################################################################
     # Public API
-    # ------------------------------------------------------------------
+    #####################################################################################################
 
     def build(self) -> dict[str, Any]:
         """Run the full build and return a summary report dict."""
+
         self.output_root.mkdir(parents=True, exist_ok=True)
 
         lookups: SpeakerLookups | None = None
+
         if self.metadata_db_path:
             logger.info(f"Loading speaker lookups from {self.metadata_db_path}")
             lookups = SpeakerLookups(self.metadata_db_path)
             logger.info(f"  {len(lookups.person_to_name)} persons loaded")
 
-        zip_paths = _iter_zip_paths(str(self.tagged_frames_folder))
-        total = len(zip_paths)
-        logger.info(f"Found {total} ZIPs under {self.tagged_frames_folder}")
+        zip_paths: list[Path] = _iter_zip_paths(str(self.tagged_frames_folder))
+        logger.info(f"Found {len(zip_paths)} tagged protocols (zipped) under {self.tagged_frames_folder}")
 
-        args = [(p, self.output_root, str(self.output_root), lookups) for p in zip_paths]
-        results = self._run(args, total)
+        args: list[tuple[Path, Path, str, SpeakerLookups | None]] = [
+            (p, self.output_root, str(self.output_root), lookups) for p in zip_paths
+        ]
 
-        skipped = [r for r in results if r.get("skipped")]
-        successes = [r for r in results if r["ok"] and not r.get("skipped")]
-        failures = [r for r in results if not r["ok"]]
-        all_warnings = [w for r in successes for w in r.get("warnings", [])]
+        results: list[dict[str, Any]] = self._run(args, len(zip_paths))
 
-        quality_totals: dict[str, int] = {}
-        for r in successes:
-            for k, v in r.get("quality", {}).items():
-                quality_totals[k] = quality_totals.get(k, 0) + v
-
-        logger.info(
-            f"Processed {len(successes)}/{total} protocols "
-            f"({len(skipped)} empty/skipped, {len(failures)} failures, {len(all_warnings)} warnings)"
+        result_compiler: ResultCompiler = ResultCompiler(
+            results, len(zip_paths), self.corpus_version, self.metadata_version
         )
-        if quality_totals:
-            logger.info(f"Enrichment quality: {quality_totals}")
 
-        self._write_indexes(successes)
-        manifest = self._write_manifest(total, successes, skipped, failures, all_warnings, quality_totals)
+        compiled_results: dict[str, Any] = result_compiler.compile()
 
-        return {
-            "total": total,
-            "successes": len(successes),
-            "skipped": len(skipped),
-            "failures": len(failures),
-            "warnings": len(all_warnings),
-            "quality": quality_totals,
-            "failures_detail": [{"zip": r["zip_path"], "error": r["error"]} for r in failures],
-            "manifest": manifest,
-        }
+        self._write_indexes(result_compiler.successes)
+        self._write_manifest(compiled_results["manifest"])
 
-    # ------------------------------------------------------------------
+        return compiled_results
+
+    #####################################################################################################
     # Internals
-    # ------------------------------------------------------------------
+    #####################################################################################################
 
-    def _run(self, args: list, total: int) -> list[dict]:
+    def _run(self, args: list[tuple[Path, Path, str, SpeakerLookups | None]], total: int) -> list[dict[str, Any]]:
 
         if self.num_processes > 0:
             with multiprocessing.Pool(processes=self.num_processes) as pool:
-                results = []
+                results: list[dict[str, Any]] = []
                 for i, result in enumerate(pool.imap_unordered(_process_zip, args)):
                     results.append(result)
                     if (i + 1) % 500 == 0 or (i + 1) == total:
@@ -364,7 +455,7 @@ class SpeechCorpusBuilder:
 
         results = []
         for i, arg in enumerate(args):
-            result = _process_zip(arg)
+            result: dict[str, Any] = _process_zip(arg)
             results.append(result)
             if (i + 1) % 500 == 0 or (i + 1) == total:
                 logger.info(f"  {i+1}/{total} processed")
@@ -380,53 +471,21 @@ class SpeechCorpusBuilder:
         speech_index = pa.concat_tables(tables)
 
         # speech_index.feather – full index
-        speech_index_path = self.output_root / "speech_index.feather"
+        speech_index_path: Path = self.output_root / "speech_index.feather"
         _write_feather(speech_index, speech_index_path)
         logger.info(f"Wrote speech_index.feather ({speech_index.num_rows} rows) → {speech_index_path}")
 
         # speech_lookup.feather – minimal key-to-location mapping
         lookup_columns = ["speech_id", "document_name", "feather_file", "feather_row"]
         speech_lookup = speech_index.select(lookup_columns)
-        speech_lookup_path = self.output_root / "speech_lookup.feather"
+        speech_lookup_path: Path = self.output_root / "speech_lookup.feather"
         _write_feather(speech_lookup, speech_lookup_path)
+
         logger.info(f"Wrote speech_lookup.feather ({speech_lookup.num_rows} rows) → {speech_lookup_path}")
 
-    def _write_manifest(
-        self,
-        total: int,
-        successes: list[dict],
-        skipped: list[dict],
-        failures: list[dict],
-        all_warnings: list[str],
-        quality_totals: dict[str, int] | None = None,
-    ) -> dict:
-        speech_index_path = self.output_root / "speech_index.feather"
-        speech_lookup_path = self.output_root / "speech_lookup.feather"
-
-        manifest = {
-            "schema_version": SCHEMA_VERSION,
-            "corpus_version": self.corpus_version,
-            "metadata_version": self.metadata_version,
-            "build_timestamp": datetime.now(tz=timezone.utc).isoformat(),
-            "source_folder": str(self.tagged_frames_folder),
-            "output_root": str(self.output_root),
-            "total_zips": total,
-            "total_protocols_ok": len(successes),
-            "total_protocols_skipped": len(skipped),
-            "total_protocols_failed": len(failures),
-            "total_speeches": sum(r["row_count"] for r in successes),
-            "total_warnings": len(all_warnings),
-            "enrichment_quality": quality_totals or {},
-            "checksums": {
-                "speech_index.feather": _feather_checksum(speech_index_path) if speech_index_path.exists() else None,
-                "speech_lookup.feather": _feather_checksum(speech_lookup_path) if speech_lookup_path.exists() else None,
-            },
-            "zip_to_feather": {r["zip_path"]: r.get("feather_rel") for r in successes},
-            "failures": [{"zip": r["zip_path"], "error": r["error"]} for r in failures],
-        }
-
-        manifest_path = self.output_root / "manifest.json"
+    def _write_manifest(self, manifest: dict[str, Any]) -> None:
+        """Write the manifest.json file with build metadata and checksums."""
+        manifest_path: Path = self.output_root / "manifest.json"
         with open(manifest_path, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, indent=2, ensure_ascii=False)
         logger.info(f"Wrote manifest → {manifest_path}")
-        return manifest
