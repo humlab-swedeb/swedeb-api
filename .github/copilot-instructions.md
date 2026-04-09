@@ -3,8 +3,8 @@
 ## Project Overview
 Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application analyzing parliamentary speech data using the IMS Open Corpus Workbench (CWB). The system processes historical Swedish parliamentary data (1867-2020+) from the SWERIK project.
 
-## Current Architecture (Post-Refactoring - Complete)
-**Summary**: All unnecessary wrapper layers removed. The system uses clean direct service injection with mappers for result transformation. No facade or util wrappers remain.
+## Current Architecture (Post-Archival Migration State)
+**Summary**: All unnecessary wrapper layers are gone. The system uses direct service injection with mappers for result transformation, while the old ZIP-backed speech lookup runtime has been archived under `api_swedeb/legacy/` during the prebuilt-backend rollout.
 
 - **Pattern**: Direct service injection via FastAPI's `Depends()` mechanism with singleton caching
 - **Services** (`api_swedeb/api/services/`):
@@ -17,11 +17,16 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - **Mappers** (`api_swedeb/mappers/`):
   - Transform service DataFrames to API response schemas (kwic, word_trends, ngrams)
   - No business logic, only schema conversion
+- **Archived Runtime** (`api_swedeb/legacy/`):
+  - `speech_lookup.py` - Archived `SpeechTextService` and `SpeechTextRepository`
+  - `load.py` - Archived `Loader` and `ZipLoader`
+  - Use only for parity debugging, rollback support, or forensic reproduction
 - **Utils** (`api_swedeb/api/utils/`):
   - `common_params.py` - Query parameter handling only (all other utils deleted)
 - **Benefits**: Single responsibility per service, easy testing, minimal abstraction layers, clear data flow
 - **Router Pattern**: Routes inject services → call methods → apply mapper → return schema
 - **Deleted Wrappers**: `utils/ngrams.py`, `utils/word_trends.py`, `utils/kwic.py` (replaced with direct service + mapper pattern)
+- **Compatibility Shims**: `api_swedeb/core/speech_text.py` is a temporary re-export shim; avoid adding new production logic there
 
 ## Architecture & Core Components
 
@@ -38,6 +43,7 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - Document-term matrices (DTM): Uses `penelope.corpus.VectorizedCorpus`
 - Always check feather cache before loading: `is_invalidated(source, target)`
 - Memory-optimized columns defined in `USED_COLUMNS`, skip `SKIP_COLUMNS`
+- Keep active shared load helpers in `api_swedeb/core/load.py`; archived ZIP loading now lives in `api_swedeb/legacy/load.py`
 
 ### API Structure (`api_swedeb/api/`)
 - **Routers**: `v1/endpoints/tool_router.py` (`/v1/tools`) and `metadata_router.py` (`/v1/metadata`)
@@ -45,6 +51,7 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - **Services**: All singletons (cached) with specific domain responsibilities
 - **Result Transformation**: Mappers convert service output (DataFrames) to API schemas
 - **Query Parameters**: `CommonQueryParams` dependency for common filters (year, party, gender, etc.)
+- **Speech Backend Rollout**: `CorpusLoader` still supports `speech.storage_backend = legacy|prebuilt`; prefer implementing new work only in the prebuilt path unless the task explicitly targets rollback/parity behavior
 - **Endpoints**:
   - KWIC: Uses `KWICService.get_kwic()` + `kwic_to_api_model()` mapper
   - Word Trends: Uses `WordTrendsService` methods + word_trends mappers
@@ -161,6 +168,7 @@ origins = ConfigValue("fastapi.origins").resolve()
   search_service = SearchService(loader)
   ```
 - Fixtures support both unit testing (mocked) and integration testing (real data)
+- **Legacy Test Layout**: Keep archived legacy unit tests in `tests/legacy/`; use `tests/api_swedeb/` and `tests/integration/` for active production behavior
 
 ### Penelope Integration
 - Internal package for text analysis: `penelope/corpus/`, `penelope/utility/`
@@ -241,3 +249,8 @@ origins = ConfigValue("fastapi.origins").resolve()
   - Reason: Related functionality grouped with service
   - Benefit: Cohesive service interface, easier discoverability
 - **Result**: 3 fewer files, clearer architecture, same functionality
+
+### Archived Legacy Runtime Rules
+- Do not move preserved runtime lookup code into `api_swedeb/workflows/`; workflows are for offline/build-time pipeline code only.
+- If a task explicitly targets the fallback ZIP-backed runtime, make those changes in `api_swedeb/legacy/` and keep matching unit coverage in `tests/legacy/`.
+- Avoid adding new feature work, new dependencies, or new production entry points to the archived legacy runtime.
