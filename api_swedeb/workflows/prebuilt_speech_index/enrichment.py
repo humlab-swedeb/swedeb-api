@@ -29,6 +29,30 @@ UNKNOWN_STR = "Okänt"
 UNKNOWN_INT = 0
 
 
+def _candidate_lookup_years(protocol_name: str, year: int) -> list[int]:
+    """Return candidate lookup years for time-ranged metadata joins.
+
+    Most protocols use a single four-digit year. When the parliamentary session
+    spans autumn to spring, the protocol token includes both years, for example
+    ``198990`` for the 1989/90 session and ``19992000`` for 1999/2000. In this
+    format the second year is always the first year plus one, so the fallback
+    lookup year is simply ``year + 1``.
+    """
+    years: list[int] = [year]
+    if not protocol_name.startswith("prot-"):
+        return years
+
+    token: str = protocol_name.split("-")[1]
+    if not token.isdigit() or len(token) <= 4:
+        return years
+
+    end_year: int = year + 1
+    if end_year is not None and end_year not in years:
+        years.append(end_year)
+
+    return years
+
+
 # ---------------------------------------------------------------------------
 # Loader
 # ---------------------------------------------------------------------------
@@ -186,6 +210,7 @@ def enrich_speech_rows(
     for row in rows:
         raw_id: str = row.get("speaker_id") or ""
         year: int = int(row.get("year") or 0)
+        lookup_years = _candidate_lookup_years(str(row.get("protocol_name") or ""), year)
 
         if not raw_id or raw_id not in lookups.person_to_name:
             person_id = UNKNOWN_PERSON_ID
@@ -203,12 +228,19 @@ def enrich_speech_rows(
 
         party_id: int = lookups.person_to_party_id.get(person_id, UNKNOWN_INT)
         if not party_id and person_id != UNKNOWN_PERSON_ID:
-            party_id = lookups.party_for(person_id, year)
+            for lookup_year in lookup_years:
+                party_id = lookups.party_for(person_id, lookup_year)
+                if party_id != UNKNOWN_INT:
+                    break
         party_abbrev: str = lookups.party_id_to_abbrev.get(party_id, UNKNOWN_STR)
         if party_id == UNKNOWN_INT and person_id != UNKNOWN_PERSON_ID:
             quality["missing_party"] += 1
 
-        office_type_id, sub_office_type_id = lookups.office_for(person_id, year)
+        office_type_id, sub_office_type_id = UNKNOWN_INT, UNKNOWN_INT
+        for lookup_year in lookup_years:
+            office_type_id, sub_office_type_id = lookups.office_for(person_id, lookup_year)
+            if office_type_id != UNKNOWN_INT or sub_office_type_id != UNKNOWN_INT:
+                break
         office_type: str = lookups.office_type_id_to_label.get(office_type_id, UNKNOWN_STR)
         sub_office_type: str = lookups.sub_office_type_id_to_label.get(sub_office_type_id, UNKNOWN_STR)
         if office_type_id == UNKNOWN_INT and person_id != UNKNOWN_PERSON_ID:

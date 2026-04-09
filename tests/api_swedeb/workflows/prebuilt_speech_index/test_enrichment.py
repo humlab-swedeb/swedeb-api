@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from api_swedeb.workflows.prebuilt_speech_index.enrichment import SpeakerLookups, enrich_speech_rows
+from api_swedeb.workflows.prebuilt_speech_index.enrichment import (
+    SpeakerLookups,
+    _candidate_lookup_years,
+    enrich_speech_rows,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -233,3 +237,81 @@ class TestEnrichSpeechRows:
         original_id = id(row)
         enriched, _ = enrich_speech_rows([row], lk)
         assert id(enriched[0]) == original_id
+
+
+class TestSessionYearFallback:
+    def test_candidate_lookup_years_single_year_protocol(self):
+        assert _candidate_lookup_years("prot-1975--ak--001", 1975) == [1975]
+
+    def test_candidate_lookup_years_session_protocol(self):
+        assert _candidate_lookup_years("prot-198990--106", 1989) == [1989, 1990]
+        assert _candidate_lookup_years("prot-19992000--001", 1999) == [1999, 2000]
+
+    def test_enrich_rows_uses_session_end_year_for_office_lookup(self, tmp_path):
+        db_path = str(tmp_path / "test_metadata_session.db")
+        con = sqlite3.connect(db_path)
+        con.executescript(
+            """
+            CREATE TABLE persons_of_interest (
+                person_id TEXT PRIMARY KEY,
+                name TEXT,
+                gender_id INTEGER,
+                party_id INTEGER,
+                wiki_id TEXT
+            );
+            INSERT INTO persons_of_interest VALUES ('i-ABC', 'Anna Andersson', 2, 3, 'Q001');
+
+            CREATE TABLE gender (
+                gender_id INTEGER PRIMARY KEY,
+                gender TEXT,
+                gender_abbrev TEXT
+            );
+            INSERT INTO gender VALUES (2, 'Kvinna', 'K');
+
+            CREATE TABLE party (
+                party_id INTEGER PRIMARY KEY,
+                party_abbrev TEXT
+            );
+            INSERT INTO party VALUES (3, 'M');
+
+            CREATE TABLE office_type (
+                office_type_id INTEGER PRIMARY KEY,
+                office TEXT
+            );
+            INSERT INTO office_type VALUES (0, 'unknown'), (1, 'Ledamot');
+
+            CREATE TABLE sub_office_type (
+                sub_office_type_id INTEGER PRIMARY KEY,
+                description TEXT
+            );
+            INSERT INTO sub_office_type VALUES (0, 'unknown');
+
+            CREATE TABLE terms_of_office (
+                terms_of_office_id INTEGER PRIMARY KEY,
+                person_id TEXT,
+                start_year INTEGER,
+                end_year INTEGER,
+                office_type_id INTEGER,
+                sub_office_type_id INTEGER
+            );
+            INSERT INTO terms_of_office VALUES (1, 'i-ABC', 1990, 1990, 1, 0);
+
+            CREATE TABLE person_party (
+                person_party_id INTEGER PRIMARY KEY,
+                person_id TEXT,
+                party_id INTEGER,
+                start_year INTEGER,
+                end_year INTEGER
+            );
+            """
+        )
+        con.commit()
+        con.close()
+
+        lk = SpeakerLookups(db_path)
+        rows = [{"speaker_id": "i-ABC", "year": 1989, "protocol_name": "prot-198990--106"}]
+
+        enriched, _ = enrich_speech_rows(rows, lk)
+
+        assert enriched[0]["office_type_id"] == 1
+        assert enriched[0]["office_type"] == "Ledamot"

@@ -16,7 +16,7 @@ import sqlite3
 from collections.abc import Generator, Iterable
 from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 from loguru import logger
@@ -252,32 +252,33 @@ class SpeechRepositoryFast:
 
         speaker_note_id: str = str(row.get("speaker_note_id") or "")
 
+        rg: Callable[..., Any] = row.get
         speech_dict: dict[str, Any] = {
-            "speech_id": row.get("speech_id"),
-            "document_name": row.get("document_name"),
-            "protocol_name": row.get("protocol_name"),
-            "date": row.get("date"),
-            "u_id": row.get("speech_id"),            # alias used by legacy callers
-            "who": row.get("speaker_id"),
-            "speaker_id": row.get("speaker_id"),
+            "speech_id": rg("speech_id"),
+            "document_name": rg("document_name"),
+            "protocol_name": rg("protocol_name"),
+            "date": rg("date"),
+            "u_id": rg("speech_id"),            # alias used by legacy callers
+            "who": rg("speaker_id"),
+            "speaker_id": rg("speaker_id"),
             "speaker_note_id": speaker_note_id,
-            "page_number": int(row.get("page_number_start") or 1),
-            "page_number2": int(row.get("page_number_end") or 1),
-            "num_tokens": int(row.get("num_tokens") or 0),
-            "num_words": int(row.get("num_words") or 0),
+            "page_number": int(rg("page_number_start") or 1),
+            "page_number2": int(rg("page_number_end") or 1),
+            "num_tokens": int(rg("num_tokens") or 0),
+            "num_words": int(rg("num_words") or 0),
             "paragraphs": paragraphs,
-            "annotation": row.get("annotation") or "",
+            "annotation": rg("annotation") or "",
             # Enriched speaker fields (materialised at build time)
-            "name": row.get("name") or "unknown",
-            "gender_id": int(row.get("gender_id") or 0),
-            "gender": row.get("gender") or "Okänt",
-            "gender_abbrev": row.get("gender_abbrev") or "?",
-            "party_id": int(row.get("party_id") or 0),
-            "party_abbrev": row.get("party_abbrev") or "Okänt",
-            "office_type_id": int(row.get("office_type_id") or 0),
-            "office_type": row.get("office_type") or "Okänt",
-            "sub_office_type_id": int(row.get("sub_office_type_id") or 0),
-            "sub_office_type": row.get("sub_office_type") or "Okänt",
+            "name": rg("name") or "unknown",
+            "gender_id": int(rg("gender_id") or 0),
+            "gender": rg("gender") or "Okänt",
+            "gender_abbrev": rg("gender_abbrev") or "?",
+            "party_id": int(rg("party_id") or 0),
+            "party_abbrev": rg("party_abbrev") or "Okänt",
+            "office_type_id": int(rg("office_type_id") or 0),
+            "office_type": rg("office_type") or "Okänt",
+            "sub_office_type_id": int(rg("sub_office_type_id") or 0),
+            "sub_office_type": rg("sub_office_type") or "Okänt",
             # speaker_note from optional SQLite lookup
             "speaker_note": self.speaker_note_id2note.get(
                 speaker_note_id, "(introductory note not found)"

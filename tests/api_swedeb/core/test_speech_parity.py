@@ -25,6 +25,8 @@ Legacy (SpeechTextRepository / _create_speech)  →  Prebuilt (per-protocol feat
 from __future__ import annotations
 
 import json
+import os
+import random
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -70,11 +72,36 @@ _ENRICHMENT_FIELDS: list[tuple[str, str]] = [
     ("party_abbrev", "party_abbrev"),
     ("office_type_id", "office_type_id"),
     ("office_type", "office_type"),
-    ("sub_office_type_id", "sub_office_type_id"),
-    ("sub_office_type", "sub_office_type"),
 ]
 
 _PARITY_REPORT = Path("tests/output/parity_report.json")
+_FULL_CORPUS_PARITY_REPORT = Path("tests/output/parity_report_full_corpus_random_protocol_sample.json")
+
+_FULL_CORPUS_TAGGED_FRAMES = Path(
+    os.environ.get(
+        "SWEDEB_FULL_CORPUS_TAGGED_FRAMES",
+        "/home/roger/source/swedeb/sample-data/data/1867-2020/v1.4.1/tagged_frames",
+    )
+)
+_FULL_CORPUS_BOOTSTRAP_ROOT = Path(
+    os.environ.get(
+        "SWEDEB_FULL_CORPUS_BOOTSTRAP_ROOT",
+        "/home/roger/source/swedeb/sample-data/data/1867-2020/v1.4.1/speeches/bootstrap_corpus",
+    )
+)
+_FULL_CORPUS_DTM_FOLDER = os.environ.get(
+    "SWEDEB_FULL_CORPUS_DTM_FOLDER",
+    "/home/roger/source/swedeb/sample-data/data/1867-2020/v1.4.1/dtm/text",
+)
+_FULL_CORPUS_DTM_TAG = os.environ.get("SWEDEB_FULL_CORPUS_DTM_TAG", "text")
+_FULL_CORPUS_METADATA_DB = Path(
+    os.environ.get(
+        "SWEDEB_FULL_CORPUS_METADATA_DB",
+        "/home/roger/source/swedeb/sample-data/data/1867-2020/metadata/riksprot_metadata.v1.1.3.db",
+    )
+)
+_FULL_CORPUS_PROTOCOL_SAMPLE_SIZE = int(os.environ.get("SWEDEB_PARITY_PROTOCOL_SAMPLE_SIZE", "400"))
+_FULL_CORPUS_SAMPLE_SEED = int(os.environ.get("SWEDEB_PARITY_SAMPLE_SEED", "20260409"))
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -211,6 +238,40 @@ def _diff_paragraphs(legacy_paras: list[str], prebuilt_json: str) -> list[str]:
                     f"para[{i}] mismatch: legacy={lp[:60]!r} prebuilt={pp[:60]!r}"
                 )
     return diffs
+
+
+def _diff_paragraph_lists(left_paras: list[str], right_paras: list[str]) -> list[str]:
+    """Return mismatch descriptions for paragraph lists already materialised as lists."""
+    left_stripped = [p.strip() for p in left_paras]
+    right_stripped = [p.strip() for p in right_paras]
+
+    diffs = []
+    if len(left_stripped) != len(right_stripped):
+        diffs.append(
+            f"paragraph count: left={len(left_stripped)} right={len(right_stripped)}"
+        )
+        return diffs
+
+    for i, (left, right) in enumerate(zip(left_stripped, right_stripped)):
+        if left != right:
+            diffs.append(f"para[{i}] mismatch: left={left[:60]!r} right={right[:60]!r}")
+
+    return diffs
+
+
+def _sample_protocol_zip_paths(tagged_frames_root: Path, sample_size: int, seed: int) -> list[Path]:
+    """Return a deterministic random sample of tagged-frame ZIP files."""
+    zip_paths = sorted(tagged_frames_root.rglob("prot-*.zip"))
+    if not zip_paths:
+        raise FileNotFoundError(f"No prot-*.zip files found under {tagged_frames_root}")
+    effective_size = min(sample_size, len(zip_paths))
+    return sorted(random.Random(seed).sample(zip_paths, effective_size))
+
+
+def _write_report(path: Path, report: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(report, fh, indent=2, ensure_ascii=False, default=str)
 
 
 # ---------------------------------------------------------------------------
@@ -360,3 +421,281 @@ def test_speech_parity(
             f"{len(enrichment_mismatches)}/{total} speeches have enrichment differences "
             f"(not a test failure — see {_PARITY_REPORT})"
         )
+
+
+@pytest.fixture(scope="module")
+def full_corpus_paths() -> dict[str, Path | str]:
+    paths: dict[str, Path | str] = {
+        "tagged_frames": _FULL_CORPUS_TAGGED_FRAMES,
+        "bootstrap_root": _FULL_CORPUS_BOOTSTRAP_ROOT,
+        "dtm_folder": _FULL_CORPUS_DTM_FOLDER,
+        "metadata_db": _FULL_CORPUS_METADATA_DB,
+    }
+    missing = [str(path) for path in paths.values() if isinstance(path, Path) and not path.exists()]
+    if missing:
+        pytest.skip("Full-corpus parity paths are unavailable: " + ", ".join(missing))
+    if not Path(_FULL_CORPUS_DTM_FOLDER).exists():
+        pytest.skip(f"Full-corpus DTM folder is unavailable: {_FULL_CORPUS_DTM_FOLDER}")
+    return paths
+
+
+@pytest.fixture(scope="module")
+def full_corpus_document_index(full_corpus_paths) -> pd.DataFrame:
+    return load_speech_index(folder=str(full_corpus_paths["dtm_folder"]), tag=_FULL_CORPUS_DTM_TAG)
+
+
+@pytest.fixture(scope="module")
+def full_corpus_legacy_repository(full_corpus_paths, full_corpus_document_index) -> SpeechTextRepository:
+    person_codecs = md.PersonCodecs().load(source=str(full_corpus_paths["metadata_db"]))
+    return SpeechTextRepository(
+        source=str(full_corpus_paths["tagged_frames"]),
+        person_codecs=person_codecs,
+        document_index=full_corpus_document_index,
+    )
+
+
+@pytest.fixture(scope="module")
+def full_corpus_fast_repository(full_corpus_paths, full_corpus_document_index) -> Any:
+    from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
+    from api_swedeb.core.speech_store import SpeechStore
+
+    store = SpeechStore(str(full_corpus_paths["bootstrap_root"]))
+    return SpeechRepositoryFast(
+        store=store,
+        document_index=full_corpus_document_index,
+        metadata_db_path=str(full_corpus_paths["metadata_db"]),
+    )
+
+
+@pytest.fixture(scope="module")
+def full_corpus_protocol_sample(full_corpus_paths, full_corpus_document_index) -> dict[str, Any]:
+    sampled_zip_paths = _sample_protocol_zip_paths(
+        Path(full_corpus_paths["tagged_frames"]),
+        _FULL_CORPUS_PROTOCOL_SAMPLE_SIZE,
+        _FULL_CORPUS_SAMPLE_SEED,
+    )
+    sampled_protocols = sorted({path.stem for path in sampled_zip_paths})
+
+    protocol_names = full_corpus_document_index["document_name"].astype("string[python]").str.split("_", n=1).str[0]
+    sample_index = full_corpus_document_index.loc[protocol_names.isin(sampled_protocols)].copy()
+    document_ids = [int(doc_id) for doc_id in sample_index.index.tolist()]
+
+    if not document_ids:
+        pytest.fail("Deterministic 400-protocol sample produced no matching speeches in the full-corpus speech index")
+
+    return {
+        "zip_paths": [str(path) for path in sampled_zip_paths],
+        "protocol_names": sampled_protocols,
+        "document_ids": document_ids,
+        "document_names": sample_index["document_name"].astype(str).tolist(),
+    }
+
+
+@pytest.fixture(scope="module")
+def full_corpus_parity_report(
+    full_corpus_legacy_repository: SpeechTextRepository,
+    full_corpus_fast_repository,
+    full_corpus_protocol_sample: dict[str, Any],
+    full_corpus_document_index: pd.DataFrame,
+
+) -> dict[str, Any]:
+    """Compute parity report for a deterministic random sample of full-corpus protocols.
+
+    The sample is defined as a set of tagged-frame ZIP files and defaults to
+    400 protocols from the full corpus paths under ``sample-data``. All speeches
+    in the sampled protocols are compared field-by-field.
+    """
+    document_ids = full_corpus_protocol_sample["document_ids"]
+    sampled_protocols = full_corpus_protocol_sample["protocol_names"]
+
+    logger.info(
+        "Full-corpus parity sample: "
+        f"protocols={len(sampled_protocols)} speeches={len(document_ids)} "
+        f"seed={_FULL_CORPUS_SAMPLE_SEED}"
+    )
+
+    fast_results = dict(full_corpus_fast_repository.speeches_batch(document_ids))
+    legacy_results = dict(full_corpus_legacy_repository.speeches_batch(document_ids))
+
+    errors: list[dict[str, Any]] = []
+    paragraph_mismatches: list[dict[str, Any]] = []
+    field_mismatches: list[dict[str, Any]] = []
+    enrichment_mismatches: list[dict[str, Any]] = []
+
+    core_fields_to_compare = [
+        "speech_id",
+        "u_id",
+        "who",
+        "speaker_note_id",
+        "num_tokens",
+        "num_words",
+        "protocol_name",
+        "date",
+        "speaker_note",
+    ]
+
+    enrichment_fields_to_compare = [
+        "name",
+        "gender_id",
+        "gender",
+        "gender_abbrev",
+        "party_id",
+        "party_abbrev",
+        "office_type_id",
+        "office_type",
+    ]
+
+    for document_id in document_ids:
+        row = full_corpus_document_index.loc[int(document_id)]
+        document_name = str(row["document_name"])
+
+        fast_speech = fast_results.get(document_id)
+        legacy_speech = legacy_results.get(document_id)
+
+        if fast_speech is None or legacy_speech is None:
+            errors.append(
+                {
+                    "document_id": document_id,
+                    "document_name": document_name,
+                    "error": "missing result from one backend",
+                    "fast_present": fast_speech is not None,
+                    "legacy_present": legacy_speech is not None,
+                }
+            )
+            continue
+
+        if fast_speech.error or legacy_speech.error:
+            errors.append(
+                {
+                    "document_id": document_id,
+                    "document_name": document_name,
+                    "fast_error": fast_speech.error,
+                    "legacy_error": legacy_speech.error,
+                }
+            )
+            continue
+
+        paragraph_diffs = _diff_paragraph_lists(legacy_speech.paragraphs, fast_speech.paragraphs)
+        if paragraph_diffs:
+            paragraph_mismatches.append(
+                {
+                    "document_id": document_id,
+                    "document_name": document_name,
+                    "diffs": paragraph_diffs,
+                }
+            )
+
+        diffs: dict[str, dict[str, Any]] = {}
+        if _normalise_page(legacy_speech.page_number) != _normalise_page(fast_speech.page_number):
+            diffs["page_number"] = {
+                "legacy": legacy_speech.page_number,
+                "fast": fast_speech.page_number,
+            }
+
+        if _normalise_page(legacy_speech.get("page_number2")) != _normalise_page(fast_speech.get("page_number2")):
+            diffs["page_number2"] = {
+                "legacy": legacy_speech.get("page_number2"),
+                "fast": fast_speech.get("page_number2"),
+            }
+
+        for field in core_fields_to_compare:
+            legacy_value = legacy_speech.get(field)
+            fast_value = fast_speech.get(field)
+            if legacy_value != fast_value:
+                diffs[field] = {"legacy": legacy_value, "fast": fast_value}
+
+        if diffs:
+            field_mismatches.append(
+                {
+                    "document_id": document_id,
+                    "document_name": document_name,
+                    "diffs": diffs,
+                }
+            )
+
+        enrichment_diffs: dict[str, dict[str, Any]] = {}
+        for field in enrichment_fields_to_compare:
+            legacy_value = legacy_speech.get(field)
+            fast_value = fast_speech.get(field)
+            if legacy_value != fast_value:
+                enrichment_diffs[field] = {"legacy": legacy_value, "fast": fast_value}
+
+        if enrichment_diffs:
+            enrichment_mismatches.append(
+                {
+                    "document_id": document_id,
+                    "document_name": document_name,
+                    "diffs": enrichment_diffs,
+                }
+            )
+
+    report = {
+        "seed": _FULL_CORPUS_SAMPLE_SEED,
+        "requested_protocol_sample_size": _FULL_CORPUS_PROTOCOL_SAMPLE_SIZE,
+        "actual_protocol_sample_size": len(sampled_protocols),
+        "speech_count": len(document_ids),
+        "paths": {
+            "tagged_frames": str(_FULL_CORPUS_TAGGED_FRAMES),
+            "bootstrap_root": str(_FULL_CORPUS_BOOTSTRAP_ROOT),
+            "dtm_folder": _FULL_CORPUS_DTM_FOLDER,
+            "metadata_db": str(_FULL_CORPUS_METADATA_DB),
+        },
+        "errors": len(errors),
+        "paragraph_mismatches": len(paragraph_mismatches),
+        "field_mismatches": len(field_mismatches),
+        "enrichment_mismatches": len(enrichment_mismatches),
+        "sampled_protocols": sampled_protocols,
+        "sampled_zip_paths": full_corpus_protocol_sample["zip_paths"],
+        "details": {
+            "errors": errors,
+            "paragraphs": paragraph_mismatches,
+            "fields": field_mismatches,
+            "enrichment": enrichment_mismatches,
+        },
+    }
+    _write_report(_FULL_CORPUS_PARITY_REPORT, report)
+
+    return report
+
+
+@pytest.mark.manual
+@pytest.mark.integration
+def test_full_corpus_parity_random_protocol_sample(full_corpus_parity_report: dict[str, Any]) -> None:
+    """Assert core speech parity for the deterministic random full-corpus sample."""
+    errors = full_corpus_parity_report["details"]["errors"]
+    paragraph_mismatches = full_corpus_parity_report["details"]["paragraphs"]
+    field_mismatches = full_corpus_parity_report["details"]["fields"]
+    enrichment_mismatches = full_corpus_parity_report["details"]["enrichment"]
+
+    assert errors == [], (
+        f"{len(errors)} sampled speech(es) failed to load:\n"
+        + textwrap.indent(json.dumps(errors[:5], indent=2, default=str), "  ")
+    )
+    assert paragraph_mismatches == [], (
+        f"{len(paragraph_mismatches)} sampled speech(es) have paragraph differences:\n"
+        + textwrap.indent(json.dumps(paragraph_mismatches[:5], indent=2, default=str), "  ")
+    )
+    assert field_mismatches == [], (
+        f"{len(field_mismatches)} sampled speech(es) have field differences:\n"
+        + textwrap.indent(json.dumps(field_mismatches[:5], indent=2, default=str), "  ")
+    )
+
+    if enrichment_mismatches:
+        logger.warning(
+            f"{len(enrichment_mismatches)} sampled speech(es) have enrichment differences "
+            f"(reported in {_FULL_CORPUS_PARITY_REPORT}, not a test failure)"
+        )
+
+
+@pytest.mark.manual
+@pytest.mark.integration
+def test_full_corpus_parity_random_protocol_sample_strict_enrichment(
+    full_corpus_parity_report: dict[str, Any],
+) -> None:
+    """Assert enrichment parity for the deterministic random full-corpus sample."""
+    enrichment_mismatches = full_corpus_parity_report["details"]["enrichment"]
+
+    assert enrichment_mismatches == [], (
+        f"{len(enrichment_mismatches)} sampled speech(es) have enrichment differences:\n"
+        + textwrap.indent(json.dumps(enrichment_mismatches[:5], indent=2, default=str), "  ")
+    )

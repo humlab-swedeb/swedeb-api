@@ -483,6 +483,10 @@ The manifest should record the ZIP→Feather mapping for audit.
 
 > Results: 0 parity mismatches across all speech fields. 156x single-speech speedup (warm cache), 2.3x batch speedup. 512 speeches verified. 32 total Phase 4+5 tests passing.
 
+> Additional validated legacy bug: the legacy speech index can carry incorrect historical office metadata for a speaker, and the ZIP-backed runtime path reproduces that error because it trusts the pre-existing index values. Concrete example: `prot-197677--102_041` (`Per Westerberg`) is labeled as `office_type_id=3` / `Talman` with `sub_office_type_id=80` in the legacy index for the 1976/77 session, while the time-ranged metadata in `terms_of_office` shows `office_type_id=1` / `Ledamot` for that period and reserves the talman role for 2006-2014. The rebuilt prebuilt speech index on this branch resolves that bug because enrichment is regenerated from the time-aware metadata source instead of inheriting the stale legacy index values.
+
+> Additional validated legacy bug: the ZIP-backed runtime path could fail on archives whose internal utterance payload filename did not match the protocol/archive name. Concrete example: `prot-1886--ak--040-01.zip` contains `metadata.json` plus an utterance payload named `prot-1886--ak--040.json`. The legacy loader assumed archive-internal filename consistency and this surfaced in parity runs as `list index out of range` / load failures. The fix on this branch resolves that bug by ignoring internal payload filenames and loading the single JSON member that is not `metadata.json`, while treating the ZIP basename as the canonical protocol identifier.
+
 **Acceptance**: Parity approved ✅, performance targets met ✅, failure modes documented ✅.
 
 ### Phase 6: Rollout
@@ -510,9 +514,9 @@ The manifest should record the ZIP→Feather mapping for audit.
 - [ ] Monitor production for 2 weeks
 - [ ] Confirm no regressions or incidents
 - [ ] Document cutover process and lessons learned
-- [ ] Plan legacy code removal (after 1 release cycle)
+- [ ] Plan legacy code archival or removal (after 1 release cycle)
 
-#### Legacy code removal candidates (after stabilisation window)
+#### Legacy code archival candidates (after stabilisation window)
 
 The following cleanup should only happen after all of the following are true:
 
@@ -520,18 +524,22 @@ The following cleanup should only happen after all of the following are true:
 - Rollback to the ZIP-backed runtime path is no longer required operationally.
 - Phase 5 parity and reliability reports remain clean on the production corpus.
 
-### Removal scope
+### Recommended archival scope
 
-**Delete legacy runtime implementation**
+**Move legacy runtime implementation into a dedicated archival namespace**
 - `api_swedeb/core/speech_text.py`
-  - Remove `SpeechTextService`, `SpeechTextRepository`, and the local `Loader` abstraction.
-  - This file is the remaining ZIP-backed, utterance-at-read-time speech reconstruction path.
-  - Delete associated helpers such as `SpeechTextRepository._build_speech()` and `speaker_note_id2note`.
+  - Move `SpeechTextService`, `SpeechTextRepository`, and the local `Loader` abstraction to a dedicated archival module such as `api_swedeb/legacy/speech_lookup.py`.
+  - Preserve associated helpers such as `SpeechTextRepository._build_speech()` and `speaker_note_id2note` only for parity debugging, forensic reproduction, or one-off validation tasks.
 - `api_swedeb/core/load.py`
-  - Remove only `Loader` and `ZipLoader`.
-  - Keep `load_speech_index()`, `load_dtm_corpus()`, `slim_speech_index()`, and other non-speech-loader helpers.
+  - Move only `Loader` and `ZipLoader` alongside the archived speech lookup code, or colocate them in `api_swedeb/legacy/load.py` if that keeps the dependencies clearer.
+  - Keep `load_speech_index()`, `load_dtm_corpus()`, `slim_speech_index()`, and other non-speech-loader helpers in `api_swedeb/core/load.py`.
 
-**Simplify runtime wiring after legacy removal**
+**Do not move the legacy runtime path into `api_swedeb/workflows/`**
+- The workflows package is for offline/build-time pipeline code.
+- The legacy speech lookup path is runtime-oriented lookup logic, even if it is no longer used by production endpoints.
+- If preserved, it should live in an explicit archival namespace such as `api_swedeb/legacy/`, not in `api_swedeb/workflows/legacy_speech_lookup`.
+
+**Simplify runtime wiring after archival**
 - `api_swedeb/api/services/corpus_loader.py`
   - Remove `from api_swedeb.core import speech_text as sr`.
   - Remove `speech_storage_backend` from the constructor and all config reads of `speech.storage_backend`.
@@ -562,6 +570,7 @@ The following cleanup should only happen after all of the following are true:
 **Docs and comments to refresh**
 - Remove or rewrite runtime documentation that still presents `legacy|prebuilt` as a long-term supported choice.
 - Update references that describe `SpeechRepositoryFast` as a migration companion to `SpeechTextRepository`; after cutover it becomes the standard repository implementation.
+- If archival is kept, document that `api_swedeb/legacy/` is debug-only and is not part of supported production runtime wiring.
 
 ### Components that must be retained
 
@@ -576,16 +585,16 @@ The following are part of the prebuilt architecture and are not legacy cleanup t
 
 These files implement the retained build-time and runtime path for `bootstrap_corpus`.
 
-### Post-removal validation
+### Post-archival validation
 
-After legacy removal, validate the simplified architecture with the following checks:
+After legacy archival, validate the simplified architecture with the following checks:
 
 - Speech endpoint integration tests still pass without `SpeechTextRepository` anywhere in runtime wiring.
 - `make build-speech-corpus` still produces a valid `bootstrap_corpus` with manifest and lookup files.
-- No non-archived production code or active tests import `api_swedeb.core.speech_text`.
-- No active config, docs, or deployment instructions imply a supported rollback to the removed ZIP-backed runtime path.
+- No active production code imports the archived `api_swedeb/legacy/` modules.
+- No active config, docs, or deployment instructions imply a supported rollback to the archived ZIP-backed runtime path.
 
-**Acceptance**: Production stable for 2 weeks, fallback tested, legacy removal decision documented.
+**Acceptance**: Production stable for 2 weeks, fallback tested, legacy archival decision documented.
 
 ## Suggested Sequence and Effort
 
