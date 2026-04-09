@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from api_swedeb.core.speech_merge import merge_protocol_utterances
+from api_swedeb.workflows.prebuilt_speech_index.merge import merge_protocol_utterances
 
 
 def _u(

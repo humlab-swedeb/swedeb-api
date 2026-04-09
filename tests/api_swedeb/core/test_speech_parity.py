@@ -38,7 +38,7 @@ from api_swedeb.core import codecs as md
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 from api_swedeb.core.load import load_speech_index
 from api_swedeb.core.speech_text import SpeechTextRepository
-from api_swedeb.workflows.build_speech_corpus import SpeechCorpusBuilder
+from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 
 # ---------------------------------------------------------------------------
 # Constants

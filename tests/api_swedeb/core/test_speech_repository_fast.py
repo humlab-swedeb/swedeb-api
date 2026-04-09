@@ -30,7 +30,7 @@ from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.core.speech_text import SpeechTextRepository
-from api_swedeb.workflows.build_speech_corpus import SpeechCorpusBuilder
+from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 
 # ---------------------------------------------------------------------------
 # Configuration

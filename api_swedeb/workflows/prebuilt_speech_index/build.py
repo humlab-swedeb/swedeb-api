@@ -31,13 +31,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 import pyarrow as pa
 import pyarrow.feather as feather
 from loguru import logger
 
-from api_swedeb.core.speech_enrichment import SpeakerLookups, enrich_speech_rows
-from api_swedeb.core.speech_merge import merge_protocol_utterances
+from api_swedeb.workflows.prebuilt_speech_index.enrichment import SpeakerLookups, enrich_speech_rows
+from api_swedeb.workflows.prebuilt_speech_index.merge import merge_protocol_utterances
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -184,7 +183,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
     Returns a result dict with keys: zip_path, ok, skipped, feather_path,
     row_count, warnings, quality, error.
     """
-    zip_path, output_root, output_root_str, lookups = args
+    zip_path, output_root, _, lookups = args
     result: dict[str, Any] = {
         "zip_path": str(zip_path),
         "ok": False,
@@ -221,7 +220,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
 
         # Build per-speech full payload table (paragraphs + annotation stored as strings)
         full_rows = []
-        for row_idx, s in enumerate(speeches):
+        for _, s in enumerate(speeches):
             full_rows.append(
                 {
                     "speech_id": s.get("speech_id") or "",
@@ -353,6 +352,7 @@ class SpeechCorpusBuilder:
     # ------------------------------------------------------------------
 
     def _run(self, args: list, total: int) -> list[dict]:
+
         if self.num_processes > 0:
             with multiprocessing.Pool(processes=self.num_processes) as pool:
                 results = []
@@ -361,14 +361,14 @@ class SpeechCorpusBuilder:
                     if (i + 1) % 500 == 0 or (i + 1) == total:
                         logger.info(f"  {i+1}/{total} processed")
             return results
-        else:
-            results = []
-            for i, arg in enumerate(args):
-                result = _process_zip(arg)
-                results.append(result)
-                if (i + 1) % 500 == 0 or (i + 1) == total:
-                    logger.info(f"  {i+1}/{total} processed")
-            return results
+
+        results = []
+        for i, arg in enumerate(args):
+            result = _process_zip(arg)
+            results.append(result)
+            if (i + 1) % 500 == 0 or (i + 1) == total:
+                logger.info(f"  {i+1}/{total} processed")
+        return results
 
     def _write_indexes(self, successes: list[dict]) -> None:
         """Concatenate per-protocol index tables and write speech_index + speech_lookup feathers."""

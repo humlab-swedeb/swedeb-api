@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from api_swedeb.core.speech_enrichment import SpeakerLookups, enrich_speech_rows
+from api_swedeb.workflows.prebuilt_speech_index.enrichment import SpeakerLookups, enrich_speech_rows
 
 
 # ---------------------------------------------------------------------------

@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from api_swedeb.workflows.build_speech_corpus import SpeechCorpusBuilder
+from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 
 
 def _parse_args() -> argparse.Namespace:
