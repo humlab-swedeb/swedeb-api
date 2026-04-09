@@ -5,6 +5,8 @@ from fastapi import Depends
 from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
@@ -19,6 +21,7 @@ __word_trends_service: WordTrendsService | None = None
 __ngrams_service: NGramsService | None = None
 __search_service: SearchService | None = None
 __kwic_service: KWICService | None = None
+__download_service: DownloadService | None = None
 
 # pylint: disable=global-statement
 
@@ -62,6 +65,12 @@ def get_search_service() -> SearchService:
         __search_service = SearchService(get_corpus_loader())
     return __search_service
 
+def get_download_service() -> DownloadService:
+    """Get the singleton DownloadService instance."""
+    global __download_service
+    if __download_service is None:
+        __download_service = DownloadService()
+    return __download_service
 
 def get_cwb_corpus_opts() -> dict[str, str | None]:
     if ConfigValue("cwb.registry_dir").resolve() is None:
