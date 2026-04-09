@@ -514,40 +514,76 @@ The manifest should record the ZIP→Feather mapping for audit.
 
 #### Legacy code removal candidates (after stabilisation window)
 
-The following can be removed once the prebuilt backend is the confirmed default and no rollback to legacy is needed:
+The following cleanup should only happen after all of the following are true:
 
-**Source files to delete**
-- `api_swedeb/core/speech_text.py` — `SpeechTextService`, `SpeechTextRepository`, `Loader` ABC
-  - `SpeechTextService.speeches()`, `.nth()`, `._create_speech()` — utterance-based speech reconstruction from ZIP parse
-  - `SpeechTextRepository.speech()`, `.speeches_batch()`, `.to_text()`, `.get_key_index()`, `.get_speech_info()` — full legacy interface
-  - `SpeechTextRepository._build_speech()` — runtime codec lookups for office_type/gender/party
-  - `SpeechTextRepository.speaker_note_id2note` cached property
-- `api_swedeb/core/load.py` — `Loader` ABC and `ZipLoader` class (lines ~145–185)
-  - Only used by `SpeechTextRepository`; `load_speech_index` and `load_dtm_corpus` must be retained
+- `speech.storage_backend = prebuilt` has been the effective default in production for at least one release cycle.
+- Rollback to the ZIP-backed runtime path is no longer required operationally.
+- Phase 5 parity and reliability reports remain clean on the production corpus.
 
-**Code to simplify in remaining files**
+### Removal scope
+
+**Delete legacy runtime implementation**
+- `api_swedeb/core/speech_text.py`
+  - Remove `SpeechTextService`, `SpeechTextRepository`, and the local `Loader` abstraction.
+  - This file is the remaining ZIP-backed, utterance-at-read-time speech reconstruction path.
+  - Delete associated helpers such as `SpeechTextRepository._build_speech()` and `speaker_note_id2note`.
+- `api_swedeb/core/load.py`
+  - Remove only `Loader` and `ZipLoader`.
+  - Keep `load_speech_index()`, `load_dtm_corpus()`, `slim_speech_index()`, and other non-speech-loader helpers.
+
+**Simplify runtime wiring after legacy removal**
 - `api_swedeb/api/services/corpus_loader.py`
-  - Remove `speech_storage_backend` and `speech_bootstrap_corpus_folder` constructor params and config reads
-  - Remove `_load_repository()` branching logic; replace with direct `SpeechRepositoryFast` instantiation
-  - Remove `from api_swedeb.core import speech_text as sr` import
-  - Remove `Union[sr.SpeechTextRepository, SpeechRepositoryFast]` type annotation — simplify to `SpeechRepositoryFast`
-  - `person_codecs` lazy-load can be removed if no other service still needs it (check `SearchService`, `WordTrendsService`, `KWICService` first — they use `loader.person_codecs` for decode operations, so retain)
-- `config/config.yml` — remove `speech.storage_backend` key (or lock to `prebuilt`)
-- `tests/config.yml` — same
+  - Remove `from api_swedeb.core import speech_text as sr`.
+  - Remove `speech_storage_backend` from the constructor and all config reads of `speech.storage_backend`.
+  - Keep `speech_bootstrap_corpus_folder` only if multiple bootstrap roots still need to be injected in tests; otherwise resolve directly from config and drop the override.
+  - Replace `_load_repository()` branching logic with unconditional `SpeechStore(...)` + `SpeechRepositoryFast(...)` construction.
+  - Simplify repository type annotations from `Union[sr.SpeechTextRepository, SpeechRepositoryFast]` to `SpeechRepositoryFast`.
+  - Keep `person_codecs` lazy loading unless other services are proven not to need it.
+- `config/config.yml`
+  - Remove `speech.storage_backend`, or leave it fixed to `prebuilt` during a short transition window and then delete it.
+- `tests/config.yml`
+  - Apply the same cleanup as production config.
 
-**Test files to delete**
-- `tests/api_swedeb/core/test_speech_text.py` — tests for deleted `SpeechTextRepository`/`SpeechTextService`
-- `tests/api_swedeb/core/test_speech_parity.py` — parity test comparing legacy vs bootstrap corpus (superseded by Phase 5 tests)
+**Clean up tests and transient parity coverage**
+- Delete `tests/api_swedeb/core/test_speech_text.py`.
+- Delete `tests/api_swedeb/core/test_speech_parity.py`.
+- Update `tests/api_swedeb/core/test_speech_repository_fast.py`.
+  - Remove `legacy_repo` and any imports of `SpeechTextRepository`.
+  - Remove tests whose only purpose is dual-backend comparison or legacy backend selection.
+  - Retain fast-backend behavior, lookup, error handling, and benchmark coverage.
+  - Rename to `test_speech_repository.py` if the file is no longer specifically about the migration phase.
+- Update `tests/api_swedeb/api/services/test_corpus_loader.py`.
+  - Remove patches and `ConfigValue.resolve()` side effects that exist only for `speech.storage_backend` branching.
+  - Replace repository mocks that target `sr.SpeechTextRepository` with `SpeechRepositoryFast` coverage where appropriate.
+- Update `tests/README.md`.
+  - Remove references to pre-existing failures in `test_speech_text.py`.
+  - Refresh test counts if this removal materially changes suite totals.
 
-**Test files to update**
-- `tests/api_swedeb/core/test_speech_repository_fast.py`
-  - Remove `legacy_repo` fixture and all parity comparison tests (no longer needed once legacy is gone)
-  - Remove `test_corpus_loader_selects_legacy_backend` test
-  - Rename to `test_speech_repository.py`
-- `tests/api_swedeb/api/services/test_corpus_loader.py`
-  - Remove `test_init_with_partial_overrides` mock side_effect values for speech backend config
+**Docs and comments to refresh**
+- Remove or rewrite runtime documentation that still presents `legacy|prebuilt` as a long-term supported choice.
+- Update references that describe `SpeechRepositoryFast` as a migration companion to `SpeechTextRepository`; after cutover it becomes the standard repository implementation.
 
-**Note**: `api_swedeb/core/speech_enrichment.py` (`SpeakerLookups`, `enrich_speech_rows`) and `api_swedeb/workflows/build_speech_corpus.py` must be **retained** — they are the build-time pipeline that generates the bootstrap_corpus, not part of the runtime legacy path.
+### Components that must be retained
+
+The following are part of the prebuilt architecture and are not legacy cleanup targets:
+
+- `api_swedeb/core/speech_store.py`
+- `api_swedeb/core/speech_repository_fast.py`
+- `api_swedeb/workflows/prebuilt_speech_index/build.py`
+- `api_swedeb/workflows/prebuilt_speech_index/merge.py`
+- `api_swedeb/workflows/prebuilt_speech_index/enrichment.py`
+- `api_swedeb/workflows/scripts/build_speech_corpus_cli.py`
+
+These files implement the retained build-time and runtime path for `bootstrap_corpus`.
+
+### Post-removal validation
+
+After legacy removal, validate the simplified architecture with the following checks:
+
+- Speech endpoint integration tests still pass without `SpeechTextRepository` anywhere in runtime wiring.
+- `make build-speech-corpus` still produces a valid `bootstrap_corpus` with manifest and lookup files.
+- No non-archived production code or active tests import `api_swedeb.core.speech_text`.
+- No active config, docs, or deployment instructions imply a supported rollback to the removed ZIP-backed runtime path.
 
 **Acceptance**: Production stable for 2 weeks, fallback tested, legacy removal decision documented.
 
