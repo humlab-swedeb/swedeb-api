@@ -8,7 +8,7 @@ import pyarrow.feather as feather
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigStore
-from api_swedeb.core.speech_text import SpeechTextRepository
+from api_swedeb.legacy.speech_lookup import SpeechTextRepository
 
 
 class TestCorpusLoaderInitialization:

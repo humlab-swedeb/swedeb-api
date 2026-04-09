@@ -16,12 +16,12 @@ from typing import Optional, Union
 import pandas as pd
 
 from api_swedeb.core import codecs as md
-from api_swedeb.core import speech_text as sr
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
 from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.core.utility import Lazy
+from api_swedeb.legacy import speech_lookup as sr
 from penelope.corpus import IVectorizedCorpus
 
 

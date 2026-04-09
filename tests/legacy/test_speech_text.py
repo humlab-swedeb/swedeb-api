@@ -1,4 +1,4 @@
-"""Unit tests for api_swedeb/core/speech_text.py"""
+"""Unit tests for the archived legacy speech lookup backend."""
 
 from unittest.mock import Mock, patch
 import zipfile
@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_text import Loader, SpeechTextRepository, SpeechTextService
+from api_swedeb.legacy.speech_lookup import Loader, SpeechTextRepository, SpeechTextService
 
 
 def create_basic_document_index():
@@ -258,7 +258,7 @@ class TestSpeechTextService:
 class TestSpeechTextRepository2:
     """Tests for SpeechTextRepository class."""
 
-    @patch('api_swedeb.core.speech_text.ZipLoader')
+    @patch('api_swedeb.legacy.speech_lookup.ZipLoader')
     def test_init_with_string_source(self, mock_zip_loader):
         """Test initialization with string path."""
         mock_codecs = Mock()
@@ -494,8 +494,8 @@ class TestSpeechTextRepository2:
         with pytest.raises(ValueError, match="unknown speech key i-missing"):
             repo.get_key_index("i-missing")
 
-    @patch('api_swedeb.core.speech_text.sqlite3.connect')
-    @patch('api_swedeb.core.speech_text.read_sql_table')
+    @patch('api_swedeb.legacy.speech_lookup.sqlite3.connect')
+    @patch('api_swedeb.legacy.speech_lookup.read_sql_table')
     def test_speaker_note_id2note_success(self, mock_read_sql, connect_mock):  # pylint: disable=unused-argument
         """Test speaker_note_id2note loads notes from database."""
         mock_loader = Mock(spec_set=Loader)
@@ -532,7 +532,7 @@ class TestSpeechTextRepository2:
 
         assert notes == {}
 
-    @patch('api_swedeb.core.speech_text.sqlite3.connect')
+    @patch('api_swedeb.legacy.speech_lookup.sqlite3.connect')
     def test_speaker_note_id2note_exception_handling(self, mock_connect):
         """Test speaker_note_id2note handles exceptions gracefully."""
         mock_loader = Mock()
@@ -675,7 +675,7 @@ class TestSpeechTextRepository2:
 
         assert speech.error is not None
 
-    @patch('api_swedeb.core.speech_text.fix_whitespace')
+    @patch('api_swedeb.legacy.speech_lookup.fix_whitespace')
     def test_to_text(self, mock_fix_whitespace):
         """Test to_text converts speech paragraphs to text."""
         mock_loader = Mock(spec_set=Loader)
@@ -889,7 +889,7 @@ class TestSpeechTextRepository2:
 class TestSpeechTextRepository:
     """Tests for SpeechTextRepository class."""
 
-    @patch('api_swedeb.core.speech_text.ZipLoader')
+    @patch('api_swedeb.legacy.speech_lookup.ZipLoader')
     def test_init_with_string_source(self, mock_zip_loader):
         """Test initialization with string path."""
         mock_codecs = Mock()
@@ -1080,8 +1080,8 @@ class TestSpeechTextRepository:
         with pytest.raises(ValueError, match="unknown speech key"):
             repo.get_key_index("unknown-format")
 
-    @patch('api_swedeb.core.speech_text.sqlite3.connect')
-    @patch('api_swedeb.core.speech_text.read_sql_table')
+    @patch('api_swedeb.legacy.speech_lookup.sqlite3.connect')
+    @patch('api_swedeb.legacy.speech_lookup.read_sql_table')
     def test_speaker_note_id2note_success(self, mock_read_sql, connection_mock):  # pylint: disable=unused-argument
         """Test speaker_note_id2note loads notes from database."""
         mock_loader = Mock(spec_set=Loader)
@@ -1118,7 +1118,7 @@ class TestSpeechTextRepository:
 
         assert notes == {}
 
-    @patch('api_swedeb.core.speech_text.sqlite3.connect')
+    @patch('api_swedeb.legacy.speech_lookup.sqlite3.connect')
     def test_speaker_note_id2note_exception_handling(self, mock_connect):
         """Test speaker_note_id2note handles exceptions gracefully."""
         mock_loader = Mock(spec_set=Loader)
@@ -1391,7 +1391,7 @@ class TestSpeechTextRepository:
         assert all(speech.error == "missing archive" for _, speech in result)
         mock_loader.load.assert_called_once_with("prot-1234")
 
-    @patch('api_swedeb.core.speech_text.fix_whitespace')
+    @patch('api_swedeb.legacy.speech_lookup.fix_whitespace')
     def test_to_text(self, mock_fix_whitespace):
         """Test to_text converts speech paragraphs to text."""
         mock_loader = Mock(spec_set=Loader)

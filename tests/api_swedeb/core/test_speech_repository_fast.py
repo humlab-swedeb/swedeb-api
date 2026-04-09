@@ -29,7 +29,7 @@ from api_swedeb.core.load import load_speech_index
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
 from api_swedeb.core.speech_store import SpeechStore
-from api_swedeb.core.speech_text import SpeechTextRepository
+from api_swedeb.legacy.speech_lookup import SpeechTextRepository
 from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 
 # ---------------------------------------------------------------------------
@@ -314,7 +314,7 @@ def test_corpus_loader_selects_fast_backend(bootstrap_root, document_index, meta
 def test_corpus_loader_selects_legacy_backend():
     """CorpusLoader must return SpeechTextRepository when storage_backend=legacy."""
     from api_swedeb.api.services.corpus_loader import CorpusLoader
-    from api_swedeb.core.speech_text import SpeechTextRepository
+    from api_swedeb.legacy.speech_lookup import SpeechTextRepository
 
     loader = CorpusLoader(
         dtm_tag=ConfigValue("dtm.tag").resolve(),

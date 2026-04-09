@@ -1,6 +1,6 @@
 """Fast pre-built speech repository backend.
 
-Implements the same public interface as :class:`~api_swedeb.core.speech_text.SpeechTextRepository`
+Implements the same public interface as :class:`~api_swedeb.legacy.speech_lookup.SpeechTextRepository`
 but reads from pre-built Feather files instead of re-parsing tagged-frame ZIP archives.
 
 All speaker metadata (name, gender, party, office type) is already materialised in the
