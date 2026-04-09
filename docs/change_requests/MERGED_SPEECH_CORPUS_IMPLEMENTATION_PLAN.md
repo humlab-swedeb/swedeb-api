@@ -514,7 +514,8 @@ The manifest should record the ZIP→Feather mapping for audit.
 - [ ] Monitor production for 2 weeks
 - [ ] Confirm no regressions or incidents
 - [ ] Document cutover process and lessons learned
-- [ ] Plan legacy code archival or removal (after 1 release cycle)
+- [x] Archive legacy runtime code to `api_swedeb/legacy` on this branch
+- [ ] Plan final removal of legacy compatibility shims and fallback wiring (after 1 release cycle)
 
 #### Legacy code archival candidates (after stabilisation window)
 
@@ -524,24 +525,35 @@ The following cleanup should only happen after all of the following are true:
 - Rollback to the ZIP-backed runtime path is no longer required operationally.
 - Phase 5 parity and reliability reports remain clean on the production corpus.
 
-### Recommended archival scope
+### Current archival state on this branch
 
-**Move legacy runtime implementation into a dedicated archival namespace**
+**Legacy runtime implementation has been moved into a dedicated archival namespace**
+- `api_swedeb/legacy/speech_lookup.py`
+  - `SpeechTextService` and `SpeechTextRepository` now live here.
+  - The archived implementation is retained for parity debugging, forensic reproduction, and one-off validation tasks.
+- `api_swedeb/legacy/load.py`
+  - `Loader` and `ZipLoader` now live alongside the archived speech lookup code.
+  - This keeps the ZIP-backed runtime path out of the active core implementation.
+
+**Compatibility shims still exist and are intentional for now**
 - `api_swedeb/core/speech_text.py`
-  - Move `SpeechTextService`, `SpeechTextRepository`, and the local `Loader` abstraction to a dedicated archival module such as `api_swedeb/legacy/speech_lookup.py`.
-  - Preserve associated helpers such as `SpeechTextRepository._build_speech()` and `speaker_note_id2note` only for parity debugging, forensic reproduction, or one-off validation tasks.
+  - This is now a thin re-export shim that points to `api_swedeb/legacy/`.
+  - It remains only to avoid a breaking rename while legacy fallback and parity coverage still exist.
 - `api_swedeb/core/load.py`
-  - Move only `Loader` and `ZipLoader` alongside the archived speech lookup code, or colocate them in `api_swedeb/legacy/load.py` if that keeps the dependencies clearer.
-  - Keep `load_speech_index()`, `load_dtm_corpus()`, `slim_speech_index()`, and other non-speech-loader helpers in `api_swedeb/core/load.py`.
+  - `Loader` and `ZipLoader` have been moved out to `api_swedeb/legacy/load.py`.
+  - `api_swedeb/core/load.py` retains `load_speech_index()`, `load_dtm_corpus()`, `slim_speech_index()`, and other non-speech-loader helpers.
 
 **Do not move the legacy runtime path into `api_swedeb/workflows/`**
 - The workflows package is for offline/build-time pipeline code.
 - The legacy speech lookup path is runtime-oriented lookup logic, even if it is no longer used by production endpoints.
 - If preserved, it should live in an explicit archival namespace such as `api_swedeb/legacy/`, not in `api_swedeb/workflows/legacy_speech_lookup`.
 
-**Simplify runtime wiring after archival**
+### Remaining cleanup after archival
+
+**Simplify runtime wiring after production cutover**
 - `api_swedeb/api/services/corpus_loader.py`
-  - Remove `from api_swedeb.core import speech_text as sr`.
+  - The loader now imports the archived legacy implementation from `api_swedeb.legacy` instead of `api_swedeb.core.speech_text`.
+  - Final cleanup should remove legacy repository branching entirely once rollback support is no longer needed.
   - Remove `speech_storage_backend` from the constructor and all config reads of `speech.storage_backend`.
   - Keep `speech_bootstrap_corpus_folder` only if multiple bootstrap roots still need to be injected in tests; otherwise resolve directly from config and drop the override.
   - Replace `_load_repository()` branching logic with unconditional `SpeechStore(...)` + `SpeechRepositoryFast(...)` construction.
@@ -553,7 +565,8 @@ The following cleanup should only happen after all of the following are true:
   - Apply the same cleanup as production config.
 
 **Clean up tests and transient parity coverage**
-- Delete `tests/api_swedeb/core/test_speech_text.py`.
+- `tests/api_swedeb/core/test_speech_text.py` has been moved to `tests/legacy/test_speech_text.py`.
+- `tests/legacy/test_zip_loader.py` now contains the archived `ZipLoader` coverage previously mixed into `tests/api_swedeb/core/test_load.py`.
 - Delete `tests/api_swedeb/core/test_speech_parity.py`.
 - Update `tests/api_swedeb/core/test_speech_repository_fast.py`.
   - Remove `legacy_repo` and any imports of `SpeechTextRepository`.
@@ -561,10 +574,11 @@ The following cleanup should only happen after all of the following are true:
   - Retain fast-backend behavior, lookup, error handling, and benchmark coverage.
   - Rename to `test_speech_repository.py` if the file is no longer specifically about the migration phase.
 - Update `tests/api_swedeb/api/services/test_corpus_loader.py`.
-  - Remove patches and `ConfigValue.resolve()` side effects that exist only for `speech.storage_backend` branching.
+  - The tests now target the archived import path where they still need legacy repository coverage.
+  - Final cleanup should remove patches and `ConfigValue.resolve()` side effects that exist only for `speech.storage_backend` branching.
   - Replace repository mocks that target `sr.SpeechTextRepository` with `SpeechRepositoryFast` coverage where appropriate.
 - Update `tests/README.md`.
-  - Remove references to pre-existing failures in `test_speech_text.py`.
+  - Remove references to pre-existing failures in `tests/legacy/test_speech_text.py`.
   - Refresh test counts if this removal materially changes suite totals.
 
 **Docs and comments to refresh**
@@ -589,9 +603,11 @@ These files implement the retained build-time and runtime path for `bootstrap_co
 
 After legacy archival, validate the simplified architecture with the following checks:
 
+- Archived runtime code exists only under `api_swedeb/legacy/`, with `api_swedeb/core/speech_text.py` serving only as a temporary compatibility shim.
+- Archived unit tests live under `tests/legacy/` rather than inside the active runtime test tree.
 - Speech endpoint integration tests still pass without `SpeechTextRepository` anywhere in runtime wiring.
 - `make build-speech-corpus` still produces a valid `bootstrap_corpus` with manifest and lookup files.
-- No active production code imports the archived `api_swedeb/legacy/` modules.
+- After final cutover, no active production code should import the archived `api_swedeb/legacy/` modules.
 - No active config, docs, or deployment instructions imply a supported rollback to the archived ZIP-backed runtime path.
 
 **Acceptance**: Production stable for 2 weeks, fallback tested, legacy archival decision documented.
