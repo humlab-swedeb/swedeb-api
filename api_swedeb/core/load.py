@@ -151,6 +151,14 @@ class ZipLoader(Loader):
     def __init__(self, folder: str):
         self.folder: str = folder
 
+    @staticmethod
+    def _resolve_payload_member(fp: zipfile.ZipFile, protocol_name: str) -> str:
+        payload_members = sorted(name for name in fp.namelist() if name.endswith(".json") and name != "metadata.json")
+        if len(payload_members) == 1:
+            return payload_members[0]
+
+        raise FileNotFoundError(f"JSON payload for {protocol_name} not found in archive")
+
     def load(self, protocol_name: str) -> tuple[dict, list[dict]]:
         """Loads tagged protocol data from archive"""
         parts: list[str] = protocol_name.split('-')
@@ -166,11 +174,14 @@ class ZipLoader(Loader):
             if not os.path.isfile(filename):
                 continue
             with zipfile.ZipFile(filename, "r") as fp:
-                json_str: bytes = fp.read(f"{protocol_name}.json")
                 metadata_str: bytes = fp.read("metadata.json")
-            metadata: dict = json.loads(metadata_str)
-            # FIXME: This is a hack to fix the filename sequence number bug, later versions of the corpus should have this fixed
-            metadata['name'] = zero_fill_filename_sequence(metadata.get("name"))  # type: ignore
+                metadata: dict = json.loads(metadata_str)
+                payload_member = self._resolve_payload_member(fp, protocol_name)
+                json_str: bytes = fp.read(payload_member)
+            # Use the archive stem as the canonical protocol key. This keeps
+            # zero-padded archive names stable without over-normalizing mixed
+            # suffixes like ``prot-1886--ak--040-01``.
+            metadata["name"] = os.path.splitext(os.path.basename(filename))[0]
             utterances: list[dict] = json.loads(json_str)
             return metadata, utterances
         raise FileNotFoundError(protocol_name)

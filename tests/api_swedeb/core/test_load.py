@@ -413,6 +413,26 @@ class TestZipLoader:
 
         assert loaded_metadata["name"] == "prot-2020-001"
 
+    def test_ziploader_load_falls_back_to_single_payload_member(self, tmp_path):
+        """Test ZipLoader.load handles archives whose payload JSON name differs from ZIP stem."""
+        protocol_name = "prot-1886--ak--040-01"
+        payload_name = "prot-1886--ak--040"
+
+        metadata = {"name": payload_name, "date": "1886-01-01"}
+        utterances = [{"text": "test"}]
+
+        zip_path = tmp_path / "1886" / f"{protocol_name}.zip"
+        zip_path.parent.mkdir()
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(f"{payload_name}.json", json.dumps(utterances))
+            zf.writestr("metadata.json", json.dumps(metadata))
+
+        loader = ZipLoader(str(tmp_path))
+        loaded_metadata, loaded_utterances = loader.load(protocol_name)
+
+        assert loaded_metadata["name"] == protocol_name
+        assert loaded_utterances == utterances
+
     def test_ziploader_load_raises_filenotfound(self, tmp_path):
         """Test ZipLoader.load raises FileNotFoundError when zip missing."""
         loader = ZipLoader(str(tmp_path))
