@@ -65,25 +65,23 @@ class CorpusLoader:
         self.dtm_folder: str = dtm_folder or ConfigValue("dtm.folder").resolve()
         self.metadata_filename: str = metadata_filename or ConfigValue("metadata.filename").resolve()
         self.tagged_corpus_folder: str = tagged_corpus_folder or ConfigValue("vrt.folder").resolve()
-        self.speech_storage_backend: str = speech_storage_backend or ConfigValue("speech.storage_backend", default="legacy").resolve()
-        self.speech_bootstrap_corpus_folder: str = speech_bootstrap_corpus_folder or ConfigValue("speech.bootstrap_corpus_folder", default="").resolve()
+        self.speech_storage_backend: str = (
+            speech_storage_backend or ConfigValue("speech.storage_backend", default="legacy").resolve()
+        )
+        self.speech_bootstrap_corpus_folder: str = (
+            speech_bootstrap_corpus_folder or ConfigValue("speech.bootstrap_corpus_folder", default="").resolve()
+        )
 
         # Cache for sharing pre-loaded document index between lazy-loaded resources
         self._cached_document_index: pd.DataFrame | None = None
 
         # Lazy-loaded resources
-        self.__lazy_vectorized_corpus: Lazy[IVectorizedCorpus] = Lazy[IVectorizedCorpus](
-            self._load_vectorized_corpus
-        )
+        self.__lazy_vectorized_corpus: Lazy[IVectorizedCorpus] = Lazy[IVectorizedCorpus](self._load_vectorized_corpus)
         self.__lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy[md.PersonCodecs](
             lambda: md.PersonCodecs().load(source=self.metadata_filename),
         )
-        self.__lazy_repository: Lazy[Union[sr.SpeechTextRepository, SpeechRepositoryFast]] = Lazy(
-            self._load_repository
-        )
-        self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](
-            self._load_document_index
-        )
+        self.__lazy_repository: Lazy[Union[sr.SpeechTextRepository, SpeechRepositoryFast]] = Lazy(self._load_repository)
+        self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_document_index)
 
     def _load_document_index(self) -> pd.DataFrame:
         """Load and cache the document index."""
@@ -95,9 +93,7 @@ class CorpusLoader:
         if self.speech_storage_backend == "prebuilt" and self.speech_bootstrap_corpus_folder:
             from loguru import logger  # pylint: disable=import-outside-toplevel
 
-            logger.info(
-                f"Using prebuilt speech backend from {self.speech_bootstrap_corpus_folder}"
-            )
+            logger.info(f"Using prebuilt speech backend from {self.speech_bootstrap_corpus_folder}")
             store = SpeechStore(self.speech_bootstrap_corpus_folder)
             return SpeechRepositoryFast(
                 store=store,

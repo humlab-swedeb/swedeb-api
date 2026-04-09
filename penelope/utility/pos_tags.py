@@ -2,7 +2,6 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from typing import Any, Container, Dict, List, Union
 
-import numpy as np
 import pandas as pd
 from loguru import logger
 from more_itertools import collapse

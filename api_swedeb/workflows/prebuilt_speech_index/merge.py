@@ -117,7 +117,9 @@ def merge_protocol_utterances(
             }
 
         current["paragraphs"].extend(_as_text_list(utterance.get("paragraphs")))
-        current["annotation"] = _append_annotation(current.get("annotation", ""), str(utterance.get("annotation") or ""))
+        current["annotation"] = _append_annotation(
+            current.get("annotation", ""), str(utterance.get("annotation") or "")
+        )
         current["page_number_end"] = utterance.get("page_number")
         current["num_tokens"] += int(utterance.get("num_tokens") or 0)
         current["num_words"] += int(utterance.get("num_words") or 0)

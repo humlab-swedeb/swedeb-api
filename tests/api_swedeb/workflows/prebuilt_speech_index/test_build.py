@@ -7,12 +7,14 @@ import sqlite3
 import zipfile
 from pathlib import Path
 
-import pandas as pd
 import pyarrow.feather as feather
-import pytest
 
-from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder, _iter_zip_paths, _load_zip, _process_zip
-
+from api_swedeb.workflows.prebuilt_speech_index.build import (
+    SpeechCorpusBuilder,
+    _iter_zip_paths,
+    _load_zip,
+    _process_zip,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -383,4 +385,3 @@ class TestSpeechCorpusBuilderEnrichment:
         assert df["name"].isna().all()
         assert "gender" in df.columns
         assert df["gender"].isna().all()
-

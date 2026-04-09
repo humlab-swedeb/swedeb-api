@@ -13,7 +13,6 @@ from api_swedeb.workflows.prebuilt_speech_index.enrichment import (
     enrich_speech_rows,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers – build a minimal in-memory SQLite database
 # ---------------------------------------------------------------------------

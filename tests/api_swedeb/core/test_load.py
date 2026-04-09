@@ -343,5 +343,3 @@ class TestZeroFillFilenameSequence:
     def test_zero_fill_single_part_unchanged(self):
         """Test zero_fill_filename_sequence handles single-part names."""
         assert zero_fill_filename_sequence("filename") == "filename"
-
-

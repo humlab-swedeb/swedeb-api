@@ -1,7 +1,7 @@
 """Integration tests for api_swedeb.core.n_grams with real CWB corpus."""
 
 from collections import Counter, defaultdict
-from typing import Any, Iterable
+from typing import Iterable
 
 import pandas as pd
 from ccc import Corpus

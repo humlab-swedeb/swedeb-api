@@ -65,11 +65,13 @@ def load_metadata(*, tag: str, folder: str) -> dict:
         'overridden_term_frequency': term_frequency,
     }
 
+
 PROBES: list[tuple[str, Callable[[str], pd.DataFrame]]] = [
     ("prepped.feather", lambda f: pd.read_feather(f, dtype_backend="pyarrow")),
     ("feather", lambda f: pd.read_feather(f, dtype_backend="pyarrow")),
     ("csv.gz", lambda f: pd.read_csv(f, sep=';', compression="gzip", index_col=0)),
 ]
+
 
 def load_document_index(tag: str, folder: str) -> pd.DataFrame:
 

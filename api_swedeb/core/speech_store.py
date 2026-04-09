@@ -60,9 +60,7 @@ class SpeechStore:
             if name:
                 self._name_to_loc[name] = loc
 
-        logger.debug(
-            f"SpeechStore loaded: {len(self._name_to_loc)} speeches from {bootstrap_root}"
-        )
+        logger.debug(f"SpeechStore loaded: {len(self._name_to_loc)} speeches from {bootstrap_root}")
 
     # ------------------------------------------------------------------
     # Lookups

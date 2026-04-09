@@ -1,6 +1,6 @@
-from pathlib import Path
 import sqlite3
 import sys
+from pathlib import Path
 
 import ccc
 import pandas as pd
@@ -39,9 +39,7 @@ def corpus(tmp_path_factory):
     corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
     registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
 
-    corpus = ccc.Corpora(
-        registry_dir=registry_dir
-    ).corpus(
+    corpus = ccc.Corpora(registry_dir=registry_dir).corpus(
         corpus_name=corpus_name,
         data_dir=str(data_dir),
     )

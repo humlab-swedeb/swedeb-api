@@ -25,11 +25,15 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build the pre-merged speech corpus (bootstrap_corpus) from tagged-frames ZIPs."
     )
-    parser.add_argument("--tagged-frames", required=True, help="Root folder of tagged-frames ZIPs (contains year sub-dirs)")
+    parser.add_argument(
+        "--tagged-frames", required=True, help="Root folder of tagged-frames ZIPs (contains year sub-dirs)"
+    )
     parser.add_argument("--output-root", required=True, help="Destination root for bootstrap_corpus output")
     parser.add_argument("--corpus-version", required=True, help="Corpus version string (e.g. v1.1.0)")
     parser.add_argument("--metadata-version", required=True, help="Metadata version string (e.g. v1.1.0)")
-    parser.add_argument("--metadata-db", default=None, help="Path to riksprot SQLite metadata DB for speaker enrichment")
+    parser.add_argument(
+        "--metadata-db", default=None, help="Path to riksprot SQLite metadata DB for speaker enrichment"
+    )
     parser.add_argument("--num-processes", type=int, default=0, help="Parallel workers (0 = sequential, default)")
     return parser.parse_args()
 

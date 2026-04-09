@@ -1,10 +1,9 @@
 """Unit tests for CorpusLoader service."""
 
-import re
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pyarrow.feather as feather
+
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigStore
@@ -306,6 +305,7 @@ class TestCorpusLoaderCaching:
         # Load function should only be called once
         mock_codecs_instance.load.assert_called_once()
 
+
 class TestIntegrationFullCorpus:
 
     # def test_document_index_load_time(self):
@@ -340,7 +340,7 @@ class TestIntegrationFullCorpus:
         )
         doc_index = loader.document_index
         assert isinstance(doc_index, pd.DataFrame)
-        
+
         # Access vectorized corpus
         corpus = loader.vectorized_corpus
         assert corpus is not None

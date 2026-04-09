@@ -131,7 +131,6 @@ def _load_zip(zip_path: Path) -> tuple[dict, list[dict]]:
         # Ignore actual filename, The utterances JSON filename can differ from protocol name
         utterances_filename: str = filenames[0] if filenames[0] != "metadata.json" else filenames[1]
 
-
         metadata: dict = json.loads(zf.read("metadata.json"))
         utterances: list[dict] = json.loads(zf.read(utterances_filename))
 

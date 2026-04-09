@@ -1,6 +1,5 @@
 import io
 import zipfile
-from collections.abc import Generator
 from typing import Annotated, Any, Literal
 
 import fastapi
@@ -11,10 +10,10 @@ from pandas import DataFrame
 from api_swedeb.api.dependencies import (
     get_corpus_loader,
     get_cwb_corpus,
+    get_download_service,
     get_kwic_service,
     get_search_service,
     get_word_trends_service,
-    get_download_service
 )
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.corpus_loader import CorpusLoader
@@ -36,7 +35,6 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultIte
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
-
 
 
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})

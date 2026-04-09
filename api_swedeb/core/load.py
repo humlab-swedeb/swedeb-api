@@ -4,7 +4,6 @@ from os.path import isfile, join
 import pandas as pd
 from loguru import logger
 
-from api_swedeb.legacy.load import Loader, ZipLoader
 from penelope.corpus import VectorizedCorpus
 
 from .utility import time_call
@@ -31,7 +30,7 @@ FEATHER_COLUMNS: list[str] = [
     "page_number",
 ]
 
-PREPPED_FEATHER_COLUMNS: list[str] = [ RENAME_COLUMNS.get(col, col) for col in FEATHER_COLUMNS ]
+PREPPED_FEATHER_COLUMNS: list[str] = [RENAME_COLUMNS.get(col, col) for col in FEATHER_COLUMNS]
 
 SPEECH_INDEX_DTYPES = {
     # 'document_name': object,          # object
@@ -138,5 +137,3 @@ def zero_fill_filename_sequence(name: str) -> str:
     if parts[-1].isdigit():
         parts[-1] = parts[-1].zfill(3)
     return '-'.join(parts)
-
-
