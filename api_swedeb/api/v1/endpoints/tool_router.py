@@ -14,9 +14,11 @@ from api_swedeb.api.dependencies import (
     get_kwic_service,
     get_search_service,
     get_word_trends_service,
+    get_download_service
 )
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
@@ -35,33 +37,6 @@ from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
-
-class _ZipStreamWriter(io.RawIOBase):
-    """Non-seekable write buffer that accumulates bytes for incremental streaming.
-
-    Python's zipfile writes data descriptors instead of seeking back to update
-    local file headers when the target is not seekable, so ZIP_DEFLATED works
-    correctly without requiring random access.
-    """
-
-    def __init__(self) -> None:
-        self._chunks: list[bytes] = []
-
-    def write(self, b: bytes | bytearray) -> int:  # type: ignore[override]
-        self._chunks.append(bytes(b))
-        return len(b)
-
-    def seekable(self) -> bool:
-        return False
-
-    def readable(self) -> bool:
-        return False
-
-    def pop(self) -> bytes:
-        """Return and clear all bytes written since the last pop()."""
-        data = b"".join(self._chunks)
-        self._chunks.clear()
-        return data
 
 
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
@@ -181,29 +156,13 @@ async def get_speeches_result(
 
 @router.post("/speeches/download")
 async def get_speeches_download_result(
-    commons: CommonParams, search_service: SearchService = Depends(get_search_service)
+    commons: CommonParams, download_service: DownloadService = Depends(get_download_service)
 ) -> StreamingResponse:
     """Find speeches matching filter criteria and return them as a streamed ZIP file."""
-    df: DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
-
-    id_to_name: dict[int, str] = dict(zip(df["document_id"], df["name"]))
-    doc_ids: list[int] = df["document_id"].tolist()
-
-    def _generate() -> Generator[bytes, None, None]:
-        writer = _ZipStreamWriter()
-        with zipfile.ZipFile(writer, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
-            for doc_id, speech in search_service.get_speeches_batch(doc_ids):
-                speaker: str = id_to_name.get(doc_id, "unknown")
-                zf.writestr(f"{speaker}_{doc_id}.txt", speech.text.encode("utf-8"))
-                chunk: bytes = writer.pop()
-                if chunk:
-                    yield chunk
-        chunk = writer.pop()
-        if chunk:
-            yield chunk
+    streamer = download_service.create_zip_stream(search_service=get_search_service(), commons=commons)
 
     return StreamingResponse(
-        _generate(),
+        streamer(),
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=speeches.zip"},
     )
