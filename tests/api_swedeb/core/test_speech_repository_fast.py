@@ -373,6 +373,7 @@ def test_parity_speaker_fields(fast_repo, legacy_repo, document_index):
                 mismatches_by_field[field].append({"doc_name": doc_name, "fast": fast_val, "legacy": legacy_val})
 
     total = sum(len(v) for v in mismatches_by_field.values())
+    summary = {}
     if total > 0:
         summary = {f: len(v) for f, v in mismatches_by_field.items() if v}
         examples = {f: v[:2] for f, v in mismatches_by_field.items() if v}

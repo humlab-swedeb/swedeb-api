@@ -173,12 +173,12 @@ def _get_prebuilt_row(
     if speech_id not in speech_index_prebuilt.index:
         return None
     index_row = speech_index_prebuilt.loc[speech_id]
-    feather_rel: str = index_row["feather_file"]
-    feather_row: int = int(index_row["feather_row"])
+    feather_rel: str = index_row["feather_file"]  # type: ignore[assignment]
+    feather_row: int = int(index_row["feather_row"])  # type: ignore[assignment]
     table = protocol_cache.get(feather_rel)
     if table is None:
         return None
-    return table.iloc[feather_row].to_dict()
+    return table.iloc[feather_row].to_dict()  # type: ignore[assignment]
 
 
 def _normalise_page(val: Any) -> int:
@@ -238,7 +238,7 @@ def test_speech_parity(
         tag=ConfigValue("dtm.tag").resolve(),
     )
     # Map speech_id → legacy document_name (zero-padded format used by legacy)
-    sid_to_doc: dict[str, str] = legacy_index.set_index("speech_id")["document_name"].to_dict()
+    sid_to_doc: dict[str, str] = legacy_index.set_index("speech_id")["document_name"].to_dict()   # type: ignore[assignment]
 
     total = len(speech_index_prebuilt)
     logger.info(f"Parity check: {total} prebuilt speeches vs legacy (joined on speech_id)")
