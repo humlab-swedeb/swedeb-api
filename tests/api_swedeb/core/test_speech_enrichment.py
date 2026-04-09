@@ -79,6 +79,17 @@ def _make_db(tmp_path: Path) -> str:
         INSERT INTO terms_of_office VALUES
             (1, 'i-ABC', 1970, 1980, 1, 1),
             (2, 'i-DEF', 1965, 1975, 2, 0);
+
+        CREATE TABLE person_party (
+            person_party_id INTEGER PRIMARY KEY,
+            person_id TEXT,
+            party_id INTEGER,
+            start_year INTEGER,
+            end_year INTEGER
+        );
+        INSERT INTO person_party VALUES
+            (1, 'i-ABC', 3, 1970, 1980),
+            (2, 'i-DEF', 1, 1965, 1975);
         """
     )
     con.commit()

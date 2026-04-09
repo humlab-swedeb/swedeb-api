@@ -22,6 +22,8 @@ class TestCorpusLoaderInitialization:
                 "test_folder",
                 "test_metadata.csv",
                 "test_corpus_folder",
+                "legacy",
+                "",
             ]
             loader = CorpusLoader()
 
@@ -52,6 +54,8 @@ class TestCorpusLoaderInitialization:
                 "custom_folder",  # dtm_folder will be overridden
                 "config_metadata.csv",
                 "config_corpus_folder",
+                "legacy",
+                "",
             ]
             loader = CorpusLoader(
                 dtm_tag="custom_tag",

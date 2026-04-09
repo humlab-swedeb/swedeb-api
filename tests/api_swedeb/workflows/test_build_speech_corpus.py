@@ -300,6 +300,15 @@ def _make_metadata_db(tmp_path: Path, speaker_id: str = "Q1") -> str:
             office_type_id INTEGER, sub_office_type_id INTEGER
         );
         INSERT INTO terms_of_office VALUES (1,'{speaker_id}',1860,1900,1,1);
+
+        CREATE TABLE person_party (
+            person_party_id INTEGER PRIMARY KEY,
+            person_id TEXT,
+            party_id INTEGER,
+            start_year INTEGER,
+            end_year INTEGER
+        );
+        INSERT INTO person_party VALUES (1,'{speaker_id}',1,1860,1900);
         """
     )
     con.commit()

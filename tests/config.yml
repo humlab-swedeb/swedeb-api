@@ -26,6 +26,10 @@ vrt:
   folder: tests/test_data/v1.4.1/tagged_frames
   tag: text
 
+speech:
+  storage_backend: legacy  # legacy | prebuilt
+  bootstrap_corpus_folder: tests/test_data/v1.4.1/speeches/bootstrap_corpus
+
 kwic:
   use_multiprocessing: true
   num_processes: 8
