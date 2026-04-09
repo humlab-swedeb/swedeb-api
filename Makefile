@@ -110,6 +110,7 @@ build-speech-corpus:
 	@echo "Building bootstrap speech corpus..."
 	@echo "  Source : $(TAGGED_FRAMES_FOLDER)"
 	@echo "  Output : $(BOOTSTRAP_CORPUS_ROOT)"
+	@rm -rf "$(BOOTSTRAP_CORPUS_ROOT)"
 	@uv run python -m api_swedeb.workflows.scripts.build_speech_corpus_cli \
 		--tagged-frames   "$(TAGGED_FRAMES_FOLDER)" \
 		--output-root     "$(BOOTSTRAP_CORPUS_ROOT)" \
