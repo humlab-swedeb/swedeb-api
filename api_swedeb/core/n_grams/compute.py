@@ -44,7 +44,7 @@ def compile_n_grams(
             .groupby('ngram')
             .agg(window_count=('count', sum), documents=('documents', ','.join))
         )
-        n_grams['documents'] = n_grams.documents.map(lambda x: ','.join(sorted(set(x.split(',')))))
+        n_grams['documents'] = n_grams.documents.map(lambda x: ','.join(sorted(set(x.split(',')))))  # type: ignore
         # n_grams['documents'] = n_grams.documents.str.split(',').apply(set).apply(sorted).apply(','.join)
     else:
         n_grams = windows.rename(columns={'window': 'ngram', 'count': 'window_count'}).set_index('ngram', drop=True)
