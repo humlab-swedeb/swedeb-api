@@ -151,8 +151,9 @@ def inject_year_filter(
 
         # If no year filter existed, add one (use first opt's prefix or 'a')
         if not year_injected:
-            prefix: str = opt_copy.get('prefix', 'a')
-            year_key: str = f"{prefix}.year_year" if prefix else "year_year"
+            prefix: str = opt_copy.get('prefix') or 'a'
+            opt_copy['prefix'] = prefix  # ensure prefix is set so the token is anchored
+            year_key: str = f"{prefix}.year_year"
             new_criterias.append({'key': year_key, 'values': year_range})
             year_injected = True
 
