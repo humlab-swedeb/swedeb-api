@@ -69,6 +69,7 @@ _PYARROW_SCHEMA: pa.Schema = pa.schema(
         ("office_type", pa.string()),
         ("sub_office_type_id", pa.int8()),
         ("sub_office_type", pa.string()),
+        ("wiki_id", pa.string()),
         ("feather_file", pa.string()),
         ("feather_row", pa.int64()),
     ]
@@ -171,6 +172,7 @@ def _speech_rows_to_arrow(full_rows: list[dict[str, Any]], feather_file_rel: str
                 "office_type": s.get("office_type"),
                 "sub_office_type_id": s.get("sub_office_type_id"),
                 "sub_office_type": s.get("sub_office_type"),
+                "wiki_id": s.get("wiki_id", "unknown"),
                 "feather_file": feather_file_rel,
                 "feather_row": row_idx,
             }
