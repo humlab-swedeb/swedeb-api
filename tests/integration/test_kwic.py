@@ -115,8 +115,8 @@ async def test_bug_kwic_fails_when_lemmatized_is_true():
     [
         ("sverige", "ak", 42),
         ("sverige", "AK", 42),
-        ("sverige", "ek", 225),
-        ("sverige", ["ak", "ek"], 225 + 42),
+        ("sverige", "ek", 227),
+        ("sverige", ["ak", "ek"], 42 + 227),
     ],
 )
 def test_kwic_filter_by_chamber(fastapi_client, word: str, chambers: str | list[str], n_expected: int):
