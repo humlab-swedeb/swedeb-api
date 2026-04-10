@@ -18,7 +18,7 @@ import pandas as pd
 from api_swedeb.core import codecs as md
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
-from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
+from api_swedeb.core.speech_repository_fast import SpeechRepository
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.core.utility import Lazy
 from penelope.corpus import IVectorizedCorpus
@@ -75,7 +75,7 @@ class CorpusLoader:
         self.__lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy[md.PersonCodecs](
             lambda: md.PersonCodecs().load(source=self.metadata_filename),
         )
-        self.__lazy_repository: Lazy[SpeechRepositoryFast] = Lazy(self._load_repository)
+        self.__lazy_repository: Lazy[SpeechRepository] = Lazy(self._load_repository)
         self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_document_index)
 
     def _load_document_index(self) -> pd.DataFrame:
@@ -83,13 +83,13 @@ class CorpusLoader:
         self._cached_document_index = load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
         return self._cached_document_index
 
-    def _load_repository(self) -> SpeechRepositoryFast:
+    def _load_repository(self) -> SpeechRepository:
         """Instantiate the prebuilt speech repository backend."""
         from loguru import logger  # pylint: disable=import-outside-toplevel
 
         logger.info(f"Using prebuilt speech backend from {self.speech_bootstrap_corpus_folder}")
         store = SpeechStore(self.speech_bootstrap_corpus_folder)
-        return SpeechRepositoryFast(
+        return SpeechRepository(
             store=store,
             document_index=self.document_index,
             metadata_db_path=self.metadata_filename,
@@ -133,7 +133,7 @@ class CorpusLoader:
         return self.__lazy_person_codecs.value
 
     @property
-    def repository(self) -> SpeechRepositoryFast:
+    def repository(self) -> SpeechRepository:
         """Get the speech repository (lazy-loaded on first access)."""
         return self.__lazy_repository.value
 

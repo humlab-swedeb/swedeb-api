@@ -50,6 +50,7 @@ class SpeechStore:
 
         self._sid_to_loc: dict[str, tuple[str, int]] = {}
         self._name_to_loc: dict[str, tuple[str, int]] = {}
+        self._sid_to_name: dict[str, str] = {}
 
         for _, row in lookup_df.iterrows():
             loc: tuple[str, int] = (str(row["feather_file"]), int(row["feather_row"]))
@@ -57,6 +58,8 @@ class SpeechStore:
             name: str = row.get("document_name") or ""
             if sid:
                 self._sid_to_loc[sid] = loc
+                if name:
+                    self._sid_to_name[sid] = name
             if name:
                 self._name_to_loc[name] = loc
 

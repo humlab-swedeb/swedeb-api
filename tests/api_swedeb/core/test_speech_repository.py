@@ -22,7 +22,7 @@ import pytest
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 from api_swedeb.core.load import load_speech_index
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
+from api_swedeb.core.speech_repository_fast import SpeechRepository
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 
@@ -86,8 +86,8 @@ def document_index(dtm_folder, dtm_tag):
 
 
 @pytest.fixture(scope="module")
-def fast_repo(speech_store, document_index, metadata_db_path) -> SpeechRepositoryFast:
-    return SpeechRepositoryFast(
+def fast_repo(speech_store, document_index, metadata_db_path) -> SpeechRepository:
+    return SpeechRepository(
         store=speech_store,
         document_index=document_index,
         metadata_db_path=metadata_db_path,
@@ -216,7 +216,7 @@ def test_corpus_loader_selects_fast_backend(bootstrap_root, metadata_db_path):
         speech_bootstrap_corpus_folder=str(bootstrap_root),
     )
     repo = loader.repository
-    assert isinstance(repo, SpeechRepositoryFast)
+    assert isinstance(repo, SpeechRepository)
 
 
 # ---------------------------------------------------------------------------

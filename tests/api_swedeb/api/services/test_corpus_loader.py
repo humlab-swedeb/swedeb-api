@@ -8,7 +8,7 @@ import pytest
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigStore
-from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
+from api_swedeb.core.speech_repository_fast import SpeechRepository
 
 
 class TestCorpusLoaderInitialization:
@@ -131,7 +131,7 @@ class TestCorpusLoaderLazyLoading:
         mock_store = MagicMock()
         mock_store_class.return_value = mock_store
 
-        mock_repo = MagicMock(spec=SpeechRepositoryFast)
+        mock_repo = MagicMock(spec=SpeechRepository)
         mock_repo_class.return_value = mock_repo
 
         loader = CorpusLoader(

@@ -39,7 +39,7 @@ def _normalize_document_name(name: str) -> str:
     return name
 
 
-class SpeechRepositoryFast:
+class SpeechRepository:
     """Repository backend backed by pre-built Feather files.
 
     Parameters
@@ -74,6 +74,71 @@ class SpeechRepositoryFast:
         self._speech_id2id: dict[str, int] = (  # type: ignore[assignment]
             idx_reset.set_index("speech_id")["document_id"].to_dict()
         )
+        # Stable cross-index map: DTM document_name → speech_id (XML-native key)
+        self._document_name2speech_id: dict[str, str] = (  # type: ignore[assignment]
+            idx_reset.set_index("document_name")["speech_id"].to_dict()
+        )
+        # Startup alignment: validate and build document_id → feather location map
+        self._doc_id_to_loc: dict[int, tuple[str, int]] = self._align_with_dtm(idx_reset)
+
+    # ------------------------------------------------------------------
+    # Startup alignment
+    # ------------------------------------------------------------------
+
+    def _align_with_dtm(self, idx_reset: pd.DataFrame) -> dict[int, tuple[str, int]]:
+        """Validate DTM document index against prebuilt store and build a
+        document_id → (feather_file, feather_row) map for O(1) integer lookups.
+
+        Logs a warning for any speech_id present in the DTM but missing from
+        the prebuilt store (or vice versa) so mismatches are visible at startup.
+        """
+        prebuilt_ids: set[str] = set(self._store._sid_to_loc.keys())
+        dtm_ids: set[str] = set(idx_reset["speech_id"].dropna())
+
+        only_in_dtm = dtm_ids - prebuilt_ids
+        only_in_prebuilt = prebuilt_ids - dtm_ids
+
+        logger.info(
+            f"SpeechRepository alignment: DTM={len(dtm_ids):,} prebuilt={len(prebuilt_ids):,} "
+            f"only_in_dtm={len(only_in_dtm)} only_in_prebuilt={len(only_in_prebuilt)}"
+        )
+        if only_in_dtm:
+            logger.warning(
+                f"{len(only_in_dtm)} DTM speech_ids not found in bootstrap_corpus — "
+                "speech retrieval will return 'not found' for these entries"
+            )
+        if only_in_prebuilt:
+            logger.warning(
+                f"{len(only_in_prebuilt)} bootstrap_corpus speech_ids not in DTM — "
+                "these speeches are unreachable via word-search"
+            )
+
+        # document_name mismatch check: same speech_id must map to same document_name
+        name_mismatches: list[tuple[str, str, str]] = []
+        for _, row in idx_reset.iterrows():
+            sid = str(row.get("speech_id") or "")
+            if not sid:
+                continue
+            prebuilt_name = self._store._sid_to_name.get(sid)
+            dtm_name = str(row.get("document_name") or "")
+            if prebuilt_name and prebuilt_name != dtm_name:
+                name_mismatches.append((sid, dtm_name, prebuilt_name))
+        if name_mismatches:
+            logger.warning(
+                f"{len(name_mismatches)} speech_ids have mismatched document_name between DTM and prebuilt; "
+                f"first 5: {name_mismatches[:5]}"
+            )
+        else:
+            logger.info("document_name alignment: OK — all shared speech_ids have matching document_names")
+
+        # Build document_id → location dict (only for speeches present in both)
+        doc_id_to_loc: dict[int, tuple[str, int]] = {}
+        for _, row in idx_reset.iterrows():
+            sid: str = str(row.get("speech_id") or "")
+            loc = self._store._sid_to_loc.get(sid)
+            if loc is not None:
+                doc_id_to_loc[int(row["document_id"])] = loc
+        return doc_id_to_loc
 
     # ------------------------------------------------------------------
     # speaker_note lookup (optional, lazy)
@@ -116,6 +181,10 @@ class SpeechRepositoryFast:
             raise ValueError(f"unknown speech key {key}")
         return key_idx
 
+    def location_for_doc_id(self, doc_id: int) -> tuple[str, int] | None:
+        """Return the prebuilt feather location for a DTM document_id, or None."""
+        return self._doc_id_to_loc.get(doc_id)
+
     # ------------------------------------------------------------------
     # Public interface (matches SpeechTextRepository)
     # ------------------------------------------------------------------
@@ -145,15 +214,41 @@ class SpeechRepositoryFast:
         return speech_info
 
     def speech(self, speech_name: str) -> Speech:
-        """Load a single speech by document_name, speech_id, or document_id."""
+        """Load a single speech by document_name, speech_id, or document_id.
+
+        Resolution order:
+        1. Resolve to speech_id (XML-native, stable across DTM and prebuilt) via DTM
+           index.  Robust to DTM-side filtering that can shift document_name sequence
+           numbers relative to the unfiltered prebuilt.
+        2. Fall back to direct document_name lookup in the prebuilt store (for keys
+           that originate from the prebuilt itself, not the DTM).  Emits a warning
+           when this path is taken so sequence-number drift is visible in logs.
+        """
         try:
-            doc_name = self._resolve_to_document_name(speech_name)
-            loc = self._store.location_for_document_name(doc_name)
+            loc: tuple[str, int] | None = None
+
+            # Integer document_id: use pre-aligned map (no DTM DataFrame access)
+            if isinstance(speech_name, str) and speech_name.isdigit():
+                loc = self._doc_id_to_loc.get(int(speech_name))
+            else:
+                speech_id = self._resolve_to_speech_id(speech_name)
+                if speech_id:
+                    loc = self._store.location_for_speech_id(speech_id)
+
+            if loc is None:
+                doc_name = _normalize_document_name(speech_name) if speech_name.startswith("prot-") else speech_name
+                loc = self._store.location_for_document_name(doc_name)
+                if loc is not None:
+                    logger.warning(
+                        f"speech {speech_name!r}: speech_id lookup failed, resolved via document_name; "
+                        "possible DTM/prebuilt sequence number mismatch"
+                    )
+
             if loc is None:
                 return Speech(
                     {
                         "name": f"speech {speech_name} not found",
-                        "error": f"{doc_name} not in bootstrap_corpus",
+                        "error": f"{speech_name} not in bootstrap_corpus",
                     }
                 )
             feather_file, feather_row = loc
@@ -219,19 +314,26 @@ class SpeechRepositoryFast:
     # Internals
     # ------------------------------------------------------------------
 
-    def _resolve_to_document_name(self, key: str) -> str:
-        """Normalise any string key to a bootstrap_corpus document_name (``prot-*_N``)."""
-        if key.startswith("prot-"):
-            return _normalize_document_name(key)
+    def _resolve_to_speech_id(self, key: str) -> str | None:
+        """Resolve any key to the XML-native speech_id for stable prebuilt lookup.
+
+        - ``i-*`` keys are speech_ids directly.
+        - ``prot-*`` document_names are resolved via the DTM document_name→speech_id map;
+          zero-padding normalisation is attempted when the raw key misses.
+        - Integer strings are resolved via the DTM document_index row.
+        """
         if key.startswith("i-"):
-            doc_id: int | None = self._speech_id2id.get(key)
-            if doc_id is not None:
-                raw = str(self._document_index.loc[doc_id, "document_name"])
-                return _normalize_document_name(raw)
+            return key
+        if key.startswith("prot-"):
+            sid = self._document_name2speech_id.get(key)
+            if sid is None:
+                sid = self._document_name2speech_id.get(_normalize_document_name(key))
+            return sid or None
         if key.isdigit():
-            raw = str(self._document_index.loc[int(key), "document_name"])
-            return _normalize_document_name(raw)
-        return key
+            doc_id = int(key)
+            if doc_id in self._document_index.index:
+                return str(self._document_index.loc[doc_id, "speech_id"] or "") or None
+        return None
 
     def _row_to_speech(self, row: dict[str, Any]) -> Speech:
         """Build a :class:`Speech` from a pre-built Feather row dict."""
