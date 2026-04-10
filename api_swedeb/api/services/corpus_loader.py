@@ -18,7 +18,7 @@ import pandas as pd
 from api_swedeb.core import codecs as md
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_dtm_corpus, load_speech_index
-from api_swedeb.core.speech_repository_fast import SpeechRepository
+from api_swedeb.core.speech_repository import SpeechRepository
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.core.utility import Lazy
 from penelope.corpus import IVectorizedCorpus

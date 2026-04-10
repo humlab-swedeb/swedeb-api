@@ -8,7 +8,7 @@ import pytest
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigStore
-from api_swedeb.core.speech_repository_fast import SpeechRepository
+from api_swedeb.core.speech_repository import SpeechRepository
 
 
 class TestCorpusLoaderInitialization:

@@ -22,7 +22,7 @@ import pytest
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 from api_swedeb.core.load import load_speech_index
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_repository_fast import SpeechRepository
+from api_swedeb.core.speech_repository import SpeechRepository
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 
