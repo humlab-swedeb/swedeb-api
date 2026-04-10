@@ -66,8 +66,6 @@ def test_kwic_speech_id_in_search_results(fastapi_client):
     first_result = data["kwic_list"][0]
 
     assert set(first_result.keys()) == EXPECTED_COLUMNS
-    # FIXME: `title` is None in this response (add as decode if needed)
-    # assert all(x is not None for x in first_result.values())
 
 
 @pytest.mark.asyncio
