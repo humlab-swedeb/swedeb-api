@@ -77,11 +77,21 @@ class CorpusLoader:
         )
         self.__lazy_repository: Lazy[SpeechRepository] = Lazy(self._load_repository)
         self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_document_index)
+        self.__lazy_prebuilt_speech_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_prebuilt_speech_index)
 
     def _load_document_index(self) -> pd.DataFrame:
         """Load and cache the document index."""
         self._cached_document_index = load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
         return self._cached_document_index
+
+    def _load_prebuilt_speech_index(self) -> pd.DataFrame:
+        """Load the prebuilt speech_index.feather — fully decoded, indexed by speech_id."""
+        from pathlib import Path  # pylint: disable=import-outside-toplevel
+
+        path = Path(self.speech_bootstrap_corpus_folder) / "speech_index.feather"
+        if not path.is_file():
+            raise FileNotFoundError(f"prebuilt speech_index.feather not found: {path}")
+        return pd.read_feather(str(path)).set_index("speech_id")
 
     def _load_repository(self) -> SpeechRepository:
         """Instantiate the prebuilt speech repository backend."""
@@ -136,6 +146,15 @@ class CorpusLoader:
     def repository(self) -> SpeechRepository:
         """Get the speech repository (lazy-loaded on first access)."""
         return self.__lazy_repository.value
+
+    @property
+    def prebuilt_speech_index(self) -> pd.DataFrame:
+        """Get the prebuilt speech_index.feather (lazy-loaded, indexed by speech_id).
+
+        Contains fully decoded speaker metadata (name, gender, party, office, wiki_id)
+        materialised at build time — no codec lookups required at query time.
+        """
+        return self.__lazy_prebuilt_speech_index.value
 
     @cached_property
     def decoded_persons(self) -> pd.DataFrame:
