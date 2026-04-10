@@ -72,11 +72,11 @@ def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str
     "word,target,p_show,filter_opts,expected_words",
     [
         (
-            ["kärnkraft|kärnvapen", "och"],
+            ["kärnkraft|kärnvapen", "."],
             "word",
             "word",
             {},
-            ["kärnkraft och", "kärnvapen och"],
+            ["kärnkraft .", "kärnvapen ."],
         ),
         (
             ["debatt"],
