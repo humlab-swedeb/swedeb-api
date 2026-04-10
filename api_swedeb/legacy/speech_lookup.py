@@ -187,26 +187,28 @@ class SpeechTextRepository:
             return Speech({"name": f"speech {speech_name}", "error": str(ex)})
         return self._build_speech(speech_name, metadata, utterances)
 
-    def speeches_batch(self, document_ids: Iterable[int]) -> Generator[tuple[int, Speech], None, None]:
-        """Yield document_id and speech pairs, opening each protocol ZIP at most once."""
-        by_protocol: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    def speeches_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, Speech], None, None]:
+        """Yield ``(speech_id, Speech)`` pairs, opening each protocol ZIP at most once."""
+        by_protocol: dict[str, list[tuple[str, str]]] = defaultdict(list)
 
-        for doc_id in document_ids:
-            try:
-                doc_name: str = str(self.document_index.loc[int(doc_id), "document_name"])
-                by_protocol[doc_name.split("_")[0]].append((int(doc_id), doc_name))
-            except KeyError:
-                yield doc_id, Speech({"name": f"speech {doc_id} not found", "error": "not in index"})
+        for speech_id in speech_ids:
+            key_index = self.speech_id2id.get(speech_id)
+            if key_index is None:
+                yield speech_id, Speech({"name": f"speech {speech_id} not found", "error": "not in index"})
+                continue
+
+            doc_name: str = str(self.document_index.loc[key_index, "document_name"])
+            by_protocol[doc_name.split("_")[0]].append((speech_id, doc_name))
 
         for protocol_name, id_name_pairs in by_protocol.items():
             try:
                 metadata, utterances = self.source.load(protocol_name)
             except FileNotFoundError as ex:
-                for doc_id, doc_name in id_name_pairs:
-                    yield doc_id, Speech({"name": f"speech {doc_name} not found", "error": str(ex)})
+                for speech_id, doc_name in id_name_pairs:
+                    yield speech_id, Speech({"name": f"speech {doc_name} not found", "error": str(ex)})
                 continue
-            for doc_id, doc_name in id_name_pairs:
-                yield doc_id, self._build_speech(doc_name, metadata, utterances)
+            for speech_id, doc_name in id_name_pairs:
+                yield speech_id, self._build_speech(doc_name, metadata, utterances)
 
     def to_text(self, speech: dict) -> str:
         paragraphs: list[str] = speech.get("paragraphs", [])

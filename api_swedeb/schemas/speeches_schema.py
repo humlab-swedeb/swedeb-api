@@ -17,7 +17,6 @@ class SpeechesResultItem(BaseModel):
     chamber_abbrev: str | None = Field(None, description="Chamber of speech")
     speech_id: str | None = Field(None, description="Unique id of speech")
     wiki_id: str | None = Field(None, description="Wiki id of speaker")
-    document_id: int | None = Field(None, description="Document system id")
 
 
 class SpeechesResult(BaseModel):

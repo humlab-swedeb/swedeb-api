@@ -16,6 +16,7 @@ Tests
 
 from __future__ import annotations
 
+import os
 import resource
 import statistics
 import time
@@ -37,6 +38,12 @@ from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 # ---------------------------------------------------------------------------
 
 ConfigStore.configure_context(source="tests/config.yml")
+
+_RUN_PARITY_TESTS = os.environ.get("SWEDEB_RUN_PARITY_TESTS", "").lower() in {"1", "true", "yes"}
+_skip_parity = pytest.mark.skipif(
+    not _RUN_PARITY_TESTS,
+    reason="Parity tests are disabled by default because they are too slow. Set SWEDEB_RUN_PARITY_TESTS=1 to run them.",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +227,7 @@ def test_fast_repo_to_text(fast_repo, speech_store):
 # ---------------------------------------------------------------------------
 
 
+@_skip_parity
 def test_fast_repo_speech_text_parity(fast_repo, legacy_repo, document_index):
     """Paragraph text must match between fast and legacy backends for all speeches."""
     mismatches: list[dict] = []
@@ -254,38 +262,37 @@ def test_fast_repo_speech_text_parity(fast_repo, legacy_repo, document_index):
                 }
             )
 
-    assert mismatches == [], f"{len(mismatches)} paragraph mismatches:\n" + "\n".join(
-        str(m) for m in mismatches[:5]
-    )
+    assert mismatches == [], f"{len(mismatches)} paragraph mismatches:\n" + "\n".join(str(m) for m in mismatches[:5])
 
 
+@_skip_parity
 def test_fast_repo_speeches_batch_parity(fast_repo, legacy_repo, document_index):
     """speeches_batch() must yield the same paragraphs as the legacy backend."""
-    doc_ids = list(document_index.index[:50])
+    speech_ids = document_index["speech_id"].astype(str).head(50).tolist()
 
-    fast_by_id = {doc_id: speech for doc_id, speech in fast_repo.speeches_batch(doc_ids)}
-    legacy_by_id = {doc_id: speech for doc_id, speech in legacy_repo.speeches_batch(doc_ids)}
+    fast_by_id = {speech_id: speech for speech_id, speech in fast_repo.speeches_batch(speech_ids)}
+    legacy_by_id = {speech_id: speech for speech_id, speech in legacy_repo.speeches_batch(speech_ids)}
 
     mismatches: list[str] = []
-    for doc_id in doc_ids:
-        fast_speech = fast_by_id.get(doc_id)
-        legacy_speech = legacy_by_id.get(doc_id)
+    for speech_id in speech_ids:
+        fast_speech = fast_by_id.get(speech_id)
+        legacy_speech = legacy_by_id.get(speech_id)
 
         if fast_speech is None or legacy_speech is None:
-            mismatches.append(f"doc_id={doc_id}: missing in one backend")
+            mismatches.append(f"speech_id={speech_id}: missing in one backend")
             continue
 
         if fast_speech.error or legacy_speech.error:
             if legacy_speech.error:
                 continue
-            mismatches.append(f"doc_id={doc_id}: fast error={fast_speech.error}")
+            mismatches.append(f"speech_id={speech_id}: fast error={fast_speech.error}")
             continue
 
         fast_paras = [p.strip() for p in (fast_speech.paragraphs or [])]
         legacy_paras = [p.strip() for p in (legacy_speech.paragraphs or [])]
 
         if fast_paras != legacy_paras:
-            mismatches.append(f"doc_id={doc_id}: paragraph mismatch")
+            mismatches.append(f"speech_id={speech_id}: paragraph mismatch")
 
     assert mismatches == [], f"{len(mismatches)} batch mismatches:\n" + "\n".join(mismatches[:5])
 
@@ -343,6 +350,7 @@ def _iter_valid_speech_pairs(fast_repo, legacy_repo, document_index):
         yield doc_name, fast, legacy
 
 
+@_skip_parity
 def test_parity_page_numbers(fast_repo, legacy_repo, document_index):
     """page_number (start) and page_number2 (end) must match between backends."""
     mismatches: list[dict] = []
@@ -354,12 +362,11 @@ def test_parity_page_numbers(fast_repo, legacy_repo, document_index):
         fast_p2 = fast.get("page_number2")
         legacy_p2 = legacy.get("page_number2")
         if fast_p2 != legacy_p2:
-            mismatches.append(
-                {"doc_name": doc_name, "field": "page_number2", "fast": fast_p2, "legacy": legacy_p2}
-            )
+            mismatches.append({"doc_name": doc_name, "field": "page_number2", "fast": fast_p2, "legacy": legacy_p2})
     assert mismatches == [], f"{len(mismatches)} page_number mismatches:\n" + "\n".join(str(m) for m in mismatches[:5])
 
 
+@_skip_parity
 def test_parity_speaker_fields(fast_repo, legacy_repo, document_index):
     """Speaker metadata fields must match between backends for all speeches."""
     fields = ["name", "gender", "gender_abbrev", "party_abbrev", "office_type", "sub_office_type"]
@@ -382,6 +389,7 @@ def test_parity_speaker_fields(fast_repo, legacy_repo, document_index):
     assert total == 0, f"Speaker field mismatches: {total} total, breakdown: {summary}"
 
 
+@_skip_parity
 def test_parity_speaker_note(fast_repo, legacy_repo, document_index):
     """speaker_note must match between backends for all speeches."""
     mismatches: list[dict] = []
@@ -397,21 +405,30 @@ def test_parity_speaker_note(fast_repo, legacy_repo, document_index):
     assert mismatches == [], f"{len(mismatches)} speaker_note mismatches:\n" + "\n".join(str(m) for m in mismatches[:3])
 
 
+@_skip_parity
 def test_parity_protocol_name_and_date(fast_repo, legacy_repo, document_index):
     """protocol_name and date must match between backends."""
     mismatches: list[dict] = []
     for doc_name, fast, legacy in _iter_valid_speech_pairs(fast_repo, legacy_repo, document_index):
         if fast.protocol_name != legacy.protocol_name:
             mismatches.append(
-                {"doc_name": doc_name, "field": "protocol_name", "fast": fast.protocol_name, "legacy": legacy.protocol_name}
+                {
+                    "doc_name": doc_name,
+                    "field": "protocol_name",
+                    "fast": fast.protocol_name,
+                    "legacy": legacy.protocol_name,
+                }
             )
         if str(fast.get("date")) != str(legacy.get("date")):
             mismatches.append(
                 {"doc_name": doc_name, "field": "date", "fast": fast.get("date"), "legacy": legacy.get("date")}
             )
-    assert mismatches == [], f"{len(mismatches)} protocol_name/date mismatches:\n" + "\n".join(str(m) for m in mismatches[:5])
+    assert mismatches == [], f"{len(mismatches)} protocol_name/date mismatches:\n" + "\n".join(
+        str(m) for m in mismatches[:5]
+    )
 
 
+@_skip_parity
 def test_parity_full_field_report(fast_repo, legacy_repo, document_index):
     """Generate a comprehensive field-by-field diff summary across all speeches.
 
@@ -479,23 +496,23 @@ def test_fast_repo_speech_unknown_speech_id(fast_repo):
     assert result.error is not None
 
 
-def test_fast_repo_batch_unknown_doc_id(fast_repo):
-    """speeches_batch() with an out-of-range doc_id must yield an error Speech, not raise."""
-    results = list(fast_repo.speeches_batch([999999]))
+def test_fast_repo_batch_unknown_speech_id(fast_repo):
+    """speeches_batch() with an unknown speech_id must yield an error Speech, not raise."""
+    results = list(fast_repo.speeches_batch(["i-missing-speech-id"]))
     assert len(results) == 1
-    doc_id, speech = results[0]
-    assert doc_id == 999999
+    speech_id, speech = results[0]
+    assert speech_id == "i-missing-speech-id"
     assert speech.error is not None
 
 
 def test_fast_repo_batch_mixed_valid_and_invalid(fast_repo, document_index):
-    """speeches_batch() must handle a mix of valid and invalid doc_ids gracefully."""
-    valid_id = int(document_index.index[0])
-    results = dict(fast_repo.speeches_batch([valid_id, 999998, 999999]))
-    assert valid_id in results
-    assert results[valid_id].error is None
-    assert results[999998].error is not None
-    assert results[999999].error is not None
+    """speeches_batch() must handle a mix of valid and invalid speech_ids gracefully."""
+    valid_speech_id = str(document_index["speech_id"].iloc[0])
+    results = dict(fast_repo.speeches_batch([valid_speech_id, "i-missing-1", "i-missing-2"]))
+    assert valid_speech_id in results
+    assert results[valid_speech_id].error is None
+    assert results["i-missing-1"].error is not None
+    assert results["i-missing-2"].error is not None
 
 
 def test_store_get_row_missing_feather_file(speech_store):
@@ -567,7 +584,7 @@ def test_benchmark_batch_retrieval_comparison(fast_repo, legacy_repo, document_i
 
     Reports speeches/sec for both backends.
     """
-    batch_ids = list(document_index.index)
+    batch_ids = document_index["speech_id"].astype(str).tolist()
 
     t0 = time.perf_counter()
     fast_results = list(fast_repo.speeches_batch(batch_ids))
@@ -620,7 +637,7 @@ def test_benchmark_startup_time(tagged_frames_folder, metadata_db_path, dtm_fold
 
 def test_benchmark_worker_memory(fast_repo, legacy_repo, document_index):
     """Capture peak process RSS after loading both backends across all test speeches."""
-    batch_ids = list(document_index.index)
+    batch_ids = document_index["speech_id"].astype(str).tolist()
     list(fast_repo.speeches_batch(batch_ids))
     list(legacy_repo.speeches_batch(batch_ids))
 

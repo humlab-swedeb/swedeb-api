@@ -106,13 +106,12 @@ class SearchService:
         speech: Speech = self._loader.repository.speech(speech_name=document_name)
         return speech
 
-    def get_speeches_batch(self, document_ids: Iterable[int]) -> Generator[tuple[int, Speech], None, None]:
-        """Yield (document_id, Speech) pairs grouped by protocol for efficient ZIP access.
+    def get_speeches_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, Speech], None, None]:
+        """Yield ``(speech_id, Speech)`` pairs grouped by protocol for efficient retrieval.
 
-        Each protocol ZIP is opened at most once, regardless of how many speeches
-        from that protocol are in document_ids.
+        The batch path uses corpus-stable ``speech_id`` values rather than the DTM-specific ``document_id``.
         """
-        return self._loader.repository.speeches_batch(document_ids)
+        return self._loader.repository.speeches_batch(speech_ids)
 
     def get_speaker(self, document_name: str) -> str:
         """Get speaker name for a given document.

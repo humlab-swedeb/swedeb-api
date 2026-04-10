@@ -1,7 +1,6 @@
 """Unit tests for the archived legacy speech lookup backend."""
 
 from unittest.mock import Mock, patch
-import zipfile
 
 import pandas as pd
 import pytest
@@ -42,6 +41,7 @@ def create_mock_service():
     )
     return service
 
+
 # def test_index_diffs():
 #     """Verify that document index in text corpus is the same as the one in vectorized corpus."""
 
@@ -50,7 +50,7 @@ def create_mock_service():
 #     with zipfile.ZipFile(zip_filename, 'r') as zip_file:
 #         with zip_file.open("document_index.csv") as f:
 #             df_text_corpus: pd.DataFrame = pd.read_csv(f, sep="\t", index_col=0)
-    
+
 #     # Load DRM document index using the loader
 #     dtm_filename = "data/v1.4.1/dtm/text/text_document_index.prepped.feather"
 #     df_dtm_corpus: pd.DataFrame = pd.read_feather(dtm_filename, dtype_backend="pyarrow")
@@ -59,8 +59,9 @@ def create_mock_service():
 
 
 #     df_diff = df_text_corpus[~df_text_corpus.u_id.isin(df_dtm_corpus.speech_id)]
-    
+
 #     assert True
+
 
 class TestSpeechTextService:
     """Tests for SpeechTextService class."""
@@ -1335,6 +1336,7 @@ class TestSpeechTextRepository:
             {
                 "document_id": [1, 2, 3],
                 "document_name": ["prot-1234_1", "prot-1234_2", "prot-5678_1"],
+                "speech_id": ["i-001", "i-002", "i-003"],
             }
         ).set_index("document_id", drop=False)
 
@@ -1343,18 +1345,18 @@ class TestSpeechTextRepository:
         )
         repo._build_speech = Mock(side_effect=[Speech({"paragraphs": ["one"]}), Speech({"paragraphs": ["two"]}), Speech({"paragraphs": ["three"]})])  # type: ignore[attr-defined]
 
-        result = list(repo.speeches_batch([1, 2, 3]))
+        result = list(repo.speeches_batch(["i-001", "i-002", "i-003"]))
 
-        assert [doc_id for doc_id, _ in result] == [1, 2, 3]
+        assert [speech_id for speech_id, _ in result] == ["i-001", "i-002", "i-003"]
         assert mock_loader.load.call_count == 2
         mock_loader.load.assert_any_call("prot-1234")
         mock_loader.load.assert_any_call("prot-5678")
 
-    def test_speeches_batch_yields_not_found_for_missing_document_id(self):
-        """Test speeches_batch yields an error speech for missing document ids."""
+    def test_speeches_batch_yields_not_found_for_missing_speech_id(self):
+        """Test speeches_batch yields an error speech for missing speech ids."""
         mock_loader = Mock(spec_set=Loader)
         mock_codecs = Mock()
-        df = pd.DataFrame({"document_id": [1], "document_name": ["prot-1234_1"]}).set_index(
+        df = pd.DataFrame({"document_id": [1], "document_name": ["prot-1234_1"], "speech_id": ["i-001"]}).set_index(
             "document_id", drop=False
         )
 
@@ -1362,10 +1364,10 @@ class TestSpeechTextRepository:
             source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
         )
 
-        result = list(repo.speeches_batch([999]))
+        result = list(repo.speeches_batch(["i-missing"]))
 
         assert len(result) == 1
-        assert result[0][0] == 999
+        assert result[0][0] == "i-missing"
         assert result[0][1].error == "not in index"
         mock_loader.load.assert_not_called()
 
@@ -1378,6 +1380,7 @@ class TestSpeechTextRepository:
             {
                 "document_id": [1, 2],
                 "document_name": ["prot-1234_1", "prot-1234_2"],
+                "speech_id": ["i-001", "i-002"],
             }
         ).set_index("document_id", drop=False)
 
@@ -1385,9 +1388,9 @@ class TestSpeechTextRepository:
             source=mock_loader, person_codecs=mock_codecs, document_index=df, service=create_mock_service()
         )
 
-        result = list(repo.speeches_batch([1, 2]))
+        result = list(repo.speeches_batch(["i-001", "i-002"]))
 
-        assert [doc_id for doc_id, _ in result] == [1, 2]
+        assert [speech_id for speech_id, _ in result] == ["i-001", "i-002"]
         assert all(speech.error == "missing archive" for _, speech in result)
         mock_loader.load.assert_called_once_with("prot-1234")
 

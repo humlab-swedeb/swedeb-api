@@ -28,7 +28,7 @@ class TestGetSpeechesDownloadResult:
 
         df = pd.DataFrame(
             {
-                "document_id": [101, 202],
+                "speech_id": ["i-101", "i-202"],
                 "name": ["Alice Andersson", "Bob Berg"],
             }
         )
@@ -37,8 +37,8 @@ class TestGetSpeechesDownloadResult:
         search_service.get_anforanden.return_value = df
         search_service.get_speeches_batch.return_value = iter(
             [
-                (101, Speech({"paragraphs": ["first speech"]})),
-                (202, Speech({"paragraphs": ["second speech", "continued"]})),
+                ("i-101", Speech({"paragraphs": ["first speech"]})),
+                ("i-202", Speech({"paragraphs": ["second speech", "continued"]})),
             ]
         )
 
@@ -51,19 +51,19 @@ class TestGetSpeechesDownloadResult:
         body = asyncio.run(_collect_streaming_response(response))
 
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
-            assert sorted(archive.namelist()) == ["Alice Andersson_101.txt", "Bob Berg_202.txt"]
-            assert archive.read("Alice Andersson_101.txt") == b"first speech"
-            assert archive.read("Bob Berg_202.txt") == b"second speech\ncontinued"
+            assert sorted(archive.namelist()) == ["Alice Andersson_i-101.txt", "Bob Berg_i-202.txt"]
+            assert archive.read("Alice Andersson_i-101.txt") == b"first speech"
+            assert archive.read("Bob Berg_i-202.txt") == b"second speech\ncontinued"
 
         commons.get_filter_opts.assert_called_once_with(True)
         search_service.get_anforanden.assert_called_once_with(selections={"year": (1970, 1971)})
-        search_service.get_speeches_batch.assert_called_once_with([101, 202])
+        search_service.get_speeches_batch.assert_called_once_with(["i-101", "i-202"])
 
     def test_streams_empty_zip_when_no_speeches_match(self):
         commons = MagicMock()
         commons.get_filter_opts.return_value = {}
 
-        df = pd.DataFrame({"document_id": pd.Series(dtype="int64"), "name": pd.Series(dtype="object")})
+        df = pd.DataFrame({"speech_id": pd.Series(dtype="object"), "name": pd.Series(dtype="object")})
 
         search_service = MagicMock()
         search_service.get_anforanden.return_value = df

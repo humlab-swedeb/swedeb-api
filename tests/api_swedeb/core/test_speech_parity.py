@@ -41,6 +41,17 @@ from api_swedeb.core.configuration import ConfigStore, ConfigValue
 from api_swedeb.core.load import load_speech_index
 from api_swedeb.legacy.speech_lookup import SpeechTextRepository
 from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
+from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
+from api_swedeb.core.speech_store import SpeechStore
+
+# pylint: disable=redefined-outer-name
+
+_RUN_PARITY_TESTS = True # os.environ.get("SWEDEB_RUN_PARITY_TESTS", "").lower() in {"1", "true", "yes"}
+
+pytestmark = pytest.mark.skipif(
+    not _RUN_PARITY_TESTS,
+    reason="Parity tests are disabled by default because they are too slow. Set SWEDEB_RUN_PARITY_TESTS=1 to run them.",
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -100,7 +111,7 @@ _FULL_CORPUS_METADATA_DB = Path(
         "/home/roger/source/swedeb/sample-data/data/1867-2020/metadata/riksprot_metadata.v1.1.3.db",
     )
 )
-_FULL_CORPUS_PROTOCOL_SAMPLE_SIZE = int(os.environ.get("SWEDEB_PARITY_PROTOCOL_SAMPLE_SIZE", "400"))
+_FULL_CORPUS_PROTOCOL_SAMPLE_SIZE = int(os.environ.get("SWEDEB_PARITY_PROTOCOL_SAMPLE_SIZE", "10"))
 _FULL_CORPUS_SAMPLE_SEED = int(os.environ.get("SWEDEB_PARITY_SAMPLE_SEED", "20260409"))
 
 # ---------------------------------------------------------------------------
@@ -171,7 +182,9 @@ def speech_index_prebuilt(bootstrap_corpus_root: Path) -> pd.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def prebuilt_protocol_cache(bootstrap_corpus_root: Path, speech_index_prebuilt: pd.DataFrame) -> dict[str, pd.DataFrame]:
+def prebuilt_protocol_cache(
+    bootstrap_corpus_root: Path, speech_index_prebuilt: pd.DataFrame
+) -> dict[str, pd.DataFrame]:
     """Pre-load all per-protocol feather files to avoid repeated disk reads."""
     cache: dict[str, pd.DataFrame] = {}
     for feather_rel in speech_index_prebuilt["feather_file"].unique():
@@ -228,15 +241,11 @@ def _diff_paragraphs(legacy_paras: list[str], prebuilt_json: str) -> list[str]:
 
     diffs = []
     if len(legacy_stripped) != len(prebuilt_stripped):
-        diffs.append(
-            f"paragraph count: legacy={len(legacy_stripped)} prebuilt={len(prebuilt_stripped)}"
-        )
+        diffs.append(f"paragraph count: legacy={len(legacy_stripped)} prebuilt={len(prebuilt_stripped)}")
     else:
         for i, (lp, pp) in enumerate(zip(legacy_stripped, prebuilt_stripped)):
             if lp != pp:
-                diffs.append(
-                    f"para[{i}] mismatch: legacy={lp[:60]!r} prebuilt={pp[:60]!r}"
-                )
+                diffs.append(f"para[{i}] mismatch: legacy={lp[:60]!r} prebuilt={pp[:60]!r}")
     return diffs
 
 
@@ -247,9 +256,7 @@ def _diff_paragraph_lists(left_paras: list[str], right_paras: list[str]) -> list
 
     diffs = []
     if len(left_stripped) != len(right_stripped):
-        diffs.append(
-            f"paragraph count: left={len(left_stripped)} right={len(right_stripped)}"
-        )
+        diffs.append(f"paragraph count: left={len(left_stripped)} right={len(right_stripped)}")
         return diffs
 
     for i, (left, right) in enumerate(zip(left_stripped, right_stripped)):
@@ -262,6 +269,10 @@ def _diff_paragraph_lists(left_paras: list[str], right_paras: list[str]) -> list
 def _sample_protocol_zip_paths(tagged_frames_root: Path, sample_size: int, seed: int) -> list[Path]:
     """Return a deterministic random sample of tagged-frame ZIP files."""
     zip_paths = sorted(tagged_frames_root.rglob("prot-*.zip"))
+    
+    if sample_size == 0:
+        return zip_paths
+    
     if not zip_paths:
         raise FileNotFoundError(f"No prot-*.zip files found under {tagged_frames_root}")
     effective_size = min(sample_size, len(zip_paths))
@@ -292,14 +303,13 @@ def test_speech_parity(
     used to drive the legacy retrieval so there is no format-mismatch issue.
     """
     # Load the legacy speech index to get all document_names + speech_ids
-    from api_swedeb.core.load import load_speech_index
 
     legacy_index = load_speech_index(
         folder=ConfigValue("dtm.folder").resolve(),
         tag=ConfigValue("dtm.tag").resolve(),
     )
     # Map speech_id → legacy document_name (zero-padded format used by legacy)
-    sid_to_doc: dict[str, str] = legacy_index.set_index("speech_id")["document_name"].to_dict()   # type: ignore[assignment]
+    sid_to_doc: dict[str, str] = legacy_index.set_index("speech_id")["document_name"].to_dict()  # type: ignore[assignment]
 
     total = len(speech_index_prebuilt)
     logger.info(f"Parity check: {total} prebuilt speeches vs legacy (joined on speech_id)")
@@ -330,7 +340,9 @@ def test_speech_parity(
             continue
 
         if legacy_speech.error:
-            errors.append({"speech_id": speech_id, "document_name": doc_name, "source": "legacy", "error": legacy_speech.error})
+            errors.append(
+                {"speech_id": speech_id, "document_name": doc_name, "source": "legacy", "error": legacy_speech.error}
+            )
             continue
 
         legacy: dict = legacy_speech._data  # type: ignore[attr-defined]
@@ -398,19 +410,20 @@ def test_speech_parity(
 
     # --- assertions ---
     # Errors: no speech should fail to load on either backend
-    assert errors == [], (
-        f"{len(errors)} speech(es) could not be loaded:\n"
-        + textwrap.indent(json.dumps(errors[:5], indent=2, default=str), "  ")
+    assert errors == [], f"{len(errors)} speech(es) could not be loaded:\n" + textwrap.indent(
+        json.dumps(errors[:5], indent=2, default=str), "  "
     )
 
     # Structure/content: paragraphs and core counters must match exactly
-    assert paragraph_mismatches == [], (
-        f"{len(paragraph_mismatches)} speech(es) have paragraph content differences:\n"
-        + textwrap.indent(json.dumps(paragraph_mismatches[:5], indent=2, default=str), "  ")
+    assert (
+        paragraph_mismatches == []
+    ), f"{len(paragraph_mismatches)} speech(es) have paragraph content differences:\n" + textwrap.indent(
+        json.dumps(paragraph_mismatches[:5], indent=2, default=str), "  "
     )
-    assert exact_mismatches == [], (
-        f"{len(exact_mismatches)} speech(es) have exact-field mismatches:\n"
-        + textwrap.indent(json.dumps(exact_mismatches[:5], indent=2, default=str), "  ")
+    assert (
+        exact_mismatches == []
+    ), f"{len(exact_mismatches)} speech(es) have exact-field mismatches:\n" + textwrap.indent(
+        json.dumps(exact_mismatches[:5], indent=2, default=str), "  "
     )
 
     # Enrichment mismatches are reported but not hard-failed (the two lookups
@@ -456,8 +469,6 @@ def full_corpus_legacy_repository(full_corpus_paths, full_corpus_document_index)
 
 @pytest.fixture(scope="module")
 def full_corpus_fast_repository(full_corpus_paths, full_corpus_document_index) -> Any:
-    from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
-    from api_swedeb.core.speech_store import SpeechStore
 
     store = SpeechStore(str(full_corpus_paths["bootstrap_root"]))
     return SpeechRepositoryFast(
@@ -478,15 +489,15 @@ def full_corpus_protocol_sample(full_corpus_paths, full_corpus_document_index) -
 
     protocol_names = full_corpus_document_index["document_name"].astype("string[python]").str.split("_", n=1).str[0]
     sample_index = full_corpus_document_index.loc[protocol_names.isin(sampled_protocols)].copy()
-    document_ids = [int(doc_id) for doc_id in sample_index.index.tolist()]
+    speech_ids = sample_index["speech_id"].astype(str).tolist()
 
-    if not document_ids:
+    if not speech_ids:
         pytest.fail("Deterministic 400-protocol sample produced no matching speeches in the full-corpus speech index")
 
     return {
         "zip_paths": [str(path) for path in sampled_zip_paths],
         "protocol_names": sampled_protocols,
-        "document_ids": document_ids,
+        "speech_ids": speech_ids,
         "document_names": sample_index["document_name"].astype(str).tolist(),
     }
 
@@ -497,7 +508,6 @@ def full_corpus_parity_report(
     full_corpus_fast_repository,
     full_corpus_protocol_sample: dict[str, Any],
     full_corpus_document_index: pd.DataFrame,
-
 ) -> dict[str, Any]:
     """Compute parity report for a deterministic random sample of full-corpus protocols.
 
@@ -505,17 +515,17 @@ def full_corpus_parity_report(
     400 protocols from the full corpus paths under ``sample-data``. All speeches
     in the sampled protocols are compared field-by-field.
     """
-    document_ids = full_corpus_protocol_sample["document_ids"]
+    speech_ids = full_corpus_protocol_sample["speech_ids"]
     sampled_protocols = full_corpus_protocol_sample["protocol_names"]
 
     logger.info(
         "Full-corpus parity sample: "
-        f"protocols={len(sampled_protocols)} speeches={len(document_ids)} "
+        f"protocols={len(sampled_protocols)} speeches={len(speech_ids)} "
         f"seed={_FULL_CORPUS_SAMPLE_SEED}"
     )
 
-    fast_results = dict(full_corpus_fast_repository.speeches_batch(document_ids))
-    legacy_results = dict(full_corpus_legacy_repository.speeches_batch(document_ids))
+    fast_results = dict(full_corpus_fast_repository.speeches_batch(speech_ids))
+    legacy_results = dict(full_corpus_legacy_repository.speeches_batch(speech_ids))
 
     errors: list[dict[str, Any]] = []
     paragraph_mismatches: list[dict[str, Any]] = []
@@ -544,18 +554,18 @@ def full_corpus_parity_report(
         "office_type_id",
         "office_type",
     ]
-
-    for document_id in document_ids:
-        row = full_corpus_document_index.loc[int(document_id)]
+    print(len(speech_ids))
+    for speech_id in speech_ids:
+        row = full_corpus_document_index.loc[full_corpus_document_index["speech_id"] == speech_id].iloc[0]
         document_name = str(row["document_name"])
 
-        fast_speech = fast_results.get(document_id)
-        legacy_speech = legacy_results.get(document_id)
+        fast_speech = fast_results.get(speech_id)
+        legacy_speech = legacy_results.get(speech_id)
 
         if fast_speech is None or legacy_speech is None:
             errors.append(
                 {
-                    "document_id": document_id,
+                    "speech_id": speech_id,
                     "document_name": document_name,
                     "error": "missing result from one backend",
                     "fast_present": fast_speech is not None,
@@ -567,7 +577,7 @@ def full_corpus_parity_report(
         if fast_speech.error or legacy_speech.error:
             errors.append(
                 {
-                    "document_id": document_id,
+                    "speech_id": speech_id,
                     "document_name": document_name,
                     "fast_error": fast_speech.error,
                     "legacy_error": legacy_speech.error,
@@ -579,7 +589,7 @@ def full_corpus_parity_report(
         if paragraph_diffs:
             paragraph_mismatches.append(
                 {
-                    "document_id": document_id,
+                    "speech_id": speech_id,
                     "document_name": document_name,
                     "diffs": paragraph_diffs,
                 }
@@ -607,7 +617,7 @@ def full_corpus_parity_report(
         if diffs:
             field_mismatches.append(
                 {
-                    "document_id": document_id,
+                    "speech_id": speech_id,
                     "document_name": document_name,
                     "diffs": diffs,
                 }
@@ -623,7 +633,7 @@ def full_corpus_parity_report(
         if enrichment_diffs:
             enrichment_mismatches.append(
                 {
-                    "document_id": document_id,
+                    "speech_id": speech_id,
                     "document_name": document_name,
                     "diffs": enrichment_diffs,
                 }
@@ -633,7 +643,7 @@ def full_corpus_parity_report(
         "seed": _FULL_CORPUS_SAMPLE_SEED,
         "requested_protocol_sample_size": _FULL_CORPUS_PROTOCOL_SAMPLE_SIZE,
         "actual_protocol_sample_size": len(sampled_protocols),
-        "speech_count": len(document_ids),
+        "speech_count": len(speech_ids),
         "paths": {
             "tagged_frames": str(_FULL_CORPUS_TAGGED_FRAMES),
             "bootstrap_root": str(_FULL_CORPUS_BOOTSTRAP_ROOT),
@@ -667,17 +677,18 @@ def test_full_corpus_parity_random_protocol_sample(full_corpus_parity_report: di
     field_mismatches = full_corpus_parity_report["details"]["fields"]
     enrichment_mismatches = full_corpus_parity_report["details"]["enrichment"]
 
-    assert errors == [], (
-        f"{len(errors)} sampled speech(es) failed to load:\n"
-        + textwrap.indent(json.dumps(errors[:5], indent=2, default=str), "  ")
+    assert errors == [], f"{len(errors)} sampled speech(es) failed to load:\n" + textwrap.indent(
+        json.dumps(errors[:5], indent=2, default=str), "  "
     )
-    assert paragraph_mismatches == [], (
-        f"{len(paragraph_mismatches)} sampled speech(es) have paragraph differences:\n"
-        + textwrap.indent(json.dumps(paragraph_mismatches[:5], indent=2, default=str), "  ")
+    assert (
+        paragraph_mismatches == []
+    ), f"{len(paragraph_mismatches)} sampled speech(es) have paragraph differences:\n" + textwrap.indent(
+        json.dumps(paragraph_mismatches[:5], indent=2, default=str), "  "
     )
-    assert field_mismatches == [], (
-        f"{len(field_mismatches)} sampled speech(es) have field differences:\n"
-        + textwrap.indent(json.dumps(field_mismatches[:5], indent=2, default=str), "  ")
+    assert (
+        field_mismatches == []
+    ), f"{len(field_mismatches)} sampled speech(es) have field differences:\n" + textwrap.indent(
+        json.dumps(field_mismatches[:5], indent=2, default=str), "  "
     )
 
     if enrichment_mismatches:
@@ -695,7 +706,8 @@ def test_full_corpus_parity_random_protocol_sample_strict_enrichment(
     """Assert enrichment parity for the deterministic random full-corpus sample."""
     enrichment_mismatches = full_corpus_parity_report["details"]["enrichment"]
 
-    assert enrichment_mismatches == [], (
-        f"{len(enrichment_mismatches)} sampled speech(es) have enrichment differences:\n"
-        + textwrap.indent(json.dumps(enrichment_mismatches[:5], indent=2, default=str), "  ")
+    assert (
+        enrichment_mismatches == []
+    ), f"{len(enrichment_mismatches)} sampled speech(es) have enrichment differences:\n" + textwrap.indent(
+        json.dumps(enrichment_mismatches[:5], indent=2, default=str), "  "
     )

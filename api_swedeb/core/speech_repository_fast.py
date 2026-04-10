@@ -164,30 +164,25 @@ class SpeechRepositoryFast:
         except Exception as ex:  # pylint: disable=broad-except
             return Speech({"name": f"speech {speech_name}", "error": str(ex)})
 
-    def speeches_batch(
-        self, document_ids: Iterable[int]
-    ) -> Generator[tuple[int, Speech], None, None]:
-        """Yield (document_id, Speech) pairs batching reads by feather file.
+    def speeches_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, Speech], None, None]:
+        """Yield ``(speech_id, Speech)`` pairs batching reads by feather file.
 
         Each protocol Feather file is loaded at most once per batch, regardless
-        of how many speeches from that protocol are in *document_ids*.
-
-        Key resolution uses ``speech_id`` from the legacy document_index (more
-        stable than ``document_name`` which uses different zero-padding between
-        the legacy index and the bootstrap_corpus).
+        of how many speeches from that protocol are in *speech_ids*.
         """
-        by_file: dict[str, list[tuple[int, int]]] = {}
+        by_file: dict[str, list[tuple[str, int]]] = {}
 
-        for doc_id in document_ids:
-            try:
-                row = self._document_index.loc[int(doc_id)]
-            except KeyError:
-                yield doc_id, Speech({"name": f"speech {doc_id} not found", "error": "not in index"})
+        for speech_id in speech_ids:
+            key_index = self._speech_id2id.get(speech_id)
+            if key_index is None:
+                yield speech_id, Speech({"name": f"speech {speech_id} not found", "error": "not in index"})
                 continue
 
+            row = self._document_index.loc[int(key_index)]
+
             # Prefer speech_id lookup (stable; avoids zero-padding mismatch)
-            speech_id = str(row.get("speech_id") or "")
-            loc = self._store.location_for_speech_id(speech_id) if speech_id else None
+            resolved_speech_id = str(row.get("speech_id") or "")
+            loc = self._store.location_for_speech_id(resolved_speech_id) if resolved_speech_id else None
 
             # Fallback: normalised document_name lookup
             if loc is None:
@@ -195,27 +190,25 @@ class SpeechRepositoryFast:
                 loc = self._store.location_for_document_name(doc_name)
 
             if loc is None:
-                yield doc_id, Speech(
+                yield speech_id, Speech(
                     {
-                        "name": f"speech {doc_id} not found",
+                        "name": f"speech {speech_id} not found",
                         "error": "not in bootstrap_corpus",
                     }
                 )
                 continue
 
             feather_file, feather_row = loc
-            by_file.setdefault(feather_file, []).append((doc_id, feather_row))
+            by_file.setdefault(feather_file, []).append((speech_id, feather_row))
 
         for feather_file, id_row_pairs in by_file.items():
             try:
-                for doc_id, feather_row in id_row_pairs:
+                for speech_id, feather_row in id_row_pairs:
                     row = self._store.get_row(feather_file, feather_row)
-                    yield doc_id, self._row_to_speech(row)
+                    yield speech_id, self._row_to_speech(row)
             except FileNotFoundError as ex:
-                for doc_id, _ in id_row_pairs:
-                    yield doc_id, Speech(
-                        {"name": f"feather {feather_file} not found", "error": str(ex)}
-                    )
+                for speech_id, _ in id_row_pairs:
+                    yield speech_id, Speech({"name": f"feather {feather_file} not found", "error": str(ex)})
 
     def to_text(self, speech: dict) -> str:
         """Join speech paragraphs into a whitespace-normalised string."""
@@ -258,7 +251,7 @@ class SpeechRepositoryFast:
             "document_name": rg("document_name"),
             "protocol_name": rg("protocol_name"),
             "date": rg("date"),
-            "u_id": rg("speech_id"),            # alias used by legacy callers
+            "u_id": rg("speech_id"),  # alias used by legacy callers
             "who": rg("speaker_id"),
             "speaker_id": rg("speaker_id"),
             "speaker_note_id": speaker_note_id,
@@ -280,8 +273,6 @@ class SpeechRepositoryFast:
             "sub_office_type_id": int(rg("sub_office_type_id") or 0),
             "sub_office_type": rg("sub_office_type") or "Okänt",
             # speaker_note from optional SQLite lookup
-            "speaker_note": self.speaker_note_id2note.get(
-                speaker_note_id, "(introductory note not found)"
-            ),
+            "speaker_note": self.speaker_note_id2note.get(speaker_note_id, "(introductory note not found)"),
         }
         return Speech(speech_dict)
