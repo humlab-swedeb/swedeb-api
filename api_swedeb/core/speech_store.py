@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.feather as feather
+from pyarrow import feather
 from loguru import logger
 
 
