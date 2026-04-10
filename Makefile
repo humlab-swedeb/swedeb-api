@@ -121,6 +121,25 @@ build-speech-corpus:
 
 .PHONY: build-speech-corpus
 
+TEST_TAGGED_FRAMES_FOLDER  = tests/test_data/$(CORPUS_VERSION)/tagged_frames/
+TEST_BOOTSTRAP_CORPUS_ROOT = tests/test_data/$(CORPUS_VERSION)/speeches/bootstrap_corpus
+TEST_METADATA_DB           = tests/test_data/metadata/riksprot_metadata.$(METADATA_VERSION).db
+
+build-test-speech-corpus:
+	@echo "Building bootstrap speech corpus..."
+	@echo "  Source : $(TEST_TAGGED_FRAMES_FOLDER)"
+	@echo "  Output : $(TEST_BOOTSTRAP_CORPUS_ROOT)"
+	@rm -rf "$(TEST_BOOTSTRAP_CORPUS_ROOT)"
+	@uv run python -m api_swedeb.workflows.scripts.build_speech_corpus_cli \
+		--tagged-frames   "$(TEST_TAGGED_FRAMES_FOLDER)" \
+		--output-root     "$(TEST_BOOTSTRAP_CORPUS_ROOT)" \
+		--corpus-version  "$(CORPUS_VERSION)" \
+		--metadata-version "$(METADATA_VERSION)" \
+		$(if $(TEST_METADATA_DB),--metadata-db "$(TEST_METADATA_DB)",) \
+		--num-processes 1
+
+.PHONY: build-test-speech-corpus
+
 clean-dev:
 	@rm -rf .pytest_cache build dist .eggs *.egg-info
 	@rm -rf .coverage coverage.xml htmlcov report.xml .tox
