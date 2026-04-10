@@ -87,11 +87,15 @@ class SpeakerLookups:
             self.person_to_gender_id: dict[str, int] = {}
             self.person_to_party_id: dict[str, int] = {}
 
-            for row in con.execute("SELECT person_id, name, gender_id, party_id FROM persons_of_interest"):
+            self.person_to_wiki_id: dict[str, str] = {}
+
+            for row in con.execute("SELECT person_id, name, gender_id, party_id, wiki_id FROM persons_of_interest"):
                 pid = row["person_id"]
                 self.person_to_name[pid] = row["name"] or UNKNOWN_STR
                 self.person_to_gender_id[pid] = int(row["gender_id"] or UNKNOWN_INT)
                 self.person_to_party_id[pid] = int(row["party_id"] or UNKNOWN_INT)
+                if row["wiki_id"]:
+                    self.person_to_wiki_id[pid] = row["wiki_id"]
 
             self.gender_id_to_gender: dict[int, str] = {}
             self.gender_id_to_abbrev: dict[int, str] = {}
@@ -258,5 +262,6 @@ def enrich_speech_rows(
         row["office_type"] = office_type
         row["sub_office_type_id"] = sub_office_type_id
         row["sub_office_type"] = sub_office_type
+        row["wiki_id"] = lookups.person_to_wiki_id.get(person_id, UNKNOWN_PERSON_ID)
 
     return rows, quality
