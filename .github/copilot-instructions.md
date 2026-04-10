@@ -51,7 +51,7 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - **Services**: All singletons (cached) with specific domain responsibilities
 - **Result Transformation**: Mappers convert service output (DataFrames) to API schemas
 - **Query Parameters**: `CommonQueryParams` dependency for common filters (year, party, gender, etc.)
-- **Speech Backend Rollout**: `CorpusLoader` still supports `speech.storage_backend = legacy|prebuilt`; prefer implementing new work only in the prebuilt path unless the task explicitly targets rollback/parity behavior
+- **Speech Backend**: `CorpusLoader` uses the prebuilt `bootstrap_corpus` backend exclusively; `api_swedeb/legacy/` is archived and debug-only.
 - **Endpoints**:
   - KWIC: Uses `KWICService.get_kwic()` + `kwic_to_api_model()` mapper
   - Word Trends: Uses `WordTrendsService` methods + word_trends mappers

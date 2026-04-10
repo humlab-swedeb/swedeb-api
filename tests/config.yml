@@ -27,7 +27,6 @@ vrt:
   tag: text
 
 speech:
-  storage_backend: legacy  # legacy | prebuilt
   bootstrap_corpus_folder: tests/test_data/v1.4.1/speeches/bootstrap_corpus
 
 kwic:

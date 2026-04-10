@@ -5,13 +5,13 @@ This service is responsible for the expensive I/O operations required to load:
 - Vectorized corpus (document-term matrices)
 - Person codecs (metadata mappings)
 - Document index (speech index)
-- Speech text repository
+- Speech repository (prebuilt bootstrap_corpus backend)
 
 All resources are lazily loaded and cached for performance.
 """
 
 from functools import cached_property
-from typing import Optional, Union
+from typing import Optional
 
 import pandas as pd
 
@@ -21,7 +21,6 @@ from api_swedeb.core.load import load_dtm_corpus, load_speech_index
 from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.core.utility import Lazy
-from api_swedeb.legacy import speech_lookup as sr
 from penelope.corpus import IVectorizedCorpus
 
 
@@ -39,6 +38,7 @@ class CorpusLoader:
         dtm_folder: Folder containing the document-term matrix files
         metadata_filename: Path to the metadata file containing person codecs
         tagged_corpus_folder: Folder containing the tagged corpus files
+        speech_bootstrap_corpus_folder: Root folder for the prebuilt bootstrap corpus
     """
 
     def __init__(
@@ -47,7 +47,6 @@ class CorpusLoader:
         dtm_folder: Optional[str] = None,
         metadata_filename: Optional[str] = None,
         tagged_corpus_folder: Optional[str] = None,
-        speech_storage_backend: Optional[str] = None,
         speech_bootstrap_corpus_folder: Optional[str] = None,
     ):
         """
@@ -58,16 +57,12 @@ class CorpusLoader:
             dtm_folder: Folder for document-term matrix (defaults from config)
             metadata_filename: Path to metadata file (defaults from config)
             tagged_corpus_folder: Folder for tagged corpus (defaults from config)
-            speech_storage_backend: "legacy" or "prebuilt" (defaults from config)
             speech_bootstrap_corpus_folder: Root folder for prebuilt corpus (defaults from config)
         """
         self.dtm_tag: str = dtm_tag or ConfigValue("dtm.tag").resolve()
         self.dtm_folder: str = dtm_folder or ConfigValue("dtm.folder").resolve()
         self.metadata_filename: str = metadata_filename or ConfigValue("metadata.filename").resolve()
         self.tagged_corpus_folder: str = tagged_corpus_folder or ConfigValue("vrt.folder").resolve()
-        self.speech_storage_backend: str = (
-            speech_storage_backend or ConfigValue("speech.storage_backend", default="legacy").resolve()
-        )
         self.speech_bootstrap_corpus_folder: str = (
             speech_bootstrap_corpus_folder or ConfigValue("speech.bootstrap_corpus_folder", default="").resolve()
         )
@@ -80,7 +75,7 @@ class CorpusLoader:
         self.__lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy[md.PersonCodecs](
             lambda: md.PersonCodecs().load(source=self.metadata_filename),
         )
-        self.__lazy_repository: Lazy[Union[sr.SpeechTextRepository, SpeechRepositoryFast]] = Lazy(self._load_repository)
+        self.__lazy_repository: Lazy[SpeechRepositoryFast] = Lazy(self._load_repository)
         self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_document_index)
 
     def _load_document_index(self) -> pd.DataFrame:
@@ -88,22 +83,16 @@ class CorpusLoader:
         self._cached_document_index = load_speech_index(folder=self.dtm_folder, tag=self.dtm_tag)
         return self._cached_document_index
 
-    def _load_repository(self) -> Union[sr.SpeechTextRepository, SpeechRepositoryFast]:
-        """Instantiate the configured repository backend (legacy or prebuilt)."""
-        if self.speech_storage_backend == "prebuilt" and self.speech_bootstrap_corpus_folder:
-            from loguru import logger  # pylint: disable=import-outside-toplevel
+    def _load_repository(self) -> SpeechRepositoryFast:
+        """Instantiate the prebuilt speech repository backend."""
+        from loguru import logger  # pylint: disable=import-outside-toplevel
 
-            logger.info(f"Using prebuilt speech backend from {self.speech_bootstrap_corpus_folder}")
-            store = SpeechStore(self.speech_bootstrap_corpus_folder)
-            return SpeechRepositoryFast(
-                store=store,
-                document_index=self.document_index,
-                metadata_db_path=self.metadata_filename,
-            )
-        return sr.SpeechTextRepository(
-            source=self.tagged_corpus_folder,
-            person_codecs=self.person_codecs,
+        logger.info(f"Using prebuilt speech backend from {self.speech_bootstrap_corpus_folder}")
+        store = SpeechStore(self.speech_bootstrap_corpus_folder)
+        return SpeechRepositoryFast(
+            store=store,
             document_index=self.document_index,
+            metadata_db_path=self.metadata_filename,
         )
 
     def _load_vectorized_corpus(self) -> IVectorizedCorpus:
@@ -144,13 +133,8 @@ class CorpusLoader:
         return self.__lazy_person_codecs.value
 
     @property
-    def repository(self) -> Union[sr.SpeechTextRepository, SpeechRepositoryFast]:
-        """Get the speech repository (lazy-loaded on first access).
-
-        Returns the legacy :class:`SpeechTextRepository` by default, or
-        :class:`SpeechRepositoryFast` when ``speech.storage_backend = prebuilt``
-        is set in config and a valid bootstrap_corpus folder is configured.
-        """
+    def repository(self) -> SpeechRepositoryFast:
+        """Get the speech repository (lazy-loaded on first access)."""
         return self.__lazy_repository.value
 
     @cached_property

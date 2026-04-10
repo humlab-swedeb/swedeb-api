@@ -3,11 +3,12 @@
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigStore
-from api_swedeb.legacy.speech_lookup import SpeechTextRepository
+from api_swedeb.core.speech_repository_fast import SpeechRepositoryFast
 
 
 class TestCorpusLoaderInitialization:
@@ -21,7 +22,6 @@ class TestCorpusLoaderInitialization:
                 "test_folder",
                 "test_metadata.csv",
                 "test_corpus_folder",
-                "legacy",
                 "",
             ]
             loader = CorpusLoader()
@@ -53,7 +53,6 @@ class TestCorpusLoaderInitialization:
                 "custom_folder",  # dtm_folder will be overridden
                 "config_metadata.csv",
                 "config_corpus_folder",
-                "legacy",
                 "",
             ]
             loader = CorpusLoader(
@@ -120,25 +119,19 @@ class TestCorpusLoaderLazyLoading:
         assert result == mock_codecs
         mock_codecs_instance.load.assert_called_once_with(source="metadata")
 
-    @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
+    @patch('api_swedeb.api.services.corpus_loader.SpeechRepositoryFast')
+    @patch('api_swedeb.api.services.corpus_loader.SpeechStore')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
-    @patch('api_swedeb.api.services.corpus_loader.md.PersonCodecs')
-    @patch('api_swedeb.api.services.corpus_loader.sr.SpeechTextRepository')
-    def test_repository_lazy_loads(self, mock_repo_class, mock_codecs_class, mock_index, mock_dtm):
+    @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
+    def test_repository_lazy_loads(self, mock_dtm, mock_index, mock_store_class, mock_repo_class):
         """Test speech repository is lazy-loaded on first access."""
-        mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs_instance = MagicMock()
-        mock_codecs_instance.load.return_value = mock_codecs
-        mock_codecs_class.return_value = mock_codecs_instance
-
         mock_index_df = MagicMock(spec=pd.DataFrame)
         mock_index.return_value = mock_index_df
 
-        mock_corpus = MagicMock()
-        mock_corpus.document_index = mock_index_df
-        mock_dtm.return_value = mock_corpus
+        mock_store = MagicMock()
+        mock_store_class.return_value = mock_store
 
-        mock_repo = MagicMock(spec=SpeechTextRepository)
+        mock_repo = MagicMock(spec=SpeechRepositoryFast)
         mock_repo_class.return_value = mock_repo
 
         loader = CorpusLoader(
@@ -146,6 +139,7 @@ class TestCorpusLoaderLazyLoading:
             dtm_folder="folder",
             metadata_filename="metadata",
             tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder="bootstrap",
         )
 
         # Access repository (should trigger loading of dependencies)
@@ -153,6 +147,7 @@ class TestCorpusLoaderLazyLoading:
 
         # Should be loaded with correct parameters
         assert result == mock_repo
+        mock_store_class.assert_called_once_with("bootstrap")
         mock_repo_class.assert_called_once()
 
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
@@ -328,6 +323,12 @@ class TestIntegrationFullCorpus:
     #     df3 = feather.read_feather(path, memory_map=True, use_threads=True)
     #     print("pyarrow -> pandas:", time.perf_counter() - t0)
 
+    _BOOTSTRAP_FOLDER = "/data/swedeb/v1.4.1/speeches/bootstrap_corpus"
+
+    @pytest.mark.skipif(
+        not __import__("os").path.isdir(_BOOTSTRAP_FOLDER),
+        reason="bootstrap_corpus not built on this machine",
+    )
     def test_full_corpus_properties(self):
         """Integration test to verify CorpusLoader with actual data files."""
 
@@ -337,6 +338,7 @@ class TestIntegrationFullCorpus:
             dtm_folder="/data/swedeb/v1.4.1/dtm/text",
             metadata_filename="/data/swedeb/metadata/riksprot_metadata.v1.1.3.db",
             tagged_corpus_folder="/data/swedeb/v1.4.1/tagged_frames/**/prot-*.zip",
+            speech_bootstrap_corpus_folder="/data/swedeb/v1.4.1/speeches/bootstrap_corpus",
         )
         doc_index = loader.document_index
         assert isinstance(doc_index, pd.DataFrame)

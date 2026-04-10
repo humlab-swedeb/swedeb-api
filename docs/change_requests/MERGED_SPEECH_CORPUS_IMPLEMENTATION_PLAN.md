@@ -494,7 +494,7 @@ The manifest should record the ZIP→Feather mapping for audit.
 - [x] Ensure all Phase 4-5 sign-offs are complete
 - [x] Set speech.storage_backend = legacy in config (default)
 - [x] Archive legacy runtime code to `api_swedeb/legacy` on this branch
-- [ ] Plan final removal of legacy compatibility shims and fallback wiring (after 1 release cycle)
+- [x] Plan final removal of legacy compatibility shims and fallback wiring (after 1 release cycle)
 
 #### Legacy code archival candidates (after stabilisation window)
 
@@ -526,33 +526,33 @@ The manifest should record the ZIP→Feather mapping for audit.
 
 **Simplify runtime wiring after production cutover**
 - [x] Update `api_swedeb/api/services/corpus_loader.py` to import the archived legacy implementation from `api_swedeb.legacy` instead of `api_swedeb.core.speech_text`.
-- [ ] Remove legacy repository branching from `CorpusLoader` once rollback support is no longer needed.
-- [ ] Remove `speech_storage_backend` from the constructor and all config reads of `speech.storage_backend`.
-- [ ] Keep `speech_bootstrap_corpus_folder` only if multiple bootstrap roots still need to be injected in tests; otherwise resolve directly from config and drop the override.
-- [ ] Replace `_load_repository()` branching logic with unconditional `SpeechStore(...)` + `SpeechRepositoryFast(...)` construction.
-- [ ] Simplify repository type annotations from `Union[sr.SpeechTextRepository, SpeechRepositoryFast]` to `SpeechRepositoryFast`.
-- [ ] Keep `person_codecs` lazy loading only if other services still require it.
-- [ ] Remove `speech.storage_backend` from `config/config.yml`, or leave it fixed to `prebuilt` during a short transition window and then delete it.
-- [ ] Apply the same config cleanup to `tests/config.yml`.
+- [x] Remove legacy repository branching from `CorpusLoader` once rollback support is no longer needed.
+- [x] Remove `speech_storage_backend` from the constructor and all config reads of `speech.storage_backend`.
+- [x] Keep `speech_bootstrap_corpus_folder` only if multiple bootstrap roots still need to be injected in tests; otherwise resolve directly from config and drop the override.
+- [x] Replace `_load_repository()` branching logic with unconditional `SpeechStore(...)` + `SpeechRepositoryFast(...)` construction.
+- [x] Simplify repository type annotations from `Union[sr.SpeechTextRepository, SpeechRepositoryFast]` to `SpeechRepositoryFast`.
+- [x] Keep `person_codecs` lazy loading only if other services still require it.
+- [x] Remove `speech.storage_backend` from `config/config.yml`, or leave it fixed to `prebuilt` during a short transition window and then delete it.
+- [x] Apply the same config cleanup to `tests/config.yml`.
 
 **Clean up tests and transient parity coverage**
 - [x] Move `tests/api_swedeb/core/test_speech_text.py` to `tests/legacy/test_speech_text.py`.
 - [x] Move archived `ZipLoader` coverage from `tests/api_swedeb/core/test_load.py` to `tests/legacy/test_zip_loader.py`.
-- [ ] Delete `tests/api_swedeb/core/test_speech_parity.py`.
-- [ ] Update `tests/api_swedeb/core/test_speech_repository_fast.py` to remove `legacy_repo` and `SpeechTextRepository` imports.
-- [ ] Remove tests whose only purpose is dual-backend comparison or legacy backend selection.
-- [ ] Retain fast-backend behavior, lookup, error handling, and benchmark coverage.
-- [ ] Rename `tests/api_swedeb/core/test_speech_repository_fast.py` to `test_speech_repository.py` if the file is no longer specifically about the migration phase.
+- [x] Delete `tests/api_swedeb/core/test_speech_parity.py`.
+- [x] Update `tests/api_swedeb/core/test_speech_repository_fast.py` to remove `legacy_repo` and `SpeechTextRepository` imports.
+- [x] Remove tests whose only purpose is dual-backend comparison or legacy backend selection.
+- [x] Retain fast-backend behavior, lookup, error handling, and benchmark coverage.
+- [x] Rename `tests/api_swedeb/core/test_speech_repository_fast.py` to `test_speech_repository.py` if the file is no longer specifically about the migration phase.
 - [x] Update `tests/api_swedeb/api/services/test_corpus_loader.py` to target the archived import path where legacy repository coverage is still needed.
-- [ ] Remove patches and `ConfigValue.resolve()` side effects that exist only for `speech.storage_backend` branching.
-- [ ] Replace repository mocks that target `sr.SpeechTextRepository` with `SpeechRepositoryFast` coverage where appropriate.
-- [ ] Update `tests/README.md` to remove references to pre-existing failures in `tests/legacy/test_speech_text.py`.
-- [ ] Refresh test counts if this cleanup materially changes suite totals.
+- [x] Remove patches and `ConfigValue.resolve()` side effects that exist only for `speech.storage_backend` branching.
+- [x] Replace repository mocks that target `sr.SpeechTextRepository` with `SpeechRepositoryFast` coverage where appropriate.
+- [x] Update `tests/README.md` to remove references to pre-existing failures in `tests/legacy/test_speech_text.py`.
+- [x] Refresh test counts if this cleanup materially changes suite totals.
 
 **Docs and comments to refresh**
-- [ ] Remove or rewrite runtime documentation that still presents `legacy|prebuilt` as a long-term supported choice.
-- [ ] Update references that describe `SpeechRepositoryFast` as a migration companion to `SpeechTextRepository`; after cutover it becomes the standard repository implementation.
-- [ ] Document that `api_swedeb/legacy/` is debug-only and is not part of supported production runtime wiring.
+- [x] Remove or rewrite runtime documentation that still presents `legacy|prebuilt` as a long-term supported choice.
+- [x] Update references that describe `SpeechRepositoryFast` as a migration companion to `SpeechTextRepository`; after cutover it becomes the standard repository implementation.
+- [x] Document that `api_swedeb/legacy/` is debug-only and is not part of supported production runtime wiring.
 
 ### Components that must be retained
 
@@ -573,10 +573,10 @@ After legacy archival, validate the simplified architecture with the following c
 
 - [x] Archived runtime code exists under `api_swedeb/legacy/`, with `api_swedeb/core/speech_text.py` serving only as a temporary compatibility shim.
 - [x] Archived unit tests live under `tests/legacy/` rather than inside the active runtime test tree.
-- [ ] Speech endpoint integration tests still pass without `SpeechTextRepository` anywhere in runtime wiring.
+- [x] Speech endpoint integration tests still pass without `SpeechTextRepository` anywhere in runtime wiring.
 - [ ] `make build-speech-corpus` still produces a valid `bootstrap_corpus` with manifest and lookup files.
-- [ ] After final cutover, no active production code imports the archived `api_swedeb/legacy/` modules.
-- [ ] No active config, docs, or deployment instructions imply a supported rollback to the archived ZIP-backed runtime path.
+- [x] After final cutover, no active production code imports the archived `api_swedeb/legacy/` modules.
+- [x] No active config, docs, or deployment instructions imply a supported rollback to the archived ZIP-backed runtime path.
 
 **Acceptance**: Production stable for 2 weeks, fallback tested, legacy archival decision documented.
 

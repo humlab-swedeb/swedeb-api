@@ -60,7 +60,7 @@
 - Inject services directly via `Depends()`: `get_corpus_loader()`, `get_metadata_service()`, `get_word_trends_service()`, `get_search_service()`, `get_ngrams_service()`
 - Each service is a singleton (cached) and handles specific domain logic
 - Common query params via `CommonQueryParams` (KWIC filters, year ranges, etc.)
-- `CorpusLoader` still supports `speech.storage_backend = legacy|prebuilt` during rollout; do not add new feature work to the archived legacy backend unless the task is explicitly about parity, rollback, or forensic reproduction.
+- `CorpusLoader` uses the prebuilt `bootstrap_corpus` backend exclusively; `api_swedeb/legacy/` is archived and debug-only. Do not add new feature work to the archived legacy backend.
 - Keep KWIC, word trends, n-grams, and speech retrieval endpoints performant by enforcing cutoffs (default `cut_off=200000`) and cached corpora.
 
 ## CWB Integration (`api_swedeb/core/cwb/`)
