@@ -14,5 +14,8 @@ def kwic_request_to_CQP_opts(commons, keywords, lemmatized):
 
 
 def kwic_to_api_model(data: pd.DataFrame) -> KeywordInContextResult:
-    rows: list[KeywordInContextItem] = [KeywordInContextItem(**row) for row in data.to_dict(orient="records")]  # type: ignore
+    rows: list[KeywordInContextItem] = [
+        KeywordInContextItem.model_validate({k: (None if (isinstance(v, float) and pd.isna(v)) else v) for k, v in row.items()})
+        for row in data.to_dict(orient="records")
+    ]
     return KeywordInContextResult(kwic_list=rows)
