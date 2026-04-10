@@ -3,11 +3,12 @@
 import asyncio
 import io
 import zipfile
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 from fastapi.responses import StreamingResponse
 
+from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.v1.endpoints.tool_router import get_speeches_download_result
 from api_swedeb.core.speech import Speech
 
@@ -42,7 +43,8 @@ class TestGetSpeechesDownloadResult:
             ]
         )
 
-        response = asyncio.run(get_speeches_download_result(commons=commons, search_service=search_service))
+        with patch("api_swedeb.api.v1.endpoints.tool_router.get_search_service", return_value=search_service):
+            response = asyncio.run(get_speeches_download_result(commons=commons, download_service=DownloadService()))
 
         assert isinstance(response, StreamingResponse)
         assert response.media_type == "application/zip"
@@ -69,7 +71,8 @@ class TestGetSpeechesDownloadResult:
         search_service.get_anforanden.return_value = df
         search_service.get_speeches_batch.return_value = iter(())
 
-        response = asyncio.run(get_speeches_download_result(commons=commons, search_service=search_service))
+        with patch("api_swedeb.api.v1.endpoints.tool_router.get_search_service", return_value=search_service):
+            response = asyncio.run(get_speeches_download_result(commons=commons, download_service=DownloadService()))
         body = asyncio.run(_collect_streaming_response(response))
 
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
