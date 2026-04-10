@@ -17,6 +17,7 @@ dependencies = [
     "loguru",
     "requests",
     "more-itertools",
+    "tqdm>=4.67.3",
 ]
 
 [project.optional-dependencies]
