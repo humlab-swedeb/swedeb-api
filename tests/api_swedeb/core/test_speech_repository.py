@@ -1,13 +1,13 @@
-"""Integration tests for SpeechStore and SpeechRepositoryFast.
+"""Integration tests for SpeechStore and SpeechRepository.
 
 Tests
 -----
 - SpeechStore loads speech_lookup.feather and locates speeches correctly.
-- SpeechRepositoryFast.speech() returns Speech with paragraphs / metadata.
-- SpeechRepositoryFast.speeches_batch() returns correct Speech objects.
-- SpeechRepositoryFast.get_key_index() resolves all three key types.
-- SpeechRepositoryFast.get_speech_info() returns expected fields.
-- CorpusLoader instantiates SpeechRepositoryFast from bootstrap_corpus folder.
+- SpeechRepository.speech() returns Speech with paragraphs / metadata.
+- SpeechRepository.speeches_batch() returns correct Speech objects.
+- SpeechRepository.get_key_index() resolves all three key types.
+- SpeechRepository.get_speech_info() returns expected fields.
+- CorpusLoader instantiates SpeechRepository from bootstrap_corpus folder.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pytest
 
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 from api_swedeb.core.load import load_speech_index
 from api_swedeb.core.speech import Speech
@@ -32,7 +33,7 @@ from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 
 ConfigStore.configure_context(source="tests/config.yml")
 
-
+# pylint: disable=redefined-outer-name, protected-access
 # ---------------------------------------------------------------------------
 # Module-scoped fixtures (build the corpus once)
 # ---------------------------------------------------------------------------
@@ -86,7 +87,7 @@ def document_index(dtm_folder, dtm_tag):
 
 
 @pytest.fixture(scope="module")
-def fast_repo(speech_store, document_index, metadata_db_path) -> SpeechRepository:
+def speech_repository(speech_store, document_index, metadata_db_path) -> SpeechRepository:
     return SpeechRepository(
         store=speech_store,
         document_index=document_index,
@@ -139,62 +140,62 @@ def test_speech_store_missing_key(speech_store):
 
 
 # ---------------------------------------------------------------------------
-# SpeechRepositoryFast interface tests
+# SpeechRepository interface tests
 # ---------------------------------------------------------------------------
 
 
-def test_fast_repo_speech_by_document_name(fast_repo, speech_store):
+def test_fast_repo_speech_by_document_name(speech_repository, speech_store):
     """speech() must return a valid Speech for a known document_name."""
     name = next(iter(speech_store._name_to_loc))
-    speech = fast_repo.speech(name)
+    speech = speech_repository.speech(name)
     assert isinstance(speech, Speech)
     assert speech.error is None, f"Unexpected error: {speech.error}"
     assert isinstance(speech.paragraphs, list)
 
 
-def test_fast_repo_speech_by_speech_id(fast_repo, speech_store):
+def test_fast_repo_speech_by_speech_id(speech_repository, speech_store):
     """speech() must resolve an i-* speech_id correctly."""
     sid = next(iter(speech_store._sid_to_loc))
-    speech = fast_repo.speech(sid)
+    speech = speech_repository.speech(sid)
     assert isinstance(speech, Speech)
     assert speech.error is None, f"Unexpected error for {sid}: {speech.error}"
 
 
-def test_fast_repo_speech_missing_key(fast_repo):
+def test_fast_repo_speech_missing_key(speech_repository):
     """speech() must return error Speech for unknown key, not raise."""
-    speech = fast_repo.speech("prot-9999--xx--0001_1")
+    speech = speech_repository.speech("prot-9999--xx--0001_1")
     assert speech.error is not None
 
 
-def test_fast_repo_get_key_index(fast_repo, document_index):
+def test_fast_repo_get_key_index(speech_repository, document_index):
     """get_key_index must return a valid row in document_index for known document_names."""
     for doc_name in list(document_index["document_name"].head(5)):
-        idx = fast_repo.get_key_index(doc_name)
+        idx = speech_repository.get_key_index(doc_name)
         assert isinstance(idx, int)
         assert idx in document_index.index
 
 
-def test_fast_repo_get_key_index_speech_id(fast_repo, document_index):
+def test_fast_repo_get_key_index_speech_id(speech_repository, document_index):
     """get_key_index must accept i-* speech_id strings."""
     for speech_id in list(document_index["speech_id"].head(5)):
-        idx = fast_repo.get_key_index(speech_id)
+        idx = speech_repository.get_key_index(speech_id)
         assert isinstance(idx, int)
 
 
-def test_fast_repo_get_speech_info(fast_repo, document_index):
+def test_fast_repo_get_speech_info(speech_repository, document_index):
     """get_speech_info must return a dict with person_id and speaker_note."""
     doc_name = str(document_index["document_name"].iloc[0])
-    info = fast_repo.get_speech_info(doc_name)
+    info = speech_repository.get_speech_info(doc_name)
     assert isinstance(info, dict)
     assert "speaker_note" in info
 
 
-def test_fast_repo_to_text(fast_repo, speech_store):
+def test_fast_repo_to_text(speech_repository, speech_store):
     """to_text must join paragraphs into a non-empty string."""
     name = next(iter(speech_store._name_to_loc))
-    speech = fast_repo.speech(name)
+    speech = speech_repository.speech(name)
     if speech.paragraphs:
-        text = fast_repo.to_text({"paragraphs": speech.paragraphs})
+        text = speech_repository.to_text({"paragraphs": speech.paragraphs})
         assert isinstance(text, str)
         assert len(text) > 0
 
@@ -205,8 +206,7 @@ def test_fast_repo_to_text(fast_repo, speech_store):
 
 
 def test_corpus_loader_selects_fast_backend(bootstrap_root, metadata_db_path):
-    """CorpusLoader must return SpeechRepositoryFast for bootstrap_corpus folder."""
-    from api_swedeb.api.services.corpus_loader import CorpusLoader
+    """CorpusLoader must return SpeechRepository for bootstrap_corpus folder."""
 
     loader = CorpusLoader(
         dtm_tag=ConfigValue("dtm.tag").resolve(),
@@ -238,31 +238,31 @@ def test_store_raises_on_missing_lookup(tmp_path):
         SpeechStore(str(empty_dir))
 
 
-def test_fast_repo_speech_unknown_prot_key(fast_repo):
+def test_fast_repo_speech_unknown_prot_key(speech_repository):
     """speech() with an unknown prot- key must return an error Speech, not raise."""
-    result = fast_repo.speech("prot-9999--xx--0009_99")
+    result = speech_repository.speech("prot-9999--xx--0009_99")
     assert result.error is not None
 
 
-def test_fast_repo_speech_unknown_speech_id(fast_repo):
+def test_fast_repo_speech_unknown_speech_id(speech_repository):
     """speech() with an unknown i-* speech_id must return an error Speech, not raise."""
-    result = fast_repo.speech("i-UnknownPersonThatDoesNotExistXYZ")
+    result = speech_repository.speech("i-UnknownPersonThatDoesNotExistXYZ")
     assert result.error is not None
 
 
-def test_fast_repo_batch_unknown_speech_id(fast_repo):
+def test_fast_repo_batch_unknown_speech_id(speech_repository):
     """speeches_batch() with an unknown speech_id must yield an error Speech, not raise."""
-    results = list(fast_repo.speeches_batch(["i-missing-speech-id"]))
+    results = list(speech_repository.speeches_batch(["i-missing-speech-id"]))
     assert len(results) == 1
     speech_id, speech = results[0]
     assert speech_id == "i-missing-speech-id"
     assert speech.error is not None
 
 
-def test_fast_repo_batch_mixed_valid_and_invalid(fast_repo, document_index):
+def test_fast_repo_batch_mixed_valid_and_invalid(speech_repository, document_index):
     """speeches_batch() must handle a mix of valid and invalid speech_ids gracefully."""
     valid_speech_id = str(document_index["speech_id"].iloc[0])
-    results = dict(fast_repo.speeches_batch([valid_speech_id, "i-missing-1", "i-missing-2"]))
+    results = dict(speech_repository.speeches_batch([valid_speech_id, "i-missing-1", "i-missing-2"]))
     assert valid_speech_id in results
     assert results[valid_speech_id].error is None
     assert results["i-missing-1"].error is not None
@@ -291,7 +291,7 @@ def _sample_doc_names(document_index, n: int) -> list[str]:
     return (names * ((n // len(names)) + 1))[:n]
 
 
-def test_benchmark_single_lookup(fast_repo, document_index):
+def test_benchmark_single_lookup(speech_repository, document_index):
     """Single-speech retrieval latency benchmark (prebuilt backend).
 
     Reports p50/p95. Passes unconditionally — numbers are printed for review.
@@ -299,13 +299,13 @@ def test_benchmark_single_lookup(fast_repo, document_index):
     all_names = _sample_doc_names(document_index, _WARMUP_N + _SAMPLE_N)
 
     for name in all_names[:_WARMUP_N]:
-        fast_repo.speech(name)
+        speech_repository.speech(name)
 
     sample_names = all_names[_WARMUP_N : _WARMUP_N + _SAMPLE_N]
     times = []
     for name in sample_names:
         t0 = time.perf_counter()
-        fast_repo.speech(name)
+        speech_repository.speech(name)
         times.append(time.perf_counter() - t0)
 
     sorted_times = sorted(times)
@@ -317,7 +317,7 @@ def test_benchmark_single_lookup(fast_repo, document_index):
     )
 
 
-def test_benchmark_batch_retrieval(fast_repo, document_index):
+def test_benchmark_batch_retrieval(speech_repository, document_index):
     """Batch retrieval throughput benchmark (prebuilt backend).
 
     Reports speeches/sec. Passes unconditionally.
@@ -325,7 +325,7 @@ def test_benchmark_batch_retrieval(fast_repo, document_index):
     batch_ids = document_index["speech_id"].astype(str).tolist()
 
     t0 = time.perf_counter()
-    results = list(fast_repo.speeches_batch(batch_ids))
+    results = list(speech_repository.speeches_batch(batch_ids))
     elapsed = time.perf_counter() - t0
 
     n = len(batch_ids)
@@ -337,10 +337,10 @@ def test_benchmark_batch_retrieval(fast_repo, document_index):
     assert len(results) == n
 
 
-def test_benchmark_worker_memory(fast_repo, document_index):
+def test_benchmark_worker_memory(speech_repository, document_index):
     """Capture peak process RSS after loading all test speeches."""
     batch_ids = document_index["speech_id"].astype(str).tolist()
-    list(fast_repo.speeches_batch(batch_ids))
+    list(speech_repository.speeches_batch(batch_ids))
 
     rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     print(f"\n--- Worker Memory (peak RSS) ---\n  {rss_kb / 1024:.1f} MB")
