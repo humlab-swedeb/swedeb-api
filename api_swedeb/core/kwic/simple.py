@@ -6,11 +6,9 @@ import ccc
 import pandas as pd
 from fastapi.logger import logger
 
-from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import CorpusCreateOpts
 from api_swedeb.core.kwic.singleprocess import execute_kwic_singleprocess
 from api_swedeb.core.kwic.utility import normalize_kwic_df
-from api_swedeb.core.speech_index import get_speeches_by_speech_ids
 
 from .multiprocess import execute_kwic_multiprocess
 
@@ -82,8 +80,7 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
     corpus: ccc.Corpus | CorpusCreateOpts,
     opts: dict[str, Any] | list[dict[str, Any]],
     *,
-    speech_index: pd.DataFrame,
-    codecs: PersonCodecs,
+    prebuilt_speech_index: pd.DataFrame,
     words_before: int = 3,
     words_after: int = 3,
     p_show: str = "word",
@@ -91,23 +88,26 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
     use_multiprocessing: bool = False,
     num_processes: int | None = None,
 ) -> pd.DataFrame:
-    """Compute KWIC with decoded speech metadata.
+    """Compute KWIC with decoded speech metadata from the prebuilt speech_index.
+
+    The prebuilt speech_index.feather already contains fully decoded speaker
+    metadata (name, gender, party, office, wiki_id) materialised at build time.
+    This function joins on speech_id — no codec lookups at query time.
 
     Args:
-        corpus (ccc.Corpus): A CWB corpus object.
-        opts (dict): Query parameters.
-        speech_index (pd.DataFrame): Speech index dataframe.
-        codecs (PersonCodecs): Codecs for decoding.
-        words_before (int, optional): Number of words before search term(s). Defaults to 3.
-        words_after (int, optional): Number of words after search term(s). Defaults to 3.
-        p_show (str, optional): What to display, `word` or `lemma`. Defaults to "word".
-        cut_off (int, optional): Cut off limit. Defaults to 200000.
-        use_multiprocessing (bool, optional): Whether to use multiprocessing. Defaults to False.
-        num_processes (int, optional): Number of processes to use. Defaults to CPU count.
+        corpus: A CWB corpus object or CorpusCreateOpts.
+        opts: Query parameters.
+        prebuilt_speech_index: DataFrame loaded from speech_index.feather,
+            indexed by speech_id.  Must contain wiki_id column.
+        words_before: Number of words before search term(s). Defaults to 3.
+        words_after: Number of words after search term(s). Defaults to 3.
+        p_show: What to display, ``word`` or ``lemma``. Defaults to "word".
+        cut_off: Maximum hits to return. Defaults to 200000.
+        use_multiprocessing: Whether to use multiprocessing. Defaults to False.
+        num_processes: Number of processes to use. Defaults to CPU count.
     Returns:
         pd.DataFrame: KWIC results with decoded metadata.
     """
-
     kwic_data: pd.DataFrame = kwic(
         corpus,
         opts,
@@ -119,9 +119,57 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
         num_processes=num_processes,
     )
 
-    speeches: pd.DataFrame = get_speeches_by_speech_ids(
-        speech_index, speech_ids=kwic_data, left_on="speech_id", right_index=True
-    )
-    speeches = codecs.decode_speech_index(speeches, sort_values=False)
+    if kwic_data.empty:
+        return kwic_data
 
-    return speeches
+    # Join prebuilt metadata on speech_id (kwic_data.index = speech_id)
+    result: pd.DataFrame = kwic_data.join(prebuilt_speech_index, how="left")
+    result.index.name = "speech_id"
+
+    # Restore speech_id as a column (required by schema / mapper)
+    result["speech_id"] = result.index
+
+    # Map prebuilt fields to the expected API column names
+    result["person_id"] = result.get("speaker_id")
+
+    # Derive chamber_abbrev from protocol_name (e.g. "prot-1970--ak--029" → "ak")
+    if "chamber_abbrev" not in result.columns:
+        proto: pd.Series = result.get("protocol_name", pd.Series(dtype=str))
+        parts: pd.DataFrame = proto.str.split("--", expand=True)
+        result["chamber_abbrev"] = parts[1] if parts.shape[1] > 1 else None
+
+    # speech_name and document_id are DTM-specific; leave null for prebuilt path
+    if "speech_name" not in result.columns:
+        result["speech_name"] = None
+    if "document_id" not in result.columns:
+        result["document_id"] = None
+
+    # party (full name) is not in prebuilt; leave null
+    if "party" not in result.columns:
+        result["party"] = None
+
+    # Compute derived link fields from materialised columns
+    wikidata_base = "https://www.wikidata.org/wiki/"
+    unknown_link = "https://www.wikidata.org/wiki/unknown"
+    if "wiki_id" in result.columns:
+        wiki: pd.Series = result["wiki_id"]
+        valid_mask: pd.Series = wiki.notna() & (wiki != "unknown") & (wiki != "")
+        result["link"] = unknown_link
+        result.loc[valid_mask, "link"] = wikidata_base + wiki[valid_mask]
+    else:
+        result["wiki_id"] = None
+        result["link"] = unknown_link
+    doc: pd.Series = result["document_name"]
+    riksdagen_base = "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-arbete/protokoll/"
+    result["speech_link"] = None
+    valid_doc_mask: pd.Series = doc.notna() & (doc != "")
+    result.loc[valid_doc_mask, "speech_link"] = riksdagen_base + doc[valid_doc_mask] + "/"
+
+    # Return only the columns that the API schema / mapper expect
+    keep = [
+        "left_word", "node_word", "right_word",
+        "year", "name", "party_abbrev", "party", "gender", "gender_abbrev",
+        "person_id", "link", "speech_name", "speech_link",
+        "document_name", "chamber_abbrev", "speech_id", "wiki_id", "document_id",
+    ]
+    return result[[c for c in keep if c in result.columns]]

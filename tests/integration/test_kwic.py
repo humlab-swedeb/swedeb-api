@@ -72,11 +72,9 @@ def test_kwic_speech_id_in_search_results(fastapi_client):
 async def test_bug_kwic_fails_when_lemmatized_is_true():
 
     corpus = get_cwb_corpus()
-    decoder_opts = get_decoder_opts()
-    person_codecs: PersonCodecs = await get_corpus_decoder(decoder_opts)  # type: ignore
     loader = get_corpus_loader()
     lemmatized = True
-    kwic_service = KWICService(loader, person_codecs)
+    kwic_service = KWICService(loader)
 
     common_opts = {
         'office_types': None,

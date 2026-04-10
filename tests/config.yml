@@ -15,8 +15,8 @@ corpus:
     url: https://github.com/swerik-project/riksdagen-records.git
 
 cwb:
-  registry_dir: /data/swedeb/random_sample_10files/v1.1.0/registry
-  corpus_name: RIKSPROT_RANDOM_SAMPLE_10FILES_V110
+  registry_dir: /home/roger/source/swedeb/swedeb-api/tests/test_data/v1.4.1/registry
+  corpus_name: RIKSPROT_CORPUS
 
 dtm:
   folder: tests/test_data/v1.4.1/dtm/text

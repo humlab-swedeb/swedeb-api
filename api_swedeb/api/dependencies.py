@@ -112,9 +112,9 @@ async def get_corpus_decoder(opts: dict = Depends(get_decoder_opts)) -> PersonCo
     return _corpus_codecs
 
 
-async def get_kwic_service(corpus_decoder: PersonCodecs | Codecs = Depends(get_corpus_decoder)) -> KWICService:
-    """Get the KWICService instance with loader and decoder."""
+async def get_kwic_service() -> KWICService:
+    """Get the KWICService instance with loader."""
     global __kwic_service
     if __kwic_service is None:
-        __kwic_service = KWICService(get_corpus_loader(), corpus_decoder)  # type: ignore
+        __kwic_service = KWICService(get_corpus_loader())
     return __kwic_service

@@ -5,7 +5,6 @@ import pandas as pd
 
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.kwic import simple
 from api_swedeb.mappers.kwic import kwic_request_to_CQP_opts
@@ -18,25 +17,18 @@ class KWICService:
     with various filtering and display options.
     """
 
-    def __init__(self, loader: CorpusLoader, codecs: PersonCodecs):
-        """Initialize KWICService with CorpusLoader and PersonCodecs.
+    def __init__(self, loader: CorpusLoader):
+        """Initialize KWICService with CorpusLoader.
 
         Args:
             loader: CorpusLoader instance providing access to corpus data
-            codecs: PersonCodecs instance for decoding metadata
         """
         self._loader = loader
-        self._codecs = codecs
 
     @property
     def loader(self) -> CorpusLoader:
         """Get the CorpusLoader instance."""
         return self._loader
-
-    @property
-    def codecs(self) -> PersonCodecs:
-        """Get the PersonCodecs instance."""
-        return self._codecs
 
     def get_kwic(
         self,
@@ -70,8 +62,7 @@ class KWICService:
         data: pd.DataFrame = simple.kwic_with_decode(
             corpus,
             opts,
-            speech_index=self._loader.document_index,
-            codecs=self._codecs,
+            prebuilt_speech_index=self._loader.prebuilt_speech_index,
             words_before=words_before,
             words_after=words_after,
             p_show=p_show,
