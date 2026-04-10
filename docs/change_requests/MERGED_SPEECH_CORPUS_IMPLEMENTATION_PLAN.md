@@ -500,9 +500,9 @@ The manifest should record the ZIP→Feather mapping for audit.
 
 ### Preconditions
 
-- [ ] `speech.storage_backend = prebuilt` has been the effective default in production for at least one release cycle.
-- [ ] Rollback to the ZIP-backed runtime path is no longer required operationally.
-- [ ] Phase 5 parity and reliability reports remain clean on the production corpus.
+- [x] `speech.storage_backend = prebuilt` has been the effective default in production for at least one release cycle.
+- [x] Rollback to the ZIP-backed runtime path is no longer required operationally.
+- [x] Phase 5 parity and reliability reports remain clean on the production corpus.
 
 ### Current archival state on this branch
 
