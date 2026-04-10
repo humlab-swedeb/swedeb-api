@@ -119,7 +119,7 @@ class TestCorpusLoaderLazyLoading:
         assert result == mock_codecs
         mock_codecs_instance.load.assert_called_once_with(source="metadata")
 
-    @patch('api_swedeb.api.services.corpus_loader.SpeechRepositoryFast')
+    @patch('api_swedeb.api.services.corpus_loader.SpeechRepository')
     @patch('api_swedeb.api.services.corpus_loader.SpeechStore')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
