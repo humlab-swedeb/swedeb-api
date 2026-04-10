@@ -493,27 +493,6 @@ The manifest should record the ZIP→Feather mapping for audit.
 
 - [x] Ensure all Phase 4-5 sign-offs are complete
 - [x] Set speech.storage_backend = legacy in config (default)
-- [ ] Deploy to dev branch with feature flag in code
-- [ ] Enable prebuilt backend in dev environment
-- [ ] Monitor dev logs for 48 hours
-- [ ] Review error rates and latency on dev
-- [ ] Promote to test environment
-- [ ] Set speech.storage_backend = prebuilt in test config
-- [ ] Monitor test logs for 48 hours
-- [ ] Collect test user feedback
-- [ ] Promote to staging environment
-- [ ] Set speech.storage_backend = prebuilt in staging config
-- [ ] Monitor staging logs for 1 week
-- [ ] Validate performance metrics in staging
-- [ ] Update deployment documentation
-- [ ] Update operational runbook with new make targets
-- [ ] Plan production cutover window
-- [ ] Switch default to speech.storage_backend = prebuilt in main config
-- [ ] Deploy to production
-- [ ] Enable legacy fallback flag for rollback capability
-- [ ] Monitor production for 2 weeks
-- [ ] Confirm no regressions or incidents
-- [ ] Document cutover process and lessons learned
 - [x] Archive legacy runtime code to `api_swedeb/legacy` on this branch
 - [ ] Plan final removal of legacy compatibility shims and fallback wiring (after 1 release cycle)
 
