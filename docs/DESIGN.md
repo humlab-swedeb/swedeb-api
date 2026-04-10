@@ -47,11 +47,11 @@ only as a last-resort fallback, and log a WARNING when doing so.
 
 Three independent indexes must contain the same set of `speech_id` values:
 
-| Index | File | Key column |
-|---|---|---|
-| VRT feather | `v{ver}/speeches/tagged_frames_speeches_text.feather/document_index.feather` | `u_id` |
-| DTM document index | `v{ver}/dtm/text/text_document_index.feather` | `u_id` |
-| Prebuilt bootstrap_corpus | `v{ver}/speeches/bootstrap_corpus/speech_lookup.feather` | `speech_id` |
+| Index                     | File                                                                         | Key column  |
+|---------------------------|------------------------------------------------------------------------------|-------------|
+| VRT feather               | `v{ver}/speeches/tagged_frames_speeches_text.feather/document_index.feather` | `u_id`      |
+| DTM document index        | `v{ver}/dtm/text/text_document_index.feather`                                | `u_id`      |
+| Prebuilt bootstrap_corpus | `v{ver}/speeches/bootstrap_corpus/speech_lookup.feather`                     | `speech_id` |
 
 All three are produced from the same ParlaCLARIN source corpus using the
 **chain** merge strategy with no speech filtering.  Any divergence indicates a
