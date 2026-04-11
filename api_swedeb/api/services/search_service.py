@@ -113,6 +113,24 @@ class SearchService:
         """
         return self._loader.repository.speeches_batch(speech_ids)
 
+    def get_speaker_names(self, speech_ids: Iterable[str]) -> dict[str, str]:
+        """Return {speech_id: name} for all given speech_ids using a single prebuilt index lookup.
+
+        Only canonical speech_ids (i-* format) are accepted. Raises ValueError otherwise.
+        """
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+
+        ids_list: list[str] = [str(s) for s in speech_ids]
+        if not ids_list:
+            return {}
+
+        if not ids_list[0].startswith("i-"):
+            raise ValueError(f"get_speaker_names only accepts speech_ids (i-* format), got: {ids_list[0]!r}")
+
+        prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
+        names: pd.Series = prebuilt.reindex(ids_list)["name"].fillna(unknown)
+        return {k: (v if v and v != "Okänt" else unknown) for k, v in zip(ids_list, names)}
+
     def get_speaker(self, document_name: str) -> str:
         """Get speaker name for a given document.
 
@@ -124,18 +142,15 @@ class SearchService:
         """
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         try:
-            key_index: int = self._loader.repository.get_key_index(document_name)
-            if key_index is None:
+            speech_id: str | None = self._loader.repository.resolve_to_speech_id(document_name)
+            if not speech_id:
                 return unknown
-            document_item = self._loader.document_index.loc[key_index]
-            person_id = document_item["person_id"]
-            if isinstance(person_id, pd.Series):
-                person_id = person_id.iloc[0]
-            if person_id == "unknown":
+            prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
+            if speech_id not in prebuilt.index:
                 return unknown
-            person: pd.Series = self._loader.person_codecs[document_item["person_id"]]  # type: ignore
-            return person['name']
-        except (IndexError, ValueError):
+            name: str = str(prebuilt.at[speech_id, "name"])
+            return name if name and name != "Okänt" else unknown
+        except (IndexError, ValueError, KeyError):
             return unknown
 
     def get_filtered_speakers_improved(

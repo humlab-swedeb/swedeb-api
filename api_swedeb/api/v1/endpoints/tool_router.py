@@ -187,17 +187,14 @@ async def get_zip(
     if not ids:
         raise HTTPException(status_code=400, detail="Speech ids are required")
 
-    file_and_speech = []
-    for protocol_id in ids:
-        speaker = search_service.get_speaker(protocol_id)
-        file_and_speech.append(
-            (f"{speaker}_{protocol_id}.txt", search_service.get_speech(protocol_id).text.encode("utf-8"))
-        )
+    str_ids: list[str] = [str(i) for i in ids]
+    speaker_names: dict[str, str] = search_service.get_speaker_names(str_ids)
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for file_name, content in file_and_speech:
-            zipf.writestr(file_name, content)
+        for speech_id, speech in search_service.get_speeches_batch(str_ids):
+            speaker = speaker_names.get(speech_id, "unknown")
+            zipf.writestr(f"{speaker}_{speech_id}.txt", speech.text.encode("utf-8"))
 
     buffer.seek(0)
     return StreamingResponse(

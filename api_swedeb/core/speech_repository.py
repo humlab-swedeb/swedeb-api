@@ -231,7 +231,7 @@ class SpeechRepository:
             if isinstance(speech_name, str) and speech_name.isdigit():
                 loc = self._doc_id_to_loc.get(int(speech_name))
             else:
-                speech_id = self._resolve_to_speech_id(speech_name)
+                speech_id = self.resolve_to_speech_id(speech_name)
                 if speech_id:
                     loc = self._store.location_for_speech_id(speech_id)
 
@@ -314,7 +314,7 @@ class SpeechRepository:
     # Internals
     # ------------------------------------------------------------------
 
-    def _resolve_to_speech_id(self, key: str) -> str | None:
+    def resolve_to_speech_id(self, key: str) -> str | None:
         """Resolve any key to the XML-native speech_id for stable prebuilt lookup.
 
         - ``i-*`` keys are speech_ids directly.
@@ -334,6 +334,55 @@ class SpeechRepository:
             if doc_id in self._document_index.index:
                 return str(self._document_index.loc[doc_id, "speech_id"] or "") or None
         return None
+
+    def resolve_speech_ids_batch(self, keys: list[str]) -> list[str | None]:
+        """Batch-resolve a list of keys to canonical speech_ids.
+
+        Faster than calling :meth:`resolve_to_speech_id` in a loop because:
+        - ``i-*`` keys are trivially returned with no dict access.
+        - ``prot-*`` dict lookups are done inline, skipping Python function-call overhead.
+        - Digit-key lookups are batched into a single vectorised ``loc`` call.
+
+        Returns a list of the same length as *keys*; each element is the resolved
+        speech_id or ``None`` if resolution fails.
+        """
+        if not keys:
+            return []
+
+        result: list[str | None] = [None] * len(keys)
+        prot_indices: list[int] = []
+        digit_indices: list[int] = []
+
+        for i, key in enumerate(keys):
+            if key.startswith("i-"):
+                result[i] = key
+            elif key.startswith("prot-"):
+                prot_indices.append(i)
+            elif key.isdigit():
+                digit_indices.append(i)
+            # else: unknown format → remains None
+
+        if prot_indices:
+            d = self._document_name2speech_id
+            for i in prot_indices:
+                key = keys[i]
+                sid = d.get(key)
+                if sid is None:
+                    sid = d.get(_normalize_document_name(key))
+                result[i] = sid or None
+
+        if digit_indices:
+            doc_ids = [int(keys[i]) for i in digit_indices]
+            present = [did for did in doc_ids if did in self._document_index.index]
+            if present:
+                sid_map = (
+                    self._document_index.loc[present, "speech_id"].fillna("").astype(str).to_dict()
+                )
+                for i, doc_id in zip(digit_indices, doc_ids):
+                    sid = sid_map.get(doc_id, "")
+                    result[i] = sid or None
+
+        return result
 
     def _row_to_speech(self, row: dict[str, Any]) -> Speech:
         """Build a :class:`Speech` from a pre-built Feather row dict."""
