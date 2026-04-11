@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
+import pyarrow.compute as pc
 from loguru import logger
 from pyarrow import feather
 
@@ -479,6 +480,18 @@ class SpeechCorpusBuilder:
         # speech_lookup.feather – minimal key-to-location mapping
         lookup_columns = ["speech_id", "document_name", "feather_file", "feather_row"]
         speech_lookup = speech_index.select(lookup_columns)
+
+        # Validate that every row has both key columns populated — a missing value
+        # would silently corrupt the SpeechStore lookup dicts at runtime.
+        for col in ("speech_id", "document_name"):
+            null_count = speech_lookup.column(col).null_count
+            empty_count = (pc.equal(speech_lookup.column(col), "")).to_pylist().count(True)
+            if null_count or empty_count:
+                raise ValueError(
+                    f"speech_lookup has {null_count} null + {empty_count} empty values in '{col}' — "
+                    "all speeches must have both speech_id and document_name"
+                )
+
         speech_lookup_path: Path = self.output_root / "speech_lookup.feather"
         _write_feather(speech_lookup, speech_lookup_path)
 

@@ -11,7 +11,7 @@ from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.core.codecs import Codecs, PersonCodecs
+from api_swedeb.core.person_codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
 
 __loader: CorpusLoader | None = None

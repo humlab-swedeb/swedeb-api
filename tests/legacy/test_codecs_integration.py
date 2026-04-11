@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import Codec, PersonCodecs
+from api_swedeb.core.person_codecs import Codec, PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
 
 
@@ -472,7 +472,7 @@ class TestPersonCodecs:
     ) -> None:
         speech_index_copy = speech_index.copy()
 
-        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
             base_url: str = "https://example.com/"
             mock_config_value.return_value.resolve.return_value = base_url
             result: pd.DataFrame = person_codecs.decode_speech_index(speech_index_copy)
@@ -487,7 +487,7 @@ class TestPersonCodecs:
     ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
 
-        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
             base_url: str = "https://example.com/"
             mock_config_value.return_value.resolve.return_value = base_url
             result: pd.DataFrame | Any = person_codecs.decode_speech_index(speech_index_copy)
@@ -504,7 +504,7 @@ class TestPersonCodecs:
         self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
     ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
-        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
             mock_config_value.return_value.resolve.return_value = "https://example.com/"
             value_updates: dict[str, dict[str, str]] = {'name': {'Eric Holmqvist': 'Eric Holmberg'}}
             result: pd.DataFrame | Any = person_codecs.decode_speech_index(

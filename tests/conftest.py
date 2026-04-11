@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from loguru import logger
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.v1.endpoints import metadata_router, tool_router
-from api_swedeb.core.codecs import PersonCodecs
+from api_swedeb.core.person_codecs import PersonCodecs
 from api_swedeb.core.configuration import get_config_store, ConfigValue
 
 # pylint: disable=redefined-outer-name

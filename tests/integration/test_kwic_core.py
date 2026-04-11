@@ -5,7 +5,7 @@ import ccc
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import PersonCodecs
+from api_swedeb.core.person_codecs import PersonCodecs
 from api_swedeb.core.cwb import CorpusCreateOpts
 from api_swedeb.core.kwic import simple
 from api_swedeb.core.kwic.multiprocess import execute_kwic_multiprocess, kwic_worker

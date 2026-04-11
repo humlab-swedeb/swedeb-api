@@ -72,7 +72,7 @@ def _zip_entry_names(zip_bytes: bytes) -> list[str]:
 @pytest.fixture(scope="module")
 def corpus_loader() -> CorpusLoader:
     loader: CorpusLoader = CorpusLoader()
-    _ = loader.vectorized_corpus
+    # _ = loader.vectorized_corpus
     _ = loader.person_codecs
     _ = loader.document_index
     _ = loader.decoded_persons
@@ -104,7 +104,7 @@ class TestGetAnforanden:
 
     def test_no_filter_returns_all(self, search_service: SearchService):
         t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections={"year": (1970, 1970)})
+        df = search_service.get_anforanden(selections={})
         elapsed = _elapsed(t0)
         print(f"\n  get_anforanden(no filter): {len(df):,} rows in {elapsed:.3f}s")
         assert len(df) > 0

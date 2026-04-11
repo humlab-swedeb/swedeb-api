@@ -48,20 +48,14 @@ class SpeechStore:
         lookup_table = feather.read_table(str(lookup_path))
         lookup_df = lookup_table.to_pandas()
 
-        self._sid_to_loc: dict[str, tuple[str, int]] = {}
-        self._name_to_loc: dict[str, tuple[str, int]] = {}
-        self._sid_to_name: dict[str, str] = {}
+        ff = lookup_df["feather_file"].astype(str)
+        fr = lookup_df["feather_row"].astype(int)
+        sid_col = lookup_df["speech_id"].astype(str)
+        name_col = lookup_df["document_name"].astype(str)
 
-        for _, row in lookup_df.iterrows():
-            loc: tuple[str, int] = (str(row["feather_file"]), int(row["feather_row"]))
-            sid: str = row.get("speech_id") or ""
-            name: str = row.get("document_name") or ""
-            if sid:
-                self._sid_to_loc[sid] = loc
-                if name:
-                    self._sid_to_name[sid] = name
-            if name:
-                self._name_to_loc[name] = loc
+        self._sid_to_loc: dict[str, tuple[str, int]] = dict(zip(sid_col, zip(ff, fr)))
+        self._name_to_loc: dict[str, tuple[str, int]] = dict(zip(name_col, zip(ff, fr)))
+        self._sid_to_name: dict[str, str] = dict(zip(sid_col, name_col))
 
         logger.debug(f"SpeechStore loaded: {len(self._name_to_loc)} speeches from {bootstrap_root}")
 

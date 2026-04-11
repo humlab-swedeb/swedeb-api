@@ -14,7 +14,7 @@ All metadata is sourced from the person codecs loaded via CorpusLoader.
 import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.core import codecs as md
+from api_swedeb.core import person_codecs as md
 
 
 class MetadataService:
