@@ -8,7 +8,7 @@
 # │    │   ├── ...
 # │    │   ├── metadata_version
 # │    │   └── version
-# │    └── riksprot_metadata.v1.1.3.db 
+# │    └── riksprot_metadata.v1.1.3.db
 # └── v1.4.1
 #      ├── cwb
 #      │   ├── lemma.corpus.cnt
@@ -17,7 +17,7 @@
 #      │   ├── config.yml  <-- THIS FILE
 #      ├── dehyphen
 #      │   └── word-frequencies.pkl
-#      ├── dehyphen_datadir -> /data/swedeb/v1.4.1/dehyphen 
+#      ├── dehyphen_datadir -> /data/swedeb/v1.4.1/dehyphen
 #      ├── dtm
 #      │   ├── lemma
 #      │   └── text
@@ -45,33 +45,26 @@
 #          ├── 1867.vrt.gz
 #          ├── ...
 #          └── 202223.vrt.gz
-     
+# Note! Mount /data/v1.4.1 into the container as :/data to make this work
+
 metadata:
-  version: v1.1.0
-  filename: /data/swedeb/v1.1.0/riksprot_metadata.db
+  version: v1.1.3
+  filename: /data/swedeb/metadata/riksprot_metadata.v1.1.3.db
   github:
     user: swerik-project
     repository: riksdagen-persons
     path: data
 
-corpus:
-  version: v1.1.0
-  github:
-    user: swerik-project
-    repository: riksdagen-records
-    path: data
-
-
 cwb:
-  registry_dir: /usr/local/share/cwb/registry
-  corpus_name: RIKSPROT_1867_2020_V110
+  registry_dir: /data/registry
+  corpus_name: RIKSPROT_CORPUS
 
 dtm:
-  folder: /data/swedeb/v1.1.0/dtm/text
+  folder: /data/swedeb/v1.4.1/dtm/text
   tag: text
 
 vrt:
-  folder: /data/swedeb/v1.1.0/tagged_frames
+  folder: /data/swedeb/v1.4.1/tagged_frames
   tag: text
 
 speech:
@@ -80,7 +73,7 @@ speech:
 kwic:
   use_multiprocessing: true
   num_processes: 8
-  
+
 fastapi:
   origins:
     - http://localhost:8080
@@ -153,7 +146,7 @@ mappings:
       type: "decode"
       from_column: "pid"
       to_column: "name"
-    
+
     - table: "gender"
       type: "encode"
       from_column: "gender"
@@ -192,7 +185,7 @@ display:
         "X": "partilös"
       }
       name: { "": "metadata saknas" }
-      
+
   labels:
     speaker:
       unknown: Okänd
@@ -201,5 +194,5 @@ display:
     translations: {
       " man": " Män",
       "woman": "Kvinnor",
-      "unknown": "metadata saknas"
+      "unknown": "Okänt"
     }
