@@ -94,17 +94,16 @@ class SearchService:
         current_speakers = self._get_filtered_speakers(selections, current_speakers)
         return current_speakers.reset_index(inplace=False)
 
-    def get_speech(self, document_name: str) -> Speech:
-        """Get a single speech by document name.
+    def get_speech(self, speech_id: str) -> Speech:
+        """Get a single speech by canonical speech_id (i-* format).
 
         Args:
-            document_name: Name/ID of the document
+            speech_id: Canonical speech_id (i-* format)
 
         Returns:
             Speech object with text and metadata
         """
-        speech: Speech = self._loader.repository.speech(speech_name=document_name)
-        return speech
+        return self._loader.repository.speech(speech_id=speech_id)
 
     def get_speeches_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, Speech], None, None]:
         """Yield ``(speech_id, Speech)`` pairs grouped by protocol for efficient retrieval.

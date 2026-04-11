@@ -143,10 +143,10 @@ def test_speech_store_missing_key(speech_store):
 # ---------------------------------------------------------------------------
 
 
-def test_fast_repo_speech_by_document_name(speech_repository, speech_store):
-    """speech() must return a valid Speech for a known document_name."""
-    name = next(iter(speech_store._name_to_loc))
-    speech = speech_repository.speech(name)
+def test_fast_repo_speech_by_speech_id_from_store(speech_repository, speech_store):
+    """speech() must return a valid Speech for a known speech_id."""
+    sid = next(iter(speech_store._sid_to_loc))
+    speech = speech_repository.speech(sid)
     assert isinstance(speech, Speech)
     assert speech.error is None, f"Unexpected error: {speech.error}"
     assert isinstance(speech.paragraphs, list)
@@ -161,15 +161,15 @@ def test_fast_repo_speech_by_speech_id(speech_repository, speech_store):
 
 
 def test_fast_repo_speech_missing_key(speech_repository):
-    """speech() must return error Speech for unknown key, not raise."""
-    speech = speech_repository.speech("prot-9999--xx--0001_1")
+    """speech() must return error Speech for unknown speech_id, not raise."""
+    speech = speech_repository.speech("i-nonexistent-9999")
     assert speech.error is not None
 
 
 def test_fast_repo_to_text(speech_repository, speech_store):
     """to_text must join paragraphs into a non-empty string."""
-    name = next(iter(speech_store._name_to_loc))
-    speech = speech_repository.speech(name)
+    sid = next(iter(speech_store._sid_to_loc))
+    speech = speech_repository.speech(sid)
     if speech.paragraphs:
         text = speech_repository.to_text({"paragraphs": speech.paragraphs})
         assert isinstance(text, str)
@@ -214,9 +214,9 @@ def test_store_raises_on_missing_lookup(tmp_path):
         SpeechStore(str(empty_dir))
 
 
-def test_fast_repo_speech_unknown_prot_key(speech_repository):
-    """speech() with an unknown prot- key must return an error Speech, not raise."""
-    result = speech_repository.speech("prot-9999--xx--0009_99")
+def test_fast_repo_speech_unknown_speech_id_nonexistent(speech_repository):
+    """speech() with an unknown i-* speech_id must return an error Speech, not raise."""
+    result = speech_repository.speech("i-nonexistent-9999-xx")
     assert result.error is not None
 
 
@@ -259,12 +259,12 @@ _WARMUP_N = 10
 _SAMPLE_N = 50  # scaled to small test corpus
 
 
-def _sample_doc_names(document_index, n: int) -> list[str]:
-    """Return n document_names, cycling through the corpus if smaller than n."""
-    names = list(document_index["document_name"].astype(str))
-    if len(names) >= n:
-        return names[:n]
-    return (names * ((n // len(names)) + 1))[:n]
+def _sample_speech_ids(document_index, n: int) -> list[str]:
+    """Return n speech_ids, cycling through the corpus if smaller than n."""
+    ids = list(document_index["speech_id"].dropna().astype(str))
+    if len(ids) >= n:
+        return ids[:n]
+    return (ids * ((n // len(ids)) + 1))[:n]
 
 
 def test_benchmark_single_lookup(speech_repository, document_index):
@@ -272,16 +272,16 @@ def test_benchmark_single_lookup(speech_repository, document_index):
 
     Reports p50/p95. Passes unconditionally — numbers are printed for review.
     """
-    all_names = _sample_doc_names(document_index, _WARMUP_N + _SAMPLE_N)
+    all_ids = _sample_speech_ids(document_index, _WARMUP_N + _SAMPLE_N)
 
-    for name in all_names[:_WARMUP_N]:
-        speech_repository.speech(name)
+    for sid in all_ids[:_WARMUP_N]:
+        speech_repository.speech(sid)
 
-    sample_names = all_names[_WARMUP_N : _WARMUP_N + _SAMPLE_N]
+    sample_ids = all_ids[_WARMUP_N : _WARMUP_N + _SAMPLE_N]
     times = []
-    for name in sample_names:
+    for sid in sample_ids:
         t0 = time.perf_counter()
-        speech_repository.speech(name)
+        speech_repository.speech(sid)
         times.append(time.perf_counter() - t0)
 
     sorted_times = sorted(times)
