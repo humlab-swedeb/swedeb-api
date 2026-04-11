@@ -353,17 +353,17 @@ class PersonCodecs(Codecs):
 
         return self.persons_of_interest.loc[key]
 
-    @staticmethod
-    def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
-        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-        if isinstance(wiki_id, pd.Series):
-            data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
-            data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
-            return data
-        return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
+    # @staticmethod
+    # def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
+    #     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+    #     if isinstance(wiki_id, pd.Series):
+    #         data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
+    #         data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
+    #         return data
+    #     return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
-    def person_wiki_link2(wiki_id: str | pd.Series) -> str | pd.Series:
+    def person_wiki_link(wiki_id: str | pd.Series) -> str | pd.Series:
         unknown = ConfigValue("display.labels.speaker.unknown").resolve()
         prefix = "https://www.wikidata.org/wiki/"
 
@@ -401,12 +401,12 @@ class PersonCodecs(Codecs):
 
         Expected document format:
             'prot-YYYY--KK--NNN_MMM'
-        where YYYY is either 4 or 6 digits, KK is a chamber code, NNN is the
+        where YYYY is between 4 and 8 digits (e.g. "1999", "199900", "19992000"),
         zero-padded protocol number, and MMM is the zero-padded page number.
         """
         doc_names = document_names.astype("string[python]")
 
-        parts = doc_names.str.extract(r"^[^-]+-([0-9]{4,6})_(.+)$", expand=True)
+        parts = doc_names.str.extract(r"^[^-]+-([0-9]{4,8})_(.+)$", expand=True)
         year = parts[0]
         base_filename = parts[1] + ".pdf"
 

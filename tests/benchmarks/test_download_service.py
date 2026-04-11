@@ -1,17 +1,13 @@
 """Integration benchmarks and correctness tests for DownloadService.
 
-Run against the full database to identify bottlenecks:
+Run benchmarks with::
 
-    pytest tests/integration/test_download_service.py -v -s
-
-Add --benchmark-only for pytest-benchmark timing if available, or inspect the
-printed timings produced by the time.perf_counter wrappers in each test.
+    pytest tests/benchmarks/ -m benchmark --benchmark-only -v
 """
 
 from __future__ import annotations
 
 import io
-import time
 import zipfile
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch
@@ -44,10 +40,6 @@ def config_store() -> Generator[ConfigStore, None, None]:
 # ---------------------------------------------------------------------------
 
 version = "v1"
-
-
-def _elapsed(start: float) -> float:
-    return time.perf_counter() - start
 
 
 def _make_commons(selections: dict[str, Any]) -> MagicMock:
@@ -106,48 +98,31 @@ def party_id_map(config_store, corpus_loader: CorpusLoader) -> dict[str, int]:
 class TestGetAnforanden:
     """Correctness and performance tests for SearchService.get_anforanden."""
 
-    def test_no_filter_returns_all(self, search_service: SearchService):
-        t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections={})
-        elapsed = _elapsed(t0)
-        print(f"\n  get_anforanden(no filter): {len(df):,} rows in {elapsed:.3f}s")
+    def test_no_filter_returns_all(self, search_service: SearchService, benchmark):
+        df = benchmark(search_service.get_anforanden, selections={})
         assert len(df) > 0
         assert "speech_id" in df.columns
         assert "name" in df.columns
 
-    def test_year_range_filter(self, search_service: SearchService):
-        t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections={"year": (1970, 1975)})
-        elapsed = _elapsed(t0)
-        print(f"\n  get_anforanden(year 1970-1975): {len(df):,} rows in {elapsed:.3f}s")
+    def test_year_range_filter(self, search_service: SearchService, benchmark):
+        df = benchmark(search_service.get_anforanden, selections={"year": (1970, 1975)})
         assert len(df) > 0
         assert df["year"].between(1970, 1975).all()
 
-    def test_party_filter(self, search_service: SearchService, party_id_map: dict[str, int]):
-        party_ids = [party_id_map.get("S"), party_id_map.get("M")]
-        party_ids = [p for p in party_ids if p is not None]
-        t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections={"party_id": party_ids, "year": (1970, 1990)})
-        elapsed = _elapsed(t0)
-        print(f"\n  get_anforanden(S+M, 1970-1990): {len(df):,} rows in {elapsed:.3f}s")
+    def test_party_filter(self, search_service: SearchService, party_id_map: dict[str, int], benchmark):
+        party_ids = [p for p in [party_id_map.get("S"), party_id_map.get("M")] if p is not None]
+        df = benchmark(search_service.get_anforanden, selections={"party_id": party_ids, "year": (1970, 1990)})
         assert len(df) > 0
         assert set(df["party_abbrev"].unique()).issubset({"S", "M", "?"})
 
-    def test_gender_filter(self, search_service: SearchService):
-        t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections={"gender_id": [2], "year": (1970, 1990)})
-        elapsed = _elapsed(t0)
-        print(f"\n  get_anforanden(gender_id=2, 1970-1990): {len(df):,} rows in {elapsed:.3f}s")
+    def test_gender_filter(self, search_service: SearchService, benchmark):
+        df = benchmark(search_service.get_anforanden, selections={"gender_id": [2], "year": (1970, 1990)})
         assert len(df) > 0
 
-    def test_combined_filter(self, search_service: SearchService, party_id_map: dict[str, int]):
-        party_ids = [party_id_map.get("S")]
-        party_ids = [p for p in party_ids if p is not None]
+    def test_combined_filter(self, search_service: SearchService, party_id_map: dict[str, int], benchmark):
+        party_ids = [p for p in [party_id_map.get("S")] if p is not None]
         selections = {"party_id": party_ids, "gender_id": [1, 2], "year": (1960, 1970)}
-        t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections=selections)
-        elapsed = _elapsed(t0)
-        print(f"\n  get_anforanden(S, all genders, 1960-1970): {len(df):,} rows in {elapsed:.3f}s")
+        df = benchmark(search_service.get_anforanden, selections=selections)
         assert len(df) > 0
 
     def test_result_has_required_columns(self, search_service: SearchService):
@@ -156,12 +131,9 @@ class TestGetAnforanden:
         missing = required - set(df.columns)
         assert not missing, f"Missing columns: {missing}"
 
-    def test_large_year_range(self, search_service: SearchService):
+    def test_large_year_range(self, search_service: SearchService, benchmark):
         """Benchmark a broad query that returns a large result set."""
-        t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections={"year": (1960, 2000)})
-        elapsed = _elapsed(t0)
-        print(f"\n  get_anforanden(1960-2000): {len(df):,} rows in {elapsed:.3f}s")
+        df = benchmark(search_service.get_anforanden, selections={"year": (1960, 2000)})
         assert len(df) > 0
 
 
@@ -178,31 +150,22 @@ class TestGetSpeechesBatch:
         available = df["speech_id"].dropna()
         return available.sample(min(n, len(available)), random_state=42).tolist()
 
-    def test_small_batch(self, search_service: SearchService):
+    def test_small_batch(self, search_service: SearchService, benchmark):
         ids = self._sample_speech_ids(search_service, 10, (1970, 1975))
-        t0 = time.perf_counter()
-        results = list(search_service.get_speeches_batch(ids))
-        elapsed = _elapsed(t0)
-        print(f"\n  get_speeches_batch(n=10): {len(results)} speeches in {elapsed:.3f}s")
+        results = benchmark(lambda: list(search_service.get_speeches_batch(ids)))
         assert len(results) == 10
         for speech_id, speech in results:
             assert speech_id.startswith("i-")
             assert speech is not None
 
-    def test_medium_batch(self, search_service: SearchService):
+    def test_medium_batch(self, search_service: SearchService, benchmark):
         ids = self._sample_speech_ids(search_service, 100, (1970, 1980))
-        t0 = time.perf_counter()
-        results = list(search_service.get_speeches_batch(ids))
-        elapsed = _elapsed(t0)
-        print(f"\n  get_speeches_batch(n=100): {len(results)} speeches in {elapsed:.3f}s")
+        results = benchmark(lambda: list(search_service.get_speeches_batch(ids)))
         assert len(results) == 100
 
-    def test_large_batch(self, search_service: SearchService):
+    def test_large_batch(self, search_service: SearchService, benchmark):
         ids = self._sample_speech_ids(search_service, 500, (1970, 1990))
-        t0 = time.perf_counter()
-        results = list(search_service.get_speeches_batch(ids))
-        elapsed = _elapsed(t0)
-        print(f"\n  get_speeches_batch(n=500): {len(results)} speeches in {elapsed:.3f}s")
+        results = benchmark(lambda: list(search_service.get_speeches_batch(ids)))
         assert len(results) == 500
 
     def test_batch_yields_text(self, search_service: SearchService):
@@ -218,13 +181,10 @@ class TestGetSpeechesBatch:
         returned_ids = {sid for sid, _ in results}
         assert returned_ids == set(ids)
 
-    def test_batch_across_protocols(self, search_service: SearchService):
+    def test_batch_across_protocols(self, search_service: SearchService, benchmark):
         """IDs from many different protocols — tests feather file grouping path."""
         ids = self._sample_speech_ids(search_service, 200, (1960, 2000))
-        t0 = time.perf_counter()
-        results = list(search_service.get_speeches_batch(ids))
-        elapsed = _elapsed(t0)
-        print(f"\n  get_speeches_batch(n=200, spread 1960-2000): {len(results)} speeches in {elapsed:.3f}s")
+        results = benchmark(lambda: list(search_service.get_speeches_batch(ids)))
         assert len(results) == 200
 
 
@@ -239,46 +199,29 @@ class TestCreateZipStream:
     def _selections_to_commons(self, selections: dict) -> MagicMock:
         return _make_commons(selections)
 
-    def test_small_zip(self, download_service: DownloadService, search_service: SearchService):
+    def test_small_zip(self, download_service: DownloadService, search_service: SearchService, benchmark):
         df = search_service.get_anforanden(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
         commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
-
-        t0 = time.perf_counter()
-        zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
-        elapsed = _elapsed(t0)
-        print(f"\n  create_zip_stream(n≤10 filtered): {len(zip_bytes):,} bytes in {elapsed:.3f}s")
-
+        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
         names = _zip_entry_names(zip_bytes)
         assert len(names) > 0
         for name in names:
             assert name.endswith(".txt")
             assert "_i-" in name  # format: {speaker}_{speech_id}.txt
 
-    def test_zip_year_filter(self, download_service: DownloadService, search_service: SearchService):
+    def test_zip_year_filter(self, download_service: DownloadService, search_service: SearchService, benchmark):
         commons = _make_commons({"year": (1970, 1971)})
-        t0 = time.perf_counter()
-        zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
-        elapsed = _elapsed(t0)
-        names = _zip_entry_names(zip_bytes)
-        print(f"\n  create_zip_stream(1970-1971): {len(names)} files, {len(zip_bytes):,} bytes in {elapsed:.3f}s")
-        assert len(names) > 0
+        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
+        assert len(_zip_entry_names(zip_bytes)) > 0
 
     def test_zip_party_and_gender_filter(
-        self, download_service: DownloadService, search_service: SearchService, party_id_map: dict[str, int]
+        self, download_service: DownloadService, search_service: SearchService, party_id_map: dict[str, int], benchmark
     ):
-        party_ids = [party_id_map.get("S")]
-        party_ids = [p for p in party_ids if p is not None]
+        party_ids = [p for p in [party_id_map.get("S")] if p is not None]
         commons = _make_commons({"party_id": party_ids, "gender_id": [2], "year": (1975, 1980)})
-        t0 = time.perf_counter()
-        zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
-        elapsed = _elapsed(t0)
-        names = _zip_entry_names(zip_bytes)
-        print(
-            f"\n  create_zip_stream(S, gender_id=2, 1975-1980): {len(names)} files, "
-            f"{len(zip_bytes):,} bytes in {elapsed:.3f}s"
-        )
-        assert len(names) >= 0  # may be empty for narrow filter; just no crash
+        benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
+        # no crash is sufficient for a narrow filter
 
     def test_zip_is_valid(self, download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1972, 1973)})
@@ -298,15 +241,8 @@ class TestCreateZipStream:
             speaker_part = parts[0]
             assert speaker_part, f"Empty speaker in filename: {name!r}"
 
-    def test_zip_large_batch(self, download_service: DownloadService, search_service: SearchService):
+    def test_zip_large_batch(self, download_service: DownloadService, search_service: SearchService, benchmark):
         """Benchmark a broad query to stress the streaming path."""
         commons = _make_commons({"year": (1970, 1975)})
-        t0 = time.perf_counter()
-        zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
-        elapsed = _elapsed(t0)
-        names = _zip_entry_names(zip_bytes)
-        print(
-            f"\n  create_zip_stream(1970-1975, large): {len(names)} files, "
-            f"{len(zip_bytes):,} bytes in {elapsed:.3f}s"
-        )
-        assert len(names) > 0
+        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
+        assert len(_zip_entry_names(zip_bytes)) > 0

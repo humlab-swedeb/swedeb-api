@@ -70,7 +70,7 @@ requirements.txt: pyproject.toml
 # 		&& git commit -m "📌 updated requirements.txt" \
 # 			&& git push
 
-.PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument
+.PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument profile-zip-pyinstrument
 
 build-utils:
 	@echo "Building lib..."
@@ -90,6 +90,13 @@ profile-kwic-pyinstrument:
 	@PYTHONPATH=. pyinstrument --color --show-all \
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_kwic.html \
 			tests/profile_kwic.py
+
+profile-zip-pyinstrument:
+	@echo "Profiling create_zip_stream(1970-1975)..."
+	@mkdir -p tests/output
+	@PYTHONPATH=. uv run pyinstrument --color --show-all \
+		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_zip_stream.html \
+			tests/profiling/profile_zip_stream.py
 
 # --- Bootstrap corpus build ---------------------------------------------------
 # Required environment variables (set in .env or export before running):
