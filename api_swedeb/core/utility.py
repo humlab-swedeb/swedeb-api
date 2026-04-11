@@ -127,6 +127,26 @@ def lazy_property(fn) -> property:
     return _lazy_property
 
 
+_slow_avoid_use_warned: set[str] = set()
+
+
+def slow_avoid_use(fn: Callable) -> Callable:
+    """Decorator that logs a warning the first time a slow function is called per session.
+
+    Use this to mark functions known to be performance-sensitive so callers
+    are reminded to prefer faster alternatives.
+    """
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if fn.__qualname__ not in _slow_avoid_use_warned:
+            _slow_avoid_use_warned.add(fn.__qualname__)
+            logger.warning("slow_avoid_use: {} is known to be slow — consider a faster alternative", fn.__qualname__)
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 def revdict(d: dict) -> dict:
     return {v: k for k, v in d.items()}
 
@@ -421,7 +441,10 @@ def fix_whitespace(text: str) -> str:
 #     return release_tags
 
 
+@slow_avoid_use
 def format_protocol_id(selected_protocol: str) -> str:
+    """Formats protocol id to human readable format.
+    Expected input format is prot-YYYY--NNN_MMM or prot-YYYY-a-ak--NNN_MMM or prot-YYYY-a-fk--NNN_MMM."""
     try:
         protocol_parts: list[str] = selected_protocol.split("-")
 

@@ -11,7 +11,6 @@ from api_swedeb.core.configuration.inject import (
     ConfigStore,
     Configurable,
     ConfigValue,
-    configure_context,
     inject_config,
     resolve_arguments,
 )
