@@ -92,6 +92,7 @@ def speech_repository(speech_store, document_index, metadata_db_path) -> SpeechR
         store=speech_store,
         document_index=document_index,
         metadata_db_path=metadata_db_path,
+        strict=True,
     )
 
 

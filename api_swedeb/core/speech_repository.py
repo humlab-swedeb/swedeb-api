@@ -61,6 +61,7 @@ class SpeechRepository:
         store: SpeechStore,
         document_index: pd.DataFrame,
         metadata_db_path: str | None = None,
+        strict: bool = False,
     ) -> None:
         self._store: SpeechStore = store
         self._document_index: pd.DataFrame = document_index
@@ -79,19 +80,25 @@ class SpeechRepository:
             idx_reset.set_index("document_name")["speech_id"].to_dict()
         )
         # Startup alignment: validate and build document_id → feather location map
-        self._doc_id_to_loc: dict[int, tuple[str, int]] = self._align_with_dtm(idx_reset)
+        self._doc_id_to_loc: dict[int, tuple[str, int]] = self._align_with_dtm(idx_reset, strict=strict)
 
     # ------------------------------------------------------------------
     # Startup alignment
     # ------------------------------------------------------------------
 
-    def _align_with_dtm(self, idx_reset: pd.DataFrame) -> dict[int, tuple[str, int]]:
+    def _align_with_dtm(self, idx_reset: pd.DataFrame, *, strict: bool = False) -> dict[int, tuple[str, int]]:
         """Validate DTM document index against prebuilt store and build a
         document_id → (feather_file, feather_row) map for O(1) integer lookups.
 
-        Logs a warning for any speech_id present in the DTM but missing from
-        the prebuilt store (or vice versa) so mismatches are visible at startup.
+        Logs a warning (or raises ``ValueError`` when *strict* is ``True``) for
+        any speech_id present in the DTM but missing from the prebuilt store (or
+        vice versa) so mismatches are visible at startup.
         """
+        def _report(message: str) -> None:
+            if strict:
+                raise ValueError(message)
+            logger.warning(message)
+
         prebuilt_ids: set[str] = set(self._store._sid_to_loc.keys())
         dtm_ids: set[str] = set(idx_reset["speech_id"].dropna())
 
@@ -103,12 +110,12 @@ class SpeechRepository:
             f"only_in_dtm={len(only_in_dtm)} only_in_prebuilt={len(only_in_prebuilt)}"
         )
         if only_in_dtm:
-            logger.warning(
+            _report(
                 f"{len(only_in_dtm)} DTM speech_ids not found in bootstrap_corpus — "
                 "speech retrieval will return 'not found' for these entries"
             )
         if only_in_prebuilt:
-            logger.warning(
+            _report(
                 f"{len(only_in_prebuilt)} bootstrap_corpus speech_ids not in DTM — "
                 "these speeches are unreachable via word-search"
             )
@@ -124,7 +131,7 @@ class SpeechRepository:
             if prebuilt_name and prebuilt_name != dtm_name:
                 name_mismatches.append((sid, dtm_name, prebuilt_name))
         if name_mismatches:
-            logger.warning(
+            _report(
                 f"{len(name_mismatches)} speech_ids have mismatched document_name between DTM and prebuilt; "
                 f"first 5: {name_mismatches[:5]}"
             )
