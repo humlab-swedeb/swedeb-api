@@ -80,7 +80,7 @@ class TestConfigInit:
 
     def test_config_init_with_filename(self):
         """Test Config initialization with filename."""
-        config = Config(data={}, context="default", filename="config.yml")
+        config = Config(data={}, context="test", filename="config.yml")
         assert config.filename == "config.yml"
 
     def test_config_init_defaults(self):
