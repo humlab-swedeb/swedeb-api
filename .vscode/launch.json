@@ -26,7 +26,7 @@
             "name": "PyTest",
             "stopOnEntry": false,
             // "python": "${command:python.interpreterPath}",
-            "justMyCode": false,
+            "justMyCode": true,
             // "envFile": "${workspaceRoot}/.venv",
             "cwd": "${workspaceRoot}",
             "console": "internalConsole",

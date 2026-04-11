@@ -363,6 +363,20 @@ class PersonCodecs(Codecs):
         return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
 
     @staticmethod
+    def person_wiki_link2(wiki_id: str | pd.Series) -> str | pd.Series:
+        unknown = ConfigValue("display.labels.speaker.unknown").resolve()
+        prefix = "https://www.wikidata.org/wiki/"
+
+        if isinstance(wiki_id, pd.Series):
+            wiki_id = wiki_id.astype("string[python]")
+            is_unknown = wiki_id.eq("unknown")
+            result = prefix + wiki_id
+            result[is_unknown] = unknown
+            return result
+
+        return unknown if wiki_id == "unknown" else prefix + wiki_id
+
+    @staticmethod
     def speech_link(
         document_name: str | pd.Series, page_nr: str | int | pd.Series[int] | pd.Series[str] = 1
     ) -> str | pd.Series[str]:
@@ -379,22 +393,29 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def _speech_links(
-        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int] | pd.Series[str] = 1
+        document_names: pd.Series,
+        base_url: str,
+        page_nrs: int | str | pd.Series = 1,
     ) -> pd.Series:
         """Create a series of speech links from document names and page numbers.
-        The document has the following format: 'prot-YYYY--KK--NNN_MMM'
-        where YYYY is the year as YYYY (i.e. 2010) or YYYYYY (i.e. 202021).
-           KK is the chamber code ('fk', ak', etc).
-           NNN is the protocol number as zero-padded integer.
-           MMM is the page number as zero-padded integer.
+
+        Expected document format:
+            'prot-YYYY--KK--NNN_MMM'
+        where YYYY is either 4 or 6 digits, KK is a chamber code, NNN is the
+        zero-padded protocol number, and MMM is the zero-padded page number.
         """
-        # Pandas + pyarrow can return list-typed extension arrays after split,
-        # which do not support chained `.str[...]` reliably.
         doc_names = document_names.astype("string[python]")
-        year: pd.Series[str] = doc_names.str.split('-').str[1]
-        base_filename: pd.Series[str] = doc_names.str.split('_').str[0] + ".pdf"
-        page_nrs = page_nrs.astype(str) if isinstance(page_nrs, pd.Series) else str(page_nrs)
-        return base_url + year + "/" + base_filename + "#page=" + page_nrs
+
+        parts = doc_names.str.extract(r"^[^-]+-([0-9]{4,6})_(.+)$", expand=True)
+        year = parts[0]
+        base_filename = parts[1] + ".pdf"
+
+        if isinstance(page_nrs, pd.Series):
+            page_str = page_nrs.astype("string[python]")
+        else:
+            page_str = str(page_nrs)
+
+        return base_url + year + "/" + base_filename + "#page=" + page_str
 
     def decode_speech_index(
         self, speech_index: pd.DataFrame, value_updates: dict | None = None, sort_values: bool = True

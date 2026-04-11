@@ -25,6 +25,7 @@ from api_swedeb.core.configuration import ConfigStore, Config
 
 # pylint: disable=redefined-outer-name,unused-argument
 
+
 @pytest.fixture(scope="module", autouse=True)
 def config_store() -> Generator[ConfigStore, None, None]:
     """Fixture to provide a clean ConfigStore instance for tests.
@@ -36,6 +37,7 @@ def config_store() -> Generator[ConfigStore, None, None]:
 
     with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
         yield store
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -69,6 +71,7 @@ def _zip_entry_names(zip_bytes: bytes) -> list[str]:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def corpus_loader() -> CorpusLoader:
     loader: CorpusLoader = CorpusLoader()
@@ -78,6 +81,7 @@ def corpus_loader() -> CorpusLoader:
     _ = loader.decoded_persons
     _ = loader.repository
     return loader
+
 
 @pytest.fixture(scope="module")
 def search_service(config_store, corpus_loader: CorpusLoader) -> SearchService:
