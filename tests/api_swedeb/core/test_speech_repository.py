@@ -5,8 +5,6 @@ Tests
 - SpeechStore loads speech_lookup.feather and locates speeches correctly.
 - SpeechRepository.speech() returns Speech with paragraphs / metadata.
 - SpeechRepository.speeches_batch() returns correct Speech objects.
-- SpeechRepository.get_key_index() resolves all three key types.
-- SpeechRepository.get_speech_info() returns expected fields.
 - CorpusLoader instantiates SpeechRepository from bootstrap_corpus folder.
 """
 
@@ -166,29 +164,6 @@ def test_fast_repo_speech_missing_key(speech_repository):
     """speech() must return error Speech for unknown key, not raise."""
     speech = speech_repository.speech("prot-9999--xx--0001_1")
     assert speech.error is not None
-
-
-def test_fast_repo_get_key_index(speech_repository, document_index):
-    """get_key_index must return a valid row in document_index for known document_names."""
-    for doc_name in list(document_index["document_name"].head(5)):
-        idx = speech_repository.get_key_index(doc_name)
-        assert isinstance(idx, int)
-        assert idx in document_index.index
-
-
-def test_fast_repo_get_key_index_speech_id(speech_repository, document_index):
-    """get_key_index must accept i-* speech_id strings."""
-    for speech_id in list(document_index["speech_id"].head(5)):
-        idx = speech_repository.get_key_index(speech_id)
-        assert isinstance(idx, int)
-
-
-def test_fast_repo_get_speech_info(speech_repository, document_index):
-    """get_speech_info must return a dict with person_id and speaker_note."""
-    doc_name = str(document_index["document_name"].iloc[0])
-    info = speech_repository.get_speech_info(doc_name)
-    assert isinstance(info, dict)
-    assert "speaker_note" in info
 
 
 def test_fast_repo_to_text(speech_repository, speech_store):

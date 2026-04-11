@@ -49,7 +49,7 @@ class SpeechRepository:
     document_index:
         Legacy speech-index DataFrame (from the DTM corpus).  Used to
         resolve legacy integer *document_id* keys to *document_name* strings
-        in :meth:`speeches_batch` and :meth:`get_key_index`.
+        in :meth:`speeches_batch`.
     metadata_db_path:
         Optional path to the riksprot metadata SQLite DB.  When provided the
         ``speaker_note_id → speaker_note`` lookup table is loaded so that
@@ -69,9 +69,6 @@ class SpeechRepository:
 
         # Pre-build key resolution dicts from the legacy document_index
         idx_reset = document_index.reset_index()
-        self._document_name2id: dict[str, int] = (  # type: ignore[assignment]
-            idx_reset.set_index("document_name")["document_id"].to_dict()
-        )
         self._speech_id2id: dict[str, int] = (  # type: ignore[assignment]
             idx_reset.set_index("speech_id")["document_id"].to_dict()
         )
@@ -164,31 +161,6 @@ class SpeechRepository:
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
 
-    # ------------------------------------------------------------------
-    # Key resolution (compatible with SpeechTextRepository.get_key_index)
-    # ------------------------------------------------------------------
-
-    def get_key_index(self, key: int | str) -> int:
-        """Resolve any key type to the legacy document_id integer.
-
-        Accepts:
-        - ``int`` or digit string → treated as document_id directly
-        - ``prot-*`` string → resolved via document_name index
-        - ``i-*`` string → resolved via speech_id index
-        """
-        if not isinstance(key, (int, str)):
-            raise ValueError("key must be int or str")
-        key_idx: int | None = None
-        if isinstance(key, int) or (isinstance(key, str) and key.isdigit()):
-            key_idx = int(key)
-        elif isinstance(key, str) and key.startswith("prot-"):
-            key_idx = self._document_name2id.get(key)
-        elif isinstance(key, str) and key.startswith("i-"):
-            key_idx = self._speech_id2id.get(key)
-        if key_idx is None:
-            raise ValueError(f"unknown speech key {key}")
-        return key_idx
-
     def location_for_doc_id(self, doc_id: int) -> tuple[str, int] | None:
         """Return the prebuilt feather location for a DTM document_id, or None."""
         return self._doc_id_to_loc.get(doc_id)
@@ -196,30 +168,6 @@ class SpeechRepository:
     # ------------------------------------------------------------------
     # Public interface (matches SpeechTextRepository)
     # ------------------------------------------------------------------
-
-    def get_speech_info(self, key: int | str) -> dict[str, Any]:
-        """Return speech info dict for a key (document_id / document_name / speech_id).
-
-        Falls back to the legacy document_index for field values so callers
-        that depend on DTM-index columns (e.g. *person_id*, *year*) still work.
-        """
-        if not isinstance(key, (int, str)):
-            raise ValueError("key must be int or str")
-        try:
-            key_idx = self.get_key_index(key)
-            speech_info: dict = self._document_index.loc[int(key_idx)].to_dict()
-        except (ValueError, KeyError) as ex:
-            raise KeyError(f"Speech {key} not found in index") from ex
-
-        # Enrich with speaker name if available
-        person_id: str = speech_info.get("person_id", "")
-        if not speech_info.get("name") and person_id:
-            speech_info["name"] = person_id  # fallback label
-
-        speech_info["speaker_note"] = self.speaker_note_id2note.get(
-            speech_info.get("speaker_note_id", ""), "(introductory note not found)"
-        )
-        return speech_info
 
     def speech(self, speech_name: str) -> Speech:
         """Load a single speech by document_name, speech_id, or document_id.
