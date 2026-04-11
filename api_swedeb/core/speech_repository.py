@@ -129,7 +129,7 @@ class SpeechRepository:
                 continue
             prebuilt_name = self._store._sid_to_name.get(sid)
             dtm_name = str(row.get("document_name") or "")
-            if prebuilt_name and prebuilt_name != dtm_name:
+            if prebuilt_name and prebuilt_name != _normalize_document_name(dtm_name):
                 name_mismatches.append((sid, dtm_name, prebuilt_name))
         if name_mismatches:
             _report(
