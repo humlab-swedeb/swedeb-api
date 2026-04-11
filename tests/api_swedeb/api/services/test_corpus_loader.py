@@ -7,7 +7,7 @@ import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.codecs import PersonCodecs
-from api_swedeb.core.configuration.inject import ConfigStore
+from api_swedeb.core.configuration.inject import get_config_store
 from api_swedeb.core.speech_repository import SpeechRepository
 
 # pylint: disable=unused-argument
@@ -334,7 +334,7 @@ class TestIntegrationFullCorpus:
     def test_full_corpus_properties(self):
         """Integration test to verify CorpusLoader with actual data files."""
 
-        ConfigStore.configure_context(source='config/dev_swedeb.yml')
+        get_config_store().configure_context(source='config/dev_swedeb.yml')
         loader = CorpusLoader(
             dtm_tag="text",
             dtm_folder="./data/v1.4.1/dtm/text",

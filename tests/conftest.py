@@ -17,7 +17,7 @@ from loguru import logger
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.v1.endpoints import metadata_router, tool_router
 from api_swedeb.core.codecs import PersonCodecs
-from api_swedeb.core.configuration import ConfigStore, ConfigValue
+from api_swedeb.core.configuration import get_config_store, ConfigValue
 
 # pylint: disable=redefined-outer-name
 
@@ -68,7 +68,7 @@ def config_file_path() -> Path:
 @pytest.fixture(scope='session', autouse=True)
 def configure_config_store(config_file_path: Path) -> None:
     """Initialises ConfigStore once per session before any other fixtures run."""
-    ConfigStore.configure_context(source=str(config_file_path), env_filename="tests/test.env")
+    get_config_store().configure_context(source=str(config_file_path), env_filename="tests/test.env")
 
 
 @pytest.fixture(scope='session')
