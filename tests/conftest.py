@@ -1,27 +1,74 @@
+import os
 import sqlite3
 import sys
 from pathlib import Path
+import shutil
 
 import ccc
+import dotenv
+
+from jinja2 import Template
 import pandas as pd
 import pytest
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 from loguru import logger
-
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.v1.endpoints import metadata_router, tool_router
 from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.configuration import ConfigStore, ConfigValue
 
-ConfigStore.configure_context(source='tests/config.yml')
-
 # pylint: disable=redefined-outer-name
 
+dotenv.load_dotenv("tests/test.env")
 
 logger.remove()
 logger.add(sys.stderr, backtrace=True, diagnose=True)
+
+
+@pytest.fixture(scope='session')
+def config_file_path() -> Path:
+    """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
+    The config file is created once per test session and shared across tests.
+    Pytest automatically removes the tmp_path_factory directory after the session ends.
+    """
+
+    shutil.rmtree(Path(__file__).parent / "output", ignore_errors=True)
+
+    output_folder: Path = (Path(__file__).parent / "output").absolute()
+    output_folder.mkdir(parents=True, exist_ok=True)
+    corpus_version: str = os.environ.get("CORPUS_VERSION", "latest")
+    metadata_version: str = os.environ.get("METADATA_VERSION", "latest")
+    corpus_folder: Path = (Path(__file__).parent / "test_data").absolute()
+
+    # Create CWB registry file
+    registry_template_path: Path = Path(__file__).parent / "templates" / "registry.jinja"
+    cwb_folder: Path = (Path(__file__).parent / "test_data" / corpus_version / "cwb").absolute()
+    registry_folder: Path = output_folder / "registry"
+    registry_folder.mkdir(parents=True, exist_ok=True)
+    registry_file = registry_folder / "riksprot_corpus"
+    content: str = Template(registry_template_path.read_text()).render(cwb_folder=str(cwb_folder))
+    registry_file.write_text(content)
+
+    # Create config file
+    config_template_path: Path = Path(__file__).parent / "templates" / "config.yml.jinja"
+    config_content = Template(config_template_path.read_text()).render(
+        registry_dir=str(registry_folder),
+        metadata_version=metadata_version,
+        corpus_version=corpus_version,
+        corpus_folder=str(corpus_folder),
+    )
+    config_file = output_folder / "config.yml"
+    config_file.write_text(config_content)
+
+    return config_file
+
+
+@pytest.fixture(scope='session', autouse=True)
+def configure_config_store(config_file_path: Path) -> None:
+    """Initialises ConfigStore once per session before any other fixtures run."""
+    ConfigStore.configure_context(source=str(config_file_path), env_filename="tests/test.env")
 
 
 @pytest.fixture(scope='session')
