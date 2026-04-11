@@ -13,17 +13,29 @@ from __future__ import annotations
 import io
 import time
 import zipfile
-from typing import Any
-from unittest.mock import MagicMock
+from typing import Any, Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.core.configuration import ConfigStore, Config
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,unused-argument
 
+@pytest.fixture(scope="module", autouse=True)
+def config_store() -> Generator[ConfigStore, None, None]:
+    """Fixture to provide a clean ConfigStore instance for tests.
+    Automatically patches get_config_store() to return this store for the duration of the test.
+    """
+    config: Config = Config.load(source="config/config.yml")
+    store: ConfigStore = ConfigStore()
+    store.configure_context(source=config)
+
+    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
+        yield store
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -57,19 +69,28 @@ def _zip_entry_names(zip_bytes: bytes) -> list[str]:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+@pytest.fixture(scope="module")
+def corpus_loader() -> CorpusLoader:
+    loader: CorpusLoader = CorpusLoader()
+    _ = loader.vectorized_corpus
+    _ = loader.person_codecs
+    _ = loader.document_index
+    _ = loader.decoded_persons
+    _ = loader.repository
+    return loader
 
 @pytest.fixture(scope="module")
-def search_service(corpus_loader: CorpusLoader) -> SearchService:
+def search_service(config_store, corpus_loader: CorpusLoader) -> SearchService:
     return SearchService(corpus_loader)
 
 
 @pytest.fixture(scope="module")
-def download_service() -> DownloadService:
+def download_service(config_store) -> DownloadService:
     return DownloadService()
 
 
 @pytest.fixture(scope="module")
-def party_id_map(corpus_loader: CorpusLoader) -> dict[str, int]:
+def party_id_map(config_store, corpus_loader: CorpusLoader) -> dict[str, int]:
     return corpus_loader.person_codecs.get_mapping("party_abbrev", "party_id")
 
 
@@ -83,7 +104,7 @@ class TestGetAnforanden:
 
     def test_no_filter_returns_all(self, search_service: SearchService):
         t0 = time.perf_counter()
-        df = search_service.get_anforanden(selections={})
+        df = search_service.get_anforanden(selections={"year": (1970, 1970)})
         elapsed = _elapsed(t0)
         print(f"\n  get_anforanden(no filter): {len(df):,} rows in {elapsed:.3f}s")
         assert len(df) > 0
