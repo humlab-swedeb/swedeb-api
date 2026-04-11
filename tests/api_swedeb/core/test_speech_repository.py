@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.core.configuration import ConfigStore, ConfigValue
+from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.load import load_speech_index
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_repository import SpeechRepository
@@ -31,7 +31,7 @@ from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 # Configuration
 # ---------------------------------------------------------------------------
 
-ConfigStore.configure_context(source="tests/config.yml")
+# ConfigStore.configure_context(source="tests/config.yml")
 
 # pylint: disable=redefined-outer-name, protected-access
 # ---------------------------------------------------------------------------
