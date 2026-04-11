@@ -180,7 +180,7 @@ class SearchService:
                 party_vals = [int(v) for v in values]
                 allowed_person_ids = (
                     person_party.loc[person_party["party_id"].isin(party_vals), "person_id"]
-                    .astype(df["person_id"].dtype, copy=False)
+                    .astype(df["person_id"].dtype)
                     .unique()
                 )
                 if len(allowed_person_ids) == 0:
@@ -199,7 +199,7 @@ class SearchService:
                 )
                 allowed_person_ids = (
                     doc_index.loc[di_col.isin(chamber_vals), "person_id"]
-                    .astype(df["person_id"].dtype, copy=False)
+                    .astype(df["person_id"].dtype)
                     .unique()
                 )
                 if len(allowed_person_ids) == 0:

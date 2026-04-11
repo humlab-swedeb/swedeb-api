@@ -1,10 +1,9 @@
 import pytest
 from fastapi import status
 
-from api_swedeb.api.dependencies import get_corpus_decoder, get_corpus_loader, get_cwb_corpus, get_decoder_opts
+from api_swedeb.api.dependencies import get_corpus_loader, get_cwb_corpus
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.kwic_service import KWICService
-from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.mappers.kwic import kwic_to_api_model
 
 # pylint: disable=redefined-outer-name
