@@ -178,7 +178,7 @@ def test_speeches_get_years(fastapi_client: TestClient):
 
 
 def test_speeches_zip(fastapi_client: TestClient, corpus_loader: CorpusLoader):
-    payload: list[str] = corpus_loader.document_index.sample(2).document_name.to_list()
+    payload: list[str] = corpus_loader.document_index.sample(2).speech_id.to_list()
     response: Response = fastapi_client.post(f"{version}/tools/speech_download/", json=payload)
     assert response.status_code == status.HTTP_200_OK
     assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
