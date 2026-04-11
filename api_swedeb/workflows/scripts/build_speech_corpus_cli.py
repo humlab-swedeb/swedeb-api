@@ -3,10 +3,10 @@
 Typical invocation::
 
     python -m api_swedeb.workflows.scripts.build_speech_corpus_cli \\
-        --tagged-frames   /data/swedeb/v1.1.0/tagged_frames \\
-        --output-root     /data/swedeb/v1.1.0/speeches/bootstrap_corpus \\
-        --corpus-version  v1.1.0 \\
-        --metadata-version v1.1.0
+        --tagged-frames   ./data/v1.4.1/tagged_frames \\
+        --output-root     ./data/v1.4.1/speeches/bootstrap_corpus \\
+        --corpus-version  v1.4.1 \\
+        --metadata-version v1.4.1
 
 or via make::
 

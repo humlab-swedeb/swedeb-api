@@ -269,7 +269,7 @@ def test_get_speech_by_api(fastapi_client: TestClient, corpus_loader: CorpusLoad
 
 # @pytest.mark.skip(reason="FIXME: This test is only used for debugging")
 # def test_get_speech_party_bug():
-#     dtm_folder: str = "/data/swedeb/v1.1.0/dtm/text"
+#     dtm_folder: str = "./data/v1.4.1/dtm/text"
 #     dtm_tag: str = "text"
 #     metadata_filename: str = "/data/swedeb/v1.1.0/riksprot_metadata.db"
 #     tagged_corpus_folder: str = "/data/swedeb/v1.1.0/tagged_frames"

@@ -306,7 +306,7 @@ class TestIntegrationFullCorpus:
     # def test_document_index_load_time(self):
     #     import time
 
-    #     path: str = "/data/swedeb/v1.4.1/dtm/text/text_document_index.feather"
+    #     path: str = "./data/v1.4.1/dtm/text/text_document_index.feather"
     #     t0 = time.perf_counter()
     #     df1 = pd.read_feather(path)
     #     print("pandas default:", time.perf_counter() - t0)
@@ -323,7 +323,7 @@ class TestIntegrationFullCorpus:
     #     df3 = feather.read_feather(path, memory_map=True, use_threads=True)
     #     print("pyarrow -> pandas:", time.perf_counter() - t0)
 
-    _BOOTSTRAP_FOLDER = "/data/swedeb/v1.4.1/speeches/bootstrap_corpus"
+    _BOOTSTRAP_FOLDER = "./data/v1.4.1/speeches/bootstrap_corpus"
 
     @pytest.mark.skipif(
         not __import__("os").path.isdir(_BOOTSTRAP_FOLDER),
@@ -335,10 +335,10 @@ class TestIntegrationFullCorpus:
         ConfigStore.configure_context(source='config/dev_swedeb.yml')
         loader = CorpusLoader(
             dtm_tag="text",
-            dtm_folder="/data/swedeb/v1.4.1/dtm/text",
-            metadata_filename="/data/swedeb/metadata/riksprot_metadata.v1.1.3.db",
-            tagged_corpus_folder="/data/swedeb/v1.4.1/tagged_frames/**/prot-*.zip",
-            speech_bootstrap_corpus_folder="/data/swedeb/v1.4.1/speeches/bootstrap_corpus",
+            dtm_folder="./data/v1.4.1/dtm/text",
+            metadata_filename="./data/metadata/riksprot_metadata.v1.1.3.db",
+            tagged_corpus_folder="./data/v1.4.1/tagged_frames/**/prot-*.zip",
+            speech_bootstrap_corpus_folder="./data/v1.4.1/speeches/bootstrap_corpus",
         )
         doc_index = loader.document_index
         assert isinstance(doc_index, pd.DataFrame)
