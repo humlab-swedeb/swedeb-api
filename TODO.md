@@ -6,3 +6,4 @@
  - [ ] TODO: Replace use of Codecs with prebuilt_speech_index
  - [ ] FIXME: Add strict mode to alignment check in CorpusLoader
  - [ ] TODO: replace _get_filtered_speakers with get_filtered_speakers_improved
+ - [ ] TODO: fixa get_config_store i Shape Shifter att följa samma mönster som här
