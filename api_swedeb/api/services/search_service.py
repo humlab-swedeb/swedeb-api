@@ -198,9 +198,7 @@ class SearchService:
                     else doc_index["chamber_abbrev"]
                 )
                 allowed_person_ids = (
-                    doc_index.loc[di_col.isin(chamber_vals), "person_id"]
-                    .astype(df["person_id"].dtype)
-                    .unique()
+                    doc_index.loc[di_col.isin(chamber_vals), "person_id"].astype(df["person_id"].dtype).unique()
                 )
                 if len(allowed_person_ids) == 0:
                     return df.iloc[0:0]

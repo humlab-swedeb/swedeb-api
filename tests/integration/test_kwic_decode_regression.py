@@ -148,7 +148,9 @@ def test_document_id_never_null(kwic_baseline: pd.DataFrame):
 def test_node_word_matches_search_term(kwic_baseline: pd.DataFrame):
     """node_word must contain the searched word (case-insensitive)."""
     unexpected = kwic_baseline[~kwic_baseline["node_word"].str.lower().str.contains("debatt")]
-    assert unexpected.empty, f"{len(unexpected)} rows have unexpected node_word values: {unexpected['node_word'].unique()}"
+    assert (
+        unexpected.empty
+    ), f"{len(unexpected)} rows have unexpected node_word values: {unexpected['node_word'].unique()}"
 
 
 def test_year_within_filter_range(kwic_baseline: pd.DataFrame):
@@ -169,9 +171,7 @@ def test_wiki_id_column_present(kwic_baseline: pd.DataFrame):
 
 def test_link_format_for_known_speakers(kwic_baseline: pd.DataFrame):
     """link must begin with the Wikidata base URL for speakers with a real wiki_id."""
-    known = kwic_baseline[
-        kwic_baseline["wiki_id"].notna() & ~kwic_baseline["wiki_id"].isin(["unknown", ""])
-    ]
+    known = kwic_baseline[kwic_baseline["wiki_id"].notna() & ~kwic_baseline["wiki_id"].isin(["unknown", ""])]
     if not known.empty:
         bad = known[~known["link"].str.startswith("https://www.wikidata.org/wiki/")]
         assert bad.empty, f"{len(bad)} known-speaker rows have malformed link: {bad['link'].unique()}"

@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-from pyarrow import feather
 from loguru import logger
+from pyarrow import feather
 
 
 class SpeechStore:

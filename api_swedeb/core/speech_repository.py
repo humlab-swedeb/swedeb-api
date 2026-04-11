@@ -94,6 +94,7 @@ class SpeechRepository:
         any speech_id present in the DTM but missing from the prebuilt store (or
         vice versa) so mismatches are visible at startup.
         """
+
         def _report(message: str) -> None:
             if strict:
                 raise ValueError(message)
@@ -382,9 +383,7 @@ class SpeechRepository:
             doc_ids = [int(keys[i]) for i in digit_indices]
             present = [did for did in doc_ids if did in self._document_index.index]
             if present:
-                sid_map = (
-                    self._document_index.loc[present, "speech_id"].fillna("").astype(str).to_dict()
-                )
+                sid_map = self._document_index.loc[present, "speech_id"].fillna("").astype(str).to_dict()
                 for i, doc_id in zip(digit_indices, doc_ids):
                     sid = sid_map.get(doc_id, "")
                     result[i] = sid or None

@@ -313,8 +313,7 @@ def test_benchmark_single_lookup(speech_repository, document_index):
     p50 = statistics.median(times) * 1000
     p95 = sorted_times[int(len(sorted_times) * 0.95)] * 1000
     print(
-        f"\n--- Single-speech Benchmark ({_SAMPLE_N} samples, warm cache) ---"
-        f"\n  p50={p50:.2f}ms  p95={p95:.2f}ms"
+        f"\n--- Single-speech Benchmark ({_SAMPLE_N} samples, warm cache) ---" f"\n  p50={p50:.2f}ms  p95={p95:.2f}ms"
     )
 
 
@@ -331,10 +330,7 @@ def test_benchmark_batch_retrieval(speech_repository, document_index):
 
     n = len(batch_ids)
     rate = n / elapsed if elapsed > 0 else 0
-    print(
-        f"\n--- Batch Retrieval Benchmark ({n} speeches) ---"
-        f"\n  {elapsed*1000:.1f}ms  ({rate:.0f} speeches/sec)"
-    )
+    print(f"\n--- Batch Retrieval Benchmark ({n} speeches) ---" f"\n  {elapsed*1000:.1f}ms  ({rate:.0f} speeches/sec)")
     assert len(results) == n
 
 

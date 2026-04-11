@@ -32,8 +32,8 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-from pyarrow import feather
 from loguru import logger
+from pyarrow import feather
 
 from .enrichment import SpeakerLookups, enrich_speech_rows
 from .merge import merge_protocol_utterances

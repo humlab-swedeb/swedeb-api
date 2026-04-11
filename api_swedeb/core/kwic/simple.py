@@ -167,9 +167,23 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
 
     # Return only the columns that the API schema / mapper expect
     keep = [
-        "left_word", "node_word", "right_word",
-        "year", "name", "party_abbrev", "party", "gender", "gender_abbrev",
-        "person_id", "link", "speech_name", "speech_link",
-        "document_name", "chamber_abbrev", "speech_id", "wiki_id", "document_id",
+        "left_word",
+        "node_word",
+        "right_word",
+        "year",
+        "name",
+        "party_abbrev",
+        "party",
+        "gender",
+        "gender_abbrev",
+        "person_id",
+        "link",
+        "speech_name",
+        "speech_link",
+        "document_name",
+        "chamber_abbrev",
+        "speech_id",
+        "wiki_id",
+        "document_id",
     ]
     return result[[c for c in keep if c in result.columns]]
