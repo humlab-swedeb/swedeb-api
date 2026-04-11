@@ -5,3 +5,4 @@
  - [ ] TODO: Move prebuilt_speech_index to pyriksprot
  - [ ] TODO: Replace use of Codecs with prebuilt_speech_index
  - [ ] FIXME: Add strict mode to alignment check in CorpusLoader
+ - [ ] TODO: replace _get_filtered_speakers with get_filtered_speakers_improved
