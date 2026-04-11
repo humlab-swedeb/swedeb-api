@@ -17,9 +17,34 @@
 - Keep Codex instructions authoritative; treat this file as mandatory context before every task.
 
 ## Configuration & Startup
-- Always initialize the configuration context via `ConfigStore.configure_context(source='config/config.yml')` (use `tests/config.yml` inside tests) before reading any configuration value.
+- `ConfigStore` is a **dataclass instance** (not a static/class-method type). The module-level singleton is accessed via `get_config_store()` from `api_swedeb.core.configuration.inject`.
+- Initialize the configuration context via `get_config_store().configure_context(source='config/config.yml')` (use `tests/config.yml` inside tests) before reading any configuration value. The module-level alias `configure_context` is bound at import time and **cannot be patched** in tests — always prefer the explicit `get_config_store().configure_context(...)` form.
+- `ConfigValue("path.to.key").resolve()` internally calls `get_config_store().config()`, so patching `get_config_store` in tests is sufficient to intercept all config resolution.
 - Resolve configuration values with `ConfigValue("path.to.key").resolve()` using dot notation and respect custom YAML constructors `!jj` and `!join` plus the `PYRIKSPROT_` env override prefix.
 - Keep environment variables (`DATA_DIR`, `METADATA_FILENAME`, `TAGGED_CORPUS_FOLDER`, `FOLDER`, `TAG`, `KWIC_CORPUS_NAME`, `KWIC_DIR`) defined and absolute when referencing corpus assets.
+
+### Patching ConfigStore in Tests
+Patch the `get_config_store` function so that `ConfigValue.resolve()` sees an isolated store:
+```python
+from unittest.mock import patch
+from api_swedeb.core.configuration.inject import ConfigStore
+
+# Unit test fixture — isolated in-memory store
+@pytest.fixture()
+def config_store() -> Generator[ConfigStore, None, None]:
+    store = ConfigStore()
+    store.configure_context(source={"key": "value"}, env_prefix=None)
+    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
+        yield store
+
+# Integration test fixture — real config, no patch needed
+@pytest.fixture(scope="module", autouse=True)
+def configure_config_store():
+    from api_swedeb.core.configuration.inject import get_config_store
+    get_config_store().configure_context(source="config/config.yml")
+    yield
+```
+**Scope rule**: a fixture that triggers `ConfigValue.resolve()` (e.g. `CorpusLoader()`) must run *after* the store is configured. Declare `config_store` as a parameter of such fixtures, or use matching scopes, to guarantee ordering.
 
 ### Performance Optimization
 1. Profile with `make profile-kwic-pyinstrument`
@@ -70,7 +95,8 @@
 ## Testing & Tooling
 - Run `uv run uvicorn main:app --reload` for local dev, `uv run pytest tests/` for test suites, and `make tidy` (Black + isort) before every commit; `make black` and `make isort` remain available when partial formatting is needed.
 - Generate coverage with `make coverage` when verifying broad changes and profile KWIC workloads via `make profile-kwic-pyinstrument` (output lives in `tests/output/`).
-- Rely on fixtures from `tests/conftest.py`: `api_corpus` provides `CorpusLoader` instance (module-scoped), instantiate services with it in tests, use function-scoped fixtures (`speech_index`, `person_codecs`) for test isolation via cloning.
+- Rely on fixtures from `tests/conftest.py`: `configure_config_store` (session-scoped `autouse=True`) runs once to configure the global store; `api_corpus` provides `CorpusLoader` instance (module-scoped); instantiate services directly in tests; use function-scoped fixtures (`speech_index`, `person_codecs`) for test isolation via cloning.
+- For **unit tests** that need an isolated `ConfigStore`, patch `api_swedeb.core.configuration.inject.get_config_store` inside a `yield` fixture at the appropriate scope (see the Patching ConfigStore in Tests section above).
 - Keep legacy-only unit coverage in `tests/legacy/`; prefer updating `tests/api_swedeb/` only for active production behavior and rollout-sensitive backend selection.
 
 ## Git Workflow & Releases

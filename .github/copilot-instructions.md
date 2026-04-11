@@ -32,8 +32,9 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 
 ### Configuration System (`api_swedeb/core/configuration/`)
 - **Critical**: Always initialize ConfigStore before accessing any configuration
-- Use `ConfigStore.configure_context(source='config/config.yml')` at application startup
-- Access values via `ConfigValue("key.nested").resolve()` - supports dot notation
+- `ConfigStore` is a **dataclass instance** (not a static/class-method class). The module-level singleton is accessed via `get_config_store()` from `api_swedeb.core.configuration.inject`
+- At application startup call `get_config_store().configure_context(source='config/config.yml')`. The module-level alias `configure_context` (bound at import time) is equivalent but **cannot be patched** in tests — prefer the explicit form
+- Access values via `ConfigValue("key.nested").resolve()` — internally calls `get_config_store().config()`, so patching `get_config_store` is sufficient to isolate any `ConfigValue` resolution
 - YAML config uses custom constructors: `!jj` (path join), `!join` (string join)
 - Environment variables override YAML via `PYRIKSPROT_` prefix
 - Test configuration: `tests/config.yml`, production: `config/config.yml`
@@ -147,15 +148,44 @@ async def get_trends(search: str, word_trends_service: WordTrendsService = Depen
 
 ### Configuration Access
 ```python
-# At module/application startup
-ConfigStore.configure_context(source='config/config.yml')
+from api_swedeb.core.configuration.inject import get_config_store, ConfigValue
 
-# Resolving values
+# At module/application startup
+get_config_store().configure_context(source='config/config.yml')
+
+# Resolving values (internally calls get_config_store().config())
 registry_dir = ConfigValue("cwb.registry_dir").resolve()
 origins = ConfigValue("fastapi.origins").resolve()
 ```
 
+### Patching ConfigStore in Tests
+`ConfigValue.resolve()` calls `get_config_store()` — patch that function to inject an isolated store:
+```python
+from typing import Generator
+from unittest.mock import patch
+from api_swedeb.core.configuration.inject import ConfigStore, get_config_store
+
+# Unit test fixture (function-scoped, isolated store)
+@pytest.fixture()
+def config_store() -> Generator[ConfigStore, None, None]:
+    store = ConfigStore()
+    store.configure_context(source={"key": "value"}, env_prefix=None)
+    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
+        yield store
+
+# Integration test fixture (module-scoped, real config — no patch needed)
+@pytest.fixture(scope="module", autouse=True)
+def configure_config_store():
+    get_config_store().configure_context(source="config/config.yml")
+    yield
+```
+**Scope rule**: when a fixture that calls `CorpusLoader()` (or any `ConfigValue.resolve()`) is module-scoped, the `config_store` patch fixture must also be module-scoped (or use the autouse integration style above).
+
+**Do not use the module-level `configure_context` alias in tests** — it is bound to the global singleton at import time and is not affected by patching `get_config_store`.
+
 ### Testing Fixtures (`tests/conftest.py`)
+- `config_file_path()` - Session-scoped fixture that yields the path to `tests/config.yml`
+- `configure_config_store()` - Session-scoped `autouse=True` fixture that calls `ConfigStore.configure_context()` for the whole test session
 - `api_corpus()` - `CorpusLoader` instance (module-scoped) - Resource manager for CWB and vectorized data
 - `fastapi_client()` - `TestClient` for testing API endpoints (module-scoped)
 - `corpus_loader()` - Provides CorpusLoader for service instantiation in tests
