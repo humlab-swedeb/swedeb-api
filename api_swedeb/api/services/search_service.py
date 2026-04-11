@@ -131,27 +131,21 @@ class SearchService:
         names: pd.Series = prebuilt.reindex(ids_list)["name"].fillna(unknown)
         return {k: (v if v and v != "Okänt" else unknown) for k, v in zip(ids_list, names)}
 
-    def get_speaker(self, document_name: str) -> str:
-        """Get speaker name for a given document.
+    def get_speaker(self, speech_id: str) -> str:
+        """Get speaker name for a given speech_id (i-* format).
 
         Args:
-            document_name: Name/ID of the document
+            speech_id: Canonical speech_id (i-* format)
 
         Returns:
             Speaker name, or unknown label if not found
         """
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-        try:
-            speech_id: str | None = self._loader.repository.resolve_to_speech_id(document_name)
-            if not speech_id:
-                return unknown
-            prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
-            if speech_id not in prebuilt.index:
-                return unknown
-            name: str = str(prebuilt.at[speech_id, "name"])
-            return name if name and name != "Okänt" else unknown
-        except (IndexError, ValueError, KeyError):
+        prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
+        if speech_id not in prebuilt.index:
             return unknown
+        name: str = str(prebuilt.at[speech_id, "name"])
+        return name if name and name != "Okänt" else unknown
 
     def get_filtered_speakers_improved(
         self,

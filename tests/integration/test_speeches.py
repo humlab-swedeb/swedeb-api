@@ -86,27 +86,23 @@ def test_get_all_protocol_ids(corpus_loader: CorpusLoader):
 
 def test_get_speaker_name(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
-    dockument_name, speech_id = find_a_speech_id(search_service)
-    speaker_by_speech_id = search_service.get_speaker(speech_id)
-    assert speaker_by_speech_id is not None
-    assert len(speaker_by_speech_id) > 0
-    speaker_by_document_name = search_service.get_speaker(dockument_name)
-    assert speaker_by_document_name == speaker_by_speech_id
+    _, speech_id = find_a_speech_id(search_service)
+    speaker = search_service.get_speaker(speech_id)
+    assert speaker is not None
+    assert len(speaker) > 0
 
 
 def test_get_speaker_name_for_unknown_speaker(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-    speech_id = "prot-1974--136_032"
-    speaker = search_service.get_speaker(speech_id)
+    speaker = search_service.get_speaker("i-000000000000000000000")
     assert speaker == unknown
 
 
 def test_get_speaker_name_for_non_existing_speech(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-    speech_id = "prot-made_up_and_missing"
-    speaker = search_service.get_speaker(speech_id)
+    speaker = search_service.get_speaker("i-does-not-exist")
     assert speaker == unknown
 
 
