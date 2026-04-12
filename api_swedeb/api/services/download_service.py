@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import gzip
 import io
+import json
+import re
+import tarfile
 import zipfile
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Generator
 
 import pandas as pd
@@ -12,13 +18,8 @@ if TYPE_CHECKING:
     from api_swedeb.api.v1.endpoints.tool_router import CommonParams
 
 
-class _ZipStreamWriter(io.RawIOBase):
-    """Non-seekable write buffer that accumulates bytes for incremental streaming.
-
-    Python's zipfile writes data descriptors instead of seeking back to update
-    local file headers when the target is not seekable, so ZIP_DEFLATED works
-    correctly without requiring random access.
-    """
+class _StreamingBuffer(io.RawIOBase):
+    """Non-seekable write buffer that accumulates bytes for incremental streaming."""
 
     def __init__(self) -> None:
         self._chunks: list[bytes] = []
@@ -33,35 +34,192 @@ class _ZipStreamWriter(io.RawIOBase):
     def readable(self) -> bool:
         return False
 
+    def writable(self) -> bool:
+        return True
+
     def pop(self) -> bytes:
         """Return and clear all bytes written since the last pop()."""
-        data: bytes = b"".join(self._chunks)
+        data = b"".join(self._chunks)
         self._chunks.clear()
         return data
 
 
+@dataclass(frozen=True)
+class SpeechMetadata:
+    speech_id: str
+    speaker: str
+
+
+class CompressionStrategy(ABC):
+    """Strategy interface for streaming speeches as compressed output."""
+
+    @abstractmethod
+    def stream(
+        self,
+        speeches: Generator[tuple[SpeechMetadata, str], None, None],
+    ) -> Generator[bytes, None, None]:
+        """Yield compressed bytes incrementally."""
+        raise NotImplementedError
+
+
+class ZipCompressionStrategy(CompressionStrategy):
+    """Original ZIP-based approach with one .txt file per speech."""
+
+    def __init__(self, compresslevel: int = 1) -> None:
+        self.compresslevel = compresslevel
+
+    _UNSAFE_CHARS = re.compile(r"[^\w\-.]")
+
+    @classmethod
+    def _safe_filename_part(cls, value: str) -> str:
+        return cls._UNSAFE_CHARS.sub("_", value).strip("_") or "unknown"
+
+    def stream(
+        self,
+        speeches: Generator[tuple[SpeechMetadata, str], None, None],
+    ) -> Generator[bytes, None, None]:
+        writer = _StreamingBuffer()
+
+        # Python's zipfile will use data descriptors when the target is not
+        # seekable, so streaming works without random access.
+        with zipfile.ZipFile(
+            writer,
+            mode="w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=self.compresslevel,
+            allowZip64=True,
+        ) as zf:
+            for meta, text in speeches:
+                filename = f"{self._safe_filename_part(meta.speaker)}_{meta.speech_id}.txt"
+                zf.writestr(filename, text.encode("utf-8"))
+
+                chunk = writer.pop()
+                if chunk:
+                    yield chunk
+
+        chunk = writer.pop()
+        if chunk:
+            yield chunk
+
+
+class TarGzCompressionStrategy(CompressionStrategy):
+    """Streamed tar.gz approach with one .txt file per speech.
+
+    Uses a single external GzipFile(compresslevel=1) wrapping an uncompressed
+    tar stream.  This avoids both the default compresslevel=9 that tarfile's
+    built-in gz mode applies and the extra Python buffering layers it inserts,
+    while keeping entries as plain-text files inside a standard tar.gz archive.
+    gz.flush() is called after each entry so bytes reach the client
+    incrementally.
+    """
+
+    _UNSAFE_CHARS = re.compile(r"[^\w\-.]")
+
+    @classmethod
+    def _safe_filename_part(cls, value: str) -> str:
+        return cls._UNSAFE_CHARS.sub("_", value).strip("_") or "unknown"
+
+    def stream(
+        self,
+        speeches: Generator[tuple[SpeechMetadata, str], None, None],
+    ) -> Generator[bytes, None, None]:
+        writer = _StreamingBuffer()
+
+        with gzip.GzipFile(fileobj=writer, mode="wb", compresslevel=1, mtime=0) as gz:
+            with tarfile.open(fileobj=gz, mode="w|") as tf:  # uncompressed tar inside gz
+                for meta, text in speeches:
+                    filename = f"{self._safe_filename_part(meta.speaker)}_{meta.speech_id}.txt"
+                    data = text.encode("utf-8")
+
+                    tarinfo = tarfile.TarInfo(name=filename)
+                    tarinfo.size = len(data)
+                    tf.addfile(tarinfo, io.BytesIO(data))
+
+                    gz.flush()  # push compressed bytes through to writer
+                    chunk = writer.pop()
+                    if chunk:
+                        yield chunk
+
+        chunk = writer.pop()
+        if chunk:
+            yield chunk
+
+
+class JsonlGzCompressionStrategy(CompressionStrategy):
+    """Stream speeches as a single gzip-compressed JSONL payload."""
+
+    def __init__(self, compresslevel: int = 1) -> None:
+        self.compresslevel = compresslevel
+
+    def stream(self, speeches: Generator[tuple[SpeechMetadata, str], None, None]) -> Generator[bytes, None, None]:
+        writer = _StreamingBuffer()
+
+        with gzip.GzipFile(
+            fileobj=writer,
+            mode="wb",
+            compresslevel=self.compresslevel,
+            mtime=0,  # reproducible output
+        ) as gz:
+            for meta, text in speeches:
+                record = {"speech_id": meta.speech_id, "speaker": meta.speaker, "text": text}
+                line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
+                gz.write(line)
+
+                chunk = writer.pop()
+                if chunk:
+                    yield chunk
+
+        chunk = writer.pop()
+        if chunk:
+            yield chunk
+
+
 class DownloadService:
-    def create_zip_stream(
-        self, search_service: SearchService, commons: CommonParams
+    """Download service using an injected compression strategy."""
+
+    def __init__(self, compression_strategy: CompressionStrategy | None = None) -> None:
+        self.compression_strategy = compression_strategy or ZipCompressionStrategy()
+
+    def create_stream(
+        self,
+        search_service: SearchService,
+        commons: CommonParams,
     ) -> Callable[[], Generator[bytes, None, None]]:
-        """Return a generator function that yields ZIP archive bytes for speeches matching the given criteria."""
+        """Return a generator function that yields compressed archive bytes."""
 
         df: pd.DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
 
         id_to_name: dict[str, str] = dict(zip(df["speech_id"], df["name"]))
         speech_ids: list[str] = df["speech_id"].tolist()
 
+        def _iter_speeches() -> Generator[tuple[SpeechMetadata, str], None, None]:
+            for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
+                yield (
+                    SpeechMetadata(speech_id=speech_id, speaker=id_to_name.get(speech_id, "unknown")),
+                    text,
+                )
+
         def _generate() -> Generator[bytes, None, None]:
-            writer = _ZipStreamWriter()
-            with zipfile.ZipFile(writer, "w", zipfile.ZIP_DEFLATED, compresslevel=1, allowZip64=True) as zf:
-                for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
-                    speaker: str = id_to_name.get(speech_id, "unknown")
-                    zf.writestr(f"{speaker}_{speech_id}.txt", text.encode("utf-8"))
-                    chunk: bytes = writer.pop()
-                    if chunk:
-                        yield chunk
-            chunk = writer.pop()
-            if chunk:
-                yield chunk
+            yield from self.compression_strategy.stream(_iter_speeches())
 
         return _generate
+
+
+# Optional convenience factory if you want simple string-based selection.
+def create_download_service(format_name: str) -> DownloadService:
+    """
+    Create a DownloadService for one of:
+      - "zip"
+      - "tar.gz"
+      - "jsonl.gz"
+    """
+    normalized = format_name.strip().lower()
+
+    if normalized == "zip":
+        return DownloadService(ZipCompressionStrategy())
+    if normalized in {"tar.gz", "targz", "tgz"}:
+        return DownloadService(TarGzCompressionStrategy())
+    if normalized in {"jsonl.gz", "jsonlgz", "gz"}:
+        return DownloadService(JsonlGzCompressionStrategy())
+
+    raise ValueError(f"Unsupported format: {format_name!r}. Expected one of: 'zip', 'tar.gz', 'jsonl.gz'.")

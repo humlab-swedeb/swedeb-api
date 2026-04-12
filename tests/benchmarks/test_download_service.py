@@ -7,7 +7,10 @@ Run benchmarks with::
 
 from __future__ import annotations
 
+import gzip
 import io
+import json
+import tarfile
 import zipfile
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch
@@ -15,7 +18,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.download_service import (
+    DownloadService,
+    JsonlGzCompressionStrategy,
+    TarGzCompressionStrategy,
+    ZipCompressionStrategy,
+)
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.configuration import ConfigStore, Config
 
@@ -49,9 +57,32 @@ def _make_commons(selections: dict[str, Any]) -> MagicMock:
     return mock
 
 
+def _collect(generator) -> bytes:
+    """Drain a streaming generator and return the raw bytes."""
+    return b"".join(generator())
+
+
 def _collect_zip(generator) -> bytes:
     """Drain a streaming generator and return the assembled ZIP bytes."""
-    return b"".join(generator())
+    return _collect(generator)
+
+
+def _collect_tar_gz(generator) -> dict[str, str]:
+    """Drain a tar.gz generator and return {filename: text} entries."""
+    raw = _collect(generator)
+    with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as tf:
+        return {
+            m.name: tf.extractfile(m).read().decode("utf-8")  # type: ignore[union-attr]
+            for m in tf.getmembers()
+            if m.isfile()
+        }
+
+
+def _collect_jsonl_gz(generator) -> list[dict]:
+    """Drain a jsonl.gz generator and return a list of parsed records."""
+    raw = _collect(generator)
+    with gzip.open(io.BytesIO(raw), "rt", encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
 
 
 def _zip_entry_names(zip_bytes: bytes) -> list[str]:
@@ -82,7 +113,17 @@ def search_service(config_store, corpus_loader: CorpusLoader) -> SearchService:
 
 @pytest.fixture(scope="module")
 def download_service(config_store) -> DownloadService:
-    return DownloadService()
+    return DownloadService(ZipCompressionStrategy())
+
+
+@pytest.fixture(scope="module")
+def tar_gz_download_service(config_store) -> DownloadService:
+    return DownloadService(TarGzCompressionStrategy())
+
+
+@pytest.fixture(scope="module")
+def jsonl_gz_download_service(config_store) -> DownloadService:
+    return DownloadService(JsonlGzCompressionStrategy())
 
 
 @pytest.fixture(scope="module")
@@ -203,7 +244,7 @@ class TestCreateZipStream:
         df = search_service.get_anforanden(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
         commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
-        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
+        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_stream(search_service, commons)))
         names = _zip_entry_names(zip_bytes)
         assert len(names) > 0
         for name in names:
@@ -212,7 +253,7 @@ class TestCreateZipStream:
 
     def test_zip_year_filter(self, download_service: DownloadService, search_service: SearchService, benchmark):
         commons = _make_commons({"year": (1970, 1971)})
-        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
+        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_stream(search_service, commons)))
         assert len(_zip_entry_names(zip_bytes)) > 0
 
     def test_zip_party_and_gender_filter(
@@ -220,19 +261,19 @@ class TestCreateZipStream:
     ):
         party_ids = [p for p in [party_id_map.get("S")] if p is not None]
         commons = _make_commons({"party_id": party_ids, "gender_id": [2], "year": (1975, 1980)})
-        benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
+        benchmark(lambda: _collect_zip(download_service.create_stream(search_service, commons)))
         # no crash is sufficient for a narrow filter
 
     def test_zip_is_valid(self, download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1972, 1973)})
-        zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
+        zip_bytes = _collect_zip(download_service.create_stream(search_service, commons))
         assert zip_bytes[:4] == b"PK\x03\x04" or zip_bytes[:4] == b"PK\x05\x06", "Not a valid ZIP"
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
             assert zf.testzip() is None, "ZIP contains corrupt entries"
 
     def test_zip_filenames_include_speaker(self, download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1970, 1971)})
-        zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
+        zip_bytes = _collect_zip(download_service.create_stream(search_service, commons))
         names = _zip_entry_names(zip_bytes)
         # All filenames follow '{speaker}_{speech_id}.txt' — speaker must not be blank
         for name in names:
@@ -244,5 +285,186 @@ class TestCreateZipStream:
     def test_zip_large_batch(self, download_service: DownloadService, search_service: SearchService, benchmark):
         """Benchmark a broad query to stress the streaming path."""
         commons = _make_commons({"year": (1970, 1980)})
-        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
+        zip_bytes = benchmark(lambda: _collect_zip(download_service.create_stream(search_service, commons)))
         assert len(_zip_entry_names(zip_bytes)) > 0
+
+
+# ---------------------------------------------------------------------------
+# TarGzCompressionStrategy benchmarks
+# ---------------------------------------------------------------------------
+
+
+class TestTarGzCompressionStrategy:
+    """Correctness and performance tests for TarGzCompressionStrategy."""
+
+    def test_small_batch(self, tar_gz_download_service: DownloadService, search_service: SearchService, benchmark):
+        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
+        commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
+        entries = benchmark(lambda: _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons)))
+        assert len(entries) > 0
+        for name in entries:
+            assert name.endswith(".txt")
+            assert "_i-" in name
+
+    def test_year_filter(self, tar_gz_download_service: DownloadService, search_service: SearchService, benchmark):
+        commons = _make_commons({"year": (1970, 1971)})
+        entries = benchmark(lambda: _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons)))
+        assert len(entries) > 0
+
+    def test_is_valid_tar_gz(self, tar_gz_download_service: DownloadService, search_service: SearchService):
+        commons = _make_commons({"year": (1972, 1973)})
+        raw = _collect(tar_gz_download_service.create_stream(search_service, commons))
+        # gzip magic bytes
+        assert raw[:2] == b"\x1f\x8b", "Not a valid gzip stream"
+        with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as tf:
+            members = tf.getmembers()
+        assert len(members) > 0
+
+    def test_text_content_is_accessible(self, tar_gz_download_service: DownloadService, search_service: SearchService):
+        commons = _make_commons({"year": (1972, 1972)})
+        entries = _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons))
+        # At least some entries should contain non-empty text
+        non_empty = [v for v in entries.values() if v.strip()]
+        assert len(non_empty) > 0, "No non-empty speech texts in tar.gz"
+
+    def test_party_and_gender_filter(
+        self,
+        tar_gz_download_service: DownloadService,
+        search_service: SearchService,
+        party_id_map: dict[str, int],
+        benchmark,
+    ):
+        party_ids = [p for p in [party_id_map.get("S")] if p is not None]
+        commons = _make_commons({"party_id": party_ids, "gender_id": [2], "year": (1975, 1980)})
+        benchmark(lambda: _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons)))
+
+    def test_large_batch(self, tar_gz_download_service: DownloadService, search_service: SearchService, benchmark):
+        """Benchmark a broad query to stress the tar.gz streaming path."""
+        commons = _make_commons({"year": (1970, 1980)})
+        entries = benchmark(lambda: _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons)))
+        assert len(entries) > 0
+
+
+# ---------------------------------------------------------------------------
+# JsonlGzCompressionStrategy benchmarks
+# ---------------------------------------------------------------------------
+
+
+class TestJsonlGzCompressionStrategy:
+    """Correctness and performance tests for JsonlGzCompressionStrategy."""
+
+    def test_small_batch(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
+        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
+        commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
+        records = benchmark(
+            lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
+        )
+        assert len(records) > 0
+        for rec in records:
+            assert "speech_id" in rec
+            assert "speaker" in rec
+            assert "text" in rec
+
+    def test_year_filter(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
+        commons = _make_commons({"year": (1970, 1971)})
+        records = benchmark(
+            lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
+        )
+        assert len(records) > 0
+
+    def test_is_valid_gzip(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
+        commons = _make_commons({"year": (1972, 1973)})
+        raw = _collect(jsonl_gz_download_service.create_stream(search_service, commons))
+        assert raw[:2] == b"\x1f\x8b", "Not a valid gzip stream"
+        with gzip.open(io.BytesIO(raw), "rt", encoding="utf-8") as fh:
+            lines = [l for l in fh if l.strip()]
+        assert len(lines) > 0
+
+    def test_records_are_valid_json(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
+        commons = _make_commons({"year": (1972, 1972)})
+        records = _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
+        required_keys = {"speech_id", "speaker", "text"}
+        for rec in records:
+            assert required_keys <= rec.keys(), f"Record missing keys: {rec.keys()}"
+            assert isinstance(rec["speech_id"], str)
+            assert isinstance(rec["speaker"], str)
+            assert isinstance(rec["text"], str)
+
+    def test_speech_ids_match_query(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
+        """speech_id values in JSONL records match what get_anforanden returns."""
+        commons = _make_commons({"year": (1970, 1971)})
+        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        expected_ids = set(df["speech_id"].dropna().tolist())
+        records = _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
+        returned_ids = {r["speech_id"] for r in records}
+        assert returned_ids == expected_ids
+
+    def test_party_and_gender_filter(
+        self,
+        jsonl_gz_download_service: DownloadService,
+        search_service: SearchService,
+        party_id_map: dict[str, int],
+        benchmark,
+    ):
+        party_ids = [p for p in [party_id_map.get("S")] if p is not None]
+        commons = _make_commons({"party_id": party_ids, "gender_id": [2], "year": (1975, 1980)})
+        benchmark(lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons)))
+
+    def test_large_batch(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
+        """Benchmark a broad query to stress the jsonl.gz streaming path."""
+        commons = _make_commons({"year": (1970, 1980)})
+        records = benchmark(
+            lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
+        )
+        assert len(records) > 0
+
+
+# ---------------------------------------------------------------------------
+# Cross-strategy comparison benchmarks
+# ---------------------------------------------------------------------------
+
+
+class TestStrategyComparison:
+    """Head-to-head benchmarks of all three compression strategies on the same data."""
+
+    def test_zip_strategy(self, search_service: SearchService, benchmark):
+        """Baseline ZIP performance."""
+        svc = DownloadService(ZipCompressionStrategy())
+        commons = _make_commons({"year": (1970, 1975)})
+        result = benchmark(lambda: _collect(svc.create_stream(search_service, commons)))
+        assert len(result) > 0
+
+    def test_tar_gz_strategy(self, search_service: SearchService, benchmark):
+        """Comparison: tar.gz performance on the same query."""
+        svc = DownloadService(TarGzCompressionStrategy())
+        commons = _make_commons({"year": (1970, 1975)})
+        result = benchmark(lambda: _collect(svc.create_stream(search_service, commons)))
+        assert len(result) > 0
+
+    def test_jsonl_gz_strategy(self, search_service: SearchService, benchmark):
+        """Comparison: jsonl.gz performance on the same query."""
+        svc = DownloadService(JsonlGzCompressionStrategy())
+        commons = _make_commons({"year": (1970, 1975)})
+        result = benchmark(lambda: _collect(svc.create_stream(search_service, commons)))
+        assert len(result) > 0
+
+    def test_output_sizes(self, search_service: SearchService):
+        """Compare compressed output sizes across strategies for the same dataset."""
+        commons = _make_commons({"year": (1970, 1971)})
+
+        zip_bytes = _collect(DownloadService(ZipCompressionStrategy()).create_stream(search_service, commons))
+        tgz_bytes = _collect(DownloadService(TarGzCompressionStrategy()).create_stream(search_service, commons))
+        jgz_bytes = _collect(DownloadService(JsonlGzCompressionStrategy()).create_stream(search_service, commons))
+
+        # All formats must produce non-empty output
+        assert len(zip_bytes) > 0
+        assert len(tgz_bytes) > 0
+        assert len(jgz_bytes) > 0
+
+        # Log sizes for manual inspection (visible with pytest -s)
+        print(f"\nOutput sizes for year=(1970,1971):")
+        print(f"  ZIP:     {len(zip_bytes):>10,} bytes")
+        print(f"  tar.gz:  {len(tgz_bytes):>10,} bytes")
+        print(f"  jsonl.gz:{len(jgz_bytes):>10,} bytes")
