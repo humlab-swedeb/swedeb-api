@@ -249,9 +249,9 @@ def test_get_speech_by_id_missing(corpus_loader: CorpusLoader):
 
 def test_speaker_note(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
-    document_name, speech_id = find_a_speech_id(search_service)
+    _, speech_id = find_a_speech_id(search_service)
 
-    speech: Speech = search_service.get_speech(document_name)
+    speech: Speech = search_service.get_speech(speech_id)
     assert speech is not None
     assert len(speech.speaker_note) > 0
 
