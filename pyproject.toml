@@ -19,7 +19,11 @@ dependencies = [
     "more-itertools",
     "tqdm>=4.67.3",
     "jinja2>=3.1.6",
+    "click>=8.0",
 ]
+
+[project.scripts]
+download-speeches = "api_swedeb.scripts.download_speeches:main"
 
 [project.optional-dependencies]
 dev = [

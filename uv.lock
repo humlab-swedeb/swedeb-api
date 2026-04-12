@@ -37,6 +37,7 @@ name = "api-swedeb"
 version = "0.6.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "cwb-ccc" },
     { name = "fastapi" },
     { name = "jinja2" },
@@ -78,6 +79,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'" },
+    { name = "click", specifier = ">=8.0" },
     { name = "cwb-ccc" },
     { name = "fastapi" },
     { name = "httpx", marker = "extra == 'dev'" },
