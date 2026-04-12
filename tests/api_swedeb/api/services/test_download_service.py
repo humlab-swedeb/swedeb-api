@@ -28,7 +28,7 @@ def test_create_zip_stream_uses_speech_ids_for_batch_lookup():
 
     service = DownloadService()
 
-    stream = service.create_zip_stream(search_service=search_service, commons=commons)
+    stream = service.create_stream(search_service=search_service, commons=commons)
     zip_bytes = b"".join(stream())
 
     search_service.get_speeches_batch.assert_called_once_with(["i-1", "i-2"])
