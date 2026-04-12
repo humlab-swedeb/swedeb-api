@@ -36,6 +36,7 @@ import pyarrow.compute as pc
 from loguru import logger
 from pyarrow import feather
 
+from api_swedeb.core.utility import fix_whitespace
 from .enrichment import SpeakerLookups, enrich_speech_rows
 from .merge import merge_protocol_utterances
 
@@ -257,6 +258,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
                     "num_tokens": int(s.get("num_tokens") or 0),
                     "num_words": int(s.get("num_words") or 0),
                     "paragraphs": json.dumps(s.get("paragraphs") or [], ensure_ascii=False),
+                    "text": fix_whitespace("\n".join(s.get("paragraphs") or [])),
                     "annotation": s.get("annotation") or "",
                 }
             )

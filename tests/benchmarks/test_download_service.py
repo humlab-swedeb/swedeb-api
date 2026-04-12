@@ -243,6 +243,6 @@ class TestCreateZipStream:
 
     def test_zip_large_batch(self, download_service: DownloadService, search_service: SearchService, benchmark):
         """Benchmark a broad query to stress the streaming path."""
-        commons = _make_commons({"year": (1970, 1975)})
+        commons = _make_commons({"year": (1970, 1980)})
         zip_bytes = benchmark(lambda: _collect_zip(download_service.create_zip_stream(search_service, commons)))
         assert len(_zip_entry_names(zip_bytes)) > 0

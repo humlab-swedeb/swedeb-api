@@ -65,9 +65,9 @@ def main() -> None:
     search_service = SearchService(loader)
     download_service = DownloadService()
 
-    commons = _make_commons({"year": (1970, 1971)})
+    commons = _make_commons({"year": (1970, 1980)})
 
-    print("Running create_zip_stream(1970–1975)…", flush=True)
+    print("Running create_zip_stream(1970–1980)…", flush=True)
     zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
 
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:

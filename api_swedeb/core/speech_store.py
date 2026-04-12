@@ -48,6 +48,7 @@ class SpeechStore:
         lookup_table = feather.read_table(str(lookup_path))
         lookup_df = lookup_table.to_pandas()
 
+ 
         ff = lookup_df["feather_file"].astype(str)
         fr = lookup_df["feather_row"].astype(int)
         sid_col = lookup_df["speech_id"].astype(str)
@@ -80,6 +81,25 @@ class SpeechStore:
         table = self._load_protocol(feather_file)
         row_dict = table.slice(feather_row, 1).to_pydict()
         return {k: v[0] for k, v in row_dict.items()}
+
+    def get_rows_batch(self, feather_file: str, feather_rows: list[int]) -> list[dict[str, Any]]:
+        """Read multiple rows from a protocol Feather file in a single batch.
+
+        Uses ``pa.Table.take`` which is significantly faster than repeated
+        ``slice`` calls when reading many rows from the same table.
+        """
+        table = self._load_protocol(feather_file)
+        return table.take(feather_rows).to_pylist()
+
+    def get_column_batch(self, feather_file: str, feather_rows: list[int], column: str) -> list[Any]:
+        """Read a single named column for multiple rows.
+
+        Significantly faster than ``get_rows_batch`` when only one column is
+        needed (e.g. ``paragraphs`` for text-only download), because it avoids
+        converting all other columns to Python objects.
+        """
+        table = self._load_protocol(feather_file)
+        return table.take(feather_rows).column(column).to_pylist()
 
     # ------------------------------------------------------------------
     # Internals

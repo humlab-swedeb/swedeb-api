@@ -105,6 +105,10 @@ class SearchService:
         """
         return self._loader.repository.speech(speech_id=speech_id)
 
+    def get_speeches_text_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, str], None, None]:
+        """Yield ``(speech_id, text)`` pairs — fast text-only path for downloads."""
+        yield from self._loader.repository.speeches_text_batch(speech_ids)
+
     def get_speeches_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, Speech], None, None]:
         """Yield ``(speech_id, Speech)`` pairs grouped by protocol for efficient retrieval.
 

@@ -51,10 +51,10 @@ class DownloadService:
 
         def _generate() -> Generator[bytes, None, None]:
             writer = _ZipStreamWriter()
-            with zipfile.ZipFile(writer, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
-                for speech_id, speech in search_service.get_speeches_batch(speech_ids):
+            with zipfile.ZipFile(writer, "w", zipfile.ZIP_STORED, allowZip64=True) as zf:
+                for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
                     speaker: str = id_to_name.get(speech_id, "unknown")
-                    zf.writestr(f"{speaker}_{speech_id}.txt", speech.text.encode("utf-8"))
+                    zf.writestr(f"{speaker}_{speech_id}.txt", text.encode("utf-8"))
                     chunk: bytes = writer.pop()
                     if chunk:
                         yield chunk
