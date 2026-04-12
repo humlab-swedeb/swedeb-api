@@ -45,24 +45,62 @@ class SearchService:
         Raises:
             KeyError: If unknown filter key is specified
         """
+        if df.empty or not selection_dict:
+            return df
+
+        mask: Series[bool] = pd.Series(True, index=df.index)
+        non_null_index_values = [value for value in df.index.tolist() if value is not None]
+        index_value_type = type(non_null_index_values[0]) if non_null_index_values else None
+
+        def _as_list(value: Any) -> list[Any]:
+            if isinstance(value, (list, tuple, set, np.ndarray, pd.Series, pd.Index)):
+                return list(value)
+            return [] if value is None or value == "" else [value]
+
+        def _normalize_like_index(values: list[Any]) -> list[Any]:
+            if index_value_type is None:
+                return values
+            normalized: list[Any] = []
+            for value in values:
+                if value is None or isinstance(value, index_value_type):
+                    normalized.append(value)
+                    continue
+                try:
+                    normalized.append(index_value_type(value))
+                except (TypeError, ValueError):
+                    normalized.append(value)
+            return normalized
+
         for key, value in selection_dict.items():
+            values = _as_list(value)
+            if not values:
+                continue
+
             if key == "party_id":
-                ivalues: list[int] | list[str] = [int(v) for v in value] if isinstance(value, list) else [int(value)]
+                ivalues: list[int] = [int(v) for v in values]
                 person_party = getattr(self._loader.person_codecs, 'person_party')
-                party_person_ids: set[str] = set(person_party[person_party.party_id.isin(ivalues)].person_id)
-                df = df[df.index.isin(party_person_ids)]
-            elif key == "chamber_abbrev" and value:
-                svalues = [v.lower() for v in value] if isinstance(value, list) else [value.lower()]
+                party_person_ids = person_party.loc[person_party.party_id.isin(ivalues), "person_id"].drop_duplicates().tolist()
+                mask &= df.index.isin(_normalize_like_index(party_person_ids))
+            elif key == "chamber_abbrev":
+                svalues: list[str] = [str(v).lower() for v in values]
                 di: pd.DataFrame = self._loader.vectorized_corpus.document_index
-                df = df[df.index.isin(set(di[di.chamber_abbrev.isin(svalues)].person_id.unique()))]
+                chamber_abbrev = (
+                    di["chamber_abbrev"].str.lower()
+                    if pd.api.types.is_string_dtype(di["chamber_abbrev"])
+                    else di["chamber_abbrev"]
+                )
+                chamber_person_ids = di.loc[chamber_abbrev.isin(svalues), "person_id"].drop_duplicates().tolist()
+                mask &= df.index.isin(_normalize_like_index(chamber_person_ids))
             else:
                 if key in df.columns:
-                    df = df[df[key].isin(value)]
+                    mask &= df[key].isin(values)
                 elif df.index.name == key:
-                    df = df[df.index.isin(value)]
+                    mask &= df.index.isin(_normalize_like_index(values))
                 else:
                     raise KeyError(f"Unknown filter key: {key}")
-        return df
+            if not mask.any():
+                return df.iloc[0:0]
+        return df[mask]
 
     def get_speeches(self, selections: dict) -> pd.DataFrame:
         """Get speeches (anföranden) with filter options.
