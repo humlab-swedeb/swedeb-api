@@ -239,6 +239,7 @@ class SpeechRepository:
                 for speech_id, _ in id_row_pairs:
                     yield speech_id, ""
 
+    @deprecated
     def to_text(self, speech: dict) -> str:
         """Join speech paragraphs into a whitespace-normalised string."""
         paragraphs: list[str] = speech.get("paragraphs", [])
