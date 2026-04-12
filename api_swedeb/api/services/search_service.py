@@ -103,6 +103,8 @@ class SearchService:
         Returns:
             Speech object with text and metadata
         """
+        if not speech_id.startswith("i-"):
+            raise ValueError(f"get_speech only accepts speech_id in i-* format, got: {speech_id!r}")
         return self._loader.repository.speech(speech_id=speech_id)
 
     def get_speeches_text_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, str], None, None]:
