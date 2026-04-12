@@ -171,6 +171,11 @@ def test_speeches_zip(fastapi_client: TestClient, corpus_loader: CorpusLoader):
     assert len(response.content) > 0
 
 
+def test_speeches_zip_rejects_non_string_ids(fastapi_client: TestClient):
+    response: Response = fastapi_client.post(f"{version}/tools/speech_download/", json=[1, 2])
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
 def test_get_speeches_corpus(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
     fx = corpus_loader.person_codecs.get_mapping('party_abbrev', 'party_id').get
