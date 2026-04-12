@@ -458,7 +458,7 @@ class TestStrategyComparison:
         assert len(jgz_bytes) > 0
 
         # Log sizes for manual inspection (visible with pytest -s)
-        print(f"\nOutput sizes for year=(1970,1971):")
+        print("\nOutput sizes for year=(1970,1971):")
         print(f"  ZIP:     {len(zip_bytes):>10,} bytes")
         print(f"  tar.gz:  {len(tgz_bytes):>10,} bytes")
         print(f"  jsonl.gz:{len(jgz_bytes):>10,} bytes")

@@ -25,7 +25,6 @@ from api_swedeb.api.services.corpus_loader import CorpusLoader  # type: ignore[i
 from api_swedeb.api.services.download_service import DownloadService, create_download_service  # type: ignore[import]
 from api_swedeb.api.services.search_service import SearchService  # type: ignore[import]
 from api_swedeb.core.configuration import get_config_store  # type: ignore[import]
-from api_swedeb.core.configuration.inject import get_config_store as _orig_get_config_store  # type: ignore[import]
 
 get_config_store().configure_context(source="config/config.yml")
 
