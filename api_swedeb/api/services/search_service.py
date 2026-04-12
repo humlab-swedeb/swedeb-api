@@ -128,11 +128,11 @@ class SearchService:
         Returns:
             DataFrame with filtered speakers
         """
-        current_speakers = self._loader.decoded_persons.copy()
+        current_speakers: DataFrame = self._loader.decoded_persons.copy()
         current_speakers = self._get_filtered_speakers(selections, current_speakers)
         return current_speakers.reset_index(inplace=False)
 
-    def get_speaker_names(self, speech_ids: Iterable[str]) -> dict[str, str]:
+    def get_speaker_names(self, speech_ids: list[str]) -> dict[str, str]:
         """Return {speech_id: name} for all given speech_ids using a single prebuilt index lookup.
 
         Only canonical speech_ids (i-* format) are accepted. Raises ValueError otherwise.
