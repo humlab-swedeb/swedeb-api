@@ -368,7 +368,6 @@ class PersonCodecs(Codecs):
         prefix = "https://www.wikidata.org/wiki/"
 
         if isinstance(wiki_id, pd.Series):
-            wiki_id = wiki_id.astype("string[python]")
             is_unknown = wiki_id.eq("unknown")
             result = prefix + wiki_id
             result[is_unknown] = unknown
@@ -404,14 +403,12 @@ class PersonCodecs(Codecs):
         where YYYY is between 4 and 8 digits (e.g. "1999", "199900", "19992000"),
         zero-padded protocol number, and MMM is the zero-padded page number.
         """
-        doc_names = document_names.astype("string[python]")
-
-        parts = doc_names.str.extract(r"^[^-]+-([0-9]{4,8})_(.+)$", expand=True)
-        year = parts[0]
-        base_filename = parts[1] + ".pdf"
+        parts = document_names.str.extract(r"^(?P<base>[^-]+-(?P<year>[0-9]{4,8})[^_]+)_", expand=True)
+        base_filename = parts["base"] + ".pdf"
+        year = parts["year"]
 
         if isinstance(page_nrs, pd.Series):
-            page_str = page_nrs.astype("string[python]")
+            page_str = page_nrs.astype(str)
         else:
             page_str = str(page_nrs)
 
