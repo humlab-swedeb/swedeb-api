@@ -140,7 +140,7 @@ class SpeechRepository:
     def speech(self, speech_id: str) -> Speech:
         """Load a single speech by canonical speech_id (i-* format)."""
         try:
-            loc = self._store.location_for_speech_id(speech_id)
+            loc: tuple[str, int] | None = self._store.location_for_speech_id(speech_id)
             if loc is None:
                 return Speech(
                     {"name": f"speech {speech_id} not found", "error": f"{speech_id} not in bootstrap_corpus"}
