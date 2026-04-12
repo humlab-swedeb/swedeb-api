@@ -157,7 +157,7 @@ async def get_speeches_download_result(
     commons: CommonParams, download_service: DownloadService = Depends(get_download_service)
 ) -> StreamingResponse:
     """Find speeches matching filter criteria and return them as a streamed ZIP file."""
-    streamer = download_service.create_zip_stream(search_service=get_search_service(), commons=commons)
+    streamer = download_service.create_stream(search_service=get_search_service(), commons=commons)
 
     return StreamingResponse(
         streamer(),
