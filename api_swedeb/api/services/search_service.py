@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from pandas import DataFrame, Series
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.configuration import ConfigValue
@@ -154,12 +155,14 @@ class SearchService:
         """Get a single speech by speech ID.
 
         Args:
-            document_name: Name/ID of the document
+            speech_id: ID of the speech
 
         Returns:
             Speech object with text and metadata
         """
-        speech: Speech = self._loader.repository.speech(speech_name=document_name)
+        if not speech_id.startswith("i-"):
+            raise ValueError(f"get_speech only accepts speech_ids (i-* format), got: {speech_id!r}")
+        speech: Speech = self._loader.repository.speech(speech_id=speech_id)
         return speech
 
     def get_speeches_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, Speech], None, None]:
