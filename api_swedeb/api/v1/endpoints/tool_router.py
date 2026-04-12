@@ -181,7 +181,8 @@ async def get_speech_by_id_result(
 
 @router.post("/speech_download/")
 async def get_zip(
-    ids: list = Body(..., min_length=1, max_length=100), search_service: SearchService = Depends(get_search_service)
+    ids: list[str] = Body(..., min_length=1, max_length=100),
+    search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
     """Download speeches as ZIP file"""
     if not ids:
