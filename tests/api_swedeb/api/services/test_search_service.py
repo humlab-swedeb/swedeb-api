@@ -96,6 +96,17 @@ def test_get_filtered_speakers_filters_by_dataframe_column(service: SearchServic
     assert result["name"].tolist() == ["Bob", "Charlie"]
 
 
+def test_get_filtered_speakers_accepts_scalar_column_filter(service: SearchService):
+    speakers = pd.DataFrame(
+        {"gender": ["F", "M", "M"], "name": ["Alice", "Bob", "Charlie"]},
+        index=pd.Index(["p1", "p2", "p3"], name="person_id"),
+    )
+
+    result = service._get_filtered_speakers({"gender": "M"}, speakers)
+
+    assert result["name"].tolist() == ["Bob", "Charlie"]
+
+
 def test_get_filtered_speakers_filters_by_party_id(service: SearchService):
     speakers = pd.DataFrame(
         {"name": ["Alice", "Bob", "Charlie"]},
@@ -107,7 +118,35 @@ def test_get_filtered_speakers_filters_by_party_id(service: SearchService):
     assert result.index.tolist() == ["p1", "p3"]
 
 
+def test_get_filtered_speakers_ignores_empty_values(service: SearchService):
+    speakers = pd.DataFrame(
+        {"gender": ["F", "M", "M"], "name": ["Alice", "Bob", "Charlie"]},
+        index=pd.Index(["p1", "p2", "p3"], name="person_id"),
+    )
+
+    result = service._get_filtered_speakers({"gender": [], "party_id": None, "chamber_abbrev": ""}, speakers)
+
+    pd.testing.assert_frame_equal(result, speakers)
+
+
 def test_get_filtered_speakers_filters_by_chamber_abbrev(service: SearchService):
+    speakers = pd.DataFrame(
+        {"name": ["Alice", "Bob", "Charlie"]},
+        index=pd.Index(["p1", "p2", "p3"], name="person_id"),
+    )
+
+    result = service._get_filtered_speakers({"chamber_abbrev": ["AK"]}, speakers)
+
+    assert result.index.tolist() == ["p1", "p3"]
+
+
+def test_get_filtered_speakers_handles_mixed_case_chamber_values(service: SearchService, mock_loader: MagicMock):
+    mock_loader.vectorized_corpus.document_index = pd.DataFrame(
+        {
+            "person_id": ["p1", "p2", "p3"],
+            "chamber_abbrev": ["Ak", "FK", "aK"],
+        }
+    )
     speakers = pd.DataFrame(
         {"name": ["Alice", "Bob", "Charlie"]},
         index=pd.Index(["p1", "p2", "p3"], name="person_id"),
@@ -127,6 +166,40 @@ def test_get_filtered_speakers_uses_index_name_when_filter_key_matches(service: 
     result = service._get_filtered_speakers({"person_id": ["p2"]}, speakers)
 
     assert result.index.tolist() == ["p2"]
+
+
+def test_get_filtered_speakers_normalizes_index_value_type(service: SearchService, mock_loader: MagicMock):
+    mock_loader.person_codecs.person_party = pd.DataFrame(
+        {
+            "person_id": ["1", "2", "3"],
+            "party_id": [1, 2, 1],
+        }
+    )
+    mock_loader.vectorized_corpus.document_index = pd.DataFrame(
+        {
+            "person_id": ["1", "2", "3"],
+            "chamber_abbrev": ["AK", "FK", "AK"],
+        }
+    )
+    speakers = pd.DataFrame(
+        {"name": ["Alice", "Bob", "Charlie"]},
+        index=pd.Index([1, 2, 3], name="person_id"),
+    )
+
+    result = service._get_filtered_speakers({"party_id": [1], "chamber_abbrev": ["ak"]}, speakers)
+
+    assert result.index.tolist() == [1, 3]
+
+
+def test_get_filtered_speakers_short_circuits_when_mask_is_empty(service: SearchService):
+    speakers = pd.DataFrame(
+        {"gender": ["F", "M", "M"], "name": ["Alice", "Bob", "Charlie"]},
+        index=pd.Index(["p1", "p2", "p3"], name="person_id"),
+    )
+
+    result = service._get_filtered_speakers({"gender": ["X"], "does_not_matter": []}, speakers)
+
+    assert result.empty
 
 
 def test_get_filtered_speakers_raises_for_unknown_key(service: SearchService):
