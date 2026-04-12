@@ -44,6 +44,8 @@ class DownloadService:
     def create_zip_stream(
         self, search_service: SearchService, commons: CommonParams
     ) -> Callable[[], Generator[bytes, None, None]]:
+        """Return a generator function that yields ZIP archive bytes for speeches matching the given criteria."""
+
         df: pd.DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
 
         id_to_name: dict[str, str] = dict(zip(df["speech_id"], df["name"]))
@@ -51,7 +53,7 @@ class DownloadService:
 
         def _generate() -> Generator[bytes, None, None]:
             writer = _ZipStreamWriter()
-            with zipfile.ZipFile(writer, "w", zipfile.ZIP_STORED, allowZip64=True) as zf:
+            with zipfile.ZipFile(writer, "w", zipfile.ZIP_DEFLATED, compresslevel=1, allowZip64=True) as zf:
                 for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
                     speaker: str = id_to_name.get(speech_id, "unknown")
                     zf.writestr(f"{speaker}_{speech_id}.txt", text.encode("utf-8"))
