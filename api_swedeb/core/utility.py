@@ -8,6 +8,7 @@ import time
 from functools import wraps
 from os.path import basename, dirname, splitext
 from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -435,7 +436,6 @@ def deprecated(func: Callable) -> Callable:
     Emits a :class:`DeprecationWarning` at call time pointing at the caller's
     frame (``stacklevel=2``).
     """
-    import warnings  # noqa: PLC0415
 
     @wraps(func)
     def wrapper(*args, **kwargs):
