@@ -10,7 +10,6 @@ from fastapi.responses import StreamingResponse
 
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.v1.endpoints.tool_router import get_speeches_download_result
-from api_swedeb.core.speech import Speech
 
 
 async def _collect_streaming_response(response: StreamingResponse) -> bytes:
@@ -36,10 +35,10 @@ class TestGetSpeechesDownloadResult:
 
         search_service = MagicMock()
         search_service.get_anforanden.return_value = df
-        search_service.get_speeches_batch.return_value = iter(
+        search_service.get_speeches_text_batch.return_value = iter(
             [
-                ("i-101", Speech({"text": ["first speech"]})),
-                ("i-202", Speech({"text": ["second speech", "continued"]})),
+                ("i-101", "first speech"),
+                ("i-202", "second speech\ncontinued"),
             ]
         )
 
@@ -59,7 +58,7 @@ class TestGetSpeechesDownloadResult:
 
         commons.get_filter_opts.assert_called_once_with(True)
         search_service.get_anforanden.assert_called_once_with(selections={"year": (1970, 1971)})
-        search_service.get_speeches_batch.assert_called_once_with(["i-101", "i-202"])
+        search_service.get_speeches_text_batch.assert_called_once_with(["i-101", "i-202"])
 
     def test_streams_empty_zip_when_no_speeches_match(self):
         commons = MagicMock()
@@ -69,7 +68,7 @@ class TestGetSpeechesDownloadResult:
 
         search_service = MagicMock()
         search_service.get_anforanden.return_value = df
-        search_service.get_speeches_batch.return_value = iter(())
+        search_service.get_speeches_text_batch.return_value = iter(())
 
         with patch("api_swedeb.api.v1.endpoints.tool_router.get_search_service", return_value=search_service):
             response = asyncio.run(get_speeches_download_result(commons=commons, download_service=DownloadService()))
@@ -78,4 +77,4 @@ class TestGetSpeechesDownloadResult:
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
             assert archive.namelist() == []
 
-        search_service.get_speeches_batch.assert_called_once_with([])
+        search_service.get_speeches_text_batch.assert_called_once_with([])
