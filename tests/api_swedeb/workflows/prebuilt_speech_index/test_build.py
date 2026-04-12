@@ -230,8 +230,8 @@ class TestSpeechCorpusBuilder:
         assert len(df) == 1  # one merged speech
         assert df.loc[0, "speech_id"] == "u-1"
         assert df.loc[0, "protocol_name"] == "prot-1867--ak--001"
-        paragraphs = json.loads(df.loc[0, "paragraphs"])
-        assert len(paragraphs) == 2  # two utterances merged
+        text = df.loc[0, "text"]
+        assert "Text of u-1" in text and "Text of u-2" in text  # two utterances merged
 
     def test_failure_reported_in_report(self, tmp_path):
         tagged = tmp_path / "tagged_frames"

@@ -127,7 +127,7 @@ def test_speech_store_get_row(speech_store):
     name = next(iter(speech_store._name_to_loc))
     feather_file, feather_row = speech_store.location_for_document_name(name)
     row = speech_store.get_row(feather_file, feather_row)
-    assert "paragraphs" in row
+    assert "text" in row
     assert "speech_id" in row
     assert "document_name" in row
 
@@ -149,7 +149,7 @@ def test_fast_repo_speech_by_speech_id_from_store(speech_repository, speech_stor
     speech = speech_repository.speech(sid)
     assert isinstance(speech, Speech)
     assert speech.error is None, f"Unexpected error: {speech.error}"
-    assert isinstance(speech.paragraphs, list)
+    assert isinstance(speech.text, str)
 
 
 def test_fast_repo_speech_by_speech_id(speech_repository, speech_store):
@@ -164,16 +164,6 @@ def test_fast_repo_speech_missing_key(speech_repository):
     """speech() must return error Speech for unknown speech_id, not raise."""
     speech = speech_repository.speech("i-nonexistent-9999")
     assert speech.error is not None
-
-
-def test_fast_repo_to_text(speech_repository, speech_store):
-    """to_text must join paragraphs into a non-empty string."""
-    sid = next(iter(speech_store._sid_to_loc))
-    speech = speech_repository.speech(sid)
-    if speech.paragraphs:
-        text = speech_repository.to_text({"paragraphs": speech.paragraphs})
-        assert isinstance(text, str)
-        assert len(text) > 0
 
 
 # ---------------------------------------------------------------------------

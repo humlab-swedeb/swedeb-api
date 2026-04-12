@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 import requests
 from fastapi import status
 from fastapi.testclient import TestClient

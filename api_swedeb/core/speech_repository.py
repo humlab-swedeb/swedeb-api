@@ -10,7 +10,6 @@ document keys against the legacy document index.
 
 from __future__ import annotations
 
-import json
 import re
 import sqlite3
 from collections.abc import Generator, Iterable
@@ -23,7 +22,7 @@ from loguru import logger
 
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_store import SpeechStore
-from api_swedeb.core.utility import fix_whitespace
+from api_swedeb.core.utility import deprecated, fix_whitespace
 
 
 def _normalize_document_name(name: str) -> str:
@@ -96,10 +95,11 @@ class SpeechRepository:
         zero-padding / alias edge-cases).  Deferred to keep startup fast.
         """
         col = self._document_index["speech_id"]
-        # Arrow-backed column: bypass pandas per-element iteration
+        # Arrow-backed column: bypass pandas per-element iteration when possible
         arr = col.array
-        if hasattr(arr, "_pa_array"):
-            speech_ids: list = arr._pa_array.combine_chunks().to_pylist()
+        pa_array = getattr(arr, "_pa_array", None)
+        if pa_array is not None:
+            speech_ids: list = pa_array.combine_chunks().to_pylist()
         else:
             speech_ids = col.tolist()
 
@@ -200,7 +200,7 @@ class SpeechRepository:
     def speeches_text_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, str], None, None]:
         """Yield ``(speech_id, text)`` pairs — text-only fast path for downloads.
 
-        Reads only the ``paragraphs`` column from each Feather file, skipping
+        Reads only the ``text`` column from each Feather file, skipping
         all other field conversions and the :class:`Speech` object construction.
         """
         by_file: dict[str, list[tuple[str, int]]] = {}
@@ -217,24 +217,9 @@ class SpeechRepository:
             try:
                 sids = [sid for sid, _ in id_row_pairs]
                 rows = [fr for _, fr in id_row_pairs]
-                try:
-                    text_list = self._store.get_column_batch(feather_file, rows, "text")
-                    for speech_id, text in zip(sids, text_list):
-                        yield speech_id, text or ""
-                except KeyError:
-                    # Feather file pre-dates the 'text' column; fall back to paragraphs
-                    raw_list = self._store.get_column_batch(feather_file, rows, "paragraphs")
-                    for speech_id, raw in zip(sids, raw_list):
-                        if isinstance(raw, str):
-                            try:
-                                paragraphs: list[str] = json.loads(raw)
-                            except (json.JSONDecodeError, TypeError):
-                                paragraphs = [raw] if raw else []
-                        elif raw is None:
-                            paragraphs = []
-                        else:
-                            paragraphs = raw
-                        yield speech_id, fix_whitespace("\n".join(paragraphs))
+                text_list = self._store.get_column_batch(feather_file, rows, "text")
+                for speech_id, text in zip(sids, text_list):
+                    yield speech_id, text or ""
             except FileNotFoundError:
                 for speech_id, _ in id_row_pairs:
                     yield speech_id, ""
@@ -251,14 +236,6 @@ class SpeechRepository:
 
     def _row_to_speech(self, row: dict[str, Any]) -> Speech:
         """Build a :class:`Speech` from a pre-built Feather row dict."""
-        # Paragraphs are stored as JSON-encoded list of strings in the Feather
-        paragraphs = row.get("paragraphs") or "[]"
-        if isinstance(paragraphs, str):
-            try:
-                paragraphs = json.loads(paragraphs)
-            except json.JSONDecodeError:
-                paragraphs = [paragraphs]
-
         speaker_note_id: str = str(row.get("speaker_note_id") or "")
 
         rg: Callable[..., Any] = row.get
@@ -275,8 +252,7 @@ class SpeechRepository:
             "page_number2": int(rg("page_number_end") or 1),
             "num_tokens": int(rg("num_tokens") or 0),
             "num_words": int(rg("num_words") or 0),
-            "paragraphs": paragraphs,
-            "annotation": rg("annotation") or "",
+            "text": rg("text") or "",
             # Enriched speaker fields (materialised at build time)
             "name": rg("name") or "unknown",
             "gender_id": int(rg("gender_id") or 0),

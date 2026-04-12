@@ -19,7 +19,6 @@ Usage::
 from __future__ import annotations
 
 import io
-import sys
 import zipfile
 from unittest.mock import MagicMock, patch
 

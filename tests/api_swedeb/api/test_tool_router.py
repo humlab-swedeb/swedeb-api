@@ -38,8 +38,8 @@ class TestGetSpeechesDownloadResult:
         search_service.get_anforanden.return_value = df
         search_service.get_speeches_batch.return_value = iter(
             [
-                ("i-101", Speech({"paragraphs": ["first speech"]})),
-                ("i-202", Speech({"paragraphs": ["second speech", "continued"]})),
+                ("i-101", Speech({"text": ["first speech"]})),
+                ("i-202", Speech({"text": ["second speech", "continued"]})),
             ]
         )
 

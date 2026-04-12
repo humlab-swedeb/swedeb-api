@@ -718,7 +718,6 @@ class TestPersonCodecs:
         pages = pd.Series([1, 2])
 
         result = PersonCodecs.speech_link(documents, pages)
-
         expected = pd.Series(
             [
                 "https://example.com/1970/prot-1970--ak--029.pdf#page=1",

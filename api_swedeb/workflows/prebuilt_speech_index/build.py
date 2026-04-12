@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.compute as pc
 from loguru import logger
 from pyarrow import feather
 
@@ -240,7 +239,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
         feather_rel: str = os.path.join(subfolder, f"{protocol_stem}.feather")
         feather_abs: Path = output_root / feather_rel
 
-        # Build per-speech full payload table (paragraphs + annotation stored as strings)
+        # Build per-speech full payload table
         full_rows = []
         for _, s in enumerate(speeches):
             full_rows.append(
@@ -257,9 +256,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
                     "page_number_end": int(s.get("page_number_end") or 0),
                     "num_tokens": int(s.get("num_tokens") or 0),
                     "num_words": int(s.get("num_words") or 0),
-                    "paragraphs": json.dumps(s.get("paragraphs") or [], ensure_ascii=False),
                     "text": fix_whitespace("\n".join(s.get("paragraphs") or [])),
-                    "annotation": s.get("annotation") or "",
                 }
             )
 
@@ -487,7 +484,7 @@ class SpeechCorpusBuilder:
         # would silently corrupt the SpeechStore lookup dicts at runtime.
         for col in ("speech_id", "document_name"):
             null_count = speech_lookup.column(col).null_count
-            empty_count = (pc.equal(speech_lookup.column(col), "")).to_pylist().count(True)
+            empty_count = speech_lookup.column(col).to_pylist().count("")
             if null_count or empty_count:
                 raise ValueError(
                     f"speech_lookup has {null_count} null + {empty_count} empty values in '{col}' — "
