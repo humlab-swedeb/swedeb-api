@@ -94,8 +94,26 @@ class SearchService:
         current_speakers = self._get_filtered_speakers(selections, current_speakers)
         return current_speakers.reset_index(inplace=False)
 
-    def get_speech(self, document_name: str) -> Speech:
-        """Get a single speech by document name.
+    def get_speaker_names(self, speech_ids: Iterable[str]) -> dict[str, str]:
+        """Return {speech_id: name} for all given speech_ids using a single prebuilt index lookup.
+
+        Only canonical speech_ids (i-* format) are accepted. Raises ValueError otherwise.
+        """
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+
+        ids_list: list[str] = [str(s) for s in speech_ids]
+        if not ids_list:
+            return {}
+
+        if not ids_list[0].startswith("i-"):
+            raise ValueError(f"get_speaker_names only accepts speech_ids (i-* format), got: {ids_list[0]!r}")
+
+        prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
+        names: pd.Series = prebuilt.reindex(ids_list)["name"].fillna(unknown)
+        return {k: (v if v and v != "Okänt" else unknown) for k, v in zip(ids_list, names)}
+    
+    def get_speech(self, speech_id: str) -> Speech:
+        """Get a single speech by speech ID.
 
         Args:
             document_name: Name/ID of the document
@@ -114,8 +132,12 @@ class SearchService:
         """
         return self._loader.repository.speeches_batch(speech_ids)
 
-    def get_speaker(self, document_name: str) -> str:
-        """Get speaker name for a given document.
+    def get_speeches_text_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, str], None, None]:
+        """Yield ``(speech_id, text)`` pairs — fast text-only path for downloads."""
+        yield from self._loader.repository.speeches_text_batch(speech_ids)
+
+    # def get_speaker(self, document_name: str) -> str:
+    #     """Get speaker name for a given document.
 
         Args:
             document_name: Name/ID of the document
