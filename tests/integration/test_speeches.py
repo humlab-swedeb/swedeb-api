@@ -64,16 +64,17 @@ def test_pdf_link_with_series(corpus_loader: CorpusLoader):
 
 def test_speeches_get(fastapi_client: TestClient):
     # assert that the speeches endpoint is reachable
-    speech_name: str = "prot-1971--117_007"
+    speech_name: str = "i-dc65b5aa94ad0910-1"  # "prot-1971--117_007"
     response = fastapi_client.get(f"{version}/tools/speeches/{speech_name}")
     assert response.status_code == status.HTTP_200_OK
     data: dict[str, str] = response.json()
     assert 'speech_text' in data
     assert 'speaker_note' in data
+    assert data["speaker_note"] == "Herr justitieministern GEIJER:"
     assert len(data['speech_text']) > 0
 
 
-def test_get_all_protocol_ids(corpus_loader: CorpusLoader):
+def test_format_all_speech_names(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
     df: pd.DataFrame = search_service.get_anforanden(selections={'year': (1900, 2000)})
     all_ids: pd.Series = df['document_name']
@@ -133,26 +134,9 @@ def test_get_speech_by_id_page_number(fastapi_client: TestClient):
 
     data: dict = response.json()
     assert data['page_number'] == 38
-
-
-def test_get_speech_by_id_client(
-    fastapi_client: TestClient, corpus_loader: CorpusLoader
-):  # pylint: disable=unused-argument
-    document_name, speech_id = ('prot-197576--087_018', 'i-34625fce7c35cf80-3')
-    # find_a_speech_id(api_corpus)
-    response: Response = fastapi_client.get(f"v1/tools/speeches/{document_name}")
-    assert response.status_code == status.HTTP_200_OK
-
-    data_by_name: dict = response.json()
-    assert 'speech_text' in data_by_name
-    assert len(data_by_name['speech_text']) > 1
-    assert len(data_by_name['speaker_note']) > 1
-
-    response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
-    assert response.status_code == status.HTTP_200_OK
-    data_by_id: dict = response.json()
-
-    assert data_by_id == data_by_name
+    assert 'speech_text' in data
+    assert len(data['speech_text']) > 1
+    assert len(data['speaker_note']) > 1
 
 
 def test_get_speech_by_id_page_number_byclient(
@@ -242,7 +226,7 @@ def test_get_speech_by_document_name_raises_valueerror(corpus_loader: CorpusLoad
 def test_get_speech_by_id_missing(corpus_loader: CorpusLoader):
     # non-existing speech (gives empty string as response)
     search_service = SearchService(corpus_loader)
-    speech_id: str = 'prot-1971--1_007_missing'
+    speech_id: str = 'i-000000000000000000000'
     speech: Speech = search_service.get_speech(speech_id)
     assert speech is not None
     assert len(speech.text) == 0

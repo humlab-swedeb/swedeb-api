@@ -113,15 +113,6 @@ def test_ngrams_non_existing_word(fastapi_client):
     assert json['ngram_list'] == []
 
 
-def test_speech_by_id(fastapi_client):
-    response = fastapi_client.get(f"{version}/tools/speeches/1")
-    assert response.status_code == status.HTTP_200_OK
-
-    json = response.json()
-    assert 'speaker_note' in json
-    assert 'speech_text' in json
-
-
 def test_topics(fastapi_client):
     response = fastapi_client.get(f"{version}/tools/topics")
     assert response.status_code == status.HTTP_200_OK

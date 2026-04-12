@@ -48,7 +48,6 @@ class SpeechStore:
         lookup_table = feather.read_table(str(lookup_path))
         lookup_df = lookup_table.to_pandas()
 
- 
         ff = lookup_df["feather_file"].astype(str)
         fr = lookup_df["feather_row"].astype(int)
         sid_col = lookup_df["speech_id"].astype(str)
