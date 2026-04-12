@@ -429,6 +429,26 @@ def fix_whitespace(text: str) -> str:
     return SUBST_PUNCTS.sub(r"\1", text)
 
 
+def deprecated(func: Callable) -> Callable:
+    """Decorator that marks a function or method as deprecated.
+
+    Emits a :class:`DeprecationWarning` at call time pointing at the caller's
+    frame (``stacklevel=2``).
+    """
+    import warnings  # noqa: PLC0415
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.warn(
+            f"{func.__qualname__}() is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 # def get_release_tags(user: str, repository: str, github_access_token: str | None = None) -> list[str]:
 #     release_tags: list[str] = ["main", "dev"]
 #     try:
