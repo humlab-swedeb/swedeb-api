@@ -18,29 +18,15 @@ Usage::
 
 from __future__ import annotations
 
-import io
-import zipfile
-from unittest.mock import MagicMock, patch
+import argparse
+from unittest.mock import MagicMock
+from api_swedeb.api.services.corpus_loader import CorpusLoader  # type: ignore[import]
+from api_swedeb.api.services.download_service import DownloadService, create_download_service  # type: ignore[import]
+from api_swedeb.api.services.search_service import SearchService  # type: ignore[import]
+from api_swedeb.core.configuration import get_config_store  # type: ignore[import]
+from api_swedeb.core.configuration.inject import get_config_store as _orig_get_config_store  # type: ignore[import]
 
-# ---------------------------------------------------------------------------
-# Bootstrap configuration (mirrors the module-scoped fixture in the benchmark)
-# ---------------------------------------------------------------------------
-from api_swedeb.core.configuration import Config, ConfigStore
-from api_swedeb.core.configuration.inject import get_config_store as _orig_get_config_store
-
-config: Config = Config.load(source="config/config.yml")
-store: ConfigStore = ConfigStore()
-store.configure_context(source=config)
-
-_patcher = patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store)
-_patcher.start()
-
-# ---------------------------------------------------------------------------
-# Import services *after* config is patched
-# ---------------------------------------------------------------------------
-from api_swedeb.api.services.corpus_loader import CorpusLoader  # noqa: E402
-from api_swedeb.api.services.download_service import DownloadService  # noqa: E402
-from api_swedeb.api.services.search_service import SearchService  # noqa: E402
+get_config_store().configure_context(source="config/config.yml")
 
 
 def _make_commons(selections: dict) -> MagicMock:
@@ -52,29 +38,48 @@ def _make_commons(selections: dict) -> MagicMock:
 def _collect_zip(generator) -> bytes:
     return b"".join(generator())
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Benchmark compressed stream creation."
+    )
+    parser.add_argument(
+        "--format", required=True, help="Compression format to test (zip, tar.gz, jsonl.gz)"
+    )
+    parser.add_argument(
+        "--start-year", required=True, help="Start year for the benchmark range"
+    )
+    parser.add_argument(
+        "--end-year", required=True, help="End year for the benchmark range"
+    )
+    return parser.parse_args()
+
 
 def main() -> None:
+    args = _parse_args()
+
     print("Loading corpus…", flush=True)
+
     loader = CorpusLoader()
     _ = loader.person_codecs
     _ = loader.document_index
     _ = loader.decoded_persons
     _ = loader.repository
 
+    print(f"# Benchmarking using '{args.format}' ({args.start_year}–{args.end_year})", flush=True)
+
     search_service = SearchService(loader)
-    download_service = DownloadService()
+    download_service: DownloadService = create_download_service(args.format)
 
-    commons = _make_commons({"year": (1970, 1980)})
+    commons = _make_commons({"year": (int(args.start_year), int(args.end_year))})
 
-    print("Running create_zip_stream(1970–1980)…", flush=True)
-    zip_bytes = _collect_zip(download_service.create_zip_stream(search_service, commons))
+    print(f"Running create_{args.format}_stream({args.start_year}–{args.end_year})…", flush=True)
+    zip_bytes = _collect_zip(download_service.create_stream(search_service, commons))
 
-    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
-        n = len(zf.namelist())
+    # with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+    #     n = len(zf.namelist())
 
-    print(f"Done — {n:,} entries, {len(zip_bytes):,} bytes", flush=True)
+    print(f"Done benchmarking using '{args.format}': {len(zip_bytes):,} bytes", flush=True)
 
 
 if __name__ == "__main__":
     main()
-    _patcher.stop()
