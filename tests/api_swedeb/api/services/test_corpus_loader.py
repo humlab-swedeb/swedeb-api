@@ -303,6 +303,107 @@ class TestCorpusLoaderCaching:
         mock_codecs_instance.load.assert_called_once()
 
 
+class TestCorpusLoaderAdditionalBranches:
+    """Tests for previously uncovered CorpusLoader branches."""
+
+    def test_load_prebuilt_speech_index_raises_if_missing(self, tmp_path):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder=str(tmp_path),
+        )
+
+        with pytest.raises(FileNotFoundError, match="prebuilt speech_index.feather not found"):
+            loader._load_prebuilt_speech_index()
+
+    def test_load_prebuilt_speech_index_reads_and_indexes_by_speech_id(self, tmp_path):
+        (tmp_path / "speech_index.feather").touch()
+        decoded = pd.DataFrame({"speech_id": ["i-1", "i-2"], "name": ["Alice", "Bob"]})
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder=str(tmp_path),
+        )
+
+        with patch("api_swedeb.api.services.corpus_loader.pd.read_feather", return_value=decoded) as read_feather:
+            result = loader._load_prebuilt_speech_index()
+
+        read_feather.assert_called_once_with(str(tmp_path / "speech_index.feather"))
+        assert result.index.tolist() == ["i-1", "i-2"]
+        assert result["name"].tolist() == ["Alice", "Bob"]
+
+    def test_document_index_returns_cached_document_index(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        cached = pd.DataFrame({"speech_id": ["i-1"]})
+        loader._cached_document_index = cached
+
+        assert loader.document_index is cached
+
+    def test_prebuilt_speech_index_property_uses_lazy_loader(self, tmp_path):
+        (tmp_path / "speech_index.feather").touch()
+        decoded = pd.DataFrame({"speech_id": ["i-1"], "name": ["Alice"]})
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder=str(tmp_path),
+        )
+
+        with patch("api_swedeb.api.services.corpus_loader.pd.read_feather", return_value=decoded):
+            result = loader.prebuilt_speech_index
+
+        assert result.index.tolist() == ["i-1"]
+        assert result.loc["i-1", "name"] == "Alice"
+
+    def test_year_range_returns_fallback_on_error(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        loader._cached_document_index = pd.DataFrame({"document_name": ["doc-1"]})
+
+        assert loader.year_range == (1867, 2022)
+
+    def test_protocol_page_range_returns_min_and_max_for_protocol(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        loader._cached_document_index = pd.DataFrame(
+            {
+                "document_name": ["prot-1_001", "prot-1_002", "prot-2_001"],
+                "page_number": [5, 12, 30],
+            }
+        )
+
+        assert loader.protocol_page_range("prot-1_999") == (5, 12)
+
+    def test_protocol_page_range_returns_fallback_on_error(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        loader._cached_document_index = pd.DataFrame({"speech_id": ["i-1"]})
+
+        assert loader.protocol_page_range("prot-1_001") == (1867, 2022)
+
+
 class TestIntegrationFullCorpus:
 
     # def test_document_index_load_time(self):

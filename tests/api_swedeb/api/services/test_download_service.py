@@ -9,9 +9,12 @@ from unittest.mock import MagicMock
 import pandas as pd
 
 from api_swedeb.api.services.download_service import (
-    DownloadService,
     JsonlGzCompressionStrategy,
     TarGzCompressionStrategy,
+    DownloadService,
+    ZipCompressionStrategy,
+    _StreamingBuffer,
+    create_download_service,
 )
 
 
@@ -98,3 +101,38 @@ def test_jsonl_gz_strategy_streams_json_records():
     assert [json.loads(line) for line in lines] == [
         {"speech_id": "i-1", "speaker": "Speaker One", "text": "speech text"}
     ]
+
+
+def test_streaming_buffer_capabilities_and_pop():
+    buffer = _StreamingBuffer()
+
+    assert buffer.seekable() is False
+    assert buffer.readable() is False
+    assert buffer.writable() is True
+    assert buffer.write(b"abc") == 3
+    assert buffer.write(bytearray(b"def")) == 3
+    assert buffer.pop() == b"abcdef"
+    assert buffer.pop() == b""
+
+
+def test_create_download_service_returns_zip_strategy():
+    service = create_download_service(" zip ")
+    assert isinstance(service.compression_strategy, ZipCompressionStrategy)
+
+
+def test_create_download_service_returns_tar_gz_strategy_for_alias():
+    service = create_download_service("tgz")
+    assert isinstance(service.compression_strategy, TarGzCompressionStrategy)
+
+
+def test_create_download_service_returns_jsonl_gz_strategy_for_alias():
+    service = create_download_service("gz")
+    assert isinstance(service.compression_strategy, JsonlGzCompressionStrategy)
+
+
+def test_create_download_service_raises_for_unsupported_format():
+    try:
+        create_download_service("rar")
+        assert False, "Expected ValueError for unsupported format"
+    except ValueError as exc:
+        assert "Unsupported format" in str(exc)
