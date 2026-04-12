@@ -375,7 +375,7 @@ class TestJsonlGzCompressionStrategy:
         raw = _collect(jsonl_gz_download_service.create_stream(search_service, commons))
         assert raw[:2] == b"\x1f\x8b", "Not a valid gzip stream"
         with gzip.open(io.BytesIO(raw), "rt", encoding="utf-8") as fh:
-            lines = [l for l in fh if l.strip()]
+            lines = [x for x in fh if x.strip()]
         assert len(lines) > 0
 
     def test_records_are_valid_json(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
