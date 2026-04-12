@@ -228,13 +228,14 @@ def find_a_speech_id(search_service: SearchService):
     return df.iloc[0]['document_name'], df.iloc[0]['speech_id']
 
 
-def test_get_speech_by_id(corpus_loader: CorpusLoader):
+def test_get_speech_by_document_name_raises_valueerror(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
     document_name, speech_id = find_a_speech_id(search_service)
     speech: Speech = search_service.get_speech(speech_id)
     assert speech is not None
     assert len(speech.text) > 1
-    assert speech.text == search_service.get_speech(document_name).text
+    with pytest.raises(ValueError):
+        search_service.get_speech(document_name)
 
 
 def test_get_speech_by_id_missing(corpus_loader: CorpusLoader):
