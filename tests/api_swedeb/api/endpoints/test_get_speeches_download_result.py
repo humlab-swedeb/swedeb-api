@@ -52,9 +52,9 @@ class TestGetSpeechesDownloadResult:
         body = asyncio.run(_collect_streaming_response(response))
 
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
-            assert sorted(archive.namelist()) == ["Alice Andersson_i-101.txt", "Bob Berg_i-202.txt"]
-            assert archive.read("Alice Andersson_i-101.txt") == b"first speech"
-            assert archive.read("Bob Berg_i-202.txt") == b"second speech\ncontinued"
+            assert sorted(archive.namelist()) == ["Alice_Andersson_i-101.txt", "Bob_Berg_i-202.txt"]
+            assert archive.read("Alice_Andersson_i-101.txt") == b"first speech"
+            assert archive.read("Bob_Berg_i-202.txt") == b"second speech\ncontinued"
 
         commons.get_filter_opts.assert_called_once_with(True)
         search_service.get_anforanden.assert_called_once_with(selections={"year": (1970, 1971)})
