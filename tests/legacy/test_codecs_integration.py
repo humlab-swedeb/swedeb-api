@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from api_swedeb.core.person_codecs import Codec, PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.person_codecs import Codec, PersonCodecs
 
 
 @pytest.fixture(name="gender_dataframe")

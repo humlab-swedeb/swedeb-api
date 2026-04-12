@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.core.person_codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import get_config_store
+from api_swedeb.core.person_codecs import PersonCodecs
 from api_swedeb.core.speech_repository import SpeechRepository
 
 # pylint: disable=unused-argument

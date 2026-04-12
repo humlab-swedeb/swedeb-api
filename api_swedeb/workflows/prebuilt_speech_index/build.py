@@ -36,6 +36,7 @@ from loguru import logger
 from pyarrow import feather
 
 from api_swedeb.core.utility import fix_whitespace
+
 from .enrichment import SpeakerLookups, enrich_speech_rows
 from .merge import merge_protocol_utterances
 

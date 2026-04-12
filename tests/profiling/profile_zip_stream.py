@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 from unittest.mock import MagicMock
+
 from api_swedeb.api.services.corpus_loader import CorpusLoader  # type: ignore[import]
 from api_swedeb.api.services.download_service import DownloadService, create_download_service  # type: ignore[import]
 from api_swedeb.api.services.search_service import SearchService  # type: ignore[import]
@@ -38,19 +39,12 @@ def _make_commons(selections: dict) -> MagicMock:
 def _collect_zip(generator) -> bytes:
     return b"".join(generator())
 
+
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Benchmark compressed stream creation."
-    )
-    parser.add_argument(
-        "--format", required=True, help="Compression format to test (zip, tar.gz, jsonl.gz)"
-    )
-    parser.add_argument(
-        "--start-year", required=True, help="Start year for the benchmark range"
-    )
-    parser.add_argument(
-        "--end-year", required=True, help="End year for the benchmark range"
-    )
+    parser = argparse.ArgumentParser(description="Benchmark compressed stream creation.")
+    parser.add_argument("--format", required=True, help="Compression format to test (zip, tar.gz, jsonl.gz)")
+    parser.add_argument("--start-year", required=True, help="Start year for the benchmark range")
+    parser.add_argument("--end-year", required=True, help="End year for the benchmark range")
     return parser.parse_args()
 
 

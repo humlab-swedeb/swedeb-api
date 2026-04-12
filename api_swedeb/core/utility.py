@@ -5,10 +5,10 @@ import os
 import re
 import sqlite3
 import time
+import warnings
 from functools import wraps
 from os.path import basename, dirname, splitext
 from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
-import warnings
 
 import numpy as np
 import pandas as pd

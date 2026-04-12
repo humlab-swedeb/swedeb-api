@@ -25,7 +25,7 @@ from api_swedeb.api.services.download_service import (
     ZipCompressionStrategy,
 )
 from api_swedeb.api.services.search_service import SearchService
-from api_swedeb.core.configuration import ConfigStore, Config
+from api_swedeb.core.configuration import Config, ConfigStore
 
 # pylint: disable=redefined-outer-name,unused-argument
 
@@ -358,9 +358,7 @@ class TestJsonlGzCompressionStrategy:
         df = search_service.get_anforanden(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
         commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
-        records = benchmark(
-            lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
-        )
+        records = benchmark(lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons)))
         assert len(records) > 0
         for rec in records:
             assert "speech_id" in rec
@@ -369,9 +367,7 @@ class TestJsonlGzCompressionStrategy:
 
     def test_year_filter(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         commons = _make_commons({"year": (1970, 1971)})
-        records = benchmark(
-            lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
-        )
+        records = benchmark(lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons)))
         assert len(records) > 0
 
     def test_is_valid_gzip(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
@@ -415,9 +411,7 @@ class TestJsonlGzCompressionStrategy:
     def test_large_batch(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         """Benchmark a broad query to stress the jsonl.gz streaming path."""
         commons = _make_commons({"year": (1970, 1980)})
-        records = benchmark(
-            lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
-        )
+        records = benchmark(lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons)))
         assert len(records) > 0
 
 

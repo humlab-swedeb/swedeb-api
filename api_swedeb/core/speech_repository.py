@@ -142,7 +142,9 @@ class SpeechRepository:
         try:
             loc = self._store.location_for_speech_id(speech_id)
             if loc is None:
-                return Speech({"name": f"speech {speech_id} not found", "error": f"{speech_id} not in bootstrap_corpus"})
+                return Speech(
+                    {"name": f"speech {speech_id} not found", "error": f"{speech_id} not in bootstrap_corpus"}
+                )
             feather_file, feather_row = loc
             row = self._store.get_row(feather_file, feather_row)
             return self._row_to_speech(row)

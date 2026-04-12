@@ -25,11 +25,10 @@ import click
 from loguru import logger
 
 from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService, create_download_service
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.configuration import get_config_store
-from api_swedeb.api.services.corpus_loader import CorpusLoader
-
 
 # pylint: disable=redefined-builtin
 

@@ -15,7 +15,7 @@ from api_swedeb.core.configuration.inject import (
     resolve_arguments,
 )
 
-#pylint: disable=redefined-outer-name, unused-argument
+# pylint: disable=redefined-outer-name, unused-argument
 
 # @pytest.fixture(autouse=True)
 # def reset_config_store():
@@ -27,6 +27,7 @@ from api_swedeb.core.configuration.inject import (
 #     if "test" in store.store:
 #         del store.store["test"]
 
+
 @pytest.fixture()
 def config_store() -> Generator[ConfigStore, None, None]:
     """Fixture to provide a clean ConfigStore instance for tests.
@@ -35,6 +36,7 @@ def config_store() -> Generator[ConfigStore, None, None]:
     store: ConfigStore = ConfigStore()
     with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
         yield store
+
 
 class TestConfigValue:
     """Tests for ConfigValue class."""
@@ -219,7 +221,9 @@ class TestConfigStore:
     def test_configstore_configure_context_raises_without_source(self, config_store):
         """Test ConfigStore.configure_context raises if context undefined and no source."""
         with pytest.raises(ValueError, match="undefined, cannot initialize"):
-            config_store.configure_context(context="undefined_ctx", source=None, env_prefix=None, switch_to_context=False)
+            config_store.configure_context(
+                context="undefined_ctx", source=None, env_prefix=None, switch_to_context=False
+            )
 
     def test_configstore_configure_context_reuses_existing(self, config_store):
         """Test ConfigStore.configure_context reuses existing context if no source."""

@@ -5,8 +5,8 @@ from typing import Any
 import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.core.person_codecs import PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.person_codecs import PersonCodecs
 from api_swedeb.core.speech_index import COLUMNS_OF_INTEREST, get_speeches_by_words
 
 # pylint: disable=redefined-outer-name
