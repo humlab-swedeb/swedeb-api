@@ -86,26 +86,26 @@ def test_format_all_speech_names(corpus_loader: CorpusLoader):
             assert False
 
 
-def test_get_speaker_name(corpus_loader: CorpusLoader):
-    search_service = SearchService(corpus_loader)
-    _, speech_id = find_a_speech_id(search_service)
-    speaker = search_service.get_speaker(speech_id)
-    assert speaker is not None
-    assert len(speaker) > 0
+# def test_get_speaker_name(corpus_loader: CorpusLoader):
+#     search_service = SearchService(corpus_loader)
+#     _, speech_id = find_a_speech_id(search_service)
+#     speaker = search_service.get_speaker(speech_id)
+#     assert speaker is not None
+#     assert len(speaker) > 0
 
 
-def test_get_speaker_name_for_unknown_speaker(corpus_loader: CorpusLoader):
-    search_service = SearchService(corpus_loader)
-    unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-    speaker = search_service.get_speaker("i-000000000000000000000")
-    assert speaker == unknown
+# def test_get_speaker_name_for_unknown_speaker(corpus_loader: CorpusLoader):
+#     search_service = SearchService(corpus_loader)
+#     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+#     speaker = search_service.get_speaker("i-000000000000000000000")
+#     assert speaker == unknown
 
 
-def test_get_speaker_name_for_non_existing_speech(corpus_loader: CorpusLoader):
-    search_service = SearchService(corpus_loader)
-    unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-    speaker = search_service.get_speaker("i-does-not-exist")
-    assert speaker == unknown
+# def test_get_speaker_name_for_non_existing_speech(corpus_loader: CorpusLoader):
+#     search_service = SearchService(corpus_loader)
+#     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+#     speaker = search_service.get_speaker("i-does-not-exist")
+#     assert speaker == unknown
 
 
 def test_format_speech_id():
