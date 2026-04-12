@@ -140,41 +140,41 @@ class TestGetAnforanden:
     """Correctness and performance tests for SearchService.get_anforanden."""
 
     def test_no_filter_returns_all(self, search_service: SearchService, benchmark):
-        df = benchmark(search_service.get_anforanden, selections={})
+        df = benchmark(search_service.get_speeches, selections={})
         assert len(df) > 0
         assert "speech_id" in df.columns
         assert "name" in df.columns
 
     def test_year_range_filter(self, search_service: SearchService, benchmark):
-        df = benchmark(search_service.get_anforanden, selections={"year": (1970, 1975)})
+        df = benchmark(search_service.get_speeches, selections={"year": (1970, 1975)})
         assert len(df) > 0
         assert df["year"].between(1970, 1975).all()
 
     def test_party_filter(self, search_service: SearchService, party_id_map: dict[str, int], benchmark):
         party_ids = [p for p in [party_id_map.get("S"), party_id_map.get("M")] if p is not None]
-        df = benchmark(search_service.get_anforanden, selections={"party_id": party_ids, "year": (1970, 1990)})
+        df = benchmark(search_service.get_speeches, selections={"party_id": party_ids, "year": (1970, 1990)})
         assert len(df) > 0
         assert set(df["party_abbrev"].unique()).issubset({"S", "M", "?"})
 
     def test_gender_filter(self, search_service: SearchService, benchmark):
-        df = benchmark(search_service.get_anforanden, selections={"gender_id": [2], "year": (1970, 1990)})
+        df = benchmark(search_service.get_speeches, selections={"gender_id": [2], "year": (1970, 1990)})
         assert len(df) > 0
 
     def test_combined_filter(self, search_service: SearchService, party_id_map: dict[str, int], benchmark):
         party_ids = [p for p in [party_id_map.get("S")] if p is not None]
         selections = {"party_id": party_ids, "gender_id": [1, 2], "year": (1960, 1970)}
-        df = benchmark(search_service.get_anforanden, selections=selections)
+        df = benchmark(search_service.get_speeches, selections=selections)
         assert len(df) > 0
 
     def test_result_has_required_columns(self, search_service: SearchService):
-        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        df = search_service.get_speeches(selections={"year": (1970, 1971)})
         required = {"speech_id", "document_name", "name", "year", "party_abbrev", "gender", "speech_link", "link"}
         missing = required - set(df.columns)
         assert not missing, f"Missing columns: {missing}"
 
     def test_large_year_range(self, search_service: SearchService, benchmark):
         """Benchmark a broad query that returns a large result set."""
-        df = benchmark(search_service.get_anforanden, selections={"year": (1960, 2000)})
+        df = benchmark(search_service.get_speeches, selections={"year": (1960, 2000)})
         assert len(df) > 0
 
 
@@ -187,7 +187,7 @@ class TestGetSpeechesBatch:
     """Correctness and performance tests for SearchService.get_speeches_batch."""
 
     def _sample_speech_ids(self, search_service: SearchService, n: int, year_range: tuple) -> list[str]:
-        df = search_service.get_anforanden(selections={"year": year_range})
+        df = search_service.get_speeches(selections={"year": year_range})
         available = df["speech_id"].dropna()
         return available.sample(min(n, len(available)), random_state=42).tolist()
 
@@ -241,7 +241,7 @@ class TestCreateZipStream:
         return _make_commons(selections)
 
     def test_small_zip(self, download_service: DownloadService, search_service: SearchService, benchmark):
-        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        df = search_service.get_speeches(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
         commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
         zip_bytes = benchmark(lambda: _collect_zip(download_service.create_stream(search_service, commons)))
@@ -298,7 +298,7 @@ class TestTarGzCompressionStrategy:
     """Correctness and performance tests for TarGzCompressionStrategy."""
 
     def test_small_batch(self, tar_gz_download_service: DownloadService, search_service: SearchService, benchmark):
-        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        df = search_service.get_speeches(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
         commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
         entries = benchmark(lambda: _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons)))
@@ -355,7 +355,7 @@ class TestJsonlGzCompressionStrategy:
     """Correctness and performance tests for JsonlGzCompressionStrategy."""
 
     def test_small_batch(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
-        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        df = search_service.get_speeches(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
         commons = _make_commons({"year": (1970, 1971), "speech_id": speech_ids})
         records = benchmark(lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons)))
@@ -391,7 +391,7 @@ class TestJsonlGzCompressionStrategy:
     def test_speech_ids_match_query(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
         """speech_id values in JSONL records match what get_anforanden returns."""
         commons = _make_commons({"year": (1970, 1971)})
-        df = search_service.get_anforanden(selections={"year": (1970, 1971)})
+        df = search_service.get_speeches(selections={"year": (1970, 1971)})
         expected_ids = set(df["speech_id"].dropna().tolist())
         records = _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
         returned_ids = {r["speech_id"] for r in records}

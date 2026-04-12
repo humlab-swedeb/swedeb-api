@@ -152,7 +152,7 @@ def test_get_anforanden_filters_then_decodes(service: SearchService, mock_loader
         patch("api_swedeb.api.services.search_service.get_speeches_by_opts", return_value=raw) as get_by_opts,
         patch("api_swedeb.api.services.search_service.ConfigValue.resolve", return_value={"name": "display_name"}),
     ):
-        result = service.get_anforanden({"year": (1970, 1971)})
+        result = service.get_speeches({"year": (1970, 1971)})
 
     assert result is decoded
     get_by_opts.assert_called_once_with(mock_loader.document_index, {"year": (1970, 1971)})

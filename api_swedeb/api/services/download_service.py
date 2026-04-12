@@ -187,7 +187,7 @@ class DownloadService:
     ) -> Callable[[], Generator[bytes, None, None]]:
         """Return a generator function that yields compressed archive bytes."""
 
-        df: pd.DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
+        df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
 
         id_to_name: dict[str, str] = dict(zip(df["speech_id"], df["name"]))
         speech_ids: list[str] = df["speech_id"].tolist()

@@ -94,7 +94,7 @@ def test_get_anforanden_for_word_trends_filters_then_decodes():
         patch("api_swedeb.api.services.word_trends_service.get_speeches_by_words", return_value=raw) as get_by_words,
         patch("api_swedeb.api.services.word_trends_service.ConfigValue.resolve", return_value={"name": "display_name"}),
     ):
-        result = service.get_anforanden_for_word_trends(["democracy"], {"year": (1970, 1971)})
+        result = service.get_speeches_for_word_trends(["democracy"], {"year": (1970, 1971)})
 
     get_by_words.assert_called_once_with(
         loader.vectorized_corpus,

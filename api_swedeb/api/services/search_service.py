@@ -64,7 +64,7 @@ class SearchService:
                     raise KeyError(f"Unknown filter key: {key}")
         return df
 
-    def get_anforanden(self, selections: dict) -> pd.DataFrame:
+    def get_speeches(self, selections: dict) -> pd.DataFrame:
         """Get speeches (anföranden) with filter options.
 
         Args:

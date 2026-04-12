@@ -76,7 +76,7 @@ def test_speeches_get(fastapi_client: TestClient):
 
 def test_format_all_speech_names(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
-    df: pd.DataFrame = search_service.get_anforanden(selections={'year': (1900, 2000)})
+    df: pd.DataFrame = search_service.get_speeches(selections={'year': (1900, 2000)})
     all_ids: pd.Series = df['document_name']
     for protocol_id in all_ids:
         try:
@@ -119,7 +119,7 @@ def test_format_speech_id():
 
 def test_get_formatted_speech_id(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
-    df_filtered: pd.DataFrame = search_service.get_anforanden(
+    df_filtered: pd.DataFrame = search_service.get_speeches(
         selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
     )
     assert 'speech_name' in df_filtered.columns
@@ -174,10 +174,10 @@ def test_speeches_zip(fastapi_client: TestClient, corpus_loader: CorpusLoader):
 def test_get_speeches_corpus(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
     fx = corpus_loader.person_codecs.get_mapping('party_abbrev', 'party_id').get
-    df_filtered: pd.DataFrame = search_service.get_anforanden(
+    df_filtered: pd.DataFrame = search_service.get_speeches(
         selections={'party_id': [fx(x) for x in ('L', 'S')], 'gender_id': [1, 2], 'year': (1970, 1980)}
     )
-    df_unfiltered: pd.DataFrame = search_service.get_anforanden(selections={'year': (1970, 1980)})
+    df_unfiltered: pd.DataFrame = search_service.get_speeches(selections={'year': (1970, 1980)})
     assert len(df_filtered) < len(df_unfiltered)
     assert 'L' in df_filtered['party_abbrev'].unique()
     assert 'S' in df_filtered['party_abbrev'].unique()
@@ -186,7 +186,7 @@ def test_get_speeches_corpus(corpus_loader: CorpusLoader):
 def test_get_speeches_by_ids(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
     speech_ids: list[str] = corpus_loader.document_index.speech_id.sample(3).to_list()
-    speeches: pd.DataFrame = search_service.get_anforanden(selections={'speech_id': speech_ids})
+    speeches: pd.DataFrame = search_service.get_speeches(selections={'speech_id': speech_ids})
     assert len(speeches) == len(speech_ids)
     assert set(speeches.speech_id) == set(speech_ids)
 

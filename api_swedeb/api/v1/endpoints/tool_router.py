@@ -97,7 +97,7 @@ async def get_word_trend_speeches_result(
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> SpeechesResultWT:
     """Get word trends"""
-    df: DataFrame = word_trends_service.get_anforanden_for_word_trends(
+    df: DataFrame = word_trends_service.get_speeches_for_word_trends(
         search.split(','), commons.get_filter_opts(include_year=True)
     )
     return word_trend_speeches_to_api_model(df)
@@ -147,7 +147,7 @@ async def get_speeches_result(
     search_service: SearchService = Depends(get_search_service),
 ) -> SpeechesResult:
     """Get speeches matching filter criteria"""
-    df: DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
+    df: DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
     rows: list[SpeechesResultItem] = [SpeechesResultItem(**row) for row in df.to_dict(orient="records")]  # type: ignore
     return SpeechesResult(speech_list=rows)
 
