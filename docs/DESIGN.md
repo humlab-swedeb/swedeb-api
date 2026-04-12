@@ -7,21 +7,151 @@ decision is made.
 
 ---
 
-## Speech Retrieval Backend
+## Prebuilt bootstrap_corpus — Creation, Storage, and Use
 
-### Single backend: prebuilt bootstrap_corpus
+### Creation (`api_swedeb/workflows/prebuilt_speech_index/build.py`)
 
-The runtime speech retrieval path is exclusively:
+The corpus is built offline by `SpeechCorpusBuilder` (invoked via `make build-speech-corpus`
+or the `build_speech_corpus_cli` script).  The builder iterates every tagged-frames ZIP
+under the configured source folder using multiprocessing.
+
+**Per-protocol build steps** (`_process_zip`):
+
+1. Load `metadata.json` and the utterances JSON from the ZIP.
+2. Merge utterances into speeches using the **chain** strategy via `merge_protocol_utterances`.
+3. Build a `full_rows` list — one dict per speech — with:
+   - Identity fields: `speech_id`, `document_name` (`protocol_name_N`), `protocol_name`, `date`, `year`, `speech_index`
+   - Speaker fields: `speaker_id`, `speaker_note_id`
+   - Counts: `num_tokens`, `num_words`, `page_number_start`, `page_number_end`
+   - Pre-computed full text: `text` = `fix_whitespace("\n".join(paragraphs))` — whitespace-normalised at build time to avoid runtime regex overhead
+4. Enrich rows with speaker metadata (name, gender, party, office type) via `enrich_speech_rows` (requires a `SpeakerLookups` instance from the metadata SQLite DB).
+5. Write one Feather file per protocol to `{output_root}/{year}/{protocol_stem}.feather` using `pa.Table.from_pylist` + `feather.write_feather`.
+
+**Aggregate index files** written at the root:
+
+| File                    | Content |
+|-------------------------|---|
+| `speech_lookup.feather` | Minimal 4-column key-to-location map.  Used exclusively by `SpeechStore` at startup. |
+| `speech_index.feather`  | Full index (same rows, all metadata columns).  Consumed by the DTM/search layer. |
+| `manifest.json`         | Build timestamp, corpus/metadata versions, per-protocol result counts, and quality metrics. |
+
+**`speech_lookup.feather` schema** — a validated subset of `speech_index.feather`:
+
+| Column          | PyArrow type | Description                                                                                   |
+|-----------------|--------------|-----------------------------------------------------------------------------------------------|
+| `speech_id`     | string       | XML-native stable ID (`i-…`).  Primary lookup key.                                            |
+| `document_name` | string       | `{protocol_name}_{speech_index}` (unpadded integer suffix).  Secondary lookup key.            |
+| `feather_file`  | string       | Relative path to the protocol Feather file (e.g. `1970/prot-1970--ak--029.feather`).          |
+| `feather_row`   | int64        | Zero-based row offset within that file.  Together with `feather_file` forms the O(1) address. |
+
+Both `speech_id` and `document_name` are validated at build time: any null or empty value raises an error before the file is written.
+
+**`speech_index.feather` schema** — the full index, same rows as `speech_lookup.feather`:
+
+| Column               | PyArrow type | Description                                           |
+|----------------------|--------------|-------------------------------------------------------|
+| `speech_id`          | string       | XML-native stable ID                                  |
+| `document_name`      | string       | `{protocol_name}_{speech_index}`                      |
+| `protocol_name`      | string       | e.g. `prot-1970--ak--029`                             |
+| `date`               | string       | ISO date string                                       |
+| `year`               | int16        | Start year extracted from protocol name               |
+| `speaker_id`         | string       | Speaker URI from ParlaCLARIN                          |
+| `speaker_note_id`    | string       | Identifies the `<note>` element for this speaker turn |
+| `speech_index`       | int16        | Within-protocol sequence number (1-based, unpadded)   |
+| `page_number_start`  | int16        | First page of the speech                              |
+| `page_number_end`    | int16        | Last page of the speech                               |
+| `num_tokens`         | int16        | Token count from tagger                               |
+| `num_words`          | int16        | Word count (non-punctuation tokens)                   |
+| `name`               | string       | Full name of the speaker (enriched at build time)     |
+| `gender_id`          | int8         | Integer FK to gender table                            |
+| `gender`             | string       | e.g. `Man`, `Kvinna`                                  |
+| `gender_abbrev`      | string       | e.g. `M`, `K`                                         |
+| `party_id`           | int16        | Integer FK to party table                             |
+| `party_abbrev`       | string       | e.g. `S`, `M`, `FP`                                   |
+| `office_type_id`     | int8         | Integer FK to office-type table                       |
+| `office_type`        | string       | e.g. `Ledamot`, `Minister`                            |
+| `sub_office_type_id` | int8         | Integer FK to sub-office-type table                   |
+| `sub_office_type`    | string       | e.g. `Första kammaren`, `Andra kammaren`              |
+| `wiki_id`            | string       | Wikidata QID of the speaker                           |
+| `feather_file`       | string       | Relative path to the protocol Feather file            |
+| `feather_row`        | int64        | Zero-based row offset within that file                |
+
+Protocol Feather file naming always uses the **ZIP stem**, not any name inside `metadata.json`
+(the two can differ).
+
+---
+
+### Storage Layout
 
 ```
-SpeechRepository  (api_swedeb/core/speech_repository_fast.py)
-  └── SpeechStore (api_swedeb/core/speech_store.py)
-        └── bootstrap_corpus/speech_lookup.feather  +  *.feather data files
+bootstrap_corpus/
+├── speech_lookup.feather          # global lookup index (speech_id → file + row)
+├── speech_index.feather           # full speech index with all metadata fields
+├── manifest.json                  # build provenance
+├── 1867/
+│   ├── prot-1867--ak--001.feather
+│   └── ...
+├── 1868/
+│   └── ...
+└── {year}/
+    └── {protocol_stem}.feather    # per-protocol payload table
 ```
 
-The legacy ZIP-backed path (`SpeechTextRepository`) is archived under
-`api_swedeb/legacy/` and must not be used in production.  `CorpusLoader`
-selects the backend at startup via `bootstrap_corpus`.
+**Per-protocol Feather schema** (columns written by `_process_zip` + enrichment):
+
+| Column                                                          | Type   | Description                                 |
+|-----------------------------------------------------------------|--------|---------------------------------------------|
+| `speech_id`                                                     | string | XML-native stable ID (`i-…`)                |
+| `document_name`                                                 | string | `{protocol_name}_{speech_index}` (unpadded) |
+| `protocol_name`                                                 | string |                                             |
+| `date`                                                          | string | ISO date                                    |
+| `year`                                                          | int16  | Start year from protocol name               |
+| `speaker_id`                                                    | string |                                             |
+| `speaker_note_id`                                               | string |                                             |
+| `speech_index`                                                  | int16  | Within-protocol sequence number             |
+| `page_number_start/end`                                         | int16  |                                             |
+| `num_tokens`, `num_words`                                       | int16  |                                             |
+| `text`                                                          | string | Pre-computed `fix_whitespace` plain text    |
+| `name`, `gender`, `gender_abbrev`                               | string | Materialised speaker metadata               |
+| `gender_id`, `party_id`, `office_type_id`, `sub_office_type_id` | int    |                                             |
+| `party_abbrev`, `office_type`, `sub_office_type`, `wiki_id`     | string |                                             |
+
+`paragraphs` and `annotation` are **not stored** — only the final `text` string is
+persisted to minimise file size and eliminate runtime parsing cost.
+
+---
+
+### Runtime Use (`api_swedeb/core/`)
+
+**`SpeechStore.__init__`** loads `speech_lookup.feather` once at startup and builds two
+in-memory dicts from it:
+
+```
+_sid_to_loc:   speech_id    → (feather_file, feather_row)
+_name_to_loc:  document_name → (feather_file, feather_row)
+```
+
+Protocol Feather tables are loaded lazily on first access and kept in an LRU cache
+(`max_cached_protocols`, default 128).  Reads are always batched via `pa.Table.take`
+rather than row-by-row slicing.
+
+**Three read paths** exposed by `SpeechStore`:
+
+| Method                                 | Use case                                   |
+|----------------------------------------|--------------------------------------------|
+| `get_row(file, row)`                   | Single speech → Speech object              |
+| `get_rows_batch(file, rows)`           | Multiple speeches → list of dicts          |
+| `get_column_batch(file, rows, column)` | Single column (e.g. `"text"`) for download |
+
+**`SpeechRepository`** (built on top of `SpeechStore`) dispatches lookup by `speech_id`
+as the primary key.  `document_name` is a fallback only, handled via `_speech_id2id`
+(built lazily from the DTM document index on first miss).
+
+The **text-only download path** (`speeches_text_batch`) uses `get_column_batch(..., "text")`
+— a single Arrow column read with no Python-level text processing, since `text` is already
+whitespace-normalised at build time.
+
+---
 
 ---
 
