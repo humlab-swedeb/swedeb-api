@@ -67,8 +67,12 @@ def test_get_word_trend_results_computes_and_translates_columns():
 
     with (
         patch("api_swedeb.api.services.word_trends_service.compute_word_trends", return_value=trends.copy()) as compute,
-        patch("api_swedeb.api.services.word_trends_service.replace_by_patterns", return_value=["Demokrati", "Parlament"]),
-        patch("api_swedeb.api.services.word_trends_service.ConfigValue.resolve", return_value={"democracy": "Demokrati"}),
+        patch(
+            "api_swedeb.api.services.word_trends_service.replace_by_patterns", return_value=["Demokrati", "Parlament"]
+        ),
+        patch(
+            "api_swedeb.api.services.word_trends_service.ConfigValue.resolve", return_value={"democracy": "Demokrati"}
+        ),
     ):
         result = service.get_word_trend_results(["DEMOCRACY", "parliament"], {"year": (1970, 1971)}, normalize=True)
 
