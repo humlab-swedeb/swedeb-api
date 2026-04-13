@@ -132,12 +132,12 @@ def party_id_map(config_store, corpus_loader: CorpusLoader) -> dict[str, int]:
 
 
 # ---------------------------------------------------------------------------
-# get_anforanden benchmarks
+# get_speeches benchmarks
 # ---------------------------------------------------------------------------
 
 
 class TestGetAnforanden:
-    """Correctness and performance tests for SearchService.get_anforanden."""
+    """Correctness and performance tests for SearchService.get_speeches."""
 
     def test_no_filter_returns_all(self, search_service: SearchService, benchmark):
         df = benchmark(search_service.get_speeches, selections={})
@@ -389,7 +389,7 @@ class TestJsonlGzCompressionStrategy:
             assert isinstance(rec["text"], str)
 
     def test_speech_ids_match_query(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
-        """speech_id values in JSONL records match what get_anforanden returns."""
+        """speech_id values in JSONL records match what get_speeches returns."""
         commons = _make_commons({"year": (1970, 1971)})
         df = search_service.get_speeches(selections={"year": (1970, 1971)})
         expected_ids = set(df["speech_id"].dropna().tolist())

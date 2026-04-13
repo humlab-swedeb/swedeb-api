@@ -109,7 +109,7 @@ class TestToolRouterEndpoints:
         commons = MagicMock()
         commons.get_filter_opts.return_value = {"year": (1980, 1981)}
         service = MagicMock()
-        service.get_anforanden_for_word_trends.return_value = pd.DataFrame(
+        service.get_speeches_for_word_trends.return_value = pd.DataFrame(
             [
                 {
                     "name": "Alice Andersson",
@@ -130,7 +130,7 @@ class TestToolRouterEndpoints:
         )
 
         commons.get_filter_opts.assert_called_once_with(include_year=True)
-        service.get_anforanden_for_word_trends.assert_called_once_with(
+        service.get_speeches_for_word_trends.assert_called_once_with(
             ["jobb", "skatt"],
             {"year": (1980, 1981)},
         )
@@ -179,7 +179,7 @@ class TestToolRouterEndpoints:
         commons = MagicMock()
         commons.get_filter_opts.return_value = {"speech_id": ["i-301"]}
         search_service = MagicMock()
-        search_service.get_anforanden.return_value = pd.DataFrame(
+        search_service.get_speeches.return_value = pd.DataFrame(
             [
                 {
                     "name": "Alice Andersson",
@@ -194,7 +194,7 @@ class TestToolRouterEndpoints:
         result = asyncio.run(get_speeches_result(commons=commons, search_service=search_service))
 
         commons.get_filter_opts.assert_called_once_with(True)
-        search_service.get_anforanden.assert_called_once_with(selections={"speech_id": ["i-301"]})
+        search_service.get_speeches.assert_called_once_with(selections={"speech_id": ["i-301"]})
         assert len(result.speech_list) == 1
         assert result.speech_list[0].speech_id == "i-301"
         assert result.speech_list[0].party_abbrev == "S"

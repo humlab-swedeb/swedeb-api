@@ -272,7 +272,7 @@ def test_get_speech_by_api(fastapi_client: TestClient, corpus_loader: CorpusLoad
 #         tagged_corpus_folder=tagged_corpus_folder,
 #     )
 
-#     df: pd.DataFrame = corpus.get_anforanden(selections={'year': (1867, 1900)})
+#     df: pd.DataFrame = corpus.get_speeches(selections={'year': (1867, 1900)})
 
 #     assert df is not None
 

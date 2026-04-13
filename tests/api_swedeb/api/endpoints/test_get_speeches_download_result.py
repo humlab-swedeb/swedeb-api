@@ -34,7 +34,7 @@ class TestGetSpeechesDownloadResult:
         )
 
         search_service = MagicMock()
-        search_service.get_anforanden.return_value = df
+        search_service.get_speeches.return_value = df
         search_service.get_speeches_text_batch.return_value = iter(
             [
                 ("i-101", "first speech"),
@@ -57,7 +57,7 @@ class TestGetSpeechesDownloadResult:
             assert archive.read("Bob_Berg_i-202.txt") == b"second speech\ncontinued"
 
         commons.get_filter_opts.assert_called_once_with(True)
-        search_service.get_anforanden.assert_called_once_with(selections={"year": (1970, 1971)})
+        search_service.get_speeches.assert_called_once_with(selections={"year": (1970, 1971)})
         search_service.get_speeches_text_batch.assert_called_once_with(["i-101", "i-202"])
 
     def test_streams_empty_zip_when_no_speeches_match(self):
@@ -67,7 +67,7 @@ class TestGetSpeechesDownloadResult:
         df = pd.DataFrame({"speech_id": pd.Series(dtype="object"), "name": pd.Series(dtype="object")})
 
         search_service = MagicMock()
-        search_service.get_anforanden.return_value = df
+        search_service.get_speeches.return_value = df
         search_service.get_speeches_text_batch.return_value = iter(())
 
         with patch("api_swedeb.api.v1.endpoints.tool_router.get_search_service", return_value=search_service):

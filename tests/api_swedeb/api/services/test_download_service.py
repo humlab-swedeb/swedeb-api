@@ -23,7 +23,7 @@ def test_create_zip_stream_uses_speech_ids_for_text_batch_lookup():
     commons = MagicMock()
     commons.get_filter_opts.return_value = {"year": (1970, 1971)}
 
-    search_service.get_anforanden.return_value = pd.DataFrame(
+    search_service.get_speeches.return_value = pd.DataFrame(
         {
             "speech_id": ["i-1", "i-2"],
             "name": ["Speaker One", "Speaker Two"],
@@ -40,7 +40,7 @@ def test_create_zip_stream_uses_speech_ids_for_text_batch_lookup():
     zip_bytes = b"".join(stream())
 
     commons.get_filter_opts.assert_called_once_with(True)
-    search_service.get_anforanden.assert_called_once_with(selections={"year": (1970, 1971)})
+    search_service.get_speeches.assert_called_once_with(selections={"year": (1970, 1971)})
     search_service.get_speeches_text_batch.assert_called_once_with(["i-1", "i-2"])
 
     with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as archive:
@@ -54,7 +54,7 @@ def test_create_zip_stream_uses_unknown_name_fallback():
     commons = MagicMock()
     commons.get_filter_opts.return_value = {}
 
-    search_service.get_anforanden.return_value = pd.DataFrame({"speech_id": ["i-1"], "name": ["Speaker One"]})
+    search_service.get_speeches.return_value = pd.DataFrame({"speech_id": ["i-1"], "name": ["Speaker One"]})
     search_service.get_speeches_text_batch.return_value = iter([("i-missing", "speech text")])
 
     stream = DownloadService().create_stream(search_service=search_service, commons=commons)
@@ -70,7 +70,7 @@ def test_tar_gz_strategy_streams_plain_text_entries():
     commons = MagicMock()
     commons.get_filter_opts.return_value = {}
 
-    search_service.get_anforanden.return_value = pd.DataFrame({"speech_id": ["i-1"], "name": ["Speaker One"]})
+    search_service.get_speeches.return_value = pd.DataFrame({"speech_id": ["i-1"], "name": ["Speaker One"]})
     search_service.get_speeches_text_batch.return_value = iter([("i-1", "speech text")])
 
     stream = DownloadService(TarGzCompressionStrategy()).create_stream(search_service=search_service, commons=commons)
@@ -89,7 +89,7 @@ def test_jsonl_gz_strategy_streams_json_records():
     commons = MagicMock()
     commons.get_filter_opts.return_value = {}
 
-    search_service.get_anforanden.return_value = pd.DataFrame({"speech_id": ["i-1"], "name": ["Speaker One"]})
+    search_service.get_speeches.return_value = pd.DataFrame({"speech_id": ["i-1"], "name": ["Speaker One"]})
     search_service.get_speeches_text_batch.return_value = iter([("i-1", "speech text")])
 
     stream = DownloadService(JsonlGzCompressionStrategy()).create_stream(search_service=search_service, commons=commons)

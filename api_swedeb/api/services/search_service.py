@@ -149,7 +149,7 @@ class SearchService:
         prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
         names: pd.Series = prebuilt.reindex(ids_list)["name"].fillna(unknown)
         return {k: (v if v and v != "Okänt" else unknown) for k, v in zip(ids_list, names)}
-    
+
     def get_speech(self, speech_id: str) -> Speech:
         """Get a single speech by speech ID.
 
@@ -200,4 +200,3 @@ class SearchService:
     #         return person['name']
     #     except (IndexError, ValueError):
     #         return unknown
-
