@@ -79,7 +79,9 @@ class SearchService:
             if key == "party_id":
                 ivalues: list[int] = [int(v) for v in values]
                 person_party = getattr(self._loader.person_codecs, 'person_party')
-                party_person_ids = person_party.loc[person_party.party_id.isin(ivalues), "person_id"].drop_duplicates().tolist()
+                party_person_ids = (
+                    person_party.loc[person_party.party_id.isin(ivalues), "person_id"].drop_duplicates().tolist()
+                )
                 mask &= df.index.isin(_normalize_like_index(party_person_ids))
             elif key == "chamber_abbrev":
                 svalues: list[str] = [str(v).lower() for v in values]
