@@ -1,8 +1,18 @@
 
 SHELL := /bin/bash
+
+CORPUS_VERSION		  ?= v1.4.1
+METADATA_VERSION      ?= v1.1.3
+
 SOURCE_FOLDERS=api_swedeb penelope tests
 PACKAGE_FOLDER=api_swedeb penelope 
 PYTEST_ARGS=--durations=0 tests 
+
+sqlite-db: 
+	@uv run python -m sqlite3 data/metadata/riksprot_metadata.$(METADATA_VERSION).db
+	
+sqlite-test-db: 
+	@uv run python -m sqlite3 tests/test_data/metadata/riksprot_metadata.$(METADATA_VERSION).db 
 
 #--cov=$(PACKAGE_FOLDER) --cov-report=xml --cov-report=html tests
 semantic-release-dryrun:
@@ -104,13 +114,12 @@ profile-zip-pyinstrument:
 #   BOOTSTRAP_CORPUS_ROOT - destination root for bootstrap_corpus output
 #   CORPUS_VERSION        - corpus version string, e.g. v1.1.0
 #   METADATA_VERSION      - metadata version string, e.g. v1.1.0
-#   METADATA_DB           - (optional) path to riksprot SQLite DB for speaker enrichment
+#   METADATA_DB           - path to riksprot SQLite DB for speaker enrichment
 #   NUM_PROCESSES         - parallel workers (0 = sequential, default)
-CORPUS_VERSION		  ?= v1.4.1
-METADATA_VERSION      ?= v1.1.3
+
 TAGGED_FRAMES_FOLDER  ?= /home/roger/source/swedeb/sample-data/data/1867-2020/$(CORPUS_VERSION)/tagged_frames/
 BOOTSTRAP_CORPUS_ROOT ?= /home/roger/source/swedeb/sample-data/data/1867-2020/$(CORPUS_VERSION)/speeches/bootstrap_corpus
-METADATA_DB           ?=
+METADATA_DB           ?= /home/roger/source/swedeb/sample-data/data/1867-2020/metadata/riksprot_metadata.$(METADATA_VERSION).db
 NUM_PROCESSES         ?= 8
 
 build-speech-corpus:
@@ -123,7 +132,7 @@ build-speech-corpus:
 		--output-root     "$(BOOTSTRAP_CORPUS_ROOT)" \
 		--corpus-version  "$(CORPUS_VERSION)" \
 		--metadata-version "$(METADATA_VERSION)" \
-		$(if $(METADATA_DB),--metadata-db "$(METADATA_DB)",) \
+		--metadata-db "$(METADATA_DB)" \
 		--num-processes   $(NUM_PROCESSES)
 
 .PHONY: build-speech-corpus
@@ -142,7 +151,7 @@ build-test-speech-corpus:
 		--output-root     "$(TEST_BOOTSTRAP_CORPUS_ROOT)" \
 		--corpus-version  "$(CORPUS_VERSION)" \
 		--metadata-version "$(METADATA_VERSION)" \
-		$(if $(TEST_METADATA_DB),--metadata-db "$(TEST_METADATA_DB)",) \
+		--metadata-db "$(TEST_METADATA_DB)" \
 		--num-processes 1
 
 .PHONY: build-test-speech-corpus
