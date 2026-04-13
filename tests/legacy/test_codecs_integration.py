@@ -430,7 +430,7 @@ class TestPersonCodecs:
 
     def test_person_wiki_link_series(self):
         wiki_ids = pd.Series(["Q12345", "unknown"])
-        expected = pd.Series(["https://www.wikidata.org/wiki/Q12345", "Okänd"])
+        expected = pd.Series(pd.Categorical(["https://www.wikidata.org/wiki/Q12345", "Okänd"]))
         pd.testing.assert_series_equal(PersonCodecs.person_wiki_link(wiki_ids), expected)
 
     @pytest.mark.parametrize(

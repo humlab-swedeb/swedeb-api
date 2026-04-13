@@ -14,6 +14,7 @@ from api_swedeb.workflows.prebuilt_speech_index.build import (
     _iter_zip_paths,
     _load_zip,
     _process_zip,
+    _year_from_protocol_name,
 )
 
 # ---------------------------------------------------------------------------
@@ -87,6 +88,15 @@ class TestLoadZip:
         # Must use ZIP stem, not metadata.json value
         assert metadata["name"] == "prot-1867--ak--001"
         assert len(loaded_utts) == 1
+
+
+class TestYearFromProtocolName:
+    def test_single_year_protocol(self):
+        assert _year_from_protocol_name("prot-1970--ak--029") == 1970
+
+    def test_session_year_protocol_uses_start_year(self):
+        assert _year_from_protocol_name("prot-197576--087") == 1975
+        assert _year_from_protocol_name("prot-19992000--001") == 1999
 
 
 # ---------------------------------------------------------------------------
@@ -284,9 +294,9 @@ def _make_metadata_db(tmp_path: Path, speaker_id: str = "Q1") -> str:
         INSERT INTO gender VALUES (0,'Okänt','?'),(1,'Man','M'),(2,'Kvinna','K');
 
         CREATE TABLE party (
-            party_id INTEGER PRIMARY KEY, party_abbrev TEXT
+            party_id INTEGER PRIMARY KEY, party_abbrev TEXT, party TEXT
         );
-        INSERT INTO party VALUES (0,'Okänt'),(1,'S'),(3,'M');
+        INSERT INTO party VALUES (0,'Okänt','Okänt'),(1,'S','Socialdemokraterna'),(3,'M','Moderaterna');
 
         CREATE TABLE office_type (
             office_type_id INTEGER PRIMARY KEY, office TEXT

@@ -23,7 +23,9 @@ def test_get_ngrams_converts_string_term_and_maps_result():
             return_value=[{"cqp": "test"}],
         ) as to_opts,
         patch("api_swedeb.api.services.ngrams_service.n_grams.n_grams", return_value=ngrams_df) as n_grams_fn,
-        patch("api_swedeb.api.services.ngrams_service.mappers.ngrams_to_ngram_result", return_value=expected) as to_result,
+        patch(
+            "api_swedeb.api.services.ngrams_service.mappers.ngrams_to_ngram_result", return_value=expected
+        ) as to_result,
     ):
         result = service.get_ngrams(
             corpus=corpus,

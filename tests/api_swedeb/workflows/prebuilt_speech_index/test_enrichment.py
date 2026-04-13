@@ -47,12 +47,13 @@ def _make_db(tmp_path: Path) -> str:
 
         CREATE TABLE party (
             party_id INTEGER PRIMARY KEY,
-            party_abbrev TEXT
+            party_abbrev TEXT,
+            party TEXT
         );
         INSERT INTO party VALUES
-            (0, 'Okänt'),
-            (1, 'S'),
-            (3, 'M');
+            (0, 'Okänt', 'Okänt'),
+            (1, 'S', 'Socialdemokraterna'),
+            (3, 'M', 'Moderaterna');
 
         CREATE TABLE office_type (
             office_type_id INTEGER PRIMARY KEY,
@@ -269,9 +270,10 @@ class TestSessionYearFallback:
 
             CREATE TABLE party (
                 party_id INTEGER PRIMARY KEY,
-                party_abbrev TEXT
+                party_abbrev TEXT,
+                party TEXT
             );
-            INSERT INTO party VALUES (3, 'M');
+            INSERT INTO party VALUES (3, 'M', 'Moderaterna');
 
             CREATE TABLE office_type (
                 office_type_id INTEGER PRIMARY KEY,

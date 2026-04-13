@@ -9,9 +9,9 @@ from unittest.mock import MagicMock
 import pandas as pd
 
 from api_swedeb.api.services.download_service import (
+    DownloadService,
     JsonlGzCompressionStrategy,
     TarGzCompressionStrategy,
-    DownloadService,
     ZipCompressionStrategy,
     _StreamingBuffer,
     create_download_service,

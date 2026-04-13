@@ -91,7 +91,8 @@ class CorpusLoader:
         path = Path(self.speech_bootstrap_corpus_folder) / "speech_index.feather"
         if not path.is_file():
             raise FileNotFoundError(f"prebuilt speech_index.feather not found: {path}")
-        return pd.read_feather(str(path)).set_index("speech_id")
+        df: pd.DataFrame = pd.read_feather(str(path)).set_index("speech_id")
+        return df
 
     def _load_repository(self) -> SpeechRepository:
         """Instantiate the prebuilt speech repository backend."""

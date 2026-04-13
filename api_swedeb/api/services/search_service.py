@@ -9,7 +9,7 @@ import pandas as pd
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_index import get_speeches_by_opts
+from api_swedeb.core.utility import filter_by_opts, format_protocol_id
 
 
 class SearchService:
