@@ -5,7 +5,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame, Series
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.configuration import ConfigValue
@@ -49,7 +48,7 @@ class SearchService:
         if df.empty or not selection_dict:
             return df
 
-        mask: Series[bool] = pd.Series(True, index=df.index)
+        mask: pd.Series = pd.Series(True, index=df.index)
         non_null_index_values = [value for value in df.index.tolist() if value is not None]
         index_value_type = type(non_null_index_values[0]) if non_null_index_values else None
 
@@ -129,7 +128,7 @@ class SearchService:
         Returns:
             DataFrame with filtered speakers
         """
-        current_speakers: DataFrame = self._loader.decoded_persons.copy()
+        current_speakers: pd.DataFrame = self._loader.decoded_persons.copy()
         current_speakers = self._get_filtered_speakers(selections, current_speakers)
         return current_speakers.reset_index(inplace=False)
 
