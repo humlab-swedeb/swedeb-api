@@ -32,7 +32,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--corpus-version", required=True, help="Corpus version string (e.g. v1.1.0)")
     parser.add_argument("--metadata-version", required=True, help="Metadata version string (e.g. v1.1.0)")
     parser.add_argument(
-        "--metadata-db", default=None, help="Path to riksprot SQLite metadata DB for speaker enrichment"
+        "--metadata-db", required=True, help="Path to riksprot SQLite metadata DB for speaker enrichment"
     )
     parser.add_argument("--num-processes", type=int, default=0, help="Parallel workers (0 = sequential, default)")
     return parser.parse_args()
