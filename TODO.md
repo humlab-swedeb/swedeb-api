@@ -7,3 +7,18 @@
  - [ ] FIXME: Add strict mode to alignment check in CorpusLoader
  - [ ] TODO: replace _get_filtered_speakers with get_filtered_speakers_improved
  - [ ] TODO: fixa get_config_store i Shape Shifter att följa samma mönster som här
+ - [ ] FIXME: Try using category type for names
+
+
+ - [ ] TODO: Use prebuilt speech index in these methods
+  
+| Current use                                    | File                                             | Replaceable? | Notes                                    |
+|------------------------------------------------|--------------------------------------------------|--------------|------------------------------------------|
+| `decode_speech_index()` on KWIC results        | `core/kwic/simple.py`                            | ✅ Done       | Migrated in #253                       |
+| `decode_speech_index()` on search results      | `SearchService.get_speeches`                     | ✅ Yes        | Join on `speech_id`                      |
+| `decode_speech_index()` on word-trend speeches | `WordTrendsService.get_speeches_for_word_trends` | ✅ Yes        | Same join                                |
+| `person_codecs[person_id]` for speaker name    | `SearchService.get_speaker`                      | ✅ Yes        | Lookup in prebuilt index by `speaker_id` |
+
+For all of these, the result is the same: replace a runtime codec translate-step with a
+`DataFrame.join(prebuilt_speech_index, on='speech_id', how='left')`.
+
