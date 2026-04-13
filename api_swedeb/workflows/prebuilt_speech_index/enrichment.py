@@ -105,8 +105,10 @@ class SpeakerLookups:
                 self.gender_id_to_abbrev[gid] = row["gender_abbrev"] or "?"
 
             self.party_id_to_abbrev: dict[int, str] = {}
-            for row in con.execute("SELECT party_id, party_abbrev FROM party"):
+            self.party_id_to_party: dict[int, str] = {}
+            for row in con.execute("SELECT party_id, party_abbrev, party FROM party"):
                 self.party_id_to_abbrev[int(row["party_id"])] = row["party_abbrev"] or UNKNOWN_STR
+                self.party_id_to_party[int(row["party_id"])] = row["party"] or UNKNOWN_STR
 
             self.office_type_id_to_label: dict[int, str] = {}
             for row in con.execute("SELECT office_type_id, office FROM office_type"):
@@ -237,6 +239,7 @@ def enrich_speech_rows(
                 if party_id != UNKNOWN_INT:
                     break
         party_abbrev: str = lookups.party_id_to_abbrev.get(party_id, UNKNOWN_STR)
+        party: str = lookups.party_id_to_party.get(party_id, UNKNOWN_STR)
         if party_id == UNKNOWN_INT and person_id != UNKNOWN_PERSON_ID:
             quality["missing_party"] += 1
 
@@ -258,6 +261,7 @@ def enrich_speech_rows(
         row["gender_abbrev"] = gender_abbrev
         row["party_id"] = party_id
         row["party_abbrev"] = party_abbrev
+        row["party"] = party
         row["office_type_id"] = office_type_id
         row["office_type"] = office_type
         row["sub_office_type_id"] = sub_office_type_id

@@ -37,7 +37,7 @@ from pyarrow import feather
 
 from api_swedeb.core.utility import fix_whitespace
 
-from .enrichment import SpeakerLookups, enrich_speech_rows
+from .enrichment import UNKNOWN_STR, SpeakerLookups, enrich_speech_rows
 from .merge import merge_protocol_utterances
 
 # ---------------------------------------------------------------------------
@@ -47,32 +47,43 @@ from .merge import merge_protocol_utterances
 SCHEMA_VERSION = "1.0.0"
 
 
+def _derive_chamber_abbrev(protocol_name: str) -> str:
+    """Derive chamber abbreviation from protocol name convention."""
+    if "--ak--" in protocol_name:
+        return "ak"
+    if "--fk--" in protocol_name:
+        return "fk"
+    return "ek"
+
+
 _PYARROW_SCHEMA: pa.Schema = pa.schema(
     [
         ("speech_id", pa.string()),
         ("document_name", pa.string()),
-        ("protocol_name", pa.string()),
-        ("date", pa.string()),
+        ("protocol_name", pa.dictionary(pa.int16(), pa.string())),
+        ("date", pa.dictionary(pa.int16(), pa.string())),
         ("year", pa.int16()),
-        ("speaker_id", pa.string()),
+        ("speaker_id", pa.dictionary(pa.int16(), pa.string())),
         ("speaker_note_id", pa.string()),
         ("speech_index", pa.int16()),
         ("page_number_start", pa.int16()),
         ("page_number_end", pa.int16()),
         ("num_tokens", pa.int16()),
         ("num_words", pa.int16()),
-        ("name", pa.string()),
+        ("name", pa.dictionary(pa.int16(), pa.string())),
         ("gender_id", pa.int8()),
-        ("gender", pa.string()),
-        ("gender_abbrev", pa.string()),
+        ("gender", pa.dictionary(pa.int8(), pa.string())),
+        ("gender_abbrev", pa.dictionary(pa.int8(), pa.string())),
         ("party_id", pa.int16()),
-        ("party_abbrev", pa.string()),
+        ("party_abbrev", pa.dictionary(pa.int16(), pa.string())),
         ("office_type_id", pa.int8()),
-        ("office_type", pa.string()),
+        ("office_type", pa.dictionary(pa.int8(), pa.string())),
         ("sub_office_type_id", pa.int8()),
-        ("sub_office_type", pa.string()),
-        ("wiki_id", pa.string()),
-        ("feather_file", pa.string()),
+        ("sub_office_type", pa.dictionary(pa.int8(), pa.string())),
+        ("wiki_id", pa.dictionary(pa.int16(), pa.string())),
+        ("chamber_abbrev", pa.dictionary(pa.int8(), pa.string())),
+        ("party", pa.dictionary(pa.int16(), pa.string())),
+        ("feather_file", pa.dictionary(pa.int32(), pa.string())),
         ("feather_row", pa.int64()),
     ]
 )
@@ -102,7 +113,8 @@ def _year_from_protocol_name(protocol_name: str) -> int:
         _year_from_protocol_name("prot-197576--087")    → 1975
     """
     try:
-        return int(protocol_name[5:9])
+        year_token = protocol_name.split("-")[1]
+        return int(year_token[:4])
     except (ValueError, IndexError):
         return 0
 
@@ -175,6 +187,8 @@ def _speech_rows_to_arrow(full_rows: list[dict[str, Any]], feather_file_rel: str
                 "sub_office_type_id": s.get("sub_office_type_id"),
                 "sub_office_type": s.get("sub_office_type"),
                 "wiki_id": s.get("wiki_id", "unknown"),
+                "chamber_abbrev": s.get("chamber_abbrev", "ek"),
+                "party": s.get("party", UNKNOWN_STR),
                 "feather_file": feather_file_rel,
                 "feather_row": row_idx,
             }
@@ -257,6 +271,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
                     "page_number_end": int(s.get("page_number_end") or 0),
                     "num_tokens": int(s.get("num_tokens") or 0),
                     "num_words": int(s.get("num_words") or 0),
+                    "chamber_abbrev": _derive_chamber_abbrev(protocol_stem),
                     "text": fix_whitespace("\n".join(s.get("paragraphs") or [])),
                 }
             )
@@ -419,6 +434,11 @@ class SpeechCorpusBuilder:
             logger.info(f"Loading speaker lookups from {self.metadata_db_path}")
             lookups = SpeakerLookups(self.metadata_db_path)
             logger.info(f"  {len(lookups.person_to_name)} persons loaded")
+        else:
+            logger.warning(
+                "No metadata DB configured for SpeechCorpusBuilder; speaker enrichment is disabled "
+                "and enrichment columns in speech_index.feather will be null."
+            )
 
         zip_paths: list[Path] = _iter_zip_paths(str(self.tagged_frames_folder))
         logger.info(f"Found {len(zip_paths)} tagged protocols (zipped) under {self.tagged_frames_folder}")
