@@ -693,9 +693,36 @@ class TestPersonCodecs:
             result = PersonCodecs.person_wiki_link(wiki_ids)
 
             expected = pd.Series(
-                ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
+                pd.Categorical(
+                    ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
+                )
             )
             assert isinstance(result, pd.Series)
+            assert isinstance(result.dtype, pd.CategoricalDtype)
+
+            pd.testing.assert_series_equal(result, expected)
+
+    def test_person_wiki_link_categorical_series(self):
+        """Test person_wiki_link preserves categorical output for categorical input."""
+        wiki_ids = pd.Series(pd.Categorical(["Q123", "unknown", "Q123"]))
+
+        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
+            mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
+
+            result = PersonCodecs.person_wiki_link(wiki_ids)
+
+            expected = pd.Series(
+                pd.Categorical(
+                    [
+                        "https://www.wikidata.org/wiki/Q123",
+                        "Unknown Speaker",
+                        "https://www.wikidata.org/wiki/Q123",
+                    ],
+                    categories=["https://www.wikidata.org/wiki/Q123", "Unknown Speaker"],
+                )
+            )
+            assert isinstance(result, pd.Series)
+            assert isinstance(result.dtype, pd.CategoricalDtype)
 
             pd.testing.assert_series_equal(result, expected)
 
