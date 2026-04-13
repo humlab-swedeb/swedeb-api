@@ -36,9 +36,35 @@ def mock_loader() -> MagicMock:
         }
     )
 
+    loader.person_codecs.get_mapping.return_value = {1: "Party A", 2: "Party B"}
+    loader.person_codecs.person_wiki_link.side_effect = lambda wiki_ids: wiki_ids.map(
+        lambda value: f"https://www.wikidata.org/wiki/{value}" if pd.notna(value) else None
+    )
+    loader.person_codecs.speech_link.side_effect = lambda document_name: document_name.map(
+        lambda value: (
+            f"https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-arbete/protokoll/{value}/"
+            if pd.notna(value)
+            else None
+        )
+    )
+
     loader.document_index = pd.DataFrame({"speech_id": ["i-1", "i-2"]})
     loader.prebuilt_speech_index = pd.DataFrame(
-        {"name": ["Alice", "Okänt", None]},
+        {
+            "document_name": ["prot-1970--ak--029_001", "prot-1975--001_002", "prot-1975--001_003"],
+            "protocol_name": ["prot-1970--ak--029", "prot-1975--001", "prot-1975--001"],
+            "year": [1970, 1975, 1975],
+            "speaker_id": ["p1", "p2", "p3"],
+            "gender_id": [1, 2, 2],
+            "gender": ["Kvinna", "Man", "Man"],
+            "gender_abbrev": ["K", "M", "M"],
+            "party_id": [1, 2, 1],
+            "party_abbrev": ["S", "M", "S"],
+            "party": ["Socialdemokraterna", "Moderaterna", "Socialdemokraterna"],
+            "chamber_abbrev": ["ak", "ek", "ek"],
+            "name": ["Alice", "Okänt", None],
+            "wiki_id": ["Q1", "unknown", None],
+        },
         index=pd.Index(["i-1", "i-2", "i-3"], name="speech_id"),
     )
 
@@ -216,24 +242,45 @@ def test_get_speakers_filters_and_resets_index(service: SearchService):
     assert result["name"].tolist() == ["Bob", "Charlie"]
 
 
-def test_get_anforanden_filters_then_decodes(service: SearchService, mock_loader: MagicMock):
-    raw = pd.DataFrame({"speech_id": ["i-1"]})
-    decoded = pd.DataFrame({"speech_id": ["i-1"], "name": ["Alice"]})
-    mock_loader.person_codecs.decode_speech_index.return_value = decoded
-
-    with (
-        patch("api_swedeb.api.services.search_service.get_speeches_by_opts", return_value=raw) as get_by_opts,
-        patch("api_swedeb.api.services.search_service.ConfigValue.resolve", return_value={"name": "display_name"}),
-    ):
+def test_get_speeches_filters_prebuilt_index_and_normalizes_output(service: SearchService, mock_loader: MagicMock):
+    with patch("api_swedeb.api.services.search_service.ConfigValue.resolve", return_value={"Okänt": "Unknown"}):
         result = service.get_speeches({"year": (1970, 1971)})
 
-    assert result is decoded
-    get_by_opts.assert_called_once_with(mock_loader.document_index, {"year": (1970, 1971)})
-    mock_loader.person_codecs.decode_speech_index.assert_called_once_with(
-        raw,
-        value_updates={"name": "display_name"},
-        sort_values=True,
-    )
+    assert result["speech_id"].tolist() == ["i-1"]
+    assert result["person_id"].tolist() == ["p1"]
+    assert result["chamber_abbrev"].tolist() == ["ak"]
+    assert result["speech_name"].tolist() == ["Andra kammaren 1970:029 001"]
+    assert result["link"].tolist() == ["https://www.wikidata.org/wiki/Q1"]
+    assert result["speech_link"].tolist() == [
+        "https://www.riksdagen.se/sv/dokument-och-lagar/riksdagens-arbete/protokoll/prot-1970--ak--029_001/"
+    ]
+    mock_loader.person_codecs.decode_speech_index.assert_not_called()
+
+
+def test_get_speeches_filters_by_speech_id_on_prebuilt_index(service: SearchService):
+    with patch("api_swedeb.api.services.search_service.ConfigValue.resolve", return_value={"Okänt": "Unknown"}):
+        result = service.get_speeches({"speech_id": ["i-2", "i-999"]})
+
+    assert result["speech_id"].tolist() == ["i-2"]
+    assert result["name"].tolist() == ["Unknown"]
+    assert result["chamber_abbrev"].tolist() == ["ek"]
+
+
+def test_get_speeches_returns_compatible_empty_frame(service: SearchService):
+    with patch("api_swedeb.api.services.search_service.ConfigValue.resolve", return_value={"Okänt": "Unknown"}):
+        result = service.get_speeches({"speech_id": ["i-999"]})
+
+    assert result.empty
+    assert "speech_id" in result.columns
+    assert "name" in result.columns
+
+
+def test_get_speeches_raises_when_prebuilt_index_violates_schema(service: SearchService, mock_loader: MagicMock):
+    mock_loader.prebuilt_speech_index = mock_loader.prebuilt_speech_index.drop(columns=["chamber_abbrev"])
+
+    with patch("api_swedeb.api.services.search_service.ConfigValue.resolve", return_value={"Okänt": "Unknown"}):
+        with pytest.raises(ValueError, match="missing required columns"):
+            service.get_speeches({"year": (1970, 1971)})
 
 
 def test_get_speaker_names_returns_unknown_for_missing_or_okant(service: SearchService):
