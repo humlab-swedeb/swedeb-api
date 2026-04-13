@@ -368,10 +368,16 @@ class PersonCodecs(Codecs):
         prefix = "https://www.wikidata.org/wiki/"
 
         if isinstance(wiki_id, pd.Series):
-            is_unknown = wiki_id.eq("unknown")
-            result = prefix + wiki_id
-            result[is_unknown] = unknown
-            return result
+            if isinstance(wiki_id.dtype, pd.CategoricalDtype):
+                categories = [
+                    unknown if value == "unknown" else prefix + str(value) for value in wiki_id.cat.categories
+                ]
+                return wiki_id.cat.rename_categories(categories)
+
+            values = wiki_id.map(
+                lambda value: unknown if value == "unknown" else prefix + value if pd.notna(value) else value
+            )
+            return pd.Series(pd.Categorical(values), index=wiki_id.index, name=wiki_id.name)
 
         return unknown if wiki_id == "unknown" else prefix + wiki_id
 
