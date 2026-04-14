@@ -38,7 +38,7 @@ REQUIRED_SPEECH_COLUMNS: set[str] = {
     "party_id",
     "party_abbrev",
     "party",
-    "wiki_id",
+    "wiki_id"
 }
 
 
@@ -53,7 +53,7 @@ def speeches_to_api_frame(speeches: pd.DataFrame) -> pd.DataFrame:
     result["speech_name"] = format_speech_names(result["document_name"])
     result["link"] = resolve_wiki_url_for_speaker(result["wiki_id"])
     result["speech_link"] = resolve_pdf_links_for_speeches(
-        speech_names=result["document_name"], page_nr=result["start_page"]
+        speech_names=result["document_name"], page_nr=result["page_number_start"]
     )
 
     value_updates: dict[str, Any] | None = ConfigValue("display.speech_index.updates").resolve()
