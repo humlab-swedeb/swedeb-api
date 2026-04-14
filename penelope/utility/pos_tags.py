@@ -2,7 +2,6 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from typing import Any, Container, Dict, List, Union
 
-import numpy as np
 import pandas as pd
 from loguru import logger
 from more_itertools import collapse
@@ -209,8 +208,8 @@ class PoS_Tag_Scheme:
         self.PD_PoS_groups: pd.DataFrame | pd.Series = df.groupby('tag_group_name')['tag'].agg(list)
         self.pos_to_id: dict = df['pos_id'].to_dict()
         self.id_to_pos: dict = {v: k for k, v in self.pos_to_id.items()}
-        self.groups: Dict[str, List[str]] = self.PD_PoS_groups.to_dict()
-        self.tag_to_group: Dict[str, str] = self.PD_PoS_tags.set_index('tag')['tag_group_name'].to_dict()
+        self.groups: Dict[str, List[str]] = self.PD_PoS_groups.to_dict()  # type: ignore
+        self.tag_to_group: Dict[str, str] = self.PD_PoS_tags.set_index('tag')['tag_group_name'].to_dict()  # type: ignore
 
     @property
     def tags(self) -> List[str]:
@@ -283,7 +282,7 @@ class PoS_Tag_Scheme:
 
     @property
     def description(self) -> Dict[str, str]:
-        return self.PD_PoS_tags.set_index('tag')['description'].to_dict()
+        return self.PD_PoS_tags.set_index('tag')['description'].to_dict()  # type: ignore
 
     def PoS_group_counts(self, PoS_sequence: pd.Series) -> dict:
         """Computes word counts (total and per part-of-speech) given tagged_frame"""
@@ -299,7 +298,7 @@ class PoS_Tag_Scheme:
             tag_counts[PoS] += 1
 
         """Convert to strings if PoS-sequence is integers"""
-        if np.issubdtype(PoS_sequence.dtype, np.integer):  # type: ignore
+        if pd.api.types.is_integer_dtype(PoS_sequence.dtype):
             ig = self.id_to_pos.get
             tag_counts = {ig(k, 'XYZ'): v for k, v in tag_counts.items()}
 

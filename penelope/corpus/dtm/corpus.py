@@ -73,7 +73,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         self._payload: dict = {**kwargs}
 
     def _ingest_document_index(self, document_index: pd.DataFrame) -> pd.DataFrame:
-        if not np.issubdtype(document_index.index.dtype, np.number):  # type: ignore
+        if not pd.api.types.is_integer_dtype(document_index.index.dtype):
             logger.warning("VectorizedCorpus: supplied document index has not an integral index")
             document_index = document_index.set_index('document_id', drop=False).rename_axis('')
 

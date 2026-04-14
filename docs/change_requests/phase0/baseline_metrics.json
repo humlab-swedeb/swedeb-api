@@ -1,0 +1,43 @@
+{
+  "started_utc": "2026-04-08T13:17:42.409428+00:00",
+  "seed": 42,
+  "environment": {
+    "python": "3.13.3",
+    "repository": "swedeb-api",
+    "branch": "speeches-download"
+  },
+  "dataset": {
+    "document_index_rows": 997606,
+    "single_sample_n": 250,
+    "batch_1k_n": 1000,
+    "batch_10k_n": 10000
+  },
+  "startup_seconds": 1.0752485198900104,
+  "single_lookup_all_ms": {
+    "p50": 10.745315812528133,
+    "p95": 21.047885064035654,
+    "p99": 25.646525900810957,
+    "mean": 172.02030092477798,
+    "max": 40132.725848816335
+  },
+  "single_lookup_warm_ms": {
+    "p50": 10.647124145179987,
+    "p95": 21.047885064035654,
+    "p99": 24.39111704006791,
+    "mean": 11.514220248985415,
+    "max": 26.047132909297943
+  },
+  "batch_1k": {
+    "count": 1000,
+    "seconds": 11.06551197776571,
+    "throughput_items_per_sec": 90.37087502226127,
+    "chars_total": 2861671
+  },
+  "batch_10k": {
+    "count": 10000,
+    "seconds": 70.12133841775358,
+    "throughput_items_per_sec": 142.60994193271364,
+    "chars_total": 27525461
+  },
+  "process_rss_max_mb": 1449.79296875
+}

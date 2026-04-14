@@ -17,13 +17,20 @@ dependencies = [
     "loguru",
     "requests",
     "more-itertools",
+    "tqdm>=4.67.3",
+    "jinja2>=3.1.6",
+    "click>=8.0",
 ]
+
+[project.scripts]
+download-speeches = "api_swedeb.scripts.download_speeches:main"
 
 [project.optional-dependencies]
 dev = [
     "black",
     "httpx",
     "pytest",
+    "pytest-benchmark",
     "pylint",
     "ruff",
     "pyinstrument",
@@ -53,6 +60,8 @@ exclude = [
     "tmp",
     "deprecated",
     "docker",
+    ".pytest_cache",
+    "**/.*"
 ]
 
 [tool.ruff]
@@ -115,6 +124,7 @@ disable = [
     "R0904",
     "R0903",
     "R0801",
+    "fixme",
     "too-many-return-statements",
     "too-many-branches",
     "too-many-statements",
@@ -148,6 +158,7 @@ skip-string-normalization = true
 [tool.pylint]
 max-line-length = 140
 max-args = 10
+extension-pkg-allow-list = ["fastapi", "ccc"]
 ignore-paths = [
     "tmp",
     "data",
@@ -195,7 +206,7 @@ warn_return_any = false
 # pytest
 # --------------------
 [tool.pytest.ini_options]
-addopts = "-q -ra --strict-markers"
+addopts = "-q -ra --strict-markers --durations=0 --durations-min=0.05 -m 'not benchmark'"
 # addopts = "-ra --quiet --tb=short --color=no --durations=0 -W ignore::DeprecationWarning"
 testpaths = ["tests"]
 # python_classes = "Test*"
@@ -204,7 +215,12 @@ markers = [
   "integration: marks tests that hit external services (e.g., Ollama, DB)",
   "debug: marks tests for debugging purposes (typically run manually)",
   "manual: marks tests requiring manual setup (e.g., real database)",
+  "benchmark: marks benchmark tests (run with --benchmark-only, skipped by default)",
 ]
+
+[tool.pytest-benchmark]
+storage = "tests/benchmarks/.benchmarks"
+histogramdir = "tests/benchmarks/.histograms"
 # python_files = "test_*.py" "*_test.py"
 # Uncomment to see logs during test runs:
 # log_cli = true
@@ -236,6 +252,7 @@ deb = [
 ]
 dev = [
     "pytest-asyncio>=1.3.0",
+    "pytest-benchmark>=5.2.3",
     "vulture>=2.14",
 ]
 

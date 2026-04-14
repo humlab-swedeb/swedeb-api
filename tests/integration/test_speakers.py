@@ -7,7 +7,7 @@ from httpx import Response
 from api_swedeb.api.dependencies import get_corpus_loader
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.search_service import SearchService
-from api_swedeb.core.codecs import PersonCodecs
+from api_swedeb.core.person_codecs import PersonCodecs
 
 # pylint: disable=redefined-outer-name
 

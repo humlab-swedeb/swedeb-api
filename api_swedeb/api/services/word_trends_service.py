@@ -92,7 +92,7 @@ class WordTrendsService:
 
         return trends
 
-    def get_anforanden_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
+    def get_speeches_for_word_trends(self, selected_terms: list[str], filter_opts: dict) -> pd.DataFrame:
         """Get speeches for given word trends search terms.
 
         Args:

@@ -21,6 +21,21 @@ def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
     """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
     if len(pivot_keys) <= 1 or data is None:
         return data
+
+    # Pandas with pyarrow backend can fail when building MultiIndex from
+    # dictionary/string extension dtypes. Normalize pivot key columns first.
+    if any('pyarrow' in str(data[key].dtype) for key in pivot_keys if key in data.columns):
+        data = data.copy()
+        for key in pivot_keys:
+            if key not in data.columns:
+                continue
+            if 'pyarrow' not in str(data[key].dtype):
+                continue
+            if pd.api.types.is_numeric_dtype(data[key].dtype):
+                data[key] = pd.Series(data[key].to_numpy(copy=False), index=data.index)
+            else:
+                data[key] = data[key].astype('string[python]')
+
     data = data.set_index(pivot_keys)
     while isinstance(data.index, pd.MultiIndex):
         data = data.unstack(level=1, fill_value=0)  # type: ignore

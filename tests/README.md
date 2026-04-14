@@ -34,7 +34,7 @@ tests/
   - **100% isolation** - no real corpus required
 - **Run with**: `pytest tests/api_swedeb`
 - **Coverage target**: >90% for all modules (currently 96%)
-- **Test count**: ~490 tests (excluding 3 pre-existing failures in test_speech_text.py)
+- **Test count**: ~490 tests
 
 ### Integration Tests (`integration/`)
 - **Purpose**: Test complete workflows using real CWB corpus and API endpoints

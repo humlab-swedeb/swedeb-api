@@ -4,9 +4,9 @@ import ccc
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import compiler
 from api_swedeb.core.cwb.utility import CorpusAttribs
+from api_swedeb.core.person_codecs import PersonCodecs
 
 
 def test_cqp_execute_query(corpus: ccc.Corpus, person_codecs: PersonCodecs):

@@ -76,7 +76,8 @@ class Codec:
         if self.default is not None:
             out = out.fillna(self.default)
 
-        df[self.to_column] = out
+        # Use .loc assignment to avoid chained-assignment ambiguity.
+        df.loc[:, self.to_column] = out
         return df
 
     def is_decoded(self, df: pd.DataFrame) -> bool:
@@ -279,6 +280,11 @@ class Codecs:
         ignores: list[str] | None = None,
     ) -> pd.DataFrame:
         """Applies codecs to DataFrame. Ignores target columns in `ignores` and keeps columns in `keeps`."""
+        # Avoid an unconditional deep copy for large frames. Only detach when this
+        # dataframe likely originates from chained indexing / slicing.
+        if getattr(df, "_is_copy", None) is not None:
+            df = df.copy(deep=False)
+
         for codec in codecs:
             if ignores and codec.to_column in ignores:
                 continue
@@ -347,14 +353,33 @@ class PersonCodecs(Codecs):
 
         return self.persons_of_interest.loc[key]
 
+    # @staticmethod
+    # def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
+    #     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+    #     if isinstance(wiki_id, pd.Series):
+    #         data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
+    #         data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
+    #         return data
+    #     return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
+
     @staticmethod
-    def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
-        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+    def person_wiki_link(wiki_id: str | pd.Series) -> str | pd.Series:
+        unknown = ConfigValue("display.labels.speaker.unknown").resolve()
+        prefix = "https://www.wikidata.org/wiki/"
+
         if isinstance(wiki_id, pd.Series):
-            data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
-            data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
-            return data
-        return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
+            if isinstance(wiki_id.dtype, pd.CategoricalDtype):
+                categories = [
+                    unknown if value == "unknown" else prefix + str(value) for value in wiki_id.cat.categories
+                ]
+                return wiki_id.cat.rename_categories(categories)
+
+            values = wiki_id.map(
+                lambda value: unknown if value == "unknown" else prefix + value if pd.notna(value) else value
+            )
+            return pd.Series(pd.Categorical(values), index=wiki_id.index, name=wiki_id.name)
+
+        return unknown if wiki_id == "unknown" else prefix + wiki_id
 
     @staticmethod
     def speech_link(
@@ -373,19 +398,27 @@ class PersonCodecs(Codecs):
 
     @staticmethod
     def _speech_links(
-        document_names: pd.Series[str], base_url: str, page_nrs: int | str | pd.Series[int] | pd.Series[str] = 1
+        document_names: pd.Series,
+        base_url: str,
+        page_nrs: int | str | pd.Series = 1,
     ) -> pd.Series:
         """Create a series of speech links from document names and page numbers.
-        The document has the following format: 'prot-YYYY--KK--NNN_MMM'
-        where YYYY is the year as YYYY (i.e. 2010) or YYYYYY (i.e. 202021).
-           KK is the chamber code ('fk', ak', etc).
-           NNN is the protocol number as zero-padded integer.
-           MMM is the page number as zero-padded integer.
+
+        Expected document format:
+            'prot-YYYY--KK--NNN_MMM'
+        where YYYY is between 4 and 8 digits (e.g. "1999", "199900", "19992000"),
+        zero-padded protocol number, and MMM is the zero-padded page number.
         """
-        year: pd.Series[str] = document_names.str.split('-').str[1]
-        base_filename: pd.Series[str] = document_names.str.split('_').str[0] + ".pdf"
-        page_nrs = page_nrs.astype(str) if isinstance(page_nrs, pd.Series) else str(page_nrs)
-        return base_url + year + "/" + base_filename + "#page=" + page_nrs
+        parts = document_names.str.extract(r"^(?P<base>[^-]+-(?P<year>[0-9]{4,8})[^_]+)_", expand=True)
+        base_filename = parts["base"] + ".pdf"
+        year = parts["year"]
+
+        if isinstance(page_nrs, pd.Series):
+            page_str = page_nrs.astype(str)
+        else:
+            page_str = str(page_nrs)
+
+        return base_url + year + "/" + base_filename + "#page=" + page_str
 
     def decode_speech_index(
         self, speech_index: pd.DataFrame, value_updates: dict | None = None, sort_values: bool = True

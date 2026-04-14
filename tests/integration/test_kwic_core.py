@@ -5,7 +5,6 @@ import ccc
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import CorpusCreateOpts
 from api_swedeb.core.kwic import simple
 from api_swedeb.core.kwic.multiprocess import execute_kwic_multiprocess, kwic_worker
@@ -16,6 +15,7 @@ from api_swedeb.core.kwic.utility import (
     extract_year_range,
     inject_year_filter,
 )
+from api_swedeb.core.person_codecs import PersonCodecs
 
 # pylint: disable=redefined-outer-name
 
@@ -36,7 +36,6 @@ EXPECTED_COLUMNS: set[str] = {
     "chamber_abbrev",
     "speech_id",
     "wiki_id",
-    "document_id",
     "left_word",
     "node_word",
     "right_word",
@@ -72,11 +71,11 @@ def encode_party_abbrev2id(person_codecs: PersonCodecs, criterias: list[dict[str
     "word,target,p_show,filter_opts,expected_words",
     [
         (
-            ["kärnkraft|kärnvapen", "och"],
+            ["kärnkraft|kärnvapen", "."],
             "word",
             "word",
             {},
-            ["kärnkraft och", "kärnvapen och"],
+            ["kärnkraft .", "kärnvapen ."],
         ),
         (
             ["debatt"],
@@ -99,7 +98,7 @@ def test_simple_kwic_without_decode_with_multiple_terms(
     p_show: Literal["word", "lemma"],
     filter_opts: list[dict[str, Any]],
     expected_words: list[str],
-):
+) -> None:
     filter_opts = encode_party_abbrev2id(person_codecs, filter_opts)
 
     search_opts: list[dict] = [
@@ -152,14 +151,13 @@ def test_simple_kwic_without_decode_with_multiple_terms(
 )
 def test_simple_kwic_with_decode_results_for_various_setups(
     corpus: ccc.Corpus,
-    person_codecs: PersonCodecs,
-    speech_index: pd.DataFrame,
+    corpus_loader,
     word: str | list[str],
     target: str,
     p_show: str,
     criterias: list[dict[str, Any]],
     expected_words: set[str],
-):
+) -> None:
     search_opts: list[dict[str, Any]] = [
         {
             "prefix": None if not criterias else "a",
@@ -173,12 +171,11 @@ def test_simple_kwic_with_decode_results_for_various_setups(
     data: pd.DataFrame = simple.kwic_with_decode(
         corpus,
         opts=search_opts,
-        speech_index=speech_index,
+        prebuilt_speech_index=corpus_loader.prebuilt_speech_index,
         words_before=2,
         words_after=2,
         p_show=p_show,
         cut_off=200,
-        codecs=person_codecs,
     )
 
     assert data is not None
@@ -186,14 +183,14 @@ def test_simple_kwic_with_decode_results_for_various_setups(
 
     # assert set(data[f"node_{p_show}"].unique()) == expected_words
     # Names have been normalized to "word"
-    assert set(data[f"node_word"].unique()) == expected_words
+    assert set(data["node_word"].unique()) == expected_words
 
 
-def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person_codecs: PersonCodecs):
+def test_kwic_with_decode(corpus: ccc.Corpus, corpus_loader):
     party_abbrev: str = 'S'
     gender_id: int = 2
 
-    party_id: int = person_codecs.get_mapping('party_abbrev', 'party_id').get(party_abbrev, 0)
+    party_id: int = corpus_loader.person_codecs.get_mapping('party_abbrev', 'party_id').get(party_abbrev, 0)
 
     search_opts: list[dict[str, Any]] = [
         {
@@ -211,8 +208,7 @@ def test_kwic_with_decode(corpus: ccc.Corpus, speech_index: pd.DataFrame, person
     data: pd.DataFrame = simple.kwic_with_decode(
         corpus,
         opts=search_opts,
-        speech_index=speech_index,
-        codecs=person_codecs,
+        prebuilt_speech_index=corpus_loader.prebuilt_speech_index,
         p_show="word",
         cut_off=200,
         words_after=5,
@@ -681,8 +677,7 @@ def test_kwic_with_list_of_words(corpus: ccc.Corpus):
 
 def test_kwic_with_decode_returns_enriched_data(
     corpus: ccc.Corpus,
-    speech_index: pd.DataFrame,
-    person_codecs: PersonCodecs,
+    corpus_loader,
 ):
     """Test kwic_with_decode adds metadata columns."""
     opts = {
@@ -694,8 +689,7 @@ def test_kwic_with_decode_returns_enriched_data(
     result = simple.kwic_with_decode(
         corpus=corpus,
         opts=opts,
-        speech_index=speech_index,
-        codecs=person_codecs,
+        prebuilt_speech_index=corpus_loader.prebuilt_speech_index,
         words_before=2,
         words_after=2,
         p_show="word",
@@ -714,8 +708,7 @@ def test_kwic_with_decode_returns_enriched_data(
 
 def test_kwic_with_decode_multiprocess(
     corpus_opts: CorpusCreateOpts,
-    speech_index: pd.DataFrame,
-    person_codecs: PersonCodecs,
+    corpus_loader,
 ):
     """Test kwic_with_decode in multiprocess mode."""
     opts = {
@@ -727,8 +720,7 @@ def test_kwic_with_decode_multiprocess(
     result = simple.kwic_with_decode(
         corpus=corpus_opts,
         opts=opts,
-        speech_index=speech_index,
-        codecs=person_codecs,
+        prebuilt_speech_index=corpus_loader.prebuilt_speech_index,
         words_before=2,
         words_after=2,
         p_show="word",

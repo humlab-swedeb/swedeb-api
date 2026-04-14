@@ -45,11 +45,11 @@ class ConfigValue(Generic[T]):
     def resolve(self, context: str | None = None) -> T:
         """Resolve the value from the current store (configuration file)"""
         if isinstance(self.key, Config):
-            return ConfigStore.config(context)  # type: ignore
+            return get_config_store().config(context)  # type: ignore
         if isclass(self.key):
             return self.key()
 
-        cfg: Config | None = ConfigStore.config(context)
+        cfg: Config | None = get_config_store().config(context)
 
         if self.mandatory and not self.default:
             if cfg and not cfg.exists(self.key):
@@ -71,27 +71,30 @@ class ConfigValue(Generic[T]):
         )
 
 
+@dataclass
 class ConfigStore:
     """A class to manage configuration files and contexts"""
 
-    store: dict[str, Config | None] = {"default": None}
+    store: dict[str, Config | None] = field(default_factory=dict)
     context: str = "default"
 
-    @classmethod
-    def config(cls, context: str | None = None) -> Config | None:
-        if not isinstance(cls.store.get(cls.context), Config):
-            raise ValueError(f"Config context {cls.context} not properly initialized")
-        return cls.store.get(context or cls.context)
+    def __post_init__(self):
+        if not self.store:
+            self.store = {"default": None}
 
-    @classmethod
-    def resolve(cls, value: T | ConfigValue, context: str | None = None) -> T:
+    def config(self, context: str | None = None) -> Config | None:
+        active = context or self.context
+        if not isinstance(self.store.get(active), Config):
+            raise ValueError(f"Config context {active} not properly initialized")
+        return self.store.get(active)
+
+    def resolve(self, value: T | ConfigValue, context: str | None = None) -> T:
         if not isinstance(value, ConfigValue):
             return value
-        return dget(cls.config(context), value.key)  # type: ignore
+        return dget(self.config(context), value.key)  # type: ignore
 
-    @classmethod
     def configure_context(
-        cls,
+        self,
         *,
         context: str = "default",
         source: Config | str | dict | None = None,
@@ -99,37 +102,33 @@ class ConfigStore:
         env_prefix: str | None = None,
         switch_to_context: bool = True,
     ) -> str | Config | None:
-        if not cls.store.get(context) and not source:
+        if not self.store.get(context) and source is None:
             raise ValueError(f"Config context {context} undefined, cannot initialize")
 
         if isinstance(source, Config):
-            return cls._set_config(context=context, cfg=source)
+            return self._set_config(context=context, cfg=source)
 
-        if not source and isinstance(cls.store.get(context), Config):
-            return cls.store.get(context)
+        if not source and isinstance(self.store.get(context), Config):
+            return self.store.get(context)
 
         cfg: Config = Config.load(
-            source=source or cls.store.get(context),
+            source=source or self.store.get(context),
             context=context,
             env_filename=env_filename,
             env_prefix=env_prefix,  # type: ignore
         )
 
-        return cls._set_config(context=context, cfg=cfg, switch_to_context=switch_to_context)
+        return self._set_config(context=context, cfg=cfg, switch_to_context=switch_to_context)
 
-    @classmethod
     def _set_config(
-        cls, *, context: str = "default", cfg: Config | None = None, switch_to_context: bool = True
+        self, *, context: str = "default", cfg: Config | None = None, switch_to_context: bool = True
     ) -> str | Config | None:
         if not isinstance(cfg, Config):
             raise ValueError(f"Expected Config, found {type(cfg)}")
-        cls.store[context] = cfg
+        self.store[context] = cfg
         if switch_to_context:
-            cls.context = context
-        return cls.store[context]
-
-
-configure_context = ConfigStore.configure_context
+            self.context = context
+        return self.store[context]
 
 
 def resolve_arguments(fn_or_cls, args, kwargs):
@@ -153,3 +152,14 @@ def inject_config(fn_or_cls: T) -> Callable[..., T]:
         return fn_or_cls(*args, **kwargs)  # type: ignore
 
     return decorated
+
+
+__config_store_instance: ConfigStore = ConfigStore()
+
+
+def get_config_store() -> ConfigStore:
+    """Get the current ConfigStore instance"""
+    return __config_store_instance
+
+
+configure_context = get_config_store().configure_context

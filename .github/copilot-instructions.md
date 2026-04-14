@@ -3,8 +3,8 @@
 ## Project Overview
 Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application analyzing parliamentary speech data using the IMS Open Corpus Workbench (CWB). The system processes historical Swedish parliamentary data (1867-2020+) from the SWERIK project.
 
-## Current Architecture (Post-Refactoring - Complete)
-**Summary**: All unnecessary wrapper layers removed. The system uses clean direct service injection with mappers for result transformation. No facade or util wrappers remain.
+## Current Architecture (Post-Archival Migration State)
+**Summary**: All unnecessary wrapper layers are gone. The system uses direct service injection with mappers for result transformation, while the old ZIP-backed speech lookup runtime has been archived under `api_swedeb/legacy/` during the prebuilt-backend rollout.
 
 - **Pattern**: Direct service injection via FastAPI's `Depends()` mechanism with singleton caching
 - **Services** (`api_swedeb/api/services/`):
@@ -17,18 +17,24 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - **Mappers** (`api_swedeb/mappers/`):
   - Transform service DataFrames to API response schemas (kwic, word_trends, ngrams)
   - No business logic, only schema conversion
+- **Archived Runtime** (`api_swedeb/legacy/`):
+  - `speech_lookup.py` - Archived `SpeechTextService` and `SpeechTextRepository`
+  - `load.py` - Archived `Loader` and `ZipLoader`
+  - Use only for parity debugging, rollback support, or forensic reproduction
 - **Utils** (`api_swedeb/api/utils/`):
   - `common_params.py` - Query parameter handling only (all other utils deleted)
 - **Benefits**: Single responsibility per service, easy testing, minimal abstraction layers, clear data flow
 - **Router Pattern**: Routes inject services → call methods → apply mapper → return schema
 - **Deleted Wrappers**: `utils/ngrams.py`, `utils/word_trends.py`, `utils/kwic.py` (replaced with direct service + mapper pattern)
+- **Compatibility Shims**: `api_swedeb/core/speech_text.py` is a temporary re-export shim; avoid adding new production logic there
 
 ## Architecture & Core Components
 
 ### Configuration System (`api_swedeb/core/configuration/`)
 - **Critical**: Always initialize ConfigStore before accessing any configuration
-- Use `ConfigStore.configure_context(source='config/config.yml')` at application startup
-- Access values via `ConfigValue("key.nested").resolve()` - supports dot notation
+- `ConfigStore` is a **dataclass instance** (not a static/class-method class). The module-level singleton is accessed via `get_config_store()` from `api_swedeb.core.configuration.inject`
+- At application startup call `get_config_store().configure_context(source='config/config.yml')`. The module-level alias `configure_context` (bound at import time) is equivalent but **cannot be patched** in tests — prefer the explicit form
+- Access values via `ConfigValue("key.nested").resolve()` — internally calls `get_config_store().config()`, so patching `get_config_store` is sufficient to isolate any `ConfigValue` resolution
 - YAML config uses custom constructors: `!jj` (path join), `!join` (string join)
 - Environment variables override YAML via `PYRIKSPROT_` prefix
 - Test configuration: `tests/config.yml`, production: `config/config.yml`
@@ -38,6 +44,7 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - Document-term matrices (DTM): Uses `penelope.corpus.VectorizedCorpus`
 - Always check feather cache before loading: `is_invalidated(source, target)`
 - Memory-optimized columns defined in `USED_COLUMNS`, skip `SKIP_COLUMNS`
+- Keep active shared load helpers in `api_swedeb/core/load.py`; archived ZIP loading now lives in `api_swedeb/legacy/load.py`
 
 ### API Structure (`api_swedeb/api/`)
 - **Routers**: `v1/endpoints/tool_router.py` (`/v1/tools`) and `metadata_router.py` (`/v1/metadata`)
@@ -45,6 +52,7 @@ Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application a
 - **Services**: All singletons (cached) with specific domain responsibilities
 - **Result Transformation**: Mappers convert service output (DataFrames) to API schemas
 - **Query Parameters**: `CommonQueryParams` dependency for common filters (year, party, gender, etc.)
+- **Speech Backend**: `CorpusLoader` uses the prebuilt `bootstrap_corpus` backend exclusively; `api_swedeb/legacy/` is archived and debug-only.
 - **Endpoints**:
   - KWIC: Uses `KWICService.get_kwic()` + `kwic_to_api_model()` mapper
   - Word Trends: Uses `WordTrendsService` methods + word_trends mappers
@@ -140,15 +148,44 @@ async def get_trends(search: str, word_trends_service: WordTrendsService = Depen
 
 ### Configuration Access
 ```python
-# At module/application startup
-ConfigStore.configure_context(source='config/config.yml')
+from api_swedeb.core.configuration.inject import get_config_store, ConfigValue
 
-# Resolving values
+# At module/application startup
+get_config_store().configure_context(source='config/config.yml')
+
+# Resolving values (internally calls get_config_store().config())
 registry_dir = ConfigValue("cwb.registry_dir").resolve()
 origins = ConfigValue("fastapi.origins").resolve()
 ```
 
+### Patching ConfigStore in Tests
+`ConfigValue.resolve()` calls `get_config_store()` — patch that function to inject an isolated store:
+```python
+from typing import Generator
+from unittest.mock import patch
+from api_swedeb.core.configuration.inject import ConfigStore, get_config_store
+
+# Unit test fixture (function-scoped, isolated store)
+@pytest.fixture()
+def config_store() -> Generator[ConfigStore, None, None]:
+    store = ConfigStore()
+    store.configure_context(source={"key": "value"}, env_prefix=None)
+    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
+        yield store
+
+# Integration test fixture (module-scoped, real config — no patch needed)
+@pytest.fixture(scope="module", autouse=True)
+def configure_config_store():
+    get_config_store().configure_context(source="config/config.yml")
+    yield
+```
+**Scope rule**: when a fixture that calls `CorpusLoader()` (or any `ConfigValue.resolve()`) is module-scoped, the `config_store` patch fixture must also be module-scoped (or use the autouse integration style above).
+
+**Do not use the module-level `configure_context` alias in tests** — it is bound to the global singleton at import time and is not affected by patching `get_config_store`.
+
 ### Testing Fixtures (`tests/conftest.py`)
+- `config_file_path()` - Session-scoped fixture that yields the path to `tests/config.yml`
+- `configure_config_store()` - Session-scoped `autouse=True` fixture that calls `ConfigStore.configure_context()` for the whole test session
 - `api_corpus()` - `CorpusLoader` instance (module-scoped) - Resource manager for CWB and vectorized data
 - `fastapi_client()` - `TestClient` for testing API endpoints (module-scoped)
 - `corpus_loader()` - Provides CorpusLoader for service instantiation in tests
@@ -161,6 +198,7 @@ origins = ConfigValue("fastapi.origins").resolve()
   search_service = SearchService(loader)
   ```
 - Fixtures support both unit testing (mocked) and integration testing (real data)
+- **Legacy Test Layout**: Keep archived legacy unit tests in `tests/legacy/`; use `tests/api_swedeb/` and `tests/integration/` for active production behavior
 
 ### Penelope Integration
 - Internal package for text analysis: `penelope/corpus/`, `penelope/utility/`
@@ -241,3 +279,8 @@ origins = ConfigValue("fastapi.origins").resolve()
   - Reason: Related functionality grouped with service
   - Benefit: Cohesive service interface, easier discoverability
 - **Result**: 3 fewer files, clearer architecture, same functionality
+
+### Archived Legacy Runtime Rules
+- Do not move preserved runtime lookup code into `api_swedeb/workflows/`; workflows are for offline/build-time pipeline code only.
+- If a task explicitly targets the fallback ZIP-backed runtime, make those changes in `api_swedeb/legacy/` and keep matching unit coverage in `tests/legacy/`.
+- Avoid adding new feature work, new dependencies, or new production entry points to the archived legacy runtime.

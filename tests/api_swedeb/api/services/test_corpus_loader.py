@@ -1,14 +1,16 @@
 """Unit tests for CorpusLoader service."""
 
-import re
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.core.codecs import PersonCodecs
-from api_swedeb.core.configuration.inject import ConfigStore
-from api_swedeb.core.speech_text import SpeechTextRepository
+from api_swedeb.core.configuration.inject import get_config_store
+from api_swedeb.core.person_codecs import PersonCodecs
+from api_swedeb.core.speech_repository import SpeechRepository
+
+# pylint: disable=unused-argument
 
 
 class TestCorpusLoaderInitialization:
@@ -22,6 +24,7 @@ class TestCorpusLoaderInitialization:
                 "test_folder",
                 "test_metadata.csv",
                 "test_corpus_folder",
+                "",
             ]
             loader = CorpusLoader()
 
@@ -52,6 +55,7 @@ class TestCorpusLoaderInitialization:
                 "custom_folder",  # dtm_folder will be overridden
                 "config_metadata.csv",
                 "config_corpus_folder",
+                "",
             ]
             loader = CorpusLoader(
                 dtm_tag="custom_tag",
@@ -117,25 +121,19 @@ class TestCorpusLoaderLazyLoading:
         assert result == mock_codecs
         mock_codecs_instance.load.assert_called_once_with(source="metadata")
 
-    @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
+    @patch('api_swedeb.api.services.corpus_loader.SpeechRepository')
+    @patch('api_swedeb.api.services.corpus_loader.SpeechStore')
     @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
-    @patch('api_swedeb.api.services.corpus_loader.md.PersonCodecs')
-    @patch('api_swedeb.api.services.corpus_loader.sr.SpeechTextRepository')
-    def test_repository_lazy_loads(self, mock_repo_class, mock_codecs_class, mock_index, mock_dtm):
+    @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
+    def test_repository_lazy_loads(self, mock_dtm, mock_index, mock_store_class, mock_repo_class):
         """Test speech repository is lazy-loaded on first access."""
-        mock_codecs = MagicMock(spec=PersonCodecs)
-        mock_codecs_instance = MagicMock()
-        mock_codecs_instance.load.return_value = mock_codecs
-        mock_codecs_class.return_value = mock_codecs_instance
-
         mock_index_df = MagicMock(spec=pd.DataFrame)
         mock_index.return_value = mock_index_df
 
-        mock_corpus = MagicMock()
-        mock_corpus.document_index = mock_index_df
-        mock_dtm.return_value = mock_corpus
+        mock_store = MagicMock()
+        mock_store_class.return_value = mock_store
 
-        mock_repo = MagicMock(spec=SpeechTextRepository)
+        mock_repo = MagicMock(spec=SpeechRepository)
         mock_repo_class.return_value = mock_repo
 
         loader = CorpusLoader(
@@ -143,6 +141,7 @@ class TestCorpusLoaderLazyLoading:
             dtm_folder="folder",
             metadata_filename="metadata",
             tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder="bootstrap",
         )
 
         # Access repository (should trigger loading of dependencies)
@@ -150,6 +149,7 @@ class TestCorpusLoaderLazyLoading:
 
         # Should be loaded with correct parameters
         assert result == mock_repo
+        mock_store_class.assert_called_once_with("bootstrap")
         mock_repo_class.assert_called_once()
 
     @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
@@ -302,21 +302,150 @@ class TestCorpusLoaderCaching:
         # Load function should only be called once
         mock_codecs_instance.load.assert_called_once()
 
+
+class TestCorpusLoaderAdditionalBranches:
+    """Tests for previously uncovered CorpusLoader branches."""
+
+    def test_load_prebuilt_speech_index_raises_if_missing(self, tmp_path):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder=str(tmp_path),
+        )
+
+        with pytest.raises(FileNotFoundError, match="prebuilt speech_index.feather not found"):
+            loader._load_prebuilt_speech_index()
+
+    def test_load_prebuilt_speech_index_reads_and_indexes_by_speech_id(self, tmp_path):
+        (tmp_path / "speech_index.feather").touch()
+        decoded = pd.DataFrame({"speech_id": ["i-1", "i-2"], "name": ["Alice", "Bob"]})
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder=str(tmp_path),
+        )
+
+        with patch("api_swedeb.api.services.corpus_loader.pd.read_feather", return_value=decoded) as read_feather:
+            result = loader._load_prebuilt_speech_index()
+
+        read_feather.assert_called_once_with(str(tmp_path / "speech_index.feather"))
+        assert result.index.tolist() == ["i-1", "i-2"]
+        assert result["name"].tolist() == ["Alice", "Bob"]
+
+    def test_document_index_returns_cached_document_index(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        cached = pd.DataFrame({"speech_id": ["i-1"]})
+        loader._cached_document_index = cached
+
+        assert loader.document_index is cached
+
+    def test_prebuilt_speech_index_property_uses_lazy_loader(self, tmp_path):
+        (tmp_path / "speech_index.feather").touch()
+        decoded = pd.DataFrame({"speech_id": ["i-1"], "name": ["Alice"]})
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder=str(tmp_path),
+        )
+
+        with patch("api_swedeb.api.services.corpus_loader.pd.read_feather", return_value=decoded):
+            result = loader.prebuilt_speech_index
+
+        assert result.index.tolist() == ["i-1"]
+        assert result.loc["i-1", "name"] == "Alice"
+
+    def test_year_range_returns_fallback_on_error(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        loader._cached_document_index = pd.DataFrame({"document_name": ["doc-1"]})
+
+        assert loader.year_range == (1867, 2022)
+
+    def test_protocol_page_range_returns_min_and_max_for_protocol(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        loader._cached_document_index = pd.DataFrame(
+            {
+                "document_name": ["prot-1_001", "prot-1_002", "prot-2_001"],
+                "page_number": [5, 12, 30],
+            }
+        )
+
+        assert loader.protocol_page_range("prot-1_999") == (5, 12)
+
+    def test_protocol_page_range_returns_fallback_on_error(self):
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+        )
+        loader._cached_document_index = pd.DataFrame({"speech_id": ["i-1"]})
+
+        assert loader.protocol_page_range("prot-1_001") == (1867, 2022)
+
+
 class TestIntegrationFullCorpus:
 
+    # def test_document_index_load_time(self):
+    #     import time
+
+    #     path: str = "./data/v1.4.1/dtm/text/text_document_index.feather"
+    #     t0 = time.perf_counter()
+    #     df1 = pd.read_feather(path)
+    #     print("pandas default:", time.perf_counter() - t0)
+
+    #     t0 = time.perf_counter()
+    #     df2 = pd.read_feather(path, dtype_backend="pyarrow")
+    #     print("pandas pyarrow backend:", time.perf_counter() - t0)
+
+    #     t0 = time.perf_counter()
+    #     tbl = feather.read_table(path, memory_map=True, use_threads=True)
+    #     print("arrow table:", time.perf_counter() - t0)
+
+    #     t0 = time.perf_counter()
+    #     df3 = feather.read_feather(path, memory_map=True, use_threads=True)
+    #     print("pyarrow -> pandas:", time.perf_counter() - t0)
+
+    _BOOTSTRAP_FOLDER = "./data/v1.4.1/speeches/bootstrap_corpus"
+
+    @pytest.mark.skipif(
+        True or not __import__("os").path.isdir(_BOOTSTRAP_FOLDER),
+        reason="bootstrap_corpus not built on this machine",
+    )
     def test_full_corpus_properties(self):
         """Integration test to verify CorpusLoader with actual data files."""
 
-        ConfigStore.configure_context(source='config/dev_swedeb.yml')
+        get_config_store().configure_context(source='config/dev_swedeb.yml')
         loader = CorpusLoader(
             dtm_tag="text",
-            dtm_folder="/data/swedeb/v1.4.1/dtm/text",
-            metadata_filename="/data/swedeb/metadata/riksprot_metadata.v1.1.3.db",
-            tagged_corpus_folder="/data/swedeb/v1.4.1/tagged_frames/**/prot-*.zip",
+            dtm_folder="./data/v1.4.1/dtm/text",
+            metadata_filename="./data/metadata/riksprot_metadata.v1.1.3.db",
+            tagged_corpus_folder="./data/v1.4.1/tagged_frames/**/prot-*.zip",
+            speech_bootstrap_corpus_folder="./data/v1.4.1/speeches/bootstrap_corpus",
         )
         doc_index = loader.document_index
         assert isinstance(doc_index, pd.DataFrame)
-        
+
         # Access vectorized corpus
         corpus = loader.vectorized_corpus
         assert corpus is not None

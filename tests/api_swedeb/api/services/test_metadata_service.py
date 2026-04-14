@@ -6,7 +6,7 @@ import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
-from api_swedeb.core.codecs import PersonCodecs
+from api_swedeb.core.person_codecs import PersonCodecs
 
 
 class TestMetadataServiceInitialization:

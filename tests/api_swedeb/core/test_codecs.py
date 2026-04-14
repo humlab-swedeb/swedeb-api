@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import Codec, Codecs, MultiplePartyAbbrevsHook, PersonCodecs
+from api_swedeb.core.person_codecs import Codec, Codecs, MultiplePartyAbbrevsHook, PersonCodecs
 
 # pylint: disable=protected-access, too-many-public-methods
 
@@ -547,7 +547,7 @@ class TestBaseCodecs:
 class TestCodecs:
     """Test cases for Codecs class."""
 
-    @patch('api_swedeb.core.codecs.ConfigValue')
+    @patch('api_swedeb.core.person_codecs.ConfigValue')
     def test_codecs_initialization_default(self, mock_config_value):
         """Test PersonCodecs initialization with default configuration."""
         mock_specification = {"tables": {}, "codecs": []}
@@ -570,7 +570,7 @@ class TestCodecs:
 class TestPersonCodecs:
     """Test cases for PersonCodecs class."""
 
-    @patch('api_swedeb.core.codecs.ConfigValue')
+    @patch('api_swedeb.core.person_codecs.ConfigValue')
     def test_person_codecs_initialization(self, mock_config_value):
         """Test PersonCodecs initialization merges configurations."""
         mock_mappings = {
@@ -675,7 +675,7 @@ class TestPersonCodecs:
         expected: str = "https://www.wikidata.org/wiki/Q123456"
         assert str(result) == expected
 
-    @patch('api_swedeb.core.codecs.ConfigValue')
+    @patch('api_swedeb.core.person_codecs.ConfigValue')
     def test_person_wiki_link_unknown_value(self, mock_config_value):
         """Test person_wiki_link with unknown value."""
         mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
@@ -687,19 +687,46 @@ class TestPersonCodecs:
         """Test person_wiki_link with pandas Series."""
         wiki_ids = pd.Series(["Q123", "Q456", "unknown"])
 
-        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
             mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
 
             result = PersonCodecs.person_wiki_link(wiki_ids)
 
             expected = pd.Series(
-                ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
+                pd.Categorical(
+                    ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
+                )
             )
             assert isinstance(result, pd.Series)
+            assert isinstance(result.dtype, pd.CategoricalDtype)
 
             pd.testing.assert_series_equal(result, expected)
 
-    @patch('api_swedeb.core.codecs.ConfigValue')
+    def test_person_wiki_link_categorical_series(self):
+        """Test person_wiki_link preserves categorical output for categorical input."""
+        wiki_ids = pd.Series(pd.Categorical(["Q123", "unknown", "Q123"]))
+
+        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
+            mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
+
+            result = PersonCodecs.person_wiki_link(wiki_ids)
+
+            expected = pd.Series(
+                pd.Categorical(
+                    [
+                        "https://www.wikidata.org/wiki/Q123",
+                        "Unknown Speaker",
+                        "https://www.wikidata.org/wiki/Q123",
+                    ],
+                    categories=["https://www.wikidata.org/wiki/Q123", "Unknown Speaker"],
+                )
+            )
+            assert isinstance(result, pd.Series)
+            assert isinstance(result.dtype, pd.CategoricalDtype)
+
+            pd.testing.assert_series_equal(result, expected)
+
+    @patch('api_swedeb.core.person_codecs.ConfigValue')
     def test_speech_link_single_document(self, mock_config_value):
         """Test speech_link with single document."""
         mock_config_value.return_value.resolve.return_value = "https://example.com/"
@@ -709,7 +736,7 @@ class TestPersonCodecs:
         assert isinstance(result, str)
         assert result == expected
 
-    @patch('api_swedeb.core.codecs.ConfigValue')
+    @patch('api_swedeb.core.person_codecs.ConfigValue')
     def test_speech_link_series(self, mock_config_value):
         """Test speech_link with pandas Series."""
         mock_config_value.return_value.resolve.return_value = "https://example.com/"
@@ -718,7 +745,6 @@ class TestPersonCodecs:
         pages = pd.Series([1, 2])
 
         result = PersonCodecs.speech_link(documents, pages)
-
         expected = pd.Series(
             [
                 "https://example.com/1970/prot-1970--ak--029.pdf#page=1",

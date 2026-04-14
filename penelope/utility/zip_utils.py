@@ -5,7 +5,7 @@ import zipfile
 from fnmatch import fnmatch
 from functools import wraps
 from io import StringIO
-from typing import AnyStr, Callable, Iterable, Union
+from typing import Callable, Iterable, Union
 
 import pandas as pd
 

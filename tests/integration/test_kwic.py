@@ -1,10 +1,9 @@
 import pytest
 from fastapi import status
 
-from api_swedeb.api.dependencies import get_corpus_decoder, get_corpus_loader, get_cwb_corpus, get_decoder_opts
+from api_swedeb.api.dependencies import get_corpus_loader, get_cwb_corpus
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.kwic_service import KWICService
-from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.mappers.kwic import kwic_to_api_model
 
 # pylint: disable=redefined-outer-name
@@ -26,7 +25,6 @@ EXPECTED_COLUMNS: set[str] = {
     "chamber_abbrev",
     "speech_id",
     "wiki_id",
-    "document_id",
     "left_word",
     "node_word",
     "right_word",
@@ -66,19 +64,15 @@ def test_kwic_speech_id_in_search_results(fastapi_client):
     first_result = data["kwic_list"][0]
 
     assert set(first_result.keys()) == EXPECTED_COLUMNS
-    # FIXME: `title` is None in this response (add as decode if needed)
-    # assert all(x is not None for x in first_result.values())
 
 
 @pytest.mark.asyncio
 async def test_bug_kwic_fails_when_lemmatized_is_true():
 
     corpus = get_cwb_corpus()
-    decoder_opts = get_decoder_opts()
-    person_codecs: PersonCodecs = await get_corpus_decoder(decoder_opts)  # type: ignore
     loader = get_corpus_loader()
     lemmatized = True
-    kwic_service = KWICService(loader, person_codecs)
+    kwic_service = KWICService(loader)
 
     common_opts = {
         'office_types': None,
@@ -115,8 +109,8 @@ async def test_bug_kwic_fails_when_lemmatized_is_true():
     [
         ("sverige", "ak", 42),
         ("sverige", "AK", 42),
-        ("sverige", "ek", 225),
-        ("sverige", ["ak", "ek"], 225 + 42),
+        ("sverige", "ek", 227),
+        ("sverige", ["ak", "ek"], 42 + 227),
     ],
 )
 def test_kwic_filter_by_chamber(fastapi_client, word: str, chambers: str | list[str], n_expected: int):

@@ -6,11 +6,9 @@ import ccc
 import pandas as pd
 from fastapi.logger import logger
 
-from api_swedeb.core.codecs import PersonCodecs
 from api_swedeb.core.cwb import CorpusCreateOpts
 from api_swedeb.core.kwic.singleprocess import execute_kwic_singleprocess
 from api_swedeb.core.kwic.utility import normalize_kwic_df
-from api_swedeb.core.speech_index import get_speeches_by_speech_ids
 
 from .multiprocess import execute_kwic_multiprocess
 
@@ -82,8 +80,7 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
     corpus: ccc.Corpus | CorpusCreateOpts,
     opts: dict[str, Any] | list[dict[str, Any]],
     *,
-    speech_index: pd.DataFrame,
-    codecs: PersonCodecs,
+    prebuilt_speech_index: pd.DataFrame,
     words_before: int = 3,
     words_after: int = 3,
     p_show: str = "word",
@@ -91,23 +88,26 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
     use_multiprocessing: bool = False,
     num_processes: int | None = None,
 ) -> pd.DataFrame:
-    """Compute KWIC with decoded speech metadata.
+    """Compute KWIC with decoded speech metadata from the prebuilt speech_index.
+
+    The prebuilt speech_index.feather already contains fully decoded speaker
+    metadata (name, gender, party, office, wiki_id) materialised at build time.
+    This function joins on speech_id — no codec lookups at query time.
 
     Args:
-        corpus (ccc.Corpus): A CWB corpus object.
-        opts (dict): Query parameters.
-        speech_index (pd.DataFrame): Speech index dataframe.
-        codecs (PersonCodecs): Codecs for decoding.
-        words_before (int, optional): Number of words before search term(s). Defaults to 3.
-        words_after (int, optional): Number of words after search term(s). Defaults to 3.
-        p_show (str, optional): What to display, `word` or `lemma`. Defaults to "word".
-        cut_off (int, optional): Cut off limit. Defaults to 200000.
-        use_multiprocessing (bool, optional): Whether to use multiprocessing. Defaults to False.
-        num_processes (int, optional): Number of processes to use. Defaults to CPU count.
+        corpus: A CWB corpus object or CorpusCreateOpts.
+        opts: Query parameters.
+        prebuilt_speech_index: DataFrame loaded from speech_index.feather,
+            indexed by speech_id.
+        words_before: Number of words before search term(s). Defaults to 3.
+        words_after: Number of words after search term(s). Defaults to 3.
+        p_show: What to display, ``word`` or ``lemma``. Defaults to "word".
+        cut_off: Maximum hits to return. Defaults to 200000.
+        use_multiprocessing: Whether to use multiprocessing. Defaults to False.
+        num_processes: Number of processes to use. Defaults to CPU count.
     Returns:
         pd.DataFrame: KWIC results with decoded metadata.
     """
-
     kwic_data: pd.DataFrame = kwic(
         corpus,
         opts,
@@ -118,10 +118,11 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
         use_multiprocessing=use_multiprocessing,
         num_processes=num_processes,
     )
+    if kwic_data.empty:
+        return kwic_data
 
-    speeches: pd.DataFrame = get_speeches_by_speech_ids(
-        speech_index, speech_ids=kwic_data, left_on="speech_id", right_index=True
-    )
-    speeches = codecs.decode_speech_index(speeches, sort_values=False)
+    result: pd.DataFrame = kwic_data.join(prebuilt_speech_index, how="left")
+    result.index.name = "speech_id"
+    result["speech_id"] = result.index
 
-    return speeches
+    return result

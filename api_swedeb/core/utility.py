@@ -5,6 +5,7 @@ import os
 import re
 import sqlite3
 import time
+import warnings
 from functools import wraps
 from os.path import basename, dirname, splitext
 from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
@@ -127,6 +128,26 @@ def lazy_property(fn) -> property:
     return _lazy_property
 
 
+_slow_avoid_use_warned: set[str] = set()
+
+
+def slow_avoid_use(fn: Callable) -> Callable:
+    """Decorator that logs a warning the first time a slow function is called per session.
+
+    Use this to mark functions known to be performance-sensitive so callers
+    are reminded to prefer faster alternatives.
+    """
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if fn.__qualname__ not in _slow_avoid_use_warned:
+            _slow_avoid_use_warned.add(fn.__qualname__)
+            logger.warning("slow_avoid_use: {} is known to be slow — consider a faster alternative", fn.__qualname__)
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 def revdict(d: dict) -> dict:
     return {v: k for k, v in d.items()}
 
@@ -247,7 +268,7 @@ def group_to_list_of_records(
     if ctor is not None:
         key_rows["data"] = key_rows["data"].apply(lambda x: ctor(**x))
 
-    return key_rows.groupby(key)["data"].apply(list).to_dict()
+    return key_rows.groupby(key)["data"].apply(list).to_dict()  # type: ignore
 
 
 def download_url_to_file(url: str, target_name: str, force: bool = False) -> None:
@@ -259,13 +280,16 @@ def download_url_to_file(url: str, target_name: str, force: bool = False) -> Non
     ensure_path(target_name)
 
     with open(target_name, "w", encoding="utf-8") as fp:
-        data: str = requests.get(url, allow_redirects=True).content.decode("utf-8")  # type: ignore
+        data: str = str(requests.get(url, allow_redirects=True).content.decode("utf-8"))
         fp.write(data)
 
 
 def probe_filename(filename: list[str], exts: list[str] | None = None) -> str | None:
     """Probes existence of filename with any of given extensions in folder"""
-    probe_names: set[str] = {filename} | {replace_extension(f, ext) for f in filename for ext in (exts or [])}  # type: ignore
+    if not isinstance(filename, list):
+        filename = [filename]
+
+    probe_names: set[str] = set(filename) | {replace_extension(f, ext) for f in filename for ext in (exts or [])}
     for probe_name in probe_names:
         if probe_name and os.path.isfile(probe_name):
             return probe_name
@@ -406,6 +430,25 @@ def fix_whitespace(text: str) -> str:
     return SUBST_PUNCTS.sub(r"\1", text)
 
 
+def deprecated(func: Callable) -> Callable:
+    """Decorator that marks a function or method as deprecated.
+
+    Emits a :class:`DeprecationWarning` at call time pointing at the caller's
+    frame (``stacklevel=2``).
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.warn(
+            f"{func.__qualname__}() is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 # def get_release_tags(user: str, repository: str, github_access_token: str | None = None) -> list[str]:
 #     release_tags: list[str] = ["main", "dev"]
 #     try:
@@ -418,29 +461,60 @@ def fix_whitespace(text: str) -> str:
 #     return release_tags
 
 
-def format_protocol_id(selected_protocol: str) -> str:
+def _format_protocol_id_core(selected_protocol: str) -> str:
+    """Fast scalar formatter used by both the scalar and batch protocol-id APIs."""
     try:
-        protocol_parts: list[str] = selected_protocol.split("-")
+        parts: list[str] = selected_protocol.split("_")
+
+        document_name: str = parts[0]
+        speech_index: int = int(parts[1])
+
+        protocol_parts: list[str] = document_name.split("-")
+        id_part: str = protocol_parts[-1]
 
         if "ak" in selected_protocol or "fk" in selected_protocol:
-            id_parts: str = protocol_parts[-1].replace("_", " ")
             ch = "Andra" if "ak" in selected_protocol else "Första"
             chamber = f"{ch} kammaren"
             if len(protocol_parts) == 6:
-                return f"{chamber} {protocol_parts[1]}:{id_parts}"
+                return f"{chamber} {protocol_parts[1]}:{id_part} {speech_index:03}"
             # if len(protocol_parts) == 7:
             # prot-1958-a-ak--17-01_094
-            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
+            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_part} {speech_index:03}"
 
         #'prot-2004--113_075' -> '2004:113 075'
         year = protocol_parts[1]
         if len(year) == 4:
-            return f"{year[:4]}:{protocol_parts[3].replace('_', ' ')}"
+            return f"{year[:4]}:{id_part} {speech_index:03}"
         #'prot-200405--113_075' -> '2004/05:113 075'
 
-        return f"{year[:4]}/{year[4:]}:{protocol_parts[3].replace('_', ' ')}"
+        return f"{year[:4]}/{year[4:]}:{id_part} {speech_index:03}"
     except IndexError:
         return selected_protocol
+
+
+@slow_avoid_use
+def format_protocol_id(selected_protocol: str) -> str:
+    """Formats protocol id to human readable format.
+    Expected input format is prot-YYYY--NNN_MMM or prot-YYYY-a-ak--NNN_MMM or prot-YYYY-a-fk--NNN_MMM."""
+    return _format_protocol_id_core(selected_protocol)
+
+
+def format_protocol_id_vectorized(
+    document_name: pd.Series,
+    chamber_abbrev: pd.Series,
+) -> pd.Series:
+    # `chamber_abbrev` is kept for API compatibility, but the canonical logic
+    # is derived from the protocol id string itself to match `format_protocol_id`.
+    _ = chamber_abbrev
+
+    formatter = _format_protocol_id_core
+    values = document_name.to_numpy(copy=False)
+    return pd.Series(
+        [formatter(value) for value in values],
+        index=document_name.index,
+        name=document_name.name,
+        dtype="string",
+    )
 
 
 def time_call(func):

@@ -1,36 +1,117 @@
+import os
+import shutil
 import sqlite3
 import sys
+from pathlib import Path
 
 import ccc
+import dotenv
 import pandas as pd
 import pytest
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
+from jinja2 import Template
 from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.v1.endpoints import metadata_router, tool_router
-from api_swedeb.core.codecs import PersonCodecs
-from api_swedeb.core.configuration import ConfigStore, ConfigValue
-
-ConfigStore.configure_context(source='tests/config.yml')
+from api_swedeb.core.configuration import ConfigValue, get_config_store
+from api_swedeb.core.person_codecs import PersonCodecs
 
 # pylint: disable=redefined-outer-name
 
+dotenv.load_dotenv("tests/test.env")
 
 logger.remove()
 logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 
-@pytest.fixture(scope='module')
-def corpus() -> ccc.Corpus:
-    # Use shared data_dir for better performance and disk efficiency.
-    # CWB-CCC creates corpus-specific subdirectories, so multiple processes can safely share.
-    data_dir: str = '/tmp/ccc-swedeb-test'
+def generate_config_file(output_folder: Path, corpus_folder: Path, corpus_version: str, metadata_version: str) -> Path:
+    """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
+    The config file is created once per test session and shared across tests.
+    Pytest automatically removes the tmp_path_factory directory after the session ends.
+    """
+
+    output_folder = output_folder.absolute()
+    corpus_folder = corpus_folder.absolute()
+
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    # Create CWB registry file
+    registry_template_path: Path = Path("./tests/templates/registry.jinja")
+    cwb_folder: Path = (Path(corpus_folder) / corpus_version / "cwb").absolute()
+    registry_folder: Path = output_folder / "registry"
+    registry_folder.mkdir(parents=True, exist_ok=True)
+    registry_file: Path = registry_folder / "riksprot_corpus"
+    content: str = Template(registry_template_path.read_text(encoding="utf-8")).render(cwb_folder=str(cwb_folder))
+    registry_file.write_text(content)
+
+    # Create config file
+    config_template_path: Path = Path("./tests/templates/config.yml.jinja")
+    config_content = Template(config_template_path.read_text(encoding="utf-8")).render(
+        registry_dir=str(registry_folder),
+        metadata_version=metadata_version,
+        corpus_version=corpus_version,
+        corpus_folder=str(corpus_folder),
+    )
+    config_file: Path = output_folder / "config.yml"
+    config_file.write_text(config_content)
+
+    return config_file
+
+
+@pytest.fixture(scope='session')
+def config_file_path() -> Path:
+    """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
+    The config file is created once per test session and shared across tests.
+    Pytest automatically removes the tmp_path_factory directory after the session ends.
+    """
+
+    shutil.rmtree(Path(__file__).parent / "output", ignore_errors=True)
+
+    corpus_version: str = os.environ.get("CORPUS_VERSION", "latest")
+    metadata_version: str = os.environ.get("METADATA_VERSION", "latest")
+
+    config_file = generate_config_file(
+        output_folder=Path(__file__).parent / "output",
+        corpus_folder=Path(__file__).parent / "test_data",
+        corpus_version=corpus_version,
+        metadata_version=metadata_version,
+    )
+
+    return config_file
+
+
+@pytest.fixture(scope='session', autouse=True)
+def configure_config_store(config_file_path: Path) -> None:
+    """Initialises ConfigStore once per session before any other fixtures run."""
+    get_config_store().configure_context(source=str(config_file_path), env_filename="tests/test.env")
+
+
+@pytest.fixture(scope='session')
+def corpus(tmp_path_factory):
+    # # Use shared data_dir for better performance and disk efficiency.
+    # # CWB-CCC creates corpus-specific subdirectories, so multiple processes can safely share.
+    # data_dir: str = '/tmp/ccc-swedeb-test'
+    # corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
+    # registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
+    # return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)
+
+    # Creates a unique temp dir for this test module run
+    data_dir: Path = tmp_path_factory.mktemp("ccc-swedeb-test")
+
     corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
     registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
-    return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)
+
+    corpus = ccc.Corpora(registry_dir=registry_dir).corpus(
+        corpus_name=corpus_name,
+        data_dir=str(data_dir),
+    )
+
+    yield corpus
+
+    # shutil.rmtree(data_dir, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")

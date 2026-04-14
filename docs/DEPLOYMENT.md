@@ -11,12 +11,11 @@ This document provides complete instructions for deploying the Swedeb API system
 - [Deployment Prerequisites](#deployment-prerequisites)
 - [Container Runtime Options](#container-runtime-options)
 - [Environment-Specific Deployment Instructions](#environment-specific-deployment-instructions)
-  - [Docker Compose Deployment Guide](./DEPLOY_DOCKER.md)
   - [Podman Quadlet Deployment Guide](./DEPLOY_PODMAN.md)
 - [Promotion Workflows](#promotion-workflows)
 - [Rollback Procedures](#rollback-procedures)
 - [Monitoring & Maintenance](#monitoring--maintenance)
-- [Frontend Versioning](#frontend-versioning)
+- [Frontend Runtime Asset Management](#frontend-runtime-asset-management)
 - [Troubleshooting](./TROUBLESHOOTING.md)
 - [Best Practices](#best-practices)
 - [Build Scripts Reference](#build-scripts-reference)
@@ -54,12 +53,12 @@ This project uses a **four-branch workflow** with progressive environment promot
     └─────────┘
 ```
 
-| Branch | Purpose | Build Trigger | Image Tags |
-|--------|---------|---------------|------------|
-| **dev** | Integration (no auto-builds) | ❌ Manual only | N/A |
-| **test** | Test environment | ✅ Auto on push | `{version}-test`, `test`, `test-latest` |
-| **staging** | Pre-production validation | ✅ Auto on push | `{version}-staging`, `staging` |
-| **main** | Production releases | ✅ Auto on push | `{version}`, `{major}`, `{minor}`, `latest`, `production` |
+| Branch      | Purpose                      | Build Trigger  | Image Tags                                                |
+|-------------|------------------------------|----------------|-----------------------------------------------------------|
+| **dev**     | Integration (no auto-builds) | ❌ Manual only  | N/A                                                       |
+| **test**    | Test environment             | ✅ Auto on push | `{version}-test`, `test`, `test-latest`                   |
+| **staging** | Pre-production validation    | ✅ Auto on push | `{version}-staging`, `staging`                            |
+| **main**    | Production releases          | ✅ Auto on push | `{version}`, `{major}`, `{minor}`, `latest`, `production` |
 
 For detailed developer workflow instructions, see the [Workflow Guide](./WORKFLOW_GUIDE.md).
 
@@ -67,33 +66,33 @@ For detailed developer workflow instructions, see the [Workflow Guide](./WORKFLO
 
 ### System Architecture
 ```
-┌───────────────────────────────────────────────────┐
-│                 GitHub Actions                    │
-│  ┌─────────────┐    ┌───────────────────────────┐ │
-│  │Push to test/│──> │ Build & Push Docker Image │ │
-│  │staging/main │    └───────────────────────────┘ │
-│  └─────────────┘                │                 │
-└─────────────────────────────────┼─────────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────┐
-│           GitHub Container Registry             │
-│    ghcr.io/humlab-swedeb/swedeb-api            │
-│    (test, staging, production tags)             │
-└─────────────────────────────────┼───────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────┐
-│                  Target Server                  │
-│  ┌──────────────────────────────────────────┐   │
-│  │              Docker Compose              │   │
-│  │  ┌────────────────────────────────────┐  │   │
-│  │  │         Swedeb API Container       │  │   │
-│  │  │  ┌──────────┐  ┌─────────────────┐ │  │   │
-│  │  │  │Frontend  │  │   Backend API   │ │  │   │
-│  │  │  │Assets    │  │   + CWB Tools   │ │  │   │
-│  │  │  └──────────┘  └─────────────────┘ │  │   │
-│  │  └────────────────────────────────────┘  │   │
-│  └──────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                      GitHub Actions                       │
+│  ┌─────────────┐     ┌──────────────────────────────────┐ │
+│  │Push to test/│ ──> │ Build & Push Backend Image Only  │ │
+│  │staging/main │     └──────────────────────────────────┘ │
+│  └─────────────┘                     │                    │
+└──────────────────────────────────────┼────────────────────┘
+                                       ▼
+┌───────────────────────────────────────────────────────────┐
+│                 GitHub Container Registry                 │
+│          ghcr.io/humlab-swedeb/swedeb-api                 │
+│          (backend image tags per environment)             │
+└──────────────────────────────────────┬────────────────────┘
+                                       │
+                                       │ container start
+                                       ▼
+┌───────────────────────────────────────────────────────────┐
+│                       Target Server                       │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │                Swedeb API Container                 │  │
+│  │  1. Start entrypoint                                │  │
+│  │  2. Download/update frontend assets                 │  │
+│  │     from swedeb_frontend release artifacts          │  │
+│  │  3. Persist deployed version in .frontend_version   │  │
+│  │  4. Start backend API + serve frontend from /public │  │
+│  └─────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ### Unified Build System
@@ -104,21 +103,27 @@ All three environments use the **same unified build script** (`.github/scripts/b
 - **Staging**: `.github/workflows/staging.yml` calls `build-and-push-image.sh {version} staging`
 - **Production**: `.releaserc.yml` calls `build-and-push-image.sh {version} production`
 
-This ensures consistency and maintainability across environments.
+This ensures consistency and maintainability across environments. The script now builds a backend image only; frontend assets are resolved later at container startup via runtime configuration.
 
-### Multi-Stage Docker Build
+### Backend Image + Runtime Frontend Download
 
-The Docker image combines three base images:
-- **Frontend**: `ghcr.io/humlab-swedeb/swedeb_frontend:${FRONTEND_VERSION}`
-- **CWB Tools**: `ghcr.io/humlab/cwb-container:latest` (cross-org access)
-- **Application**: Built from current repository
+The deployment model is now decoupled:
+- **Backend image**: Built from the current repository and published to GHCR
+- **Frontend assets**: Downloaded at container startup from `humlab-swedeb/swedeb_frontend` releases
+- **CWB tools**: Still provided by the `ghcr.io/humlab/cwb-container:latest` base image
 
-```dockerfile
-ARG FRONTEND_VERSION=latest
-FROM ghcr.io/humlab-swedeb/swedeb_frontend:${FRONTEND_VERSION} AS frontend-dist
-FROM ghcr.io/humlab/cwb-container:latest AS final
-COPY --from=frontend-dist /app/public ./public
-# ... rest of build
+Key runtime components:
+- `docker/download-frontend.sh` downloads release artifacts from GitHub
+- `docker/entrypoint.sh` checks the requested frontend version and refreshes assets when needed
+- `docker/healthcheck.sh` validates both the API and frontend asset presence
+- `/app/public/.frontend_version` records the currently deployed frontend version inside the container
+
+Supported frontend version modes:
+
+```bash
+FRONTEND_VERSION=latest
+FRONTEND_VERSION=staging
+FRONTEND_VERSION=v1.2.3
 ```
 
 ## Image Tagging Strategy
@@ -146,7 +151,7 @@ When code is pushed to `main`, semantic-release creates:
 
 ### Automatic Release Pipeline (Production)
 
-When code is pushed to `main`, semantic-release orchestrates:
+When code is pushed to `main`, semantic-release executes:
 
 1. **Commit Analysis**: Analyzes commits using conventional commit format
 2. **Version Determination**: Calculates version bump (major/minor/patch)
@@ -154,8 +159,10 @@ When code is pushed to `main`, semantic-release orchestrates:
    - Updates `pyproject.toml` and `api_swedeb/__init__.py`
    - Builds Python wheel package (`.whl`)
 4. **GitHub Release**: Creates release with changelog and wheel artifact
-5. **Docker Build & Push**: Builds and publishes multi-tagged images
+5. **Docker Build & Push**: Builds and publishes backend-only multi-tagged images
 6. **Git Commit**: Commits `CHANGELOG.md` and version updates back to `main`
+
+Production releases no longer attempt to synchronize frontend and backend versions during image build. Frontend selection is a deployment-time concern via `FRONTEND_VERSION`.
 
 ### Environment Build Pipelines (Test & Staging)
 
@@ -164,22 +171,29 @@ Test and staging branches trigger simplified workflows:
 1. **Checkout Code**: Retrieves current branch state
 2. **Get Version**: Reads version from `pyproject.toml`
 3. **Docker Login**: Authenticates to GHCR
-4. **Build & Push**: Creates environment-specific tags
+4. **Build & Push**: Creates environment-specific backend image tags
+
+These workflows no longer pass a frontend build argument. The deployed environment decides which frontend release to fetch when the container starts.
 
 ### Artifacts Produced
 
-| Artifact Type | Location | Environments |
-|---------------|----------|--------------|
-| **Docker Image** | `ghcr.io/humlab-swedeb/swedeb-api` | All (test/staging/production) |
-| **Python Wheel** | GitHub Releases | Production only |
-| **Release Notes** | GitHub Releases | Production only |
-| **Git Tags** | Repository | Production only |
+| Artifact Type     | Location                           | Environments                  |
+|-------------------|------------------------------------|-------------------------------|
+| **Docker Image**  | `ghcr.io/humlab-swedeb/swedeb-api` | All (test/staging/production) |
+| **Python Wheel**  | GitHub Releases                    | Production only               |
+| **Release Notes** | GitHub Releases                    | Production only               |
+| **Git Tags**      | Repository                         | Production only               |
 
 ## Deployment Prerequisites
 
 ### Server Requirements
 - **Podman**: Version 4.0+ (recommended for production)
 - **systemd**: For Quadlet integration
+
+### Network Requirements
+- Outbound HTTPS access from the container host to GitHub Releases
+- If `FRONTEND_VERSION=latest`, outbound access to the GitHub API for release resolution
+- Registry access to `ghcr.io/humlab-swedeb/swedeb-api`
 
 ### Data Requirements
 
@@ -216,25 +230,24 @@ podman login ghcr.io -u your-username
 
 **Note**: For cross-organization access to `ghcr.io/humlab/cwb-container`, the `CWB_REGISTRY_TOKEN` secret must be configured in GitHub Actions.
 
-For Docker Compose deployment (alternative), see the [Docker Compose Deployment Guide](./DEPLOY_DOCKER.md).
+### Runtime Configuration
+
+The decoupled deployment model adds runtime configuration that controls frontend selection independently from the backend image tag:
+
+```bash
+SWEDEB_IMAGE_TAG=latest
+FRONTEND_VERSION=latest
+SWEDEB_CONFIG_PATH=/app/config/config.yml
+SWEDEB_DATA_FOLDER=/data
+```
+
+Use `FRONTEND_VERSION` to choose which frontend release the container should fetch at startup. Changing `FRONTEND_VERSION` and restarting the container is enough to roll the frontend forward or back without rebuilding the backend image.
 
 ---
 
 ## Deployment Approach
 
 This project uses **Podman with Quadlet** as the primary deployment method for production environments.
-
-**Why Podman + Quadlet?**
-- **Rootless by default** - Better security
-- **Native systemd integration** - Automatic startup, logging, resource control
-- **Declarative configuration** - Quadlet `.container` files
-- **Drop-in Docker replacement** - Compatible with Docker images
-- **Better resource isolation** - cgroups v2 support
-- **Auto-updates** - Can be configured with systemd timers
-
-For alternative Docker Compose deployment, see [DEPLOY_DOCKER.md](./DEPLOY_DOCKER.md).
-
----
 
 ## Podman Quadlet Setup
 
@@ -244,21 +257,20 @@ For Podman installation and Quadlet configuration details, see the dedicated **[
 
 ## Environment-Specific Deployment Instructions
 
-For detailed step-by-step deployment procedures, see the **[Podman Quadlet Deployment Guide](./DEPLOY_PODMAN.md)** (recommended) or the **[Docker Compose Deployment Guide](./DEPLOY_DOCKER.md)** (alternative).
+For detailed step-by-step deployment procedures, see the **[Podman Quadlet Deployment Guide](./DEPLOY_PODMAN.md)**.
 
 ### Environment Overview
 
-| Environment | Port | Image Tag | Branch | Purpose |
-|-------------|------|-----------|--------|---------|
-| **Test** | 8001 | `test` | `test` | QA validation and integration testing |
-| **Staging** | 8002 | `staging` | `staging` | Pre-production environment mirroring production |
-| **Production** | 8092 | `{version}` (e.g., `0.6.1`) | `main` | Production deployment serving end users |
+| Environment    | Port | Image Tag                   | Branch    | Purpose                                         |
+|----------------|------|-----------------------------|-----------|-------------------------------------------------|
+| **Test**       | 8001 | `test`                      | `test`    | QA validation and integration testing           |
+| **Staging**    | 8002 | `staging`                   | `staging` | Pre-production environment mirroring production |
+| **Production** | 8092 | `{version}` (e.g., `0.7.0`) | `main`    | Production deployment serving end users         |
 
-**Important**: Always pin specific versions in production (e.g., `0.6.1`), never use `latest` or `production` tags.
+**Important**: Always pin specific backend versions in production (for example `0.7.0`) and explicitly set `FRONTEND_VERSION` to the intended frontend release. Do not rely on floating production defaults unless that behavior is intentional.
 
 For deployment instructions:
 - [Podman Quadlet Deployment Guide](./DEPLOY_PODMAN.md) - Recommended for production
-- [Docker Compose Deployment Guide](./DEPLOY_DOCKER.md) - Alternative method
 
 ---
 
@@ -275,22 +287,6 @@ For detailed promotion workflows including the complete pipeline and hotfix proc
 For rollback procedures, see:
 - [Podman Quadlet Rollback Guide](./DEPLOY_PODMAN.md#rollback-procedures) - Recommended
 - [Docker Compose Rollback Guide](./DEPLOY_DOCKER.md#rollback-procedures) - Alternative
-
-### Git Rollback (Code Level)
-
-If you need to revert code changes:
-
-```bash
-# Revert last commit on main
-git checkout main
-git revert HEAD
-git push origin main
-# This will trigger a new release
-
-# Or reset to specific commit (use with caution)
-git reset --hard <commit-hash>
-git push origin main --force
-```
 
 ## Monitoring & Maintenance
 
@@ -310,7 +306,36 @@ curl http://localhost:8092/version  # If version endpoint exists
 
 # Test specific endpoint
 curl http://localhost:8092/api/v1/your-endpoint
+
+# Verify frontend assets are present
+podman exec swedeb-api cat /app/public/.frontend_version
+podman exec swedeb-api test -f /app/public/index.html
 ```
+
+## Frontend Runtime Asset Management
+
+Frontend assets are no longer embedded into the backend image. They are downloaded during container startup and cached in `/app/public`.
+
+Operational implications:
+- First startup of a new container can take longer because assets are fetched before the API starts
+- Reusing the same `FRONTEND_VERSION` avoids unnecessary downloads because `.frontend_version` is checked first
+- Changing `FRONTEND_VERSION` and restarting the container forces a refresh of frontend assets
+- Failed frontend downloads now block container readiness rather than surfacing as a bad build artifact
+
+Recommended verification steps after deployment:
+
+```bash
+# Watch startup logs for frontend download/update messages
+podman logs -f swedeb-api
+
+# Confirm deployed frontend version
+podman exec swedeb-api cat /app/public/.frontend_version
+
+# Confirm frontend entry file exists
+podman exec swedeb-api test -f /app/public/index.html && echo ok
+```
+
+If you deploy with Docker Compose instead of Podman, use the equivalent `docker compose logs` and `docker exec` commands.
 
 ## Troubleshooting
 
@@ -319,13 +344,13 @@ For troubleshooting common deployment issues, see the dedicated [Troubleshooting
 ## Best Practices
 
 ### Development
-1. **Use conventional commits** - Ensures proper semantic versioning
+1. **Uses conventional commits** - Ensures proper semantic versioning
 2. **No auto-builds on dev** - Keep dev as stable integration point
 3. **Test thoroughly** - Use test environment before promoting
 4. **Code review** - All PRs require review before merge
 
 ### Deployment
-1. **Pin versions in production** - Use specific tags (e.g., `0.6.1`) not `latest`
+1. **Pin backend and frontend versions in production** - Use a specific image tag (for example `0.7.0`) and an explicit `FRONTEND_VERSION`
 2. **Auto-update for test/staging** - Use environment tags (`test`, `staging`)
 3. **Validate before promotion** - Test in each environment before promoting
 4. **Document changes** - Update changelog and release notes
@@ -335,15 +360,12 @@ For troubleshooting common deployment issues, see the dedicated [Troubleshooting
 1. **Use rootless mode** - Better security isolation
 2. **Enable lingering** - Ensure services survive logout (`loginctl enable-linger`)
 3. **Pin versions in Quadlet** - Explicitly set image tags
-4. **Use SELinux** - Add `:Z` to volume mounts for proper labeling
 5. **Monitor via journald** - Centralized logging with `journalctl`
 6. **Test Quadlet changes** - Validate with `systemctl --user daemon-reload`
 7. **Auto-update carefully** - Use systemd timers with notification on failure
-8. **Resource limits** - Set Memory, CPU limits in Quadlet files
 9. **Health checks** - Configure health checks in container definitions
 10. **Backup Quadlet files** - Keep versioned copies of `.container` files
 
-For Docker Compose-specific best practices, see [DEPLOY_DOCKER.md](./DEPLOY_DOCKER.md#best-practices).
 
 ## Build Scripts Reference
 
@@ -369,18 +391,22 @@ build-and-push-image.sh <version> <environment>
 - `DOCKER_USERNAME`: GitHub actor
 - `DOCKER_PASSWORD`: GitHub token
 - `CWB_REGISTRY_TOKEN`: PAT for cross-org access (optional)
-- `FRONTEND_VERSION_TAG`: Frontend version to include (default: `latest`)
 - `GITHUB_REPOSITORY`: Org/repo name
 
 **What it does**:
 1. Validates environment parameter (test/staging/production)
 2. Authenticates to GHCR (uses `CWB_REGISTRY_TOKEN` if available)
-3. Builds multi-stage Docker image with frontend and CWB tools
+3. Builds the backend image with the runtime frontend download scripts included
 4. Tags image according to environment:
    - **Test**: `{version}-test`, `test`, `test-latest`
    - **Staging**: `{version}-staging`, `staging`
    - **Production**: `{version}`, `{major}`, `{minor}`, `latest`, `production`
 5. Pushes all tags to registry
+
+What it no longer does:
+- It does not coordinate a frontend image tag during build
+- It does not embed frontend assets into the backend image
+- It does not require a frontend rebuild when only backend code changes
 
 **Example**:
 ```bash
@@ -445,29 +471,31 @@ pyproject.toml                         # Python project metadata & dependencies
 
 ```
 docker/
-├── Dockerfile                         # Multi-stage application build
-├── entrypoint.sh                      # Container startup script
-├── compose.test.yml                   # Test environment compose
-├── compose.staging.yml                # Staging environment compose
-└── compose.production.yml             # Production environment compose
+├── Dockerfile                         # Backend image build with runtime frontend download support
+├── download-frontend.sh               # Frontend artifact downloader
+├── entrypoint.sh                      # Startup script that refreshes frontend assets if needed
+├── healthcheck.sh                     # API + frontend asset health validation
+└── deployment/example-decoupled.env   # Example runtime configuration for decoupled deployments
 ```
 
 ## Deployment Checklist
 
 ### Pre-Deployment
-- [ ] Server meets minimum requirements (Docker 20.10+, 4GB+ RAM, 10GB+ disk)
 - [ ] Data directory structure exists (`/data/swedeb/`)
 - [ ] Proper permissions set on data directories (user 1021:1021)
-- [ ] Docker and Docker Compose installed and running
+- [ ] Compose installed and running
 - [ ] Network connectivity to GHCR verified
+- [ ] Network connectivity to GitHub Releases verified
 - [ ] Authentication to GHCR configured
+- [ ] `FRONTEND_VERSION` set for the target environment
 - [ ] Backup of existing configuration (if updating)
 
 ### Test Deployment
 - [ ] Test environment configured in `.env`
-- [ ] Docker login successful
 - [ ] Image pull successful (`:test` tag)
 - [ ] Container starts without errors
+- [ ] Frontend download completes during startup
+- [ ] `/app/public/.frontend_version` matches the requested version
 - [ ] Application responds to requests
 - [ ] Integration tests pass
 - [ ] Logs show no errors
@@ -476,6 +504,7 @@ docker/
 - [ ] Staging environment configured in `.env`
 - [ ] Image pull successful (`:staging` tag)
 - [ ] Container starts without errors
+- [ ] Frontend assets refresh as expected for the configured version
 - [ ] All endpoints accessible
 - [ ] Acceptance tests pass
 - [ ] Performance meets requirements
@@ -483,12 +512,14 @@ docker/
 
 ### Production Deployment
 - [ ] Specific version tag pinned in config (not `latest`)
+- [ ] `FRONTEND_VERSION` pinned or intentionally configured as floating
 - [ ] Image pull successful (specific version)
 - [ ] Container starts without errors
 - [ ] Reverse proxy configured (if applicable)
 - [ ] SSL certificates valid
 - [ ] DNS configured correctly
 - [ ] Health checks passing
+- [ ] Frontend version file verified after startup
 - [ ] Monitoring configured
 - [ ] Log rotation configured
 - [ ] Backup procedures implemented
@@ -513,5 +544,5 @@ docker/
 
 ---
 
-*Last updated: Following 4-branch workflow implementation with Podman Quadlet support (dev → test → staging → main)*
+*Last updated: Reflects decoupled frontend/backend deployments with runtime frontend asset downloads.*
 

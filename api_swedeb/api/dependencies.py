@@ -5,13 +5,14 @@ from fastapi import Depends
 from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.core.codecs import Codecs, PersonCodecs
 from api_swedeb.core.configuration import ConfigValue
+from api_swedeb.core.person_codecs import Codecs, PersonCodecs
 
 __loader: CorpusLoader | None = None
 __metadata_service: MetadataService | None = None
@@ -19,6 +20,7 @@ __word_trends_service: WordTrendsService | None = None
 __ngrams_service: NGramsService | None = None
 __search_service: SearchService | None = None
 __kwic_service: KWICService | None = None
+__download_service: DownloadService | None = None
 
 # pylint: disable=global-statement
 
@@ -63,6 +65,14 @@ def get_search_service() -> SearchService:
     return __search_service
 
 
+def get_download_service() -> DownloadService:
+    """Get the singleton DownloadService instance."""
+    global __download_service
+    if __download_service is None:
+        __download_service = DownloadService()
+    return __download_service
+
+
 def get_cwb_corpus_opts() -> dict[str, str | None]:
     if ConfigValue("cwb.registry_dir").resolve() is None:
         raise ValueError("CWB registry directory not set")
@@ -102,9 +112,9 @@ async def get_corpus_decoder(opts: dict = Depends(get_decoder_opts)) -> PersonCo
     return _corpus_codecs
 
 
-async def get_kwic_service(corpus_decoder: PersonCodecs | Codecs = Depends(get_corpus_decoder)) -> KWICService:
-    """Get the KWICService instance with loader and decoder."""
+async def get_kwic_service() -> KWICService:
+    """Get the KWICService instance with loader."""
     global __kwic_service
     if __kwic_service is None:
-        __kwic_service = KWICService(get_corpus_loader(), corpus_decoder)  # type: ignore
+        __kwic_service = KWICService(get_corpus_loader())
     return __kwic_service

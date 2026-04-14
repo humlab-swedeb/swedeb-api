@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api_swedeb.api.v1.endpoints import tool_router
 from api_swedeb.api.v1.endpoints import metadata_router
-from api_swedeb.core.configuration import ConfigStore, ConfigValue
+from api_swedeb.core.configuration import get_config_store, ConfigValue
 
-ConfigStore.configure_context(source='config/config.yml')
+get_config_store().configure_context(source='config/config.yml')
 
 app = FastAPI()
 

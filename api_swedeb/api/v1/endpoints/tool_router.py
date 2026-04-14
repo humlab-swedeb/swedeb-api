@@ -10,17 +10,20 @@ from pandas import DataFrame
 from api_swedeb.api.dependencies import (
     get_corpus_loader,
     get_cwb_corpus,
+    get_download_service,
     get_kwic_service,
     get_search_service,
     get_word_trends_service,
 )
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.mappers.kwic import kwic_to_api_model
+from api_swedeb.mappers.speeches import speeches_to_api_model
 from api_swedeb.mappers.word_trends import (
     search_hits_to_api_model,
     word_trend_speeches_to_api_model,
@@ -29,10 +32,11 @@ from api_swedeb.mappers.word_trends import (
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem, SpeechesResultWT
+from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
+
 
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
 
@@ -94,7 +98,7 @@ async def get_word_trend_speeches_result(
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> SpeechesResultWT:
     """Get word trends"""
-    df: DataFrame = word_trends_service.get_anforanden_for_word_trends(
+    df: DataFrame = word_trends_service.get_speeches_for_word_trends(
         search.split(','), commons.get_filter_opts(include_year=True)
     )
     return word_trend_speeches_to_api_model(df)
@@ -144,9 +148,22 @@ async def get_speeches_result(
     search_service: SearchService = Depends(get_search_service),
 ) -> SpeechesResult:
     """Get speeches matching filter criteria"""
-    df: DataFrame = search_service.get_anforanden(selections=commons.get_filter_opts(True))
-    rows: list[SpeechesResultItem] = [SpeechesResultItem(**row) for row in df.to_dict(orient="records")]  # type: ignore
-    return SpeechesResult(speech_list=rows)
+    df: DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
+    return speeches_to_api_model(df)
+
+
+@router.post("/speeches/download")
+async def get_speeches_download_result(
+    commons: CommonParams, download_service: DownloadService = Depends(get_download_service)
+) -> StreamingResponse:
+    """Find speeches matching filter criteria and return them as a streamed ZIP file."""
+    streamer = download_service.create_stream(search_service=get_search_service(), commons=commons)
+
+    return StreamingResponse(
+        streamer(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=speeches.zip"},
+    )
 
 
 @router.get("/speeches/{speech_id}", response_model=SpeechesTextResultItem)
@@ -164,23 +181,20 @@ async def get_speech_by_id_result(
 
 @router.post("/speech_download/")
 async def get_zip(
-    ids: list = Body(..., min_length=1, max_length=100), search_service: SearchService = Depends(get_search_service)
+    ids: list[str] = Body(..., min_length=1, max_length=100),
+    search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
     """Download speeches as ZIP file"""
     if not ids:
         raise HTTPException(status_code=400, detail="Speech ids are required")
 
-    file_and_speech = []
-    for protocol_id in ids:
-        speaker = search_service.get_speaker(protocol_id)
-        file_and_speech.append(
-            (f"{speaker}_{protocol_id}.txt", search_service.get_speech(protocol_id).text.encode("utf-8"))
-        )
+    speaker_names: dict[str, str] = search_service.get_speaker_names(ids)
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for file_name, content in file_and_speech:
-            zipf.writestr(file_name, content)
+        for speech_id, speech in search_service.get_speeches_batch(ids):
+            speaker = speaker_names.get(speech_id, "unknown")
+            zipf.writestr(f"{speaker}_{speech_id}.txt", speech.text.encode("utf-8"))
 
     buffer.seek(0)
     return StreamingResponse(

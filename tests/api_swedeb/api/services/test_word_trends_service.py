@@ -1,4 +1,4 @@
-"""Unit tests for api_swedeb.api.services.word_trends_service module."""
+"""Unit tests for api_swedeb.api.services.word_trends_service."""
 
 from unittest.mock import MagicMock, patch
 
@@ -7,126 +7,126 @@ import pandas as pd
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 
 
-class TestWordTrendsServiceInit:
-    """Tests for WordTrendsService initialization."""
-
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_init_with_loader(self, mock_service_class):
-        """Test WordTrendsService initialization with CorpusLoader."""
-        mock_loader = MagicMock()
-        mock_service = WordTrendsService(loader=mock_loader)
-
-        assert mock_service._loader == mock_loader
+def _make_loader() -> MagicMock:
+    loader = MagicMock()
+    loader.vectorized_corpus.token2id = {"democracy": 1, "parliament": 2}
+    loader.vectorized_corpus.vocabulary = {"democracy", "parliament", "budget"}
+    loader.vectorized_corpus.find_matching_words.return_value = ["budget", "democracy"]
+    return loader
 
 
-class TestWordTrendsServiceMethods:
-    """Tests for WordTrendsService methods."""
+def test_loader_property_returns_injected_loader():
+    loader = _make_loader()
+    service = WordTrendsService(loader=loader)
+    assert service.loader is loader
 
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_word_in_vocabulary_found(self, mock_service_class):
-        """Test word_in_vocabulary returns word when in vocabulary."""
-        mock_loader = MagicMock()
-        mock_loader.vectorized_corpus.token2id = {"democracy": 1}
 
-        service = WordTrendsService(loader=mock_loader)
-        service._loader = mock_loader
+def test_word_in_vocabulary_returns_exact_match():
+    service = WordTrendsService(loader=_make_loader())
 
-        # Mock the word_in_vocabulary method for direct testing
-        service.word_in_vocabulary = MagicMock(return_value="democracy")
+    assert service.word_in_vocabulary("democracy") == "democracy"
 
-        result = service.word_in_vocabulary("democracy")
 
-        assert result == "democracy"
+def test_word_in_vocabulary_returns_lowercase_match():
+    service = WordTrendsService(loader=_make_loader())
 
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_word_in_vocabulary_lowercase(self, mock_service_class):
-        """Test word_in_vocabulary handles lowercase variants."""
-        mock_loader = MagicMock()
-        mock_loader.vectorized_corpus.token2id = {"democracy": 1}
+    assert service.word_in_vocabulary("DEMOCRACY") == "democracy"
 
-        service = WordTrendsService(loader=mock_loader)
-        service._loader = mock_loader
 
-        # Mock the word_in_vocabulary method for direct testing
-        service.word_in_vocabulary = MagicMock(return_value="democracy")
+def test_word_in_vocabulary_returns_none_for_unknown_word():
+    service = WordTrendsService(loader=_make_loader())
 
-        result = service.word_in_vocabulary("DEMOCRACY")
+    assert service.word_in_vocabulary("unknown") is None
 
-        assert result == "democracy"
 
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_word_in_vocabulary_not_found(self, mock_service_class):
-        """Test word_in_vocabulary returns None when word not in vocabulary."""
-        mock_loader = MagicMock()
-        mock_loader.vectorized_corpus.token2id = {}
+def test_filter_search_terms_keeps_only_vocabulary_matches():
+    service = WordTrendsService(loader=_make_loader())
 
-        service = WordTrendsService(loader=mock_loader)
-        service._loader = mock_loader
+    result = service.filter_search_terms(["DEMOCRACY", "unknown", "parliament"])
 
-        # Mock the word_in_vocabulary method for direct testing
-        service.word_in_vocabulary = MagicMock(return_value=None)
+    assert result == ["democracy", "parliament"]
 
-        result = service.word_in_vocabulary("nonexistent")
 
-        assert result is None
+def test_get_word_trend_results_returns_empty_dataframe_when_no_terms_match():
+    service = WordTrendsService(loader=_make_loader())
 
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_filter_search_terms(self, mock_service_class):
-        """Test filter_search_terms filters to vocabulary."""
-        mock_loader = MagicMock()
-        service = WordTrendsService(loader=mock_loader)
-        service._loader = mock_loader
+    with patch("api_swedeb.api.services.word_trends_service.compute_word_trends") as compute:
+        result = service.get_word_trend_results(["unknown"], {"year": (1970, 1971)})
 
-        # Mock filter_search_terms method
-        service.filter_search_terms = MagicMock(return_value=["democracy", "parliament"])
+    assert result.empty
+    compute.assert_not_called()
 
-        result = service.filter_search_terms(["democracy", "nonexistent", "parliament"])
 
-        assert "democracy" in result
-        assert "parliament" in result
+def test_get_word_trend_results_computes_and_translates_columns():
+    loader = _make_loader()
+    service = WordTrendsService(loader=loader)
+    trends = pd.DataFrame(
+        {"democracy": [4, 5], "parliament": [1, 2]},
+        index=pd.Index([1970, 1971], name="year"),
+    )
 
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_get_word_trend_results(self, mock_service_class):
-        """Test get_word_trend_results returns DataFrame."""
-        mock_loader = MagicMock()
-        service = WordTrendsService(loader=mock_loader)
-        service._loader = mock_loader
+    with (
+        patch("api_swedeb.api.services.word_trends_service.compute_word_trends", return_value=trends.copy()) as compute,
+        patch(
+            "api_swedeb.api.services.word_trends_service.replace_by_patterns", return_value=["Demokrati", "Parlament"]
+        ),
+        patch(
+            "api_swedeb.api.services.word_trends_service.ConfigValue.resolve", return_value={"democracy": "Demokrati"}
+        ),
+    ):
+        result = service.get_word_trend_results(["DEMOCRACY", "parliament"], {"year": (1970, 1971)}, normalize=True)
 
-        # Mock the method
-        expected_df = pd.DataFrame({"year": [2000, 2001], "count": [10, 20]})
-        service.get_word_trend_results = MagicMock(return_value=expected_df)
+    compute.assert_called_once_with(
+        loader.vectorized_corpus,
+        loader.person_codecs,
+        ["democracy", "parliament"],
+        {"year": (1970, 1971)},
+        True,
+    )
+    assert result.columns.tolist() == ["Demokrati", "Parlament"]
+    assert result.index.tolist() == [1970, 1971]
 
-        result = service.get_word_trend_results(["democracy"], {})
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 2
+def test_get_anforanden_for_word_trends_filters_then_decodes():
+    loader = _make_loader()
+    service = WordTrendsService(loader=loader)
+    raw = pd.DataFrame({"speech_id": ["i-1"]})
+    decoded = pd.DataFrame({"speech_id": ["i-1"], "name": ["Alice"]})
+    loader.person_codecs.decode_speech_index.return_value = decoded
 
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_get_word_trend_results_empty_terms(self, mock_service_class):
-        """Test get_word_trend_results returns empty DataFrame for filtered terms."""
-        mock_loader = MagicMock()
-        service = WordTrendsService(loader=mock_loader)
-        service._loader = mock_loader
+    with (
+        patch("api_swedeb.api.services.word_trends_service.get_speeches_by_words", return_value=raw) as get_by_words,
+        patch("api_swedeb.api.services.word_trends_service.ConfigValue.resolve", return_value={"name": "display_name"}),
+    ):
+        result = service.get_speeches_for_word_trends(["democracy"], {"year": (1970, 1971)})
 
-        # Mock the method
-        service.get_word_trend_results = MagicMock(return_value=pd.DataFrame())
+    get_by_words.assert_called_once_with(
+        loader.vectorized_corpus,
+        terms=["democracy"],
+        filter_opts={"year": (1970, 1971)},
+    )
+    loader.person_codecs.decode_speech_index.assert_called_once_with(
+        raw,
+        value_updates={"name": "display_name"},
+        sort_values=True,
+    )
+    assert result is decoded
 
-        result = service.get_word_trend_results([], {})
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
+def test_get_search_hits_uses_exact_match_when_present():
+    loader = _make_loader()
+    service = WordTrendsService(loader=loader)
 
-    @patch('api_swedeb.api.services.word_trends_service.WordTrendsService')
-    def test_get_anforanden_for_word_trends(self, mock_service_class):
-        """Test get_anforanden_for_word_trends returns speeches DataFrame."""
-        mock_loader = MagicMock()
-        service = WordTrendsService(loader=mock_loader)
-        service._loader = mock_loader
+    result = service.get_search_hits("budget", n_hits=3)
 
-        expected_df = pd.DataFrame({"speech_id": [1, 2], "text": ["speech 1", "speech 2"]})
-        service.get_anforanden_for_word_trends = MagicMock(return_value=expected_df)
+    loader.vectorized_corpus.find_matching_words.assert_called_once_with(["budget"], n_max_count=3, descending=False)
+    assert result == ["budget", "democracy"]
 
-        result = service.get_anforanden_for_word_trends(["democracy"], {})
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 2
+def test_get_search_hits_falls_back_to_lowercase():
+    loader = _make_loader()
+    service = WordTrendsService(loader=loader)
+
+    service.get_search_hits("DEMOCRACY", n_hits=2)
+
+    loader.vectorized_corpus.find_matching_words.assert_called_once_with(["democracy"], n_max_count=2, descending=False)
