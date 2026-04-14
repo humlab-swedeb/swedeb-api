@@ -1,19 +1,15 @@
 import os
 from pathlib import Path
-import pandas as pd
 from typing import Generator
 from unittest.mock import patch
 
-import ccc
 import dotenv
+import pandas as pd
 import pytest
 
-from api_swedeb.api.dependencies import get_corpus_loader, get_cwb_corpus
-from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.dependencies import get_corpus_loader
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.core.configuration import Config, ConfigStore
-from api_swedeb.mappers.kwic import kwic_to_api_model
 from tests.conftest import generate_config_file
 
 dotenv.load_dotenv("tests/test.env")
@@ -54,49 +50,50 @@ def test_compute_protocol_ranges(config_store):
 
 def test_protocol_name_pdf_name_alignment(config_store):
     loader: CorpusLoader = get_corpus_loader()
-    speech_index: pd.DataFrame = loader.prebuilt_speech_index
     protocol_names: set[str] = set(loader.prebuilt_page_number_index.keys())
-    pdf_files: set[str] = set(Path("./protocol_names.csv").read_text().splitlines())
+    pdf_files: set[str] = set(Path("./protocol_names.csv").read_text(encoding="utf-8").splitlines())
 
-    expected_diff ={
+    expected_diff = {
         'prot-1905-urtima2-ak--002',
-        'prot-1924--fk--017', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1924--fk--018', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1924--fk--019', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1925--ak--007', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1958-a-ak--017-01', # ==>>>>> FINNS SOM prot-1958-a-ak--17-001
+        'prot-1924--fk--017',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1924--fk--018',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1924--fk--019',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1925--ak--007',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1958-a-ak--017-01',  # ==>>>>> FINNS SOM prot-1958-a-ak--17-001
         'prot-1958-a-ak--017-02',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-197879--170', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-197879--171', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-197879--172', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-197879--173', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-197879--174', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-197980--170', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-001', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-002', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-003', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-004', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-005', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-006', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-007', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-1980-urtima-008', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-198182--171', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-198182--172', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-198182--173', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-198182--174', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-198182--175', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-198182--176', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-198182--177', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-199091--006', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-199495--007', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-199495--008', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-199495--111', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-199899--032', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-199899--099', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-200001--016', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-200001--067', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-200809--041', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
-        'prot-201718--101', # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-197879--170',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-197879--171',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-197879--172',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-197879--173',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-197879--174',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-197980--170',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-001',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-002',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-003',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-004',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-005',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-006',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-007',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-1980-urtima-008',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-198182--171',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-198182--172',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-198182--173',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-198182--174',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-198182--175',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-198182--176',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-198182--177',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-199091--006',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-199495--007',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-199495--008',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-199495--111',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-199899--032',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-199899--099',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-200001--016',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-200001--067',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-200809--041',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
+        'prot-201718--101',  # SAKNAS SOM PDF I PROTOCOL_NAMES.CSV
     }
 
-    assert protocol_names - pdf_files == expected_diff, f"Protocols in speech index not in PDF list: {protocol_names - pdf_files}"
+    assert (
+        protocol_names - pdf_files == expected_diff
+    ), f"Protocols in speech index not in PDF list: {protocol_names - pdf_files}"
