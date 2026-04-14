@@ -25,8 +25,8 @@ from api_swedeb.api.services.download_service import (
     ZipCompressionStrategy,
 )
 from api_swedeb.api.services.search_service import SearchService
-from api_swedeb.mappers.speeches import speeches_to_api_frame
 from api_swedeb.core.configuration import Config, ConfigStore
+from api_swedeb.mappers.speeches import speeches_to_api_frame
 
 # pylint: disable=redefined-outer-name,unused-argument
 

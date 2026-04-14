@@ -1,14 +1,16 @@
 import os
+from pathlib import Path
 from typing import Generator
 from unittest.mock import patch
+
 import ccc
-import pytest
 import dotenv
-from pathlib import Path
+import pytest
+
+from api_swedeb.api.dependencies import get_corpus_loader, get_cwb_corpus
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.kwic_service import KWICService
-from api_swedeb.core.configuration import ConfigStore, Config
-from api_swedeb.api.dependencies import get_corpus_loader, get_cwb_corpus
+from api_swedeb.core.configuration import Config, ConfigStore
 from api_swedeb.mappers.kwic import kwic_to_api_model
 from tests.conftest import generate_config_file
 
@@ -202,9 +204,9 @@ def test_get_kwic_results(config_store):
         b = expected["kwic_list"][i]
         keys = set(a.keys()) | set(b.keys())
         for key in keys:
-            if not key in a:
+            if key not in a:
                 mismatches.append(f"Row {i}, key {key} is missing in actual data, expected value: {b.get(key)}")
-            elif not key in b:
+            elif key not in b:
                 mismatches.append(f"Row {i}, key {key} is missing in expected data, actual value: {a.get(key)}")
             elif key == "speech_link":
                 # Ignore page number differences in speech_link (e.g. #page=1 vs #page=2) since they are not relevant for the test and can be brittle
@@ -213,7 +215,9 @@ def test_get_kwic_results(config_store):
                 a_link_no_page = a_link.split("#page=")[0] if "#page=" in a_link else a_link
                 b_link_no_page = b_link.split("#page=")[0] if "#page=" in b_link else b_link
                 if a_link_no_page != b_link_no_page:
-                    mismatches.append(f"Row {i}, key {key}, actual value: {a.get(key)}, expected value: {b.get(key)} (ignoring page number differences)")
+                    mismatches.append(
+                        f"Row {i}, key {key}, actual value: {a.get(key)}, expected value: {b.get(key)} (ignoring page number differences)"
+                    )
             elif a.get(key) != b.get(key):
                 mismatches.append(f"Row {i}, key {key}, actual value: {a.get(key)}, expected value: {b.get(key)}")
 

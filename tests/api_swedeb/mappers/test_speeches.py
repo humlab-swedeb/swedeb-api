@@ -8,7 +8,6 @@ import pytest
 from api_swedeb.mappers.speeches import SPEECHES_API_COLUMNS, speeches_to_api_frame, speeches_to_api_model
 from api_swedeb.schemas.speeches_schema import SpeechesResult
 
-
 # pylint: disable=redefined-outer-name
 
 

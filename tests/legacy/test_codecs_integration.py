@@ -447,7 +447,7 @@ class TestPersonCodecs:
         base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
         protocol_name: str = speech_id.split('_')[0]
         expected: str = f'{base_url}/{subfolder}/{protocol_name}.pdf#page={page_nr}'
-        speech_links: str | pd.Series =  PersonCodecs.speech_link(speech_id, page_nr)
+        speech_links: str | pd.Series = PersonCodecs.speech_link(speech_id, page_nr)
         assert isinstance(speech_links, str)
         assert speech_links == expected
 

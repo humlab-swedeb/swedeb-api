@@ -7,7 +7,6 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-
 BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_index.feather")
 DTM_SPEECH_INDEX = Path("data/v1.4.1/dtm/text/text_document_index.prepped.feather")
 

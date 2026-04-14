@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import time
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from api_swedeb.core.utility import format_protocol_id, format_protocol_id_vectorized
-
 
 BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_index.feather")
 

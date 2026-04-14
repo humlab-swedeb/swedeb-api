@@ -8,8 +8,8 @@ import pytest
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.speech import Speech
 
-
 # pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def mock_loader() -> MagicMock:
