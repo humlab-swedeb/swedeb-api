@@ -1,4 +1,3 @@
-from typing import Any
 
 import pandas as pd
 import pytest
@@ -6,7 +5,6 @@ import requests
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
-from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.search_service import SearchService

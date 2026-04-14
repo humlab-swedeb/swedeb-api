@@ -374,7 +374,7 @@ class DocumentIndexHelper:
         numpy.array
             Sequence from min year to max year
         """
-        (low, high) = DocumentIndexHelper.year_range(document_index)
+        low, high = DocumentIndexHelper.year_range(document_index)
         assert low is not None and high is not None
         xs = np.arange(low, high + 1, 1)
         return xs

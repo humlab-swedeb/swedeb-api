@@ -21,8 +21,7 @@ from api_swedeb.workflows.prebuilt_speech_index.enrichment import (
 def _make_db(tmp_path: Path) -> str:
     db_path = str(tmp_path / "test_metadata.db")
     con = sqlite3.connect(db_path)
-    con.executescript(
-        """
+    con.executescript("""
         CREATE TABLE persons_of_interest (
             person_id TEXT PRIMARY KEY,
             name TEXT,
@@ -94,8 +93,7 @@ def _make_db(tmp_path: Path) -> str:
         INSERT INTO person_party VALUES
             (1, 'i-ABC', 3, 1970, 1980),
             (2, 'i-DEF', 1, 1965, 1975);
-        """
-    )
+        """)
     con.commit()
     con.close()
     return db_path
@@ -250,8 +248,7 @@ class TestSessionYearFallback:
     def test_enrich_rows_uses_session_end_year_for_office_lookup(self, tmp_path):
         db_path = str(tmp_path / "test_metadata_session.db")
         con = sqlite3.connect(db_path)
-        con.executescript(
-            """
+        con.executescript("""
             CREATE TABLE persons_of_interest (
                 person_id TEXT PRIMARY KEY,
                 name TEXT,
@@ -304,8 +301,7 @@ class TestSessionYearFallback:
                 start_year INTEGER,
                 end_year INTEGER
             );
-            """
-        )
+            """)
         con.commit()
         con.close()
 

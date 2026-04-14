@@ -368,7 +368,9 @@ class PersonCodecs(Codecs):
         speech_index = self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
         speech_index["link"] = resolve_wiki_url_for_speaker(speech_index.wiki_id)
-        speech_index["speech_link"] = resolve_pdf_links_for_speeches(speech_index.document_name, page_nr=speech_index.start_page)
+        speech_index["speech_link"] = resolve_pdf_links_for_speeches(
+            speech_index.document_name, page_nr=speech_index.start_page
+        )
 
         if sort_values:
             speech_index = speech_index.sort_values(by="name", key=lambda x: x == "")

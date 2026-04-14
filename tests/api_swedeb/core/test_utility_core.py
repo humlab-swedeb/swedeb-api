@@ -402,7 +402,6 @@ class TestFormatSpeechName:
         assert "Andra kammaren" in result.iloc[1]
 
 
-
 class TestFixWhitespace:
     """Tests for fix_whitespace function."""
 

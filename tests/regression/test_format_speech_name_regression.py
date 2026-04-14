@@ -9,7 +9,6 @@ import pandas as pd
 import pytest
 
 from api_swedeb.core.speech_utility import format_speech_name, format_speech_names, legacy_format_speech_name
-from tests import legacy
 
 BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_index.feather")
 
