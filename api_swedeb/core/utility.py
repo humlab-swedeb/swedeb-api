@@ -465,7 +465,6 @@ def _format_protocol_id_core(selected_protocol: str) -> str:
     """Fast scalar formatter used by both the scalar and batch protocol-id APIs."""
     try:
         parts: list[str] = selected_protocol.split("_")
-        assert len(parts) == 2
 
         document_name: str = parts[0]
         speech_index: int = int(parts[1])
