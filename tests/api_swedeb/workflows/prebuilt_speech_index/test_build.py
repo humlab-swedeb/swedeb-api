@@ -279,8 +279,7 @@ class TestSpeechCorpusBuilder:
 def _make_metadata_db(tmp_path: Path, speaker_id: str = "Q1") -> str:
     db_path = str(tmp_path / "test_meta.db")
     con = sqlite3.connect(db_path)
-    con.executescript(
-        f"""
+    con.executescript(f"""
         CREATE TABLE persons_of_interest (
             person_id TEXT PRIMARY KEY, name TEXT, gender_id INTEGER, party_id INTEGER, wiki_id TEXT
         );
@@ -323,8 +322,7 @@ def _make_metadata_db(tmp_path: Path, speaker_id: str = "Q1") -> str:
             end_year INTEGER
         );
         INSERT INTO person_party VALUES (1,'{speaker_id}',1,1860,1900);
-        """
-    )
+        """)
     con.commit()
     con.close()
     return db_path

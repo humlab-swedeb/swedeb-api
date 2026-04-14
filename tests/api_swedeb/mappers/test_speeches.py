@@ -10,14 +10,23 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult
 
 # pylint: disable=redefined-outer-name
 
+# ['document_name', 'protocol_name', 'date', 'year', 'speaker_id',
+#        'speaker_note_id', 'speech_index', 'page_number_start',
+#        'page_number_end', 'num_tokens', 'num_words', 'name', 'gender_id',
+#        'gender', 'gender_abbrev', 'party_id', 'party_abbrev', 'office_type_id',
+#        'office_type', 'sub_office_type_id', 'sub_office_type', 'wiki_id',
+#        'chamber_abbrev', 'party', 'feather_file', 'feather_row', 'speech_id']
 
 @pytest.fixture
 def speeches_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "document_name": ["prot-1970--ak--029_001", "prot-1975--001_002"],
+            "protocol_name": ["prot-1970--ak--029", "prot-1975--001"],
             "chamber_abbrev": ["ak", "ek"],
             "year": [1970, 1975],
+            "page_number_start": [1, 2],
+            "page_number_end": [10, 2],
             "speaker_id": ["p1", "p2"],
             "gender_id": [1, 2],
             "gender": ["Kvinna", "Man"],
@@ -41,10 +50,10 @@ def test_speeches_to_api_frame_projects_expected_columns(speeches_df: pd.DataFra
 
     assert list(result.columns) == SPEECHES_API_COLUMNS
     assert result["speech_id"].tolist() == ["i-1", "i-2"]
-    assert result["speech_name"].tolist() == ["Andra kammaren 1970:29 001", "1975:1 002"]
+    assert result["speech_name"].tolist() == ["Andra kammaren 1970:029 001", "1975:001 002"]
     assert result["speech_link"].tolist() == [
         "https://pdf.swedeb.se/riksdagen-records-pdf/1970/prot-1970--ak--029.pdf#page=1",
-        "https://pdf.swedeb.se/riksdagen-records-pdf/1975/prot-1975--001.pdf#page=1",
+        "https://pdf.swedeb.se/riksdagen-records-pdf/1975/prot-1975--001.pdf#page=2",
     ]
     assert result["link"].tolist() == ["https://www.wikidata.org/wiki/Q1", "Unknown"]
     assert result["name"].tolist() == ["Alice", "Unknown"]

@@ -15,6 +15,7 @@ import zipfile
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
@@ -168,7 +169,7 @@ class TestGetAnforanden:
         assert len(df) > 0
 
     def test_result_has_required_columns(self, search_service: SearchService):
-        df = speeches_to_api_frame(search_service.get_speeches(selections={"year": (1970, 1971)}))
+        df: pd.DataFrame = speeches_to_api_frame(search_service.get_speeches(selections={"year": (1970, 1971)}))
         required = {"speech_id", "document_name", "name", "year", "party_abbrev", "gender", "speech_link", "link"}
         missing = required - set(df.columns)
         assert not missing, f"Missing columns: {missing}"
