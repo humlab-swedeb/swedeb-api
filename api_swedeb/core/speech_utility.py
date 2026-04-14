@@ -1,4 +1,8 @@
+from typing import Any
+
 import pandas as pd
+
+from api_swedeb.core.configuration.inject import ConfigValue
 
 
 def format_speech_name(speech_name: str) -> str:
@@ -46,6 +50,7 @@ def format_speech_names(speech_name: pd.Series, chamber_abbrev: pd.Series) -> pd
         dtype="string",
     )
 
+
 #####################################################################################################
 # Legacy functions moved from utility for retained for regression tests.
 #####################################################################################################
@@ -78,3 +83,65 @@ def legacy_format_speech_name(selected_protocol: str) -> str:
         return selected_protocol
 
 
+#####################################################################################################
+# Functions moved fom PersonCodecs for general use in the API.
+#####################################################################################################
+
+
+def resolve_wiki_url_for_speaker(wiki_id: str | pd.Series) -> str | pd.Series:
+    unknown = ConfigValue("display.labels.speaker.unknown").resolve()
+    prefix = "https://www.wikidata.org/wiki/"
+
+    if isinstance(wiki_id, pd.Series):
+        if isinstance(wiki_id.dtype, pd.CategoricalDtype):
+            categories = [unknown if value == "unknown" else prefix + str(value) for value in wiki_id.cat.categories]
+            return wiki_id.cat.rename_categories(categories)
+
+        values = wiki_id.map(
+            lambda value: unknown if value == "unknown" else prefix + value if pd.notna(value) else value
+        )
+        return pd.Series(pd.Categorical(values), index=wiki_id.index, name=wiki_id.name)
+
+    return unknown if wiki_id == "unknown" else prefix + wiki_id
+
+
+def resolve_pdf_link_for_speech(speech_name: str, base_url: str, page_nr: Any) -> str:
+    year: str = speech_name.split('-')[1]
+    base_filename: str = speech_name.split('_')[0] + ".pdf"
+    return f"{base_url}{year}/{base_filename}#page={page_nr}"
+
+
+def _resolve_pdf_links_for_speeches(
+    speech_names: pd.Series, base_url: str, page_nrs: int | str | pd.Series = 1
+) -> pd.Series:
+    """Create a series of speech links from document names and page numbers.
+
+    Expected document format:
+        'prot-YYYY--KK--NNN_MMM'
+    where YYYY is between 4 and 8 digits (e.g. "1999", "199900", "19992000"),
+    zero-padded protocol number, and MMM is the zero-padded page number.
+    """
+    parts: pd.DataFrame = speech_names.str.extract(r"^(?P<base>[^-]+-(?P<year>[0-9]{4,8})[^_]+)_", expand=True)
+    base_filename: pd.Series = parts["base"] + ".pdf"
+    year: pd.Series = parts["year"]
+
+    if isinstance(page_nrs, pd.Series):
+        page_str = page_nrs.astype(str)
+    else:
+        page_str = str(page_nrs)
+
+    return base_url + year + "/" + base_filename + "#page=" + page_str
+
+
+def resolve_pdf_links_for_speeches(
+    speech_names: str | pd.Series,
+    page_nr: str | int | pd.Series = 1,
+    base_url: str | None = None,
+) -> str | pd.Series:
+    if base_url is None:
+        base_url = ConfigValue("pdf_server.base_url").resolve()
+    if base_url is None:
+        raise ValueError("base_url must be provided either as an argument or in configuration")
+    if isinstance(speech_names, pd.Series):
+        return _resolve_pdf_links_for_speeches(speech_names, base_url, page_nr)
+    return resolve_pdf_link_for_speech(speech_names, base_url, page_nr)

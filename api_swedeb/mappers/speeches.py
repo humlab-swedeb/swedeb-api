@@ -1,10 +1,11 @@
+import re
 from typing import Any
 
 import pandas as pd
 
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.person_codecs import PersonCodecs
-from api_swedeb.core.speech_utility import format_speech_name
+from api_swedeb.core.speech_utility import format_speech_name, resolve_pdf_links_for_speeches, resolve_wiki_url_for_speaker
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 
 SPEECHES_API_COLUMNS: list[str] = [
@@ -41,15 +42,15 @@ REQUIRED_SPEECH_COLUMNS: set[str] = {
 
 def speeches_to_api_frame(speeches: pd.DataFrame) -> pd.DataFrame:
     """Project prebuilt speech-index rows into the public API shape."""
-    missing_columns = sorted(REQUIRED_SPEECH_COLUMNS - set(speeches.columns))
+    missing_columns: list[str] = sorted(REQUIRED_SPEECH_COLUMNS - set(speeches.columns))
     if missing_columns:
         raise ValueError(f"prebuilt speech index is missing required columns: {missing_columns}")
 
-    result = speeches.copy()
+    result: pd.DataFrame = speeches.copy()
     result["speech_id"] = result.index if "speech_id" not in result.columns else result["speech_id"]
     result["speech_name"] = result["document_name"].map(format_speech_name)
-    result["link"] = PersonCodecs.person_wiki_link(result["wiki_id"])
-    result["speech_link"] = PersonCodecs.speech_link(document_name=result["document_name"])
+    result["link"] = resolve_wiki_url_for_speaker(result["wiki_id"])
+    result["speech_link"] = resolve_pdf_links_for_speeches(speech_names=result["document_name"], page_nr=result["start_page"])
 
     value_updates: dict[str, Any] | None = ConfigValue("display.speech_index.updates").resolve()
     if value_updates:

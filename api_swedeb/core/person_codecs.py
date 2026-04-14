@@ -11,6 +11,7 @@ from typing import Any, Callable, Literal, Mapping, Protocol, Self
 import pandas as pd
 
 from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.speech_utility import resolve_pdf_links_for_speeches, resolve_wiki_url_for_speaker
 from api_swedeb.core.utility import Registry, assign_primary_key, load_tables, revdict
 
 # pylint: disable=too-many-public-methods
@@ -353,73 +354,6 @@ class PersonCodecs(Codecs):
 
         return self.persons_of_interest.loc[key]
 
-    # @staticmethod
-    # def person_wiki_link(wiki_id: str | pd.Series[str]) -> str | pd.Series[str]:
-    #     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-    #     if isinstance(wiki_id, pd.Series):
-    #         data: pd.Series = pd.Series("https://www.wikidata.org/wiki/" + wiki_id)
-    #         data.replace("https://www.wikidata.org/wiki/unknown", unknown, inplace=True)
-    #         return data
-    #     return "https://www.wikidata.org/wiki/" + wiki_id if wiki_id != "unknown" else unknown
-
-    @staticmethod
-    def person_wiki_link(wiki_id: str | pd.Series) -> str | pd.Series:
-        unknown = ConfigValue("display.labels.speaker.unknown").resolve()
-        prefix = "https://www.wikidata.org/wiki/"
-
-        if isinstance(wiki_id, pd.Series):
-            if isinstance(wiki_id.dtype, pd.CategoricalDtype):
-                categories = [
-                    unknown if value == "unknown" else prefix + str(value) for value in wiki_id.cat.categories
-                ]
-                return wiki_id.cat.rename_categories(categories)
-
-            values = wiki_id.map(
-                lambda value: unknown if value == "unknown" else prefix + value if pd.notna(value) else value
-            )
-            return pd.Series(pd.Categorical(values), index=wiki_id.index, name=wiki_id.name)
-
-        return unknown if wiki_id == "unknown" else prefix + wiki_id
-
-    @staticmethod
-    def speech_link(
-        document_name: str | pd.Series, page_nr: str | int | pd.Series[int] | pd.Series[str] = 1
-    ) -> str | pd.Series[str]:
-        base_url: str = ConfigValue("pdf_server.base_url").resolve()
-        if isinstance(document_name, pd.Series):
-            return PersonCodecs._speech_links(document_name, base_url, page_nr)
-        return PersonCodecs._speech_link(document_name, base_url, page_nr)
-
-    @staticmethod
-    def _speech_link(document_name: str, base_url: str, page_nr: Any) -> str:
-        year: str = document_name.split('-')[1]
-        base_filename: str = document_name.split('_')[0] + ".pdf"
-        return f"{base_url}{year}/{base_filename}#page={page_nr}"
-
-    @staticmethod
-    def _speech_links(
-        document_names: pd.Series,
-        base_url: str,
-        page_nrs: int | str | pd.Series = 1,
-    ) -> pd.Series:
-        """Create a series of speech links from document names and page numbers.
-
-        Expected document format:
-            'prot-YYYY--KK--NNN_MMM'
-        where YYYY is between 4 and 8 digits (e.g. "1999", "199900", "19992000"),
-        zero-padded protocol number, and MMM is the zero-padded page number.
-        """
-        parts = document_names.str.extract(r"^(?P<base>[^-]+-(?P<year>[0-9]{4,8})[^_]+)_", expand=True)
-        base_filename = parts["base"] + ".pdf"
-        year = parts["year"]
-
-        if isinstance(page_nrs, pd.Series):
-            page_str = page_nrs.astype(str)
-        else:
-            page_str = str(page_nrs)
-
-        return base_url + year + "/" + base_filename + "#page=" + page_str
-
     def decode_speech_index(
         self, speech_index: pd.DataFrame, value_updates: dict | None = None, sort_values: bool = True
     ) -> pd.DataFrame | Any:
@@ -433,8 +367,8 @@ class PersonCodecs(Codecs):
 
         speech_index = self.decode(speech_index, drop=True, keeps=['wiki_id', 'person_id'])
 
-        speech_index["link"] = self.person_wiki_link(speech_index.wiki_id)
-        speech_index["speech_link"] = self.speech_link(document_name=speech_index.document_name)
+        speech_index["link"] = resolve_wiki_url_for_speaker(speech_index.wiki_id)
+        speech_index["speech_link"] = resolve_pdf_links_for_speeches(speech_index.document_name, page_nr=speech_index.start_page)
 
         if sort_values:
             speech_index = speech_index.sort_values(by="name", key=lambda x: x == "")
