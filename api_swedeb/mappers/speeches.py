@@ -4,7 +4,7 @@ import pandas as pd
 
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech_utility import (
-    format_speech_name,
+    format_speech_names,
     resolve_pdf_links_for_speeches,
     resolve_wiki_url_for_speaker,
 )
@@ -50,7 +50,7 @@ def speeches_to_api_frame(speeches: pd.DataFrame) -> pd.DataFrame:
 
     result: pd.DataFrame = speeches.copy()
     result["speech_id"] = result.index if "speech_id" not in result.columns else result["speech_id"]
-    result["speech_name"] = result["document_name"].map(format_speech_name)
+    result["speech_name"] = format_speech_names(result["document_name"])
     result["link"] = resolve_wiki_url_for_speaker(result["wiki_id"])
     result["speech_link"] = resolve_pdf_links_for_speeches(
         speech_names=result["document_name"], page_nr=result["start_page"]

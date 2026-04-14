@@ -36,10 +36,9 @@ def format_speech_name(speech_name: str) -> str:
         return speech_name
 
 
-def format_speech_names(speech_name: pd.Series, chamber_abbrev: pd.Series) -> pd.Series:
+def format_speech_names(speech_name: pd.Series) -> pd.Series:
     # `chamber_abbrev` is kept for API compatibility, but the canonical logic
     # is derived from the protocol id string itself to match `format_speech_name`.
-    _ = chamber_abbrev
 
     formatter = format_speech_name
     values = speech_name.to_numpy(copy=False)
