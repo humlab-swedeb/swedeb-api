@@ -27,6 +27,40 @@ logger.remove()
 logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 
+def generate_config_file(output_folder: Path, corpus_folder: Path, corpus_version: str, metadata_version: str) -> Path:
+    """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
+    The config file is created once per test session and shared across tests.
+    Pytest automatically removes the tmp_path_factory directory after the session ends.
+    """
+
+    output_folder = output_folder.absolute()
+    corpus_folder = corpus_folder.absolute()
+
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    # Create CWB registry file
+    registry_template_path: Path = Path("./tests/templates/registry.jinja")
+    cwb_folder: Path = (Path(corpus_folder) / corpus_version / "cwb").absolute()
+    registry_folder: Path = output_folder / "registry"
+    registry_folder.mkdir(parents=True, exist_ok=True)
+    registry_file: Path = registry_folder / "riksprot_corpus"
+    content: str = Template(registry_template_path.read_text(encoding="utf-8")).render(cwb_folder=str(cwb_folder))
+    registry_file.write_text(content)
+
+    # Create config file
+    config_template_path: Path = Path("./tests/templates/config.yml.jinja")
+    config_content = Template(config_template_path.read_text(encoding="utf-8")).render(
+        registry_dir=str(registry_folder),
+        metadata_version=metadata_version,
+        corpus_version=corpus_version,
+        corpus_folder=str(corpus_folder),
+    )
+    config_file: Path = output_folder / "config.yml"
+    config_file.write_text(config_content)
+
+    return config_file
+
+
 @pytest.fixture(scope='session')
 def config_file_path() -> Path:
     """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
@@ -36,31 +70,15 @@ def config_file_path() -> Path:
 
     shutil.rmtree(Path(__file__).parent / "output", ignore_errors=True)
 
-    output_folder: Path = (Path(__file__).parent / "output").absolute()
-    output_folder.mkdir(parents=True, exist_ok=True)
     corpus_version: str = os.environ.get("CORPUS_VERSION", "latest")
     metadata_version: str = os.environ.get("METADATA_VERSION", "latest")
-    corpus_folder: Path = (Path(__file__).parent / "test_data").absolute()
 
-    # Create CWB registry file
-    registry_template_path: Path = Path(__file__).parent / "templates" / "registry.jinja"
-    cwb_folder: Path = (Path(__file__).parent / "test_data" / corpus_version / "cwb").absolute()
-    registry_folder: Path = output_folder / "registry"
-    registry_folder.mkdir(parents=True, exist_ok=True)
-    registry_file = registry_folder / "riksprot_corpus"
-    content: str = Template(registry_template_path.read_text()).render(cwb_folder=str(cwb_folder))
-    registry_file.write_text(content)
-
-    # Create config file
-    config_template_path: Path = Path(__file__).parent / "templates" / "config.yml.jinja"
-    config_content = Template(config_template_path.read_text()).render(
-        registry_dir=str(registry_folder),
-        metadata_version=metadata_version,
+    config_file = generate_config_file(
+        output_folder=Path(__file__).parent / "output",
+        corpus_folder=Path(__file__).parent / "test_data",
         corpus_version=corpus_version,
-        corpus_folder=str(corpus_folder),
+        metadata_version=metadata_version,
     )
-    config_file = output_folder / "config.yml"
-    config_file.write_text(config_content)
 
     return config_file
 
