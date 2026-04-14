@@ -24,6 +24,7 @@ from api_swedeb.api.v1.endpoints.tool_router import (
 )
 from api_swedeb.core.speech import Speech
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
+from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 
 
 async def _collect_streaming_response(response: StreamingResponse) -> bytes:
@@ -179,22 +180,18 @@ class TestToolRouterEndpoints:
         commons = MagicMock()
         commons.get_filter_opts.return_value = {"speech_id": ["i-301"]}
         search_service = MagicMock()
-        search_service.get_speeches.return_value = pd.DataFrame(
-            [
-                {
-                    "name": "Alice Andersson",
-                    "year": 1990,
-                    "speech_id": "i-301",
-                    "speech_name": "Prot 2",
-                    "party_abbrev": "S",
-                }
-            ]
-        )
+        df = pd.DataFrame([{"speech_id": "i-301"}])
+        search_service.get_speeches.return_value = df
 
-        result = asyncio.run(get_speeches_result(commons=commons, search_service=search_service))
+        with patch("api_swedeb.api.v1.endpoints.tool_router.speeches_to_api_model") as mapper:
+            mapper.return_value = SpeechesResult(
+                speech_list=[SpeechesResultItem(speech_id="i-301", party_abbrev="S", speech_name="Prot 2")]
+            )
+            result = asyncio.run(get_speeches_result(commons=commons, search_service=search_service))
 
         commons.get_filter_opts.assert_called_once_with(True)
         search_service.get_speeches.assert_called_once_with(selections={"speech_id": ["i-301"]})
+        mapper.assert_called_once_with(df)
         assert len(result.speech_list) == 1
         assert result.speech_list[0].speech_id == "i-301"
         assert result.speech_list[0].party_abbrev == "S"
