@@ -8,7 +8,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from api_swedeb.core.speech_utility import format_speech_name, format_speech_names
+from api_swedeb.core.speech_utility import format_speech_name, format_speech_names, legacy_format_speech_name
+from tests import legacy
 
 BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_index.feather")
 
@@ -23,6 +24,8 @@ def test_format_speech_name_matches_format_speech_names():
         BOOTSTRAP_SPEECH_INDEX,
         columns=["document_name", "chamber_abbrev"],
     )
+
+    legacy_formatted = speeches["document_name"].map(legacy_format_speech_name)
 
     start = time.perf_counter()
     expected = speeches["document_name"].map(format_speech_name)
@@ -43,6 +46,12 @@ def test_format_speech_name_matches_format_speech_names():
 
     pd.testing.assert_series_equal(
         expected.astype("string"),
+        actual.astype("string"),
+        check_names=True,
+    )
+
+    pd.testing.assert_series_equal(
+        legacy_formatted.astype("string"),
         actual.astype("string"),
         check_names=True,
     )
