@@ -17,6 +17,8 @@ from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech_repository import SpeechRepository
 from api_swedeb.core.speech_store import SpeechStore
 
+# pylint: disable=unused-argument, redefined-outer-name
+
 # ---------------------------------------------------------------------------
 # Data paths
 # ---------------------------------------------------------------------------

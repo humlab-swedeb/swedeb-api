@@ -4,7 +4,6 @@ from typing import Generator
 from unittest.mock import patch
 
 import dotenv
-import pandas as pd
 import pytest
 
 from api_swedeb.api.dependencies import get_corpus_loader
