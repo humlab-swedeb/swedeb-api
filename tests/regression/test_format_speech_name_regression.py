@@ -1,4 +1,4 @@
-"""Regression test for protocol id formatting parity on the real prebuilt index."""
+"""Regression test for speech name formatting parity on the real prebuilt index."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from api_swedeb.core.utility import format_protocol_id, format_protocol_id_vectorized
+from api_swedeb.core.speech_utility import format_speech_name, format_speech_names
 
 BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_index.feather")
 
@@ -17,7 +17,7 @@ BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_inde
     not BOOTSTRAP_SPEECH_INDEX.is_file(),
     reason="bootstrap_corpus speech_index.feather not built on this machine",
 )
-def test_format_protocol_id_vectorized_matches_scalar_on_prebuilt_index():
+def test_format_speech_name_matches_format_speech_names():
     """The vectorized formatter must preserve the scalar formatter's output."""
     speeches = pd.read_feather(
         BOOTSTRAP_SPEECH_INDEX,
@@ -25,11 +25,11 @@ def test_format_protocol_id_vectorized_matches_scalar_on_prebuilt_index():
     )
 
     start = time.perf_counter()
-    expected = speeches["document_name"].map(format_protocol_id)
+    expected = speeches["document_name"].map(format_speech_name)
     scalar_elapsed = time.perf_counter() - start
 
     start = time.perf_counter()
-    actual = format_protocol_id_vectorized(
+    actual = format_speech_names(
         speeches["document_name"],
         speeches["chamber_abbrev"],
     )
@@ -37,8 +37,8 @@ def test_format_protocol_id_vectorized_matches_scalar_on_prebuilt_index():
 
     print(
         "\n"
-        f"format_protocol_id over {len(speeches):,} rows: {scalar_elapsed:.4f}s\n"
-        f"format_protocol_id_vectorized over {len(speeches):,} rows: {vectorized_elapsed:.4f}s"
+        f"format_speech_name over {len(speeches):,} rows: {scalar_elapsed:.4f}s\n"
+        f"format_speech_names over {len(speeches):,} rows: {vectorized_elapsed:.4f}s"
     )
 
     pd.testing.assert_series_equal(
