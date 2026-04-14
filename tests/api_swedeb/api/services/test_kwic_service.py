@@ -38,6 +38,7 @@ def test_get_kwic_builds_opts_and_delegates_to_kwic_with_decode():
             words_after=5,
             p_show="lemma",
             cut_off=123,
+            use_multiprocessing=None,
         )
 
     to_opts.assert_called_once_with(commons, ["jobb", "skatt"], True)
