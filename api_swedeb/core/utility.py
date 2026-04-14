@@ -471,7 +471,7 @@ def _format_protocol_id_core(selected_protocol: str) -> str:
         speech_index: int = int(parts[1])
 
         protocol_parts: list[str] = document_name.split("-")
-        id_part: int = int(protocol_parts[-1])
+        id_part: str = protocol_parts[-1]
 
         if "ak" in selected_protocol or "fk" in selected_protocol:
             ch = "Andra" if "ak" in selected_protocol else "Första"
