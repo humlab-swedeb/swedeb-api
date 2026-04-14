@@ -123,7 +123,7 @@ class TestRegistry:
         """Test registering a class."""
 
         @Registry.register(key="test_class")
-        class MyClass:
+        class MyClass:  # pylint: disable=unused-variable
             def method(self):
                 return "value"
 

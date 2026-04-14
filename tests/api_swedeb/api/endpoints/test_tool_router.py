@@ -185,7 +185,7 @@ class TestToolRouterEndpoints:
 
         with patch("api_swedeb.api.v1.endpoints.tool_router.speeches_to_api_model") as mapper:
             mapper.return_value = SpeechesResult(
-                speech_list=[SpeechesResultItem(speech_id="i-301", party_abbrev="S", speech_name="Prot 2")]
+                speech_list=[SpeechesResultItem(speech_id="i-301", party_abbrev="S", speech_name="Prot 2")]  # type: ignore[list-item]
             )
             result = asyncio.run(get_speeches_result(commons=commons, search_service=search_service))
 
