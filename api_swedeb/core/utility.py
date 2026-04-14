@@ -461,32 +461,61 @@ def deprecated(func: Callable) -> Callable:
 #     return release_tags
 
 
-@slow_avoid_use
-def format_protocol_id(selected_protocol: str) -> str:
-    """Formats protocol id to human readable format.
-    Expected input format is prot-YYYY--NNN_MMM or prot-YYYY-a-ak--NNN_MMM or prot-YYYY-a-fk--NNN_MMM."""
+def _format_protocol_id_core(selected_protocol: str) -> str:
+    """Fast scalar formatter used by both the scalar and batch protocol-id APIs."""
     try:
-        protocol_parts: list[str] = selected_protocol.split("-")
+        parts: list[str] = selected_protocol.split("_")
+        assert len(parts) == 2
+
+        document_name: str = parts[0]
+        speech_index: int = int(parts[1])
+
+        protocol_parts: list[str] = document_name.split("-")
+        id_part: int = int(protocol_parts[-1])
 
         if "ak" in selected_protocol or "fk" in selected_protocol:
-            id_parts: str = protocol_parts[-1].replace("_", " ")
             ch = "Andra" if "ak" in selected_protocol else "Första"
             chamber = f"{ch} kammaren"
             if len(protocol_parts) == 6:
-                return f"{chamber} {protocol_parts[1]}:{id_parts}"
+                return f"{chamber} {protocol_parts[1]}:{id_part} {speech_index:03}"
             # if len(protocol_parts) == 7:
             # prot-1958-a-ak--17-01_094
-            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
+            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_part} {speech_index:03}"
 
         #'prot-2004--113_075' -> '2004:113 075'
         year = protocol_parts[1]
         if len(year) == 4:
-            return f"{year[:4]}:{protocol_parts[3].replace('_', ' ')}"
+            return f"{year[:4]}:{id_part} {speech_index:03}"
         #'prot-200405--113_075' -> '2004/05:113 075'
 
-        return f"{year[:4]}/{year[4:]}:{protocol_parts[3].replace('_', ' ')}"
+        return f"{year[:4]}/{year[4:]}:{id_part} {speech_index:03}"
     except IndexError:
         return selected_protocol
+
+
+@slow_avoid_use
+def format_protocol_id(selected_protocol: str) -> str:
+    """Formats protocol id to human readable format.
+    Expected input format is prot-YYYY--NNN_MMM or prot-YYYY-a-ak--NNN_MMM or prot-YYYY-a-fk--NNN_MMM."""
+    return _format_protocol_id_core(selected_protocol)
+
+
+def format_protocol_id_vectorized(
+    document_name: pd.Series,
+    chamber_abbrev: pd.Series,
+) -> pd.Series:
+    # `chamber_abbrev` is kept for API compatibility, but the canonical logic
+    # is derived from the protocol id string itself to match `format_protocol_id`.
+    _ = chamber_abbrev
+
+    formatter = _format_protocol_id_core
+    values = document_name.to_numpy(copy=False)
+    return pd.Series(
+        [formatter(value) for value in values],
+        index=document_name.index,
+        name=document_name.name,
+        dtype="string",
+    )
 
 
 def time_call(func):
