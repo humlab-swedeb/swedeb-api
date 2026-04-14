@@ -15,7 +15,7 @@ DTM_SPEECH_INDEX = Path("data/v1.4.1/dtm/text/text_document_index.prepped.feathe
     not BOOTSTRAP_SPEECH_INDEX.is_file() or not DTM_SPEECH_INDEX.is_file(),
     reason="bootstrap_corpus or dtm speech_index.feather not built on this machine",
 )
-def test_format_protocol_id_vectorized_matches_scalar_on_prebuilt_index():
+def test_dtm_document_name_matches_prebuilt_index_document_name():
     """The vectorized formatter must preserve the scalar formatter's output."""
     bootstrap_index = pd.read_feather(
         BOOTSTRAP_SPEECH_INDEX,
