@@ -260,7 +260,7 @@ def _process_zip(args: tuple) -> dict[str, Any]:
             full_rows.append(
                 {
                     "speech_id": s.get("speech_id") or "",
-                    "document_name": f"{s.get('protocol_name')}_{s.get('speech_index')}",
+                    "document_name": f"{s.get('protocol_name')}_{int(s.get('speech_index') or 0):03d}",
                     "protocol_name": s.get("protocol_name") or "",
                     "date": s.get("date") or "",
                     "year": year_int,
