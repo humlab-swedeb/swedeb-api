@@ -40,6 +40,8 @@ class KWICService:
         words_after: int = 3,
         p_show: str = "word",
         cut_off: int = 200000,
+        use_multiprocessing: bool | None = True,
+        n_processes: int | None = None,
     ) -> pd.DataFrame:
         """Get keyword in context data from corpus.
 
@@ -67,8 +69,12 @@ class KWICService:
             words_after=words_after,
             p_show=p_show,
             cut_off=cut_off,
-            use_multiprocessing=bool(ConfigValue("kwic.use_multiprocessing", default=False).resolve()),
-            num_processes=ConfigValue("kwic.num_processes", default=8).resolve(),
+            use_multiprocessing=(
+                use_multiprocessing
+                if use_multiprocessing is not None
+                else bool(ConfigValue("kwic.use_multiprocessing", default=False).resolve())
+            ),
+            num_processes=n_processes or ConfigValue("kwic.num_processes", default=8).resolve(),
         )
 
         return data
