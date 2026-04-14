@@ -42,7 +42,6 @@ EXPECTED_COLUMNS: set[str] = {
     "chamber_abbrev",
     "speech_id",
     "wiki_id",
-    "document_id",
     "left_word",
     "node_word",
     "right_word",
@@ -136,15 +135,6 @@ def test_document_name_never_null(kwic_baseline: pd.DataFrame):
     assert null_count == 0, f"{null_count} rows have null document_name"
 
 
-def test_document_id_never_null(kwic_baseline: pd.DataFrame):
-    """document_id (DTM integer key) is None in the prebuilt path — this is expected.
-
-    The prebuilt speech_index does not carry the DTM document_id.  The column
-    must still exist (schema requires Optional[int]) but will be all-null.
-    """
-    assert "document_id" in kwic_baseline.columns, "document_id column is missing"
-
-
 def test_node_word_matches_search_term(kwic_baseline: pd.DataFrame):
     """node_word must contain the searched word (case-insensitive)."""
     unexpected = kwic_baseline[~kwic_baseline["node_word"].str.lower().str.contains("debatt")]
@@ -215,5 +205,4 @@ def test_schema_roundtrip_first_item_fields(kwic_baseline: pd.DataFrame):
     assert item.speech_id is not None, "speech_id is None in API result"
     assert item.document_name is not None, "document_name is None in API result"
     assert item.year is not None, "year is None in API result"
-    # document_id is null in the prebuilt path (no DTM integer key)
     # party full name is null in the prebuilt path until rebuilt with that column

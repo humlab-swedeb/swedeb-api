@@ -25,7 +25,6 @@ EXPECTED_COLUMNS: set[str] = {
     "chamber_abbrev",
     "speech_id",
     "wiki_id",
-    "document_id",
     "left_word",
     "node_word",
     "right_word",

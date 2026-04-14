@@ -36,7 +36,6 @@ EXPECTED_COLUMNS: set[str] = {
     "chamber_abbrev",
     "speech_id",
     "wiki_id",
-    "document_id",
     "left_word",
     "node_word",
     "right_word",
@@ -99,7 +98,7 @@ def test_simple_kwic_without_decode_with_multiple_terms(
     p_show: Literal["word", "lemma"],
     filter_opts: list[dict[str, Any]],
     expected_words: list[str],
-):
+) -> None:
     filter_opts = encode_party_abbrev2id(person_codecs, filter_opts)
 
     search_opts: list[dict] = [
@@ -158,7 +157,7 @@ def test_simple_kwic_with_decode_results_for_various_setups(
     p_show: str,
     criterias: list[dict[str, Any]],
     expected_words: set[str],
-):
+) -> None:
     search_opts: list[dict[str, Any]] = [
         {
             "prefix": None if not criterias else "a",

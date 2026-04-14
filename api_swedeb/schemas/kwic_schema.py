@@ -21,7 +21,6 @@ class KeywordInContextItem(BaseModel):
     chamber_abbrev: str | None = Field(None, description="Chamber of speech")  # NEW
     speech_id: str | None = Field(None, description="Unique id of speech")  # NEW
     wiki_id: str | None = Field(None, description="Wiki id of speaker")  # NEW
-    document_id: int | None = Field(None, description="Document's system id")  # NEW
     party: str | None = Field(None, description="Full party name of speaker")
 
 
