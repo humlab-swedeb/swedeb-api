@@ -1,9 +1,9 @@
 from typing import Any
 
 import pandas as pd
-from api_swedeb.core.utility import deprecated
 
 from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.utility import deprecated
 
 
 def format_speech_name(speech_name: str) -> str:
@@ -145,6 +145,7 @@ def resolve_pdf_links_for_speeches(
     if isinstance(speech_names, pd.Series):
         return _resolve_pdf_links_for_speeches(speech_names, base_url, page_nr)
     return resolve_pdf_link_for_speech(speech_names, base_url, page_nr)
+
 
 #####################################################################################################
 # Functions moved fom mappers/kwic.py

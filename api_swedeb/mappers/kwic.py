@@ -2,12 +2,10 @@ from typing import Any
 
 import pandas as pd
 
-from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech_utility import (
     create_pdf_links,
-    resolve_wiki_url_for_speaker,
     format_speech_names,
-    normalize_document_names,
+    resolve_wiki_url_for_speaker,
 )
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult

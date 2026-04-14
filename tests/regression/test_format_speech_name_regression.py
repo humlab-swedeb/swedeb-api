@@ -64,14 +64,17 @@ def test_format_speech_name_matches_format_speech_names():
     )
 
 
-@pytest.mark.skip( reason="legacy create_pdf_links has bugs which gives known incorrect results", )
+@pytest.mark.skip(
+    reason="legacy create_pdf_links has bugs which gives known incorrect results",
+)
 def test_resolve_pdf_links_for_speeches_regression():
     """The vectorized formatter must preserve the scalar formatter's output."""
-    speeches: pd.DataFrame = pd.read_feather(BOOTSTRAP_SPEECH_INDEX) #, columns=["document_name", "page_start"])
+    speeches: pd.DataFrame = pd.read_feather(BOOTSTRAP_SPEECH_INDEX)  # , columns=["document_name", "page_start"])
     legacy = create_pdf_links(speeches["document_name"], speeches["page_number_start"])
-    actual: pd.Series = cast(pd.Series, resolve_pdf_links_for_speeches(speeches["document_name"], speeches["page_number_start"]))
+    actual: pd.Series = cast(
+        pd.Series, resolve_pdf_links_for_speeches(speeches["document_name"], speeches["page_number_start"])
+    )
     pd.testing.assert_series_equal(legacy.astype("string"), actual.astype("string"))
-
 
 
 @pytest.mark.skip(reason="successfully tested that new formatter produces the same output as the legacy version")
@@ -79,7 +82,9 @@ def test_resolve_wiki_url_for_speaker_regression():
     """The vectorized formatter must preserve the scalar formatter's output."""
     speeches: pd.DataFrame = pd.read_feather(BOOTSTRAP_SPEECH_INDEX, columns=["wiki_id"])
 
-    legacy: pd.Series = create_wiki_reference_links(speeches["wiki_id"]).str.replace("https://www.wikidata.org/wiki/unknown", "Okänd")
+    legacy: pd.Series = create_wiki_reference_links(speeches["wiki_id"]).str.replace(
+        "https://www.wikidata.org/wiki/unknown", "Okänd"
+    )
     actual: pd.Series = cast(pd.Series, resolve_wiki_url_for_speaker(speeches["wiki_id"]))
 
     pd.testing.assert_series_equal(legacy.astype("string"), actual.astype("string"), check_names=False)
