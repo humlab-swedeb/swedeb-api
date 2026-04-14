@@ -1,6 +1,7 @@
 from typing import Any
 
 import pandas as pd
+from api_swedeb.core.utility import deprecated
 
 from api_swedeb.core.configuration.inject import ConfigValue
 
@@ -144,3 +145,45 @@ def resolve_pdf_links_for_speeches(
     if isinstance(speech_names, pd.Series):
         return _resolve_pdf_links_for_speeches(speech_names, base_url, page_nr)
     return resolve_pdf_link_for_speech(speech_names, base_url, page_nr)
+
+#####################################################################################################
+# Functions moved fom mappers/kwic.py
+#####################################################################################################
+
+
+@deprecated
+def create_pdf_links(document_name: pd.Series, page_number_start: pd.Series) -> pd.Series:
+    """Create PDF links from core speech metadata for the API response."""
+    pdf_server: str = ConfigValue("pdf_server.base_url").resolve().rstrip("/")
+    protocol_name = document_name.astype("string").str.split("_").str[0]
+    speech_link = pd.Series(None, index=document_name.index, dtype="object")
+    folder: pd.Series = protocol_name.str.extract(r"^prot-(\d{4,8})--")[0]
+    valid_doc_mask: pd.Series = protocol_name.notna() & (protocol_name != "")
+    speech_link.loc[valid_doc_mask] = (
+        pdf_server
+        + "/"
+        + folder.loc[valid_doc_mask]
+        + "/"
+        + protocol_name.loc[valid_doc_mask]
+        + ".pdf#page="
+        + page_number_start.loc[valid_doc_mask].astype(str)
+    )
+    return speech_link
+
+
+@deprecated
+def create_wiki_reference_links(wiki_id: pd.Series) -> pd.Series:
+    """Create Wikidata links from the decoded wiki_id column."""
+    wikidata_base = "https://www.wikidata.org/wiki/"
+    unknown_link = "https://www.wikidata.org/wiki/unknown"
+    wiki: pd.Series = wiki_id.astype("string")
+    valid_mask: pd.Series = wiki.notna() & wiki.ne("unknown") & wiki.ne("")
+    link: pd.Series = pd.Series(unknown_link, index=wiki_id.index, dtype="string")
+    link.loc[valid_mask] = wikidata_base + wiki.loc[valid_mask]
+    return link.astype("category")
+
+
+def normalize_document_names(document_name: pd.Series) -> pd.Series:
+    """Zero-pad the speech suffix to match the API's historical document_name contract."""
+    values = document_name.astype("string")
+    return values.str.replace(r"^(prot-.+_)(\d+)$", lambda match: match.group(1) + match.group(2).zfill(3), regex=True)

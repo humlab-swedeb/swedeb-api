@@ -17,13 +17,7 @@ DTM_SPEECH_INDEX = Path("data/v1.4.1/dtm/text/text_document_index.prepped.feathe
 )
 def test_dtm_document_name_matches_prebuilt_index_document_name():
     """The vectorized formatter must preserve the scalar formatter's output."""
-    bootstrap_index = pd.read_feather(
-        BOOTSTRAP_SPEECH_INDEX,
-        columns=["document_name", "chamber_abbrev"],
-    )
-    dtm_index = pd.read_feather(
-        DTM_SPEECH_INDEX,
-        columns=["document_name", "chamber_abbrev"],
-    )
+    bootstrap_index: pd.DataFrame = pd.read_feather(BOOTSTRAP_SPEECH_INDEX, columns=["document_name"])
+    dtm_index: pd.DataFrame = pd.read_feather(DTM_SPEECH_INDEX, columns=["document_name"])
 
     assert set(bootstrap_index.document_name) == set(dtm_index.document_name)
