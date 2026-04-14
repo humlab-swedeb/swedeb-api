@@ -1,4 +1,3 @@
-
 import pandas as pd
 import pytest
 import requests
@@ -91,7 +90,7 @@ def test_format_all_speech_names(corpus_loader: CorpusLoader):
         'prot-197879--063_001': '1978/79:063 001',
     }
 
-    assert all(actual[speech_name] == expected[speech_name] for speech_name in expected)
+    assert all(actual[speech_name] == expected_value for speech_name, expected_value in expected.items())
 
 
 def test_format_speech_name():

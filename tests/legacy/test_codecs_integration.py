@@ -7,6 +7,7 @@ import pytest
 
 from api_swedeb.core.configuration.inject import ConfigValue
 from api_swedeb.core.person_codecs import Codec, PersonCodecs
+from api_swedeb.core.speech_utility import resolve_pdf_links_for_speeches, resolve_wiki_url_for_speaker
 
 
 @pytest.fixture(name="gender_dataframe")
@@ -426,12 +427,12 @@ class TestPersonCodecs:
         ],
     )
     def test_person_wiki_link(self, wiki_id, expected):
-        assert PersonCodecs.person_wiki_link(wiki_id) == expected
+        assert resolve_wiki_url_for_speaker(wiki_id) == expected
 
     def test_person_wiki_link_series(self):
         wiki_ids: pd.Series = pd.Series(["Q12345", "unknown"])
         expected: pd.Series = pd.Series(pd.Categorical(["https://www.wikidata.org/wiki/Q12345", "Okänd"]))
-        wiki_links = PersonCodecs.person_wiki_link(wiki_ids)
+        wiki_links = resolve_wiki_url_for_speaker(wiki_ids)
         assert isinstance(wiki_links, pd.Series)
         pd.testing.assert_series_equal(wiki_links, expected)
 
@@ -447,7 +448,7 @@ class TestPersonCodecs:
         base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
         protocol_name: str = speech_id.split('_')[0]
         expected: str = f'{base_url}/{subfolder}/{protocol_name}.pdf#page={page_nr}'
-        speech_links: str | pd.Series = PersonCodecs.speech_link(speech_id, page_nr)
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_id, page_nr)
         assert isinstance(speech_links, str)
         assert speech_links == expected
 
@@ -462,7 +463,7 @@ class TestPersonCodecs:
                 f"{base_url}/201011/prot-201011--084.pdf#page=4",
             ]
         )
-        speech_links: str | pd.Series = PersonCodecs.speech_link(speech_ids, page_nrs)
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_ids, page_nrs)
         assert isinstance(speech_links, pd.Series)
         pd.testing.assert_series_equal(speech_links, expected)
 
