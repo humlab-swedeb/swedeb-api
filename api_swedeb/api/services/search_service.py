@@ -9,7 +9,7 @@ import pandas as pd
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.utility import filter_by_opts, format_protocol_id
+from api_swedeb.core.utility import filter_by_opts
 
 
 class SearchService:
@@ -113,12 +113,23 @@ class SearchService:
         Returns:
             DataFrame with speeches for selected filters
         """
-        speeches: pd.DataFrame = get_speeches_by_opts(self._loader.document_index, selections)
-        speeches = self._loader.person_codecs.decode_speech_index(
-            speeches,
-            value_updates=ConfigValue("display.speech_index.updates").resolve(),
-            sort_values=True,
-        )
+        speeches: pd.DataFrame = self._loader.prebuilt_speech_index
+
+        if selections:
+            speech_ids: list[str] | None = selections.get("speech_id")
+            if speech_ids is not None:
+                speeches = speeches.loc[speeches.index.intersection(speech_ids)]
+                selections = {key: value for key, value in selections.items() if key != "speech_id"}
+
+            if selections:
+                # Remap person_id → speaker_id: the prebuilt index uses speaker_id;
+                # CommonQueryParams emits person_id (from the `who` parameter).
+                if "person_id" in selections:
+                    selections = {("speaker_id" if k == "person_id" else k): v for k, v in selections.items()}
+                speeches = filter_by_opts(speeches, selections)
+
+        speeches = speeches.copy()
+        speeches["speech_id"] = speeches.index
         return speeches
 
     def get_speakers(self, selections: dict) -> pd.DataFrame:
