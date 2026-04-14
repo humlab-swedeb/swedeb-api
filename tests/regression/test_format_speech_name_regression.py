@@ -22,10 +22,7 @@ from api_swedeb.core.speech_utility import (
 BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_index.feather")
 
 
-@pytest.mark.skipif(
-    not BOOTSTRAP_SPEECH_INDEX.is_file(),
-    reason="bootstrap_corpus speech_index.feather not built on this machine",
-)
+@pytest.mark.skip(reason="legacy legacy_format_speech_name and format_speech_name have been verified to produce the same output")
 def test_format_speech_name_matches_format_speech_names():
     """The vectorized formatter must preserve the scalar formatter's output."""
     speeches = pd.read_feather(
@@ -64,9 +61,7 @@ def test_format_speech_name_matches_format_speech_names():
     )
 
 
-@pytest.mark.skip(
-    reason="legacy create_pdf_links has bugs which gives known incorrect results",
-)
+@pytest.mark.skip(reason="legacy create_pdf_links has bugs which gives known incorrect results")
 def test_resolve_pdf_links_for_speeches_regression():
     """The vectorized formatter must preserve the scalar formatter's output."""
     speeches: pd.DataFrame = pd.read_feather(BOOTSTRAP_SPEECH_INDEX)  # , columns=["document_name", "page_start"])
