@@ -65,7 +65,7 @@ FIXED_SEARCH_OPTS: list[dict[str, Any]] = [
 
 
 @pytest.fixture(scope="module")
-def _kwic_loader() -> CorpusLoader:
+def _corpus_loader() -> CorpusLoader:
     """CorpusLoader pointing at the real data symlink (data/v1.4.1/...).
 
     Uses the same real dataset as test_index_diffs.py — the prebuilt
@@ -86,12 +86,12 @@ def _kwic_loader() -> CorpusLoader:
 
 
 @pytest.fixture(scope="module")
-def kwic_baseline(corpus: ccc.Corpus, _kwic_loader: CorpusLoader) -> pd.DataFrame:
+def kwic_baseline(corpus: ccc.Corpus, _corpus_loader: CorpusLoader) -> pd.DataFrame:
     """KWIC result via the prebuilt speech_index decode path."""
     return simple.kwic_with_decode(
         corpus,
         opts=FIXED_SEARCH_OPTS,
-        prebuilt_speech_index=_kwic_loader.prebuilt_speech_index,
+        prebuilt_speech_index=_corpus_loader.prebuilt_speech_index,
         words_before=3,
         words_after=3,
         p_show="word",

@@ -105,7 +105,6 @@ class CorpusLoader:
         store = SpeechStore(self.speech_bootstrap_corpus_folder)
         return SpeechRepository(
             store=store,
-            document_index=self.document_index,
             metadata_db_path=self.metadata_filename,
         )
 
