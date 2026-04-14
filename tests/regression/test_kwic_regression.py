@@ -16,6 +16,8 @@ from tests.conftest import generate_config_file
 
 dotenv.load_dotenv("tests/test.env")
 
+# pylint: disable=redefined-outer-name, unused-argument
+
 
 @pytest.fixture(scope="module", autouse=True)
 def config_store() -> Generator[ConfigStore, None, None]:
