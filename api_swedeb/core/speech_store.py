@@ -33,7 +33,7 @@ class SpeechStore:
         Least-recently-used tables are evicted when the limit is reached.
     """
 
-    def __init__(self, bootstrap_root: str, max_cached_protocols: int = 128) -> None:
+    def __init__(self, bootstrap_root: str, max_cached_protocols: int = 1024) -> None:
         self.bootstrap_root = Path(bootstrap_root)
         if not self.bootstrap_root.is_dir():
             raise FileNotFoundError(f"bootstrap_corpus root not found: {bootstrap_root}")

@@ -78,7 +78,9 @@ class CorpusLoader:
         self.__lazy_repository: Lazy[SpeechRepository] = Lazy(self._load_repository)
         self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_document_index)
         self.__lazy_prebuilt_speech_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_prebuilt_speech_index)
-        self.__lazy_prebuilt_page_number_index: Lazy[dict[str, tuple[int,int]]] = Lazy[dict[str, tuple[int,int]]](self._load_prebuilt_page_number_index)
+        self.__lazy_prebuilt_page_number_index: Lazy[dict[str, tuple[int, int]]] = Lazy[dict[str, tuple[int, int]]](
+            self._load_prebuilt_page_number_index
+        )
 
     def _load_document_index(self) -> pd.DataFrame:
         """Load and cache the document index."""
@@ -159,10 +161,10 @@ class CorpusLoader:
         return self.__lazy_prebuilt_speech_index.value
 
     @property
-    def prebuilt_page_number_index(self) -> dict[str, tuple[int,int]]:
+    def prebuilt_page_number_index(self) -> dict[str, tuple[int, int]]:
         """Get the precomputed protocol page number ranges (lazy-loaded on first access)."""
         return self.__lazy_prebuilt_page_number_index.value
-    
+
     @cached_property
     def decoded_persons(self) -> pd.DataFrame:
         """Get decoded persons dataframe (cached after first access)."""
@@ -184,12 +186,12 @@ class CorpusLoader:
         except KeyError:
             return (1, 200)
 
-        self.protocol_page_ranges: dict[str, dict[str,int]] = self._compute_protocol_page_ranges()
-
-    def _load_prebuilt_page_number_index(self) -> dict[str, tuple[int,int]]:
+    def _load_prebuilt_page_number_index(self) -> dict[str, tuple[int, int]]:
         """Compute page number ranges for each protocol based on the document index."""
-        ranges_df: pd.DataFrame = self.prebuilt_speech_index.groupby("protocol_name")[["page_number_start", "page_number_end"]].agg({'page_number_start': min, 'page_number_end': max})
-        page_ranges: dict[str, tuple[int,int]] = {
+        ranges_df: pd.DataFrame = self.prebuilt_speech_index.groupby("protocol_name")[
+            ["page_number_start", "page_number_end"]
+        ].agg({'page_number_start': min, 'page_number_end': max})
+        page_ranges: dict[str, tuple[int, int]] = {
             str(protocol_name): (int(row['page_number_start']), int(row['page_number_end']))
             for protocol_name, row in ranges_df.iterrows()
         }
