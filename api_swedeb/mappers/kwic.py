@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 
 from api_swedeb.core.configuration import ConfigValue
-from api_swedeb.core.utility import format_protocol_id_vectorized
+from api_swedeb.core.speech_utility import format_speech_names
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
 
@@ -49,7 +49,7 @@ def kwic_to_api_frame(data: pd.DataFrame) -> pd.DataFrame:
         result["person_id"] = result["speaker_id"]
 
     if {"document_name", "chamber_abbrev"}.issubset(result.columns):
-        result["speech_name"] = format_protocol_id_vectorized(result["document_name"], result["chamber_abbrev"])
+        result["speech_name"] = format_speech_names(result["document_name"], result["chamber_abbrev"])
 
     if "wiki_id" in result.columns:
         result["link"] = create_wiki_reference_links(result["wiki_id"])

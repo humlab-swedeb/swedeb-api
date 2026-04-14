@@ -4,7 +4,7 @@ import pandas as pd
 
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.person_codecs import PersonCodecs
-from api_swedeb.core.utility import format_protocol_id
+from api_swedeb.core.speech_utility import format_speech_name
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 
 SPEECHES_API_COLUMNS: list[str] = [
@@ -47,7 +47,7 @@ def speeches_to_api_frame(speeches: pd.DataFrame) -> pd.DataFrame:
 
     result = speeches.copy()
     result["speech_id"] = result.index if "speech_id" not in result.columns else result["speech_id"]
-    result["speech_name"] = result["document_name"].map(format_protocol_id)
+    result["speech_name"] = result["document_name"].map(format_speech_name)
     result["link"] = PersonCodecs.person_wiki_link(result["wiki_id"])
     result["speech_link"] = PersonCodecs.speech_link(document_name=result["document_name"])
 

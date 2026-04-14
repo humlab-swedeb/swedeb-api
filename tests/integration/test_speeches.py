@@ -1,3 +1,5 @@
+from typing import Any
+
 import pandas as pd
 import pytest
 import requests
@@ -9,7 +11,7 @@ from loguru import logger
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.utility import format_protocol_id
+from api_swedeb.core.speech_utility import format_speech_name
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
@@ -75,45 +77,32 @@ def test_speeches_get(fastapi_client: TestClient):
 
 def test_format_all_speech_names(corpus_loader: CorpusLoader):
     search_service = SearchService(corpus_loader)
+
     df: pd.DataFrame = search_service.get_speeches(selections={'year': (1900, 2000)})
-    all_ids: pd.Series = df['document_name']
-    for protocol_id in all_ids:
-        try:
-            format_protocol_id(protocol_id)
-        except IndexError:
-            logger.info(f"index error {protocol_id}")
-            assert False
+
+    actual: dict[str, str] = {speech_name: format_speech_name(speech_name) for speech_name in df['document_name']}
+    expected: dict[str, str] = {
+        'prot-1970--ak--029_001': 'Andra kammaren 1970:029 001',
+        'prot-1971--117_001': '1971:117 001',
+        'prot-1972--021_001': '1972:021 001',
+        'prot-1973--121_001': '1973:121 001',
+        'prot-1974--136_001': '1974:136 001',
+        'prot-1975--041_001': '1975:041 001',
+        'prot-197576--087_001': '1975/76:087 001',
+        'prot-197778--005_001': '1977/78:005 001',
+        'prot-197879--063_001': '1978/79:063 001',
+    }
+
+    assert all(actual[speech_name] == expected[speech_name] for speech_name in expected)
 
 
-# def test_get_speaker_name(corpus_loader: CorpusLoader):
-#     search_service = SearchService(corpus_loader)
-#     _, speech_id = find_a_speech_id(search_service)
-#     speaker = search_service.get_speaker(speech_id)
-#     assert speaker is not None
-#     assert len(speaker) > 0
-
-
-# def test_get_speaker_name_for_unknown_speaker(corpus_loader: CorpusLoader):
-#     search_service = SearchService(corpus_loader)
-#     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-#     speaker = search_service.get_speaker("i-000000000000000000000")
-#     assert speaker == unknown
-
-
-# def test_get_speaker_name_for_non_existing_speech(corpus_loader: CorpusLoader):
-#     search_service = SearchService(corpus_loader)
-#     unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
-#     speaker = search_service.get_speaker("i-does-not-exist")
-#     assert speaker == unknown
-
-
-def test_format_speech_id():
-    prot = 'prot-1966-höst-fk--38_044'
-    assert format_protocol_id(prot) == 'Första kammaren 1966:38 044'
-    prot = 'prot-200405--113_075'
-    assert format_protocol_id(prot) == '2004/05:113 075'
-    prot = 'prot-1958-a-ak--17-01_001'
-    assert format_protocol_id(prot) == 'Andra kammaren 1958:17 01 001'
+def test_format_speech_name():
+    speech_name = 'prot-1966-höst-fk--38_044'
+    assert format_speech_name(speech_name) == 'Första kammaren 1966:38 044'
+    speech_name = 'prot-200405--113_075'
+    assert format_speech_name(speech_name) == '2004/05:113 075'
+    speech_name = 'prot-1958-a-ak--17-01_001'
+    assert format_speech_name(speech_name) == 'Andra kammaren 1958:17 01 001'
 
 
 def test_get_speech_by_id_page_number(fastapi_client: TestClient):
@@ -247,33 +236,3 @@ def test_get_speech_by_api(fastapi_client: TestClient, corpus_loader: CorpusLoad
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()['speech_text']) > 0
     assert len(response.json()['speaker_note']) > 0
-
-
-# @pytest.mark.skip(reason="FIXME: This test is only used for debugging")
-# def test_get_speech_party_bug():
-#     dtm_folder: str = "./data/v1.4.1/dtm/text"
-#     dtm_tag: str = "text"
-#     metadata_filename: str = "./data/v1.4.1/riksprot_metadata.db"
-#     tagged_corpus_folder: str = "./data/v1.4.1/tagged_frames"
-
-#     corpus = Corpus(
-#         dtm_tag=dtm_tag,
-#         dtm_folder=dtm_folder,
-#         metadata_filename=metadata_filename,
-#         tagged_corpus_folder=tagged_corpus_folder,
-#     )
-
-#     df: pd.DataFrame = corpus.get_speeches(selections={'year': (1867, 1900)})
-
-#     assert df is not None
-
-#     di: pd.DataFrame = corpus.vectorized_corpus.document_index
-#     assert len(di[di.year.between(1867, 1900)]) == len(df)
-
-#     args: CommonQueryParams = CommonQueryParams(from_year=1867, to_year=1900).resolve()
-
-#     result: SpeechesResult = get_speeches(commons=args, corpus=corpus)
-
-#     assert len(df) == len(result.speech_list)
-
-#     assert df.year.between(1867, 1900).all()
