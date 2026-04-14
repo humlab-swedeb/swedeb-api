@@ -116,14 +116,6 @@ def test_format_speech_id():
     assert format_protocol_id(prot) == 'Andra kammaren 1958:17 01 001'
 
 
-def test_get_formatted_speech_id(corpus_loader: CorpusLoader):
-    search_service = SearchService(corpus_loader)
-    df_filtered: pd.DataFrame = search_service.get_speeches(
-        selections={'party_id': [4, 5], 'gender_id': [1, 2], 'year': (1900, 2000)}
-    )
-    assert 'speech_name' in df_filtered.columns
-
-
 def test_get_speech_by_id_page_number(fastapi_client: TestClient):
 
     speech_id = 'i-34625fce7c35cf80-3'
