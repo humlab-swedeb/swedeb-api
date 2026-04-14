@@ -23,6 +23,7 @@ from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.mappers.kwic import kwic_to_api_model
+from api_swedeb.mappers.speeches import speeches_to_api_model
 from api_swedeb.mappers.word_trends import (
     search_hits_to_api_model,
     word_trend_speeches_to_api_model,
@@ -31,7 +32,7 @@ from api_swedeb.mappers.word_trends import (
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
-from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem, SpeechesResultWT
+from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]
@@ -148,8 +149,7 @@ async def get_speeches_result(
 ) -> SpeechesResult:
     """Get speeches matching filter criteria"""
     df: DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
-    rows: list[SpeechesResultItem] = [SpeechesResultItem(**row) for row in df.to_dict(orient="records")]  # type: ignore
-    return SpeechesResult(speech_list=rows)
+    return speeches_to_api_model(df)
 
 
 @router.post("/speeches/download")
