@@ -254,3 +254,73 @@ Rules:
   points to the archived modules.
 * Legacy unit tests live in `tests/legacy/`; active production tests live
   in `tests/api_swedeb/` and `tests/integration/`.
+
+---
+
+## KWIC Frontend Field Usage
+
+The current frontend lives in the sibling repo `swedeb_frontend/`.  The
+`KeywordInContextItem` API schema is defined in
+`api_swedeb/schemas/kwic_schema.py`, but not every field is consumed by the
+frontend.
+
+This section records the **current** frontend usage observed in:
+
+* `src/components/kwicDataTable.vue`
+* `src/components/expandingTableRow.vue`
+* `src/pages/PdfPage.vue`
+* `src/stores/kwicDataStore.js`
+* `src/stores/downloadDataStore.js`
+* `src/stores/feedbackDataStore.js`
+
+### Fields actively used by the frontend
+
+These fields are used in the visible KWIC table, the expanded detail row, PDF
+view, or speech download actions:
+
+* `left_word`
+* `node_word`
+* `right_word`
+* `year`
+* `name`
+* `party_abbrev`
+* `party`
+* `gender`
+* `link`
+* `speech_name`
+* `speech_link`
+* `speech_id`
+
+### Fields used only for export
+
+`document_name` is not rendered in the main KWIC UI, but it is still included
+in the frontend CSV/XLSX export path via `src/stores/kwicDataStore.js`.
+
+### Fields currently not used by the frontend
+
+These fields were not found in any active KWIC frontend read path:
+
+* `gender_abbrev`
+* `chamber_abbrev`
+* `wiki_id`
+
+`person_id` is copied once into the mapped row object in
+`src/components/kwicDataTable.vue`, but there is no downstream read of that
+value in the current KWIC UI, report flow, PDF view, or download flow.
+
+`document_id` was previously part of `KeywordInContextItem`, but it was removed
+from the public KWIC API contract after confirming that the frontend did not
+consume it.
+
+### Practical trim guidance
+
+If the goal is to shrink `KeywordInContextItem` without changing current
+frontend behaviour, the safest trim candidates are:
+
+* `gender_abbrev`
+* `chamber_abbrev`
+* `wiki_id`
+* likely `person_id`
+
+`document_name` is a special case: it is not needed for rendering, but it is
+still part of the frontend export contract.
