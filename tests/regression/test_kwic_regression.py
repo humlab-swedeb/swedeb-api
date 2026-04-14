@@ -52,8 +52,8 @@ def test_get_kwic_results(config_store):
     words_after: int = 5
     cut_off: int = 1000000
     corpus: ccc.Corpus = get_cwb_corpus()
-    loader = get_corpus_loader( )
-    kwic_service: KWICService = KWICService(get_corpus_loader())
+    loader = get_corpus_loader()
+    kwic_service: KWICService = KWICService(loader)
 
     data = kwic_service.get_kwic(
         corpus=corpus,

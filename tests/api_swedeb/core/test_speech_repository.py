@@ -19,7 +19,6 @@ import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.configuration import ConfigValue
-from api_swedeb.core.load import load_speech_index
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_repository import SpeechRepository
 from api_swedeb.core.speech_store import SpeechStore
@@ -80,17 +79,10 @@ def speech_store(bootstrap_root) -> SpeechStore:
 
 
 @pytest.fixture(scope="module")
-def document_index(dtm_folder, dtm_tag):
-    return load_speech_index(folder=dtm_folder, tag=dtm_tag)
-
-
-@pytest.fixture(scope="module")
-def speech_repository(speech_store, document_index, metadata_db_path) -> SpeechRepository:
+def speech_repository(speech_store, metadata_db_path) -> SpeechRepository:
     return SpeechRepository(
         store=speech_store,
-        document_index=document_index,
         metadata_db_path=metadata_db_path,
-        strict=True,
     )
 
 
@@ -225,9 +217,9 @@ def test_fast_repo_batch_unknown_speech_id(speech_repository):
     assert speech.error is not None
 
 
-def test_fast_repo_batch_mixed_valid_and_invalid(speech_repository, document_index):
+def test_fast_repo_batch_mixed_valid_and_invalid(speech_repository, speech_store):
     """speeches_batch() must handle a mix of valid and invalid speech_ids gracefully."""
-    valid_speech_id = str(document_index["speech_id"].iloc[0])
+    valid_speech_id = next(iter(speech_store._sid_to_loc))
     results = dict(speech_repository.speeches_batch([valid_speech_id, "i-missing-1", "i-missing-2"]))
     assert valid_speech_id in results
     assert results[valid_speech_id].error is None
@@ -249,20 +241,20 @@ _WARMUP_N = 10
 _SAMPLE_N = 50  # scaled to small test corpus
 
 
-def _sample_speech_ids(document_index, n: int) -> list[str]:
+def _sample_speech_ids(speech_store: SpeechStore, n: int) -> list[str]:
     """Return n speech_ids, cycling through the corpus if smaller than n."""
-    ids = list(document_index["speech_id"].dropna().astype(str))
+    ids = list(speech_store._sid_to_loc.keys())
     if len(ids) >= n:
         return ids[:n]
     return (ids * ((n // len(ids)) + 1))[:n]
 
 
-def test_benchmark_single_lookup(speech_repository, document_index):
+def test_benchmark_single_lookup(speech_repository, speech_store):
     """Single-speech retrieval latency benchmark (prebuilt backend).
 
     Reports p50/p95. Passes unconditionally — numbers are printed for review.
     """
-    all_ids = _sample_speech_ids(document_index, _WARMUP_N + _SAMPLE_N)
+    all_ids = _sample_speech_ids(speech_store, _WARMUP_N + _SAMPLE_N)
 
     for sid in all_ids[:_WARMUP_N]:
         speech_repository.speech(sid)
@@ -282,12 +274,12 @@ def test_benchmark_single_lookup(speech_repository, document_index):
     )
 
 
-def test_benchmark_batch_retrieval(speech_repository, document_index):
+def test_benchmark_batch_retrieval(speech_repository, speech_store):
     """Batch retrieval throughput benchmark (prebuilt backend).
 
     Reports speeches/sec. Passes unconditionally.
     """
-    batch_ids = document_index["speech_id"].astype(str).tolist()
+    batch_ids = list(speech_store._sid_to_loc.keys())
 
     t0 = time.perf_counter()
     results = list(speech_repository.speeches_batch(batch_ids))
@@ -299,9 +291,9 @@ def test_benchmark_batch_retrieval(speech_repository, document_index):
     assert len(results) == n
 
 
-def test_benchmark_worker_memory(speech_repository, document_index):
+def test_benchmark_worker_memory(speech_repository, speech_store):
     """Capture peak process RSS after loading all test speeches."""
-    batch_ids = document_index["speech_id"].astype(str).tolist()
+    batch_ids = list(speech_store._sid_to_loc.keys())
     list(speech_repository.speeches_batch(batch_ids))
 
     rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss

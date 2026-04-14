@@ -17,6 +17,7 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult
 #        'office_type', 'sub_office_type_id', 'sub_office_type', 'wiki_id',
 #        'chamber_abbrev', 'party', 'feather_file', 'feather_row', 'speech_id']
 
+
 @pytest.fixture
 def speeches_df() -> pd.DataFrame:
     return pd.DataFrame(

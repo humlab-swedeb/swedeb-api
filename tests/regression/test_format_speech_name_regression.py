@@ -22,7 +22,9 @@ from api_swedeb.core.speech_utility import (
 BOOTSTRAP_SPEECH_INDEX = Path("data/v1.4.1/speeches/bootstrap_corpus/speech_index.feather")
 
 
-@pytest.mark.skip(reason="legacy legacy_format_speech_name and format_speech_name have been verified to produce the same output")
+@pytest.mark.skip(
+    reason="legacy legacy_format_speech_name and format_speech_name have been verified to produce the same output"
+)
 def test_format_speech_name_matches_format_speech_names():
     """The vectorized formatter must preserve the scalar formatter's output."""
     speeches = pd.read_feather(

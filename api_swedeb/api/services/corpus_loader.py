@@ -11,7 +11,7 @@ All resources are lazily loaded and cached for performance.
 """
 
 from functools import cached_property
-from typing import Optional, cast
+from typing import Optional
 
 import pandas as pd
 
@@ -105,7 +105,6 @@ class CorpusLoader:
         store = SpeechStore(self.speech_bootstrap_corpus_folder)
         return SpeechRepository(
             store=store,
-            document_index=self.document_index,
             metadata_db_path=self.metadata_filename,
         )
 

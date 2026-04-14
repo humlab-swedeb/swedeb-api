@@ -10,32 +10,17 @@ document keys against the legacy document index.
 
 from __future__ import annotations
 
-import re
 import sqlite3
 from collections.abc import Generator, Iterable
 from functools import cached_property
 from pathlib import Path
 from typing import Any, Callable
 
-import pandas as pd
 from loguru import logger
 
 from api_swedeb.core.speech import Speech
 from api_swedeb.core.speech_store import SpeechStore
 from api_swedeb.core.utility import deprecated, fix_whitespace
-
-
-def _normalize_document_name(name: str) -> str:
-    """Normalise a legacy zero-padded document_name to bootstrap_corpus format.
-
-    The legacy speech-index uses zero-padded numeric suffixes (e.g.
-    ``prot-1970--ak--029_001``), while the bootstrap_corpus derives the
-    suffix from the unpadded integer speech index (``prot-1970--ak--029_1``).
-    """
-    match = re.match(r"^(prot-.+_)(\d+)$", name)
-    if match:
-        return match.group(1) + str(int(match.group(2)))
-    return name
 
 
 class SpeechRepository:
@@ -45,10 +30,6 @@ class SpeechRepository:
     ----------
     store:
         :class:`SpeechStore` instance pointing at the bootstrap_corpus root.
-    document_index:
-        Legacy speech-index DataFrame (from the DTM corpus).  Used to
-        resolve legacy integer *document_id* keys to *document_name* strings
-        in :meth:`speeches_batch` (via *speech_id2id*).
     metadata_db_path:
         Optional path to the riksprot metadata SQLite DB.  When provided the
         ``speaker_note_id → speaker_note`` lookup table is loaded so that
@@ -58,14 +39,10 @@ class SpeechRepository:
     def __init__(
         self,
         store: SpeechStore,
-        document_index: pd.DataFrame,
         metadata_db_path: str | None = None,
-        strict: bool = False,
     ) -> None:
         self._store: SpeechStore = store
-        self._document_index: pd.DataFrame = document_index
         self._metadata_db_path: str | None = metadata_db_path
-        self._strict: bool = strict
 
         # Warm the speaker-note lookup once at init so the first batch request
         # doesn't pay the SQLite round-trip cost mid-stream.
@@ -86,52 +63,6 @@ class SpeechRepository:
         except Exception as ex:  # pylint: disable=broad-except
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
-
-    @cached_property
-    def _speech_id2id(self) -> dict[str, int]:
-        """Lazy: speech_id → document_id mapping, built on first fallback use.
-
-        Only accessed when ``SpeechStore.location_for_speech_id`` misses (i.e.
-        zero-padding / alias edge-cases).  Deferred to keep startup fast.
-        """
-        col = self._document_index["speech_id"]
-        # Arrow-backed column: bypass pandas per-element iteration when possible
-        arr = col.array
-        pa_array = getattr(arr, "_pa_array", None)
-        if pa_array is not None:
-            speech_ids: list = pa_array.combine_chunks().to_pylist()
-        else:
-            speech_ids = col.tolist()
-
-        mapping: dict[str, int] = dict(zip(speech_ids, self._document_index.index.tolist()))
-
-        # Alignment check: log coverage gaps once when the mapping is first built
-        prebuilt_ids: set[str] = set(self._store._sid_to_loc.keys())
-        dtm_ids: set[str] = {sid for sid in speech_ids if sid is not None}
-        only_in_dtm = dtm_ids - prebuilt_ids
-        only_in_prebuilt = prebuilt_ids - dtm_ids
-        logger.info(
-            f"SpeechRepository alignment: DTM={len(dtm_ids):,} prebuilt={len(prebuilt_ids):,} "
-            f"only_in_dtm={len(only_in_dtm)} only_in_prebuilt={len(only_in_prebuilt)}"
-        )
-        if only_in_dtm:
-            msg = (
-                f"{len(only_in_dtm)} DTM speech_ids not found in bootstrap_corpus — "
-                "speech retrieval will return 'not found' for these entries"
-            )
-            if self._strict:
-                raise ValueError(msg)
-            logger.warning(msg)
-        if only_in_prebuilt:
-            msg = (
-                f"{len(only_in_prebuilt)} bootstrap_corpus speech_ids not in DTM — "
-                "these speeches are unreachable via word-search"
-            )
-            if self._strict:
-                raise ValueError(msg)
-            logger.warning(msg)
-
-        return mapping
 
     # ------------------------------------------------------------------
     # Public interface (matches SpeechTextRepository)
@@ -162,27 +93,11 @@ class SpeechRepository:
         by_file: dict[str, list[tuple[str, int]]] = {}
 
         for speech_id in speech_ids:
-            # Fast path: direct dict lookup — skips pandas .loc for the common case
             loc = self._store.location_for_speech_id(speech_id)
 
             if loc is None:
-                # Fallback via document_index (handles zero-padding / alias mismatches)
-                key_index = self._speech_id2id.get(speech_id)
-                if key_index is None:
-                    yield speech_id, Speech({"name": f"speech {speech_id} not found", "error": "not in index"})
-                    continue
-
-                row = self._document_index.loc[int(key_index)]
-                doc_name = _normalize_document_name(str(row.get("document_name") or ""))
-                loc = self._store.location_for_document_name(doc_name)
-
-            if loc is None:
-                yield speech_id, Speech(
-                    {
-                        "name": f"speech {speech_id} not found",
-                        "error": "not in bootstrap_corpus",
-                    }
-                )
+                logger.error(f"speech_id {speech_id!r} not found in bootstrap_corpus — data error")
+                yield speech_id, Speech({"name": f"speech {speech_id} not found", "error": "not in bootstrap_corpus"})
                 continue
 
             feather_file, feather_row = loc

@@ -38,7 +38,7 @@ REQUIRED_SPEECH_COLUMNS: set[str] = {
     "party_id",
     "party_abbrev",
     "party",
-    "wiki_id"
+    "wiki_id",
 }
 
 
