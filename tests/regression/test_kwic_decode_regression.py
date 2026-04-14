@@ -19,27 +19,26 @@ import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.kwic import simple
-from api_swedeb.mappers.kwic import kwic_to_api_model
+from api_swedeb.mappers.kwic import KWIC_API_COLUMNS, kwic_to_api_frame, kwic_to_api_model
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
 
 # pylint: disable=redefined-outer-name
 
 # ---------------------------------------------------------------------------
-# Expected column contract for kwic_with_decode output
+# Expected core contract for kwic_with_decode output
 # ---------------------------------------------------------------------------
-EXPECTED_COLUMNS: set[str] = {
+# Core output should expose joined domain data, not the API projection.
+EXPECTED_CORE_COLUMNS: set[str] = {
     "year",
     "name",
     "party_abbrev",
     "party",
     "gender",
-    "person_id",
-    "link",
-    "speech_name",
-    "speech_link",
     "gender_abbrev",
     "document_name",
     "chamber_abbrev",
+    "speaker_id",
+    "page_number_start",
     "speech_id",
     "wiki_id",
     "left_word",
@@ -111,11 +110,16 @@ def test_output_has_rows(kwic_baseline: pd.DataFrame):
 
 
 def test_output_columns_exact(kwic_baseline: pd.DataFrame):
-    """Column set must exactly match the documented contract."""
+    """Core output must contain the documented joined KWIC columns."""
     actual = set(kwic_baseline.columns)
-    missing = EXPECTED_COLUMNS - actual
-    extra = actual - EXPECTED_COLUMNS
-    assert not missing and not extra, f"Missing columns: {missing}  |  Unexpected columns: {extra}"
+    missing = EXPECTED_CORE_COLUMNS - actual
+    assert not missing, f"Missing columns: {missing}"
+
+
+def test_output_does_not_include_api_projection_columns(kwic_baseline: pd.DataFrame):
+    """API-only fields should be derived in the mapper, not emitted by the core."""
+    unexpected = {"person_id", "link", "speech_name", "speech_link"} & set(kwic_baseline.columns)
+    assert not unexpected, f"Core output still includes API projection columns: {unexpected}"
 
 
 # ---------------------------------------------------------------------------
@@ -160,16 +164,18 @@ def test_wiki_id_column_present(kwic_baseline: pd.DataFrame):
 
 
 def test_link_format_for_known_speakers(kwic_baseline: pd.DataFrame):
-    """link must begin with the Wikidata base URL for speakers with a real wiki_id."""
-    known = kwic_baseline[kwic_baseline["wiki_id"].notna() & ~kwic_baseline["wiki_id"].isin(["unknown", ""])]
+    """Mapper-generated link must begin with the Wikidata base URL for known speakers."""
+    api_frame = kwic_to_api_frame(kwic_baseline)
+    known = api_frame[api_frame["wiki_id"].notna() & ~api_frame["wiki_id"].isin(["unknown", ""])]
     if not known.empty:
         bad = known[~known["link"].str.startswith("https://www.wikidata.org/wiki/")]
         assert bad.empty, f"{len(bad)} known-speaker rows have malformed link: {bad['link'].unique()}"
 
 
 def test_speech_link_column_present(kwic_baseline: pd.DataFrame):
-    """speech_link column must exist (values may be None for some rows)."""
-    assert "speech_link" in kwic_baseline.columns
+    """speech_link must be added during API mapping."""
+    api_frame = kwic_to_api_frame(kwic_baseline)
+    assert "speech_link" in api_frame.columns
 
 
 def test_gender_and_abbrev_columns_present(kwic_baseline: pd.DataFrame):
@@ -194,6 +200,15 @@ def test_schema_roundtrip_produces_valid_result(kwic_baseline: pd.DataFrame):
     result: KeywordInContextResult = kwic_to_api_model(kwic_baseline)
     assert isinstance(result, KeywordInContextResult)
     assert len(result.kwic_list) == len(kwic_baseline)
+
+
+def test_api_frame_columns_exact(kwic_baseline: pd.DataFrame):
+    """The mapper owns the exact API column projection."""
+    api_frame = kwic_to_api_frame(kwic_baseline)
+    actual = set(api_frame.columns)
+    missing = set(KWIC_API_COLUMNS) - actual
+    extra = actual - set(KWIC_API_COLUMNS)
+    assert not missing and not extra, f"Missing columns: {missing}  |  Unexpected columns: {extra}"
 
 
 def test_schema_roundtrip_first_item_fields(kwic_baseline: pd.DataFrame):
