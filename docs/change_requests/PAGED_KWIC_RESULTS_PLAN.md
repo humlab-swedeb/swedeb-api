@@ -11,8 +11,9 @@ Current execution progress:
 - Phase 2 store foundation implemented: ticket metadata, Feather artifacts, expiry cleanup, sweeper loop, and eviction rules
 - Phase 3 API implemented: ticket schemas, submit/status/results endpoints, shared filter normalization, and ticket paging behavior
 - Phase 4 download integration implemented: ticket-based speech download, direct artifact-backed archive generation, and `ticket_id` conflict handling
+- Phase 5 frontend migration implemented: ticket submit/poll/page flow, server-side KWIC pagination, ticket-based speech download, and synchronous CSV/XLSX export preservation
 - Backend implementation: **COMPLETED**
-- Frontend implementation: **NOT STARTED**
+- Frontend implementation: **COMPLETED**
 - Validation and benchmarks: **NOT STARTED**
 
 Status by phase:
@@ -22,7 +23,7 @@ Status by phase:
 3. Phase 2: **COMPLETED**
 4. Phase 3: **COMPLETED**
 5. Phase 4: **COMPLETED**
-6. Phase 5: **NOT STARTED**
+6. Phase 5: **COMPLETED**
 7. Phase 6: **NOT STARTED**
 
 ## Scope
@@ -314,15 +315,15 @@ This plan does not implement:
 
 ### Progress Checklist
 
-- [ ] Store submit action added
-- [ ] Store status polling added
-- [ ] Store page fetch action added
-- [ ] Table switched to server-side pagination for ticket flow
-- [ ] Total count wired to paged response
-- [ ] Pending/error UI state added
-- [ ] Existing synchronous path still callable
-- [ ] CSV/XLSX export still works through synchronous path
-- [ ] No frontend code fetches all pages for export
+- [x] Store submit action added
+- [x] Store status polling added
+- [x] Store page fetch action added
+- [x] Table switched to server-side pagination for ticket flow
+- [x] Total count wired to paged response
+- [x] Pending/error UI state added
+- [x] Existing synchronous path still callable
+- [x] CSV/XLSX export still works through synchronous path
+- [x] No frontend code fetches all pages for export
 
 ### Exit Criteria
 
@@ -392,8 +393,8 @@ This plan does not implement:
 - [x] Ticket metadata includes `speech_ids` and `manifest_meta`
 - [x] Non-happy-path API behavior is fully defined and implemented
 - [x] Ticket download works without re-deriving filter selection from `CommonQueryParams`
-- [ ] Frontend ticket flow is opt-in
-- [ ] CSV/XLSX export remains on the synchronous flow for the MVP
+- [x] Frontend ticket flow is opt-in
+- [x] CSV/XLSX export remains on the synchronous flow for the MVP
 - [ ] Validation and benchmark reports exist
 - [ ] Follow-up n-gram work remains separate
 
