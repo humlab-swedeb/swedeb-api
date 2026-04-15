@@ -9,7 +9,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 VERSION = "/v1/tools"
 SYNC_PARAMS = {
     "words_before": 2,

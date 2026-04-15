@@ -1,6 +1,5 @@
 import pandas as pd
 import pytest
-import requests
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
@@ -8,7 +7,6 @@ from httpx import Response
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.speech import Speech
-from api_swedeb.core.speech_utility import format_speech_name
 
 # these tests mainly check that the endpoints are reachable and returns something
 # the actual content of the response is not checked
@@ -16,48 +14,6 @@ from api_swedeb.core.speech_utility import format_speech_name
 # pylint: disable=redefined-outer-name
 
 version = "v1"
-
-
-def check_url_availability(url):
-    try:
-        response = requests.head(url, allow_redirects=False, timeout=5)
-        return response.status_code == 200
-    except requests.RequestException:
-        return False
-
-
-def test_pdf_link(corpus_loader: CorpusLoader):
-    """
-    Test that the pdf link points to available pdf"""
-
-    search_service = SearchService(corpus_loader)
-    protocol_ids = [
-        find_a_speech_id(search_service)[0],
-        "prot-1867--ak--0118_001",
-        "prot-19992000--001_001",
-        "prot-201011--084_160",
-    ]
-    test_links = [corpus_loader.person_codecs.speech_link(protocol_id) for protocol_id in protocol_ids]
-    for test_link in test_links:
-        assert check_url_availability(test_link)
-        print(f"Link {test_link} is available.")
-
-
-def test_pdf_link_with_series(corpus_loader: CorpusLoader):
-    """
-    Test that the pdf link points to available pdf"""
-    search_service = SearchService(corpus_loader)
-    protocol_ids = [
-        find_a_speech_id(search_service)[0],
-        "prot-1867--ak--0118_001",
-        "prot-19992000--001_001",
-        "prot-201011--084_160",
-    ]
-    test_links_series = pd.Series(protocol_ids)
-    test_links = corpus_loader.person_codecs.speech_link(test_links_series)
-    for test_link in test_links:
-        assert check_url_availability(test_link)
-        print(f"Link {test_link} is available.")
 
 
 def test_speeches_get(fastapi_client: TestClient):
@@ -70,7 +26,6 @@ def test_speeches_get(fastapi_client: TestClient):
     assert 'speaker_note' in data
     assert data["speaker_note"] == "Herr justitieministern GEIJER:"
     assert len(data['speech_text']) > 0
-
 
 
 def test_get_speech_by_id_page_number(fastapi_client: TestClient):

@@ -10,6 +10,7 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from api_swedeb.api.services.result_store import ResultStorePendingLimitError
 from api_swedeb.api.v1.endpoints.tool_router import (
     get_kwic_results,
     get_kwic_ticket_results,
@@ -25,7 +26,6 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     get_zip,
     submit_kwic_query,
 )
-from api_swedeb.api.services.result_store import ResultStorePendingLimitError
 from api_swedeb.core.speech import Speech
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketStatus
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem

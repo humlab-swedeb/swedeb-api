@@ -2,9 +2,8 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+import requests
 
-from api_swedeb.api.services.search_service import SearchService
-from api_swedeb.core import speech
 from api_swedeb.core.speech_utility import (
     create_pdf_links,
     create_wiki_reference_links,
@@ -16,82 +15,53 @@ from api_swedeb.core.speech_utility import (
     resolve_wiki_url_for_speaker,
 )
 
-
-def test_format_speech_name_modern_format():
-    """Test format_speech_name with modern format."""
-    assert format_speech_name("prot-2004--113_075") == "2004:113 075"
-
-
-def test_format_speech_name_split_year_format():
-    """Test format_speech_name with split-year format."""
-    assert format_speech_name("prot-200405--113_075") == "2004/05:113 075"
-
-
-def test_format_speech_name_short_chamber_format():
-    """Test format_speech_name with the short chamber format."""
-    assert format_speech_name("prot-1958-a-ak--17_094") == "Andra kammaren 1958:17 094"
-
-
-def test_format_speech_name_ak_chamber():
-    """Test format_speech_name with Andra kammaren."""
-    result = format_speech_name("prot-1958-a-ak--17-01_094")
-    assert "Andra kammaren" in result
-    assert "1958" in result
+PROTOCOL_NAME_PATTERNS: list[str] = [
+    'prot-1999-abc-012',
+    'prot-1999-abc-fk--012',
+    'prot-1999-abc-ak--012',
+    'prot-1999-abc-ak--012-01',
+    'prot-1999-abc-fk--012-01',
+    'prot-1999--012',
+    'prot-1999--ak--012',
+    'prot-1999--fk--012',
+    'prot-1999--ak--0207',
+    'prot-1999--fk--0207',
+    'prot-1999--ak--012-01',
+    'prot-1999--fk--012-01',
+    'prot-199899--012',
+    'prot-19999999--012',
+]
 
 
-# prot-YYYY-ABC-NNN
-# prot-YYYY-ABC-XK--NNN
-# prot-YYYY-ABC-XK--NNN-ZZ
-# prot-YYYY--NNN
-# prot-YYYY--XK--MMDD
-# prot-YYYY--XK--NNN
-# prot-YYYY--XK--NNN-ZZ
-# prot-YYYYYY--NNN
+def test_format_all_speech_name_patterns():
 
-
-def test_format_all_speech_names():
-
-    speech_names = [
-        "prot-1970--ak--029_001",
-        "prot-1971--117_001",
-        "prot-1972--021_001",
-        "prot-1973--121_001",
-        "prot-1974--136_001",
-        "prot-1975--041_001",
-        "prot-197576--087_001",
-        "prot-197778--005_001",
-        "prot-197879--063_001",
+    expected: list[str] = [
+        '1999:012 001',
+        'Första kammaren 1999:012 001',
+        'Andra kammaren 1999:012 001',
+        'Andra kammaren 1999:012 01 001',
+        'Första kammaren 1999:012 01 001',
+        '1999:012 001',
+        'Andra kammaren 1999:012 001',
+        'Första kammaren 1999:012 001',
+        'Andra kammaren 1999:0207 001',
+        'Första kammaren 1999:0207 001',
+        'Andra kammaren 1999:012 01 001',
+        'Första kammaren 1999:012 01 001',
+        '1998/99:012 001',
+        '1999/9999:012 001',
     ]
-    df = pd.DataFrame({"document_name": speech_names})
-    actual: dict[str, str] = {speech_name: format_speech_name(speech_name) for speech_name in df['document_name']}
-    expected: dict[str, str] = {
-        'prot-1970--ak--029_001': 'Andra kammaren 1970:029 001',
-        'prot-1971--117_001': '1971:117 001',
-        'prot-1972--021_001': '1972:021 001',
-        'prot-1973--121_001': '1973:121 001',
-        'prot-1974--136_001': '1974:136 001',
-        'prot-1975--041_001': '1975:041 001',
-        'prot-197576--087_001': '1975/76:087 001',
-        'prot-197778--005_001': '1977/78:005 001',
-        'prot-197879--063_001': '1978/79:063 001',
-    }
 
-    assert all(actual[speech_name] == expected_value for speech_name, expected_value in expected.items())
+    speech_name_patterns = [f'{x}_001' for x in PROTOCOL_NAME_PATTERNS]
 
+    speech_names = pd.Series(speech_name_patterns)
+    actual: list[str] = [format_speech_name(speech_name) for speech_name in speech_names]
 
-def test_format_speech_name():
-    speech_name = 'prot-1966-höst-fk--38_044'
-    assert format_speech_name(speech_name) == 'Första kammaren 1966:38 044'
-    speech_name = 'prot-200405--113_075'
-    assert format_speech_name(speech_name) == '2004/05:113 075'
-    speech_name = 'prot-1958-a-ak--17-01_001'
-    assert format_speech_name(speech_name) == 'Andra kammaren 1958:17 01 001'
+    assert actual == expected
 
+    actual: list[str] = format_speech_names(speech_names).to_list()
 
-def test_format_speech_name_fk_chamber():
-    """Test format_speech_name with Första kammaren."""
-    result = format_speech_name("prot-1958-a-fk--17-01_094")
-    assert "Första kammaren" in result
+    assert actual == expected
 
 
 def test_format_speech_name_invalid_returns_original():
@@ -262,6 +232,45 @@ def test_create_pdf_links_handles_blank_document_names(mock_config_value):
 
     assert result.iloc[0] == "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
     assert pd.isna(result.iloc[1])
+
+
+def check_url_availability(url):
+    try:
+        response = requests.head(url, allow_redirects=False, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
+def test_pdf_link():
+    """
+    Test that the pdf link points to available pdf"""
+
+    protocol_ids = [
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links = [resolve_pdf_links_for_speeches(protocol_id) for protocol_id in protocol_ids]
+    for test_link in test_links:
+        assert check_url_availability(test_link)
+        print(f"Link {test_link} is available.")
+
+
+def test_pdf_link_with_series():
+    """
+    Test that the pdf link points to available pdf"""
+    protocol_ids = [
+        "prot-1867--ak--0118_001",
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links_series = pd.Series(protocol_ids)
+    test_links = resolve_pdf_links_for_speeches(test_links_series)
+    for test_link in test_links:
+        assert check_url_availability(test_link)
+        print(f"Link {test_link} is available.")
 
 
 def test_create_wiki_reference_links_maps_unknown_and_missing_values():
