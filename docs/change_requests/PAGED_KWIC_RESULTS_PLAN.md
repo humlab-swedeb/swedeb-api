@@ -12,10 +12,10 @@ Current execution progress:
 - Phase 3 API implemented: ticket schemas, submit/status/results endpoints, shared filter normalization, and ticket paging behavior
 - Phase 4 download integration implemented: ticket-based speech download, direct artifact-backed archive generation, and `ticket_id` conflict handling
 - Phase 5 frontend migration implemented: ticket submit/poll/page flow, server-side KWIC pagination, ticket-based speech download, and synchronous CSV/XLSX export preservation
-- Phase 6 validation started: parity sample locked, ticket download baseline verified, and initial query/page latency recorded in `docs/change_requests/PAGED_KWIC_RESULTS_VALIDATION.md`
+- Phase 6 local validation completed: parity, download validation, reliability checks, and local latency baselines are recorded in `docs/change_requests/PAGED_KWIC_RESULTS_VALIDATION.md`
 - Backend implementation: **COMPLETED**
 - Frontend implementation: **COMPLETED**
-- Validation and benchmarks: **IN PROGRESS**
+- Validation and benchmarks: **COMPLETED (LOCAL)**
 
 Status by phase:
 
@@ -25,7 +25,7 @@ Status by phase:
 4. Phase 3: **COMPLETED**
 5. Phase 4: **COMPLETED**
 6. Phase 5: **COMPLETED**
-7. Phase 6: **IN PROGRESS**
+7. Phase 6: **COMPLETED (LOCAL)**
 
 ## Scope
 
@@ -397,7 +397,7 @@ This plan does not implement:
 - [x] Frontend ticket flow is opt-in
 - [x] CSV/XLSX export remains on the synchronous flow for the MVP
 - [x] Validation and benchmark reports exist
-- [ ] Follow-up n-gram work remains separate
+- [x] Follow-up n-gram work remains separate
 
 ## Final Recommendation
 

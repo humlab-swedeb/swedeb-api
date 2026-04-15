@@ -2,7 +2,7 @@
 
 ## Scope
 
-This report starts Phase 6 validation for the paged KWIC workflow implemented in:
+This report records the completed local Phase 6 validation for the paged KWIC workflow implemented in:
 
 - `POST /v1/tools/kwic/query`
 - `GET /v1/tools/kwic/status/{ticket_id}`
@@ -82,6 +82,26 @@ This validation is currently covered by:
 - `tests/api_swedeb/api/endpoints/test_tool_router.py`
 - `tests/integration/test_kwic_ticket_validation.py`
 
+## Local Suite Status
+
+The following local backend validation suites pass together on the current branch:
+
+- `tests/api_swedeb/api/services/test_result_store.py`
+- `tests/api_swedeb/api/services/test_kwic_ticket_service.py`
+- `tests/api_swedeb/api/endpoints/test_tool_router.py`
+- `tests/integration/test_kwic_ticket_validation.py`
+- `tests/api_swedeb/api/test_app_factory.py`
+- `tests/regression/test_kwic_decode_regression.py`
+- `tests/integration/test_kwic.py`
+
+This means the current branch has local coverage for:
+
+- synchronous KWIC behavior and mapped output shape
+- ticket submission, status, paging, and error handling
+- ticket-based speech download manifest and ordering
+- startup cleanup, expiry cleanup, corrupt artifact cleanup, queue saturation, and byte-budget behavior
+- shared FastAPI app lifecycle with `ResultStore` lifespan management
+
 ## Frontend Rollout Path
 
 - Keep `GET /v1/tools/kwic/{search}` available throughout rollout.
@@ -90,7 +110,10 @@ This validation is currently covered by:
 - Keep speech ZIP download on the ticket path only when a completed KWIC ticket exists.
 - Defer n-gram pagination to `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`.
 
-## Remaining Phase 6 Work
+## Remaining Follow-Up
 
-- Repeat parity and latency checks on a broader or staging-representative corpus.
-- Validate multi-query or larger-corpus behavior on a staging-representative corpus.
+The local repository phase is complete. Remaining follow-up is operational rather than implementation-blocking:
+
+- repeat parity and latency checks on a broader or staging-representative corpus
+- validate multi-query or larger-corpus behavior on a staging-representative corpus
+- decide whether to archive or trim transient validation notes once rollout is complete
