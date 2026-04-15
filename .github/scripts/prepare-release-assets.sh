@@ -26,7 +26,8 @@ sync_version() {
   local version_line="__version__ = \"${new_version}\""
 
   echo "info: Updating version to ${new_version} in pyproject.toml..."
-  poetry version "$new_version"
+  # Update version in pyproject.toml using uv
+  uv version "${new_version}"
 
   echo "info: Synchronizing version in ${init_filename}..."
   if [ ! -f "$init_filename" ]; then
@@ -71,6 +72,6 @@ echo "--- Preparing release assets for version ${VERSION} ---"
 sync_version "$VERSION"
 
 echo "info: Building Python wheel..."
-poetry build
+uv build
 
 echo "info: Assets prepared successfully in dist/ directory."

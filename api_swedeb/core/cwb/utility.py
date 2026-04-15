@@ -1,7 +1,6 @@
 import os
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Self
 
 import ccc
 import pandas as pd
@@ -31,13 +30,13 @@ class CorpusCreateOpts:
         )
 
     @staticmethod
-    def resolve(corpus: Self | ccc.Corpora) -> ccc.Corpus:
+    def resolve(corpus: "ccc.Corpus | CorpusCreateOpts") -> ccc.Corpus:
         if isinstance(corpus, CorpusCreateOpts):
             return corpus.create_corpus()
         return corpus
 
     @staticmethod
-    def to_opts(corpus: ccc.Corpus | Self) -> Self:
+    def to_opts(corpus: "ccc.Corpus | CorpusCreateOpts") -> "CorpusCreateOpts":
         if isinstance(corpus, CorpusCreateOpts):
             return corpus
         return CorpusCreateOpts(
@@ -56,11 +55,11 @@ class CorpusAttribs:
         elif isinstance(attributes, (ccc.Corpus, pd.DataFrame)):
             if isinstance(attributes, ccc.Corpus):
                 attributes = attributes.available_attributes()
-            self.data = attributes.set_index("attribute", drop=False).to_dict("index")
+            self.data = attributes.set_index("attribute", drop=False).to_dict("index")  # type: ignore
         else:
             raise ValueError("Invalid type for attributes")
 
-        self.attributes = {
+        self.attributes: dict[str, dict[str, str | bool]] = {
             k: v | dict(zip(["tag", "id"], k.split("_", maxsplit=1)))
             for k, v in self.data.items()
             if v["type"] == "s-Att" and v.get("annotation")
@@ -76,8 +75,8 @@ class CorpusAttribs:
 
     @cached_property
     def name2id(self) -> dict[str, str]:
-        return {v["attribute"]: v["id"] for v in self.attributes.values()}
+        return {v["attribute"]: v["id"] for v in self.attributes.values()}  # type: ignore
 
     @cached_property
     def id2name(self) -> dict[str, str]:
-        return {v: k for k, v in self.name2id.items}
+        return {v: k for k, v in self.name2id.items()}

@@ -21,9 +21,24 @@ def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
     """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
     if len(pivot_keys) <= 1 or data is None:
         return data
-    data: pd.DataFrame = data.set_index(pivot_keys)
+
+    # Pandas with pyarrow backend can fail when building MultiIndex from
+    # dictionary/string extension dtypes. Normalize pivot key columns first.
+    if any('pyarrow' in str(data[key].dtype) for key in pivot_keys if key in data.columns):
+        data = data.copy()
+        for key in pivot_keys:
+            if key not in data.columns:
+                continue
+            if 'pyarrow' not in str(data[key].dtype):
+                continue
+            if pd.api.types.is_numeric_dtype(data[key].dtype):
+                data[key] = pd.Series(data[key].to_numpy(copy=False), index=data.index)
+            else:
+                data[key] = data[key].astype('string[python]')
+
+    data = data.set_index(pivot_keys)
     while isinstance(data.index, pd.MultiIndex):
-        data = data.unstack(level=1, fill_value=0)
+        data = data.unstack(level=1, fill_value=0)  # type: ignore
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = [' '.join(x) for x in data.columns]
     return data
@@ -43,7 +58,7 @@ def set_default_options():
     pd.options.display.max_columns = None
 
 
-def _create_mask(df: pd.DataFrame, name: str, value: Any, sign: bool = True) -> np.ndarray:
+def _create_mask(df: pd.DataFrame, name: str, value: Any, sign: bool = True) -> np.ndarray | pd.Series:
     if isinstance(
         value,
         (
@@ -72,17 +87,15 @@ def create_mask2(df: pd.DataFrame, masks: Sequence[dict]) -> np.ndarray:
 
 class CreateMaskError(Exception):
     def __init__(self):
-        super().__init__(
-            """
+        super().__init__("""
         tuple length must be 2 or 3 and first element must be sign, second (optional) a binary op.
-    """
-        )
+    """)
 
 
 def size_of(df: pd.DataFrame, unit: Literal['bytes', 'kB', 'MB', 'GB'], total: bool = False) -> int | dict:
     d: dict = {x: 1024**i for i, x in enumerate(['bytes', 'kB', 'MB', 'GB'])}
     sizes: pd.Series = df.memory_usage(index=True, deep=True)
-    return (
+    return (  # type: ignore
         f"{sizes.sum()/d[unit]:.1f} {unit}"
         if total
         else {k: f"{v/d[unit]:.1f} {unit}" for k, v in sizes.to_dict().items()}
@@ -114,7 +127,7 @@ def create_mask(doc: pd.DataFrame, args: dict) -> np.ndarray:
 
     for attr_name, attr_value in args.items():
         attr_sign = True
-        attr_operator: str | Callable = None
+        attr_operator: str | Callable | None = None
 
         if attr_value is None:
             continue
@@ -147,7 +160,7 @@ def create_mask(doc: pd.DataFrame, args: dict) -> np.ndarray:
             value_serie.between(*attr_value)
             if isinstance(attr_value, tuple)
             else (
-                attr_operator(value_serie, attr_value)
+                attr_operator(value_serie, attr_value)  # type: ignore
                 if attr_operator is not None
                 else value_serie.isin(attr_value) if isinstance(attr_value, (list, set)) else value_serie == attr_value
             )
@@ -168,38 +181,38 @@ class PropertyValueMaskingOpts:
         super().__setattr__('data', kwargs or {})
 
     def __getitem__(self, key: int):
-        return self.data[key]
+        return self.data[key]  # type: ignore
 
     def __setitem__(self, k, v):
-        self.data[k] = v
+        self.data[k] = v  # type: ignore
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data)  # type: ignore
 
     def __setattr__(self, k, v):
-        self.data[k] = v
+        self.data[k] = v  # type: ignore
 
     def __getattr__(self, k):
         try:
-            return self.data[k]
+            return self.data[k]  # type: ignore
         except KeyError:
             return None
 
-    def __eq__(self, other: PropertyValueMaskingOpts) -> bool:
+    def __eq__(self, other: PropertyValueMaskingOpts) -> bool:  # type: ignore
         if not isinstance(other, PropertyValueMaskingOpts):
             return False
         return self.data == other.props
 
     @property
     def props(self) -> dict:
-        return self.data
+        return self.data  # type: ignore
 
     @property
     def opts(self) -> dict:
-        return self.data
+        return self.data  # type: ignore
 
     def mask(self, doc: pd.DataFrame) -> np.ndarray:
-        return create_mask(doc, self.data)
+        return create_mask(doc, self.data)  # type: ignore
 
     def apply(self, doc: pd.DataFrame) -> pd.DataFrame:
         if len(self.hot_attributes(doc)) == 0:
@@ -208,9 +221,9 @@ class PropertyValueMaskingOpts:
 
     def hot_attributes(self, doc: pd.DataFrame) -> list[str]:
         """Returns attributes that __might__ filter tagged frame"""
-        return [
+        return [  # type: ignore
             (attr_name, attr_value)
-            for attr_name, attr_value in self.data.items()
+            for attr_name, attr_value in self.data.items()  # type: ignore
             if attr_name in doc.columns and attr_value is not None
         ]
 
@@ -218,7 +231,8 @@ class PropertyValueMaskingOpts:
     def clone(self) -> PropertyValueMaskingOpts:
         return PropertyValueMaskingOpts(**self.props)
 
-    def update(self, other: PropertyValueMaskingOpts | dict = None, **kwargs) -> PropertyValueMaskingOpts:
+    def update(self, other: PropertyValueMaskingOpts | dict | None = None, **kwargs) -> PropertyValueMaskingOpts:
+        assert self.data is not None
         if isinstance(other, dict):
             self.data.update(other)
         if kwargs:
@@ -261,17 +275,17 @@ def pandas_to_csv_zip(
 
     with zipfile.ZipFile(zip_filename, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
         for df, filename in dfs:
-            if not isinstance(df, pd.core.frame.DataFrame) or not isinstance(filename, str):
+            if not isinstance(df, pd.DataFrame) or not isinstance(filename, str):
                 raise ValueError(
                     f"Expected tuple[pd.DateFrame, filename: str], found tuple[{type(df)}, {type(filename)}]"
                 )
             filename = replace_extension(filename=filename, extension=extension)
             data_str = df.to_csv(**to_csv_opts)
-            zf.writestr(filename, data=data_str)
+            zf.writestr(str(filename), data=data_str)
 
 
 def pandas_read_csv_zip(zip_filename: str, pattern='*.csv', **read_csv_opts) -> dict:
-    data = dict()
+    data = {}
     with zipfile.ZipFile(zip_filename, mode='r') as zf:
         for filename in zf.namelist():
             if not fnmatch.fnmatch(filename, pattern):
@@ -305,7 +319,7 @@ def ts_store(
     logger.info(f'Data stored in {filename}')
 
 
-def rename_columns(df: pd.DataFrame, columns: list[str] = None) -> pd.DataFrame:
+def rename_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     df.columns = columns
     return df
 
@@ -321,9 +335,11 @@ def as_slim_types(df: pd.DataFrame, columns: list[str], dtype: np.dtype) -> pd.D
     return df
 
 
-def set_index(df: pd.DataFrame, columns: str | list[str], drop: bool = True, axis_name: str = None) -> pd.DataFrame:
+def set_index(
+    df: pd.DataFrame, columns: str | list[str], drop: bool = True, axis_name: str | None = None
+) -> pd.DataFrame:
     """Set index if columns exist, otherwise skip (assuming columns already are index)"""
-    columns: list[str] = [columns] if isinstance(columns, str) else columns
+    columns = [columns] if isinstance(columns, str) else columns
     if any(column not in df.columns for column in columns):
         return df
     df = df.set_index(columns, drop=drop)

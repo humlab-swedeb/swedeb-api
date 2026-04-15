@@ -35,11 +35,11 @@ class PivotKeys:
 
     """
 
-    def __init__(self, pivot_keys: dict[str, PivotKeySpec] | list[PivotKeySpec] = None):
+    def __init__(self, pivot_keys: dict[str, PivotKeySpec] | list[PivotKeySpec] | None = None):
         self._pivot_keys_spec: dict[str, PivotKeySpec] = {}
         self.update(pivot_keys)
 
-    def update(self, other: Self | dict | list | str) -> Self:
+    def update(self, other: Self | dict | list | str | None) -> "PivotKeys":
         if isinstance(other, PivotKeys):
             self._pivot_keys_spec.update(other.pivot_keys_spec)
         if isinstance(other, dict):
@@ -59,9 +59,8 @@ class PivotKeys:
         return self
 
     @staticmethod
-    def create_by_index(document_index: pd.DataFrame, *text_columns: str) -> Self:
+    def create_by_index(document_index: pd.DataFrame, *text_columns: str) -> "PivotKeys":
         """Create pivot keys from document index. For each text column an ID column is converted, and used as a pivot key."""
-        # FIXME: Extend to support existing ID columns, naming, etc
         pivot_keys: dict = {}
         for text_column in text_columns:
             id_column: str = f"{text_column}_id"
@@ -73,16 +72,16 @@ class PivotKeys:
         return PivotKeys(pivot_keys=pivot_keys)
 
     @staticmethod
-    def try_load(path: str, default: dict = None) -> Self:
+    def try_load(path: str, default: dict | None = None) -> dict:
         data: dict = read_yaml(path)
         return dotcoalesce(data, 'extra_opts.pivot_keys', 'pivot_keys', default=default)
 
     @staticmethod
-    def load_by_probe(folder: str) -> Self:
+    def load_by_probe(folder: str) -> "PivotKeys":
         """Probes folder for pivot keys"""
 
         if isfile(join(folder, 'pivot_keys.yml')):
-            return PivotKeys(join(folder, 'pivot_keys.yml'))
+            return PivotKeys(pivot_keys=PivotKeys.try_load(join(folder, 'pivot_keys.yml')))
 
         for path in glob.glob(folder + '/*.y*ml'):
             data: dict = PivotKeys.try_load(path, default=None)
@@ -102,7 +101,7 @@ class PivotKeys:
     def __contains__(self, text_name: str) -> bool:
         return text_name in self._pivot_keys_spec
 
-    def __getitem__(self, text_name: str, default: dict = None) -> dict:
+    def __getitem__(self, text_name: str, default: dict | None = None) -> dict:
         return self._pivot_keys_spec.get(text_name, default or {})
 
     def get(self, text_name: str, default: Any = None) -> dict:
@@ -136,23 +135,23 @@ class PivotKeys:
 
     @property
     def text_names(self) -> list[str]:
-        return [x['text_name'] for x in self._pivot_keys_spec.values()]
+        return [x['text_name'] for x in self._pivot_keys_spec.values()]  # type: ignore
 
     @property
     def id_names(self) -> list[str]:
-        return [x['id_name'] for x in self._pivot_keys_spec.values()]
+        return [x['id_name'] for x in self._pivot_keys_spec.values()]  # type: ignore
 
     @property
-    def has_pivot_keys(self) -> list[str]:
+    def has_pivot_keys(self) -> bool:
         return len(self._pivot_keys_spec) > 0
 
     def key_value_name2id(self, text_name: str) -> dict[str, int]:
         """Returns name/id mapping for given key's value range"""
-        return self.get(text_name).get('values')
+        return self.get(text_name).get('values') or {}
 
     def key_value_id2name(self, text_name: str) -> dict[int, str]:
         """Returns id/name mapping for given key's value range"""
-        return revdict(self.key_value_name2id(text_name))
+        return revdict(self.key_value_name2id(text_name) or {})
 
     def key_values_str(self, names: set[str], sep=': ') -> list[str]:
         return [f'{k}{sep}{v}' for k in names for v in self.key_value_name2id(k).keys()]
@@ -164,16 +163,14 @@ class PivotKeys:
         if not isinstance(self._pivot_keys_spec, (list, dict)):
             raise TypeError(f"expected list/dict of pivot key specs, got {type(self._pivot_keys_spec)}")
 
-        items: dict = (
-            self._pivot_keys_spec if isinstance(self._pivot_keys_spec, list) else self._pivot_keys_spec.values()
-        )
+        items = self._pivot_keys_spec if isinstance(self._pivot_keys_spec, list) else self._pivot_keys_spec.values()
 
         if not all(isinstance(x, dict) for x in items):
             raise TypeError("expected list of dicts")
 
         expected_keys: set[str] = {'text_name', 'id_name', 'values'}
         if len(items) > 0:
-            if not all(set(x.keys()) == expected_keys for x in items):
+            if not all(set(x.keys()) == expected_keys for x in items):  # type: ignore ; This might be a bug
                 raise TypeError("expected list of dicts(id_name,text_name,values)")
 
         return True
@@ -191,10 +188,10 @@ class PivotKeys:
 
         """Convert list of pairs to dict of list: {'key1: [v1, v2], 'k3': [v5]...}"""
         key_values = defaultdict(list)
-        value_tuples: tuple[str, str] = [x.split(sep) for x in value_pairs]
+        value_tuples: list[list[str]] = [x.split(sep) for x in value_pairs]
         for k, v in value_tuples:
             is_sequence_of_values: bool = vsep is not None and vsep in v
-            values: list[str | int] = v.split(vsep) if is_sequence_of_values else [v]
+            values: list[str] | list[int] = v.split(vsep) if is_sequence_of_values else [v]
             try:
                 values = [int(x) for x in values]
             except TypeError:
@@ -221,10 +218,10 @@ class PivotKeys:
 
         else:
             """Values are e.g. ('xxx', ['label_1','label_2','label_3',...}"""
-            key2id: dict = self.key_name2key_id
+            key2id: dict[str, str] = self.key_name2key_id
             for k, v in key_values.items():
-                fg: Callable[[str], int] = self.key_value_name2id(k).get
-                opts[key2id[k]] = [int(fg(x)) for x in v]
+                fg: Callable[[str], int] = self.key_value_name2id(k).get  # type: ignore
+                opts[key2id[k]] = [int(fg(x)) for x in v]  # type: ignore
         return opts
 
     def create_filter_by_str_sequence(
@@ -232,7 +229,7 @@ class PivotKeys:
         key_value_pairs: list[str],
         decode: bool = True,
         sep: str = ': ',
-        vsep: str = None,
+        vsep: str | None = None,
     ) -> PropertyValueMaskingOpts:
         """Returns user's filter selections as a name-to-values mapping.
 
@@ -267,15 +264,15 @@ class PivotKeys:
         """
         for key_id in self.id_names:
             if key_id in df.columns:
-                key_name: str = self.key_id2key_name.get(key_id)
-                id2name: Callable[[int], str] = self.key_value_id2name(text_name=key_name).get
+                key_name: str = self.key_id2key_name.get(key_id)  # type: ignore
+                id2name: Callable[[int], str] = self.key_value_id2name(text_name=key_name).get  # type: ignore
                 df[key_name] = df[key_id].apply(id2name)
                 if drop:
                     df.drop(columns=key_id, inplace=True, errors='ignore')
         return df
 
 
-def codify_column(document_index: pd.DataFrame, column_name: str, id_column_name: str = None) -> dict[Any, int]:
+def codify_column(document_index: pd.DataFrame, column_name: str, id_column_name: str | None = None) -> dict[Any, int]:
     """Create a new column named id_column_name with unique integer values for each unique value in column_name"""
 
     if column_name not in document_index.columns:

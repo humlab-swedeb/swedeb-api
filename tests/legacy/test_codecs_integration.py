@@ -1,11 +1,13 @@
 import sqlite3
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
-from api_swedeb.core.codecs import Codec, PersonCodecs
 from api_swedeb.core.configuration.inject import ConfigValue
+from api_swedeb.core.person_codecs import Codec, PersonCodecs
+from api_swedeb.core.speech_utility import resolve_pdf_links_for_speeches, resolve_wiki_url_for_speaker
 
 
 @pytest.fixture(name="gender_dataframe")
@@ -298,7 +300,6 @@ class TestCodecs:
         ]
         assert codecs.property_values_specs == expected_specs
 
-    # TODO: Use this fixture in other tests.
     @pytest.fixture(name="codecs_instance")
     def fixture_codecs_instance(self, store: dict[str, pd.DataFrame]):
         codecs: PersonCodecs = PersonCodecs().load(store)
@@ -398,13 +399,13 @@ class TestPersonCodecs:
         person_codecs = PersonCodecs()
         person_codecs.load(codecs_source_dict)
         person = person_codecs[0]
-        assert person['name'] == 'John Doe'
+        assert str(person['name']) == 'John Doe'
 
     def test_getitem_by_person_id(self, codecs_source_dict):
         person_codecs = PersonCodecs()
         person_codecs.load(codecs_source_dict)
         person = person_codecs['p1']
-        assert person['name'] == 'John Doe'
+        assert str(person['name']) == 'John Doe'
 
     def test_getitem_by_non_existing_key(self, codecs_source_dict):
         person_codecs = PersonCodecs()
@@ -416,7 +417,7 @@ class TestPersonCodecs:
         person_codecs = PersonCodecs()
         person_codecs.load(codecs_source_dict)
         person = person_codecs['q1']
-        assert person['name'] == 'John Doe'
+        assert str(person['name']) == 'John Doe'
 
     @pytest.mark.parametrize(
         "wiki_id, expected",
@@ -426,12 +427,14 @@ class TestPersonCodecs:
         ],
     )
     def test_person_wiki_link(self, wiki_id, expected):
-        assert PersonCodecs.person_wiki_link(wiki_id) == expected
+        assert resolve_wiki_url_for_speaker(wiki_id) == expected
 
     def test_person_wiki_link_series(self):
-        wiki_ids = pd.Series(["Q12345", "unknown"])
-        expected = pd.Series(["https://www.wikidata.org/wiki/Q12345", "Okänd"])
-        pd.testing.assert_series_equal(PersonCodecs.person_wiki_link(wiki_ids), expected)
+        wiki_ids: pd.Series = pd.Series(["Q12345", "unknown"])
+        expected: pd.Series = pd.Series(pd.Categorical(["https://www.wikidata.org/wiki/Q12345", "Okänd"]))
+        wiki_links = resolve_wiki_url_for_speaker(wiki_ids)
+        assert isinstance(wiki_links, pd.Series)
+        pd.testing.assert_series_equal(wiki_links, expected)
 
     @pytest.mark.parametrize(
         "speech_id, subfolder, page_nr",
@@ -444,22 +447,25 @@ class TestPersonCodecs:
     def test_speech_link(self, speech_id, subfolder, page_nr):
         base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
         protocol_name: str = speech_id.split('_')[0]
-        expected: str = f'{base_url}/{subfolder}/{protocol_name}.pdf#page={page_nr}'
-        assert PersonCodecs.speech_link(speech_id, page_nr) == expected
+        expected: str = f'{base_url}{subfolder}/{protocol_name}.pdf#page={page_nr}'
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_id, page_nr=page_nr, base_url=base_url)
+        assert isinstance(speech_links, str)
+        assert speech_links == expected
 
     def test_speech_link_series(self):
-        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
+        base_url: str = ConfigValue("pdf_server.base_url").resolve()
         speech_ids: pd.Series = pd.Series(["prot-1867--ak--0118_001", "prot-19992000--001_001", "prot-201011--084_160"])
         page_nrs: pd.Series = pd.Series([1, 6, 4])
         expected: pd.Series = pd.Series(
             [
-                f"{base_url}/1867/prot-1867--ak--0118.pdf#page=1",
-                f"{base_url}/19992000/prot-19992000--001.pdf#page=6",
-                f"{base_url}/201011/prot-201011--084.pdf#page=4",
+                f"{base_url}1867/prot-1867--ak--0118.pdf#page=1",
+                f"{base_url}19992000/prot-19992000--001.pdf#page=6",
+                f"{base_url}201011/prot-201011--084.pdf#page=4",
             ]
         )
-        result: pd.Series = PersonCodecs.speech_link(speech_ids, page_nrs)
-        pd.testing.assert_series_equal(result, expected)
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_ids, page_nr=page_nrs, base_url=base_url)
+        assert isinstance(speech_links, pd.Series)
+        pd.testing.assert_series_equal(speech_links, expected)
 
     def test_decode_speech_index_with_empty_dataframe(self) -> None:
         person_codecs: PersonCodecs = PersonCodecs()
@@ -472,7 +478,7 @@ class TestPersonCodecs:
     ) -> None:
         speech_index_copy = speech_index.copy()
 
-        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.speech_utility.ConfigValue') as mock_config_value:
             base_url: str = "https://example.com/"
             mock_config_value.return_value.resolve.return_value = base_url
             result: pd.DataFrame = person_codecs.decode_speech_index(speech_index_copy)
@@ -487,10 +493,10 @@ class TestPersonCodecs:
     ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
 
-        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.speech_utility.ConfigValue') as mock_config_value:
             base_url: str = "https://example.com/"
             mock_config_value.return_value.resolve.return_value = base_url
-            result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(speech_index_copy)
+            result: pd.DataFrame | Any = person_codecs.decode_speech_index(speech_index_copy)
             assert 'link' in result.columns
             assert 'speech_link' in result.columns
             result = person_codecs.decode_speech_index(result)
@@ -504,10 +510,10 @@ class TestPersonCodecs:
         self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
     ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
-        with patch('api_swedeb.core.codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
             mock_config_value.return_value.resolve.return_value = "https://example.com/"
             value_updates: dict[str, dict[str, str]] = {'name': {'Eric Holmqvist': 'Eric Holmberg'}}
-            result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(
+            result: pd.DataFrame | Any = person_codecs.decode_speech_index(
                 speech_index_copy, value_updates=value_updates
             )
             assert 'Eric Holmberg' in result['name'].to_list()
@@ -519,6 +525,6 @@ class TestPersonCodecs:
         self, person_codecs: PersonCodecs, speech_index: pd.DataFrame
     ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
-        result: pd.DataFrame | sqlite3.Any = person_codecs.decode_speech_index(speech_index_copy, sort_values=True)
+        result: pd.DataFrame | Any = person_codecs.decode_speech_index(speech_index_copy, sort_values=True)
         assert result['name'].is_monotonic_increasing
         assert result['name'].is_unique

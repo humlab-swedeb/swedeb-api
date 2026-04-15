@@ -19,8 +19,9 @@ class Speech(DictLikeObject):
 
     @property
     def text(self) -> str:
-        text: str = fix_whitespace("\n".join(self.paragraphs))
-        return text
+        if "text" in self._data:
+            return self._data["text"]
+        return fix_whitespace("\n".join(self.paragraphs))
 
     @property
     def error(self) -> Optional[str]:

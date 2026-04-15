@@ -2,14 +2,13 @@ import typing as t
 
 # type: ignore
 from . import zip_utils
-from ._decorators import (
+from ._decorators import (  # try_catch,
     ExpectException,
     deprecated,
     do_not_use,
     enter_exit_log,
     mark_as_disabled,
     suppress_error,
-    try_catch,
 )
 from .file_utility import (
     default_data_folder,
@@ -26,7 +25,6 @@ from .file_utility import (
     read_textfile,
     read_textfile2,
     read_yaml,
-    save_excel,
     symlink_files,
     touch,
     unpickle_compressed_from_file,

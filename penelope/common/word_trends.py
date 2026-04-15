@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass, field
-from typing import Sequence, overload
+from typing import Generic, Sequence, TypeVar, overload
 
 import pandas as pd
 
@@ -9,33 +9,35 @@ from penelope import corpus as pc
 from penelope import utility as pu
 from penelope.common import keyness as pk
 
+T = TypeVar("T", bound="TrendsComputeOpts")
+
 
 @dataclass
-class TrendsComputeOpts:
+class TrendsComputeOpts(Generic[T]):
     normalize: bool
     keyness: pk.KeynessMetric
 
     temporal_key: str
     pivot_keys_id_names: list[str] = field(default_factory=list)
-    # FIXME: Decide if it is best to apply filter in `transform` (reduce corpus) or extract (slice corpus)
-    filter_opts: pu.PropertyValueMaskingOpts = None
+
+    filter_opts: pu.PropertyValueMaskingOpts | None = None
     unstack_tabular: bool = False
 
     fill_gaps: bool = False
-    smooth: bool = None
-    top_count: int = None
-    words: list[str] = None
+    smooth: bool | None = None
+    top_count: int | None = None
+    words: list[str] | None = None
     descending: bool = False
     keyness_source: pk.KeynessMetricSource = pk.KeynessMetricSource.Full
 
     @property
-    def clone(self) -> "TrendsComputeOpts":
-        other: TrendsComputeOpts = deep_clone(self, ignores=["filter_opts"], assign_ignores=False)
+    def clone(self: T) -> T:
+        other: T = deep_clone(self, ignores=["filter_opts"], assign_ignores=False)
         if self.filter_opts is not None:
             other.filter_opts = pu.PropertyValueMaskingOpts(**self.filter_opts.props)
         return other
 
-    def invalidates_corpus(self, other: "TrendsComputeOpts") -> bool:
+    def invalidates_corpus(self: T, other: T) -> bool:
         if (
             self.normalize != other.normalize  # pylint: disable=too-many-boolean-expressions
             or self.keyness != other.keyness
@@ -48,7 +50,7 @@ class TrendsComputeOpts:
             return True
         return False
 
-    def update(self, **newdata):
+    def update(self: T, **newdata) -> None:
         for key, value in newdata.items():
             setattr(self, key, value)
 
@@ -72,7 +74,7 @@ class TabularCompiler:
 
 
 class TrendsServiceBase(abc.ABC):
-    def __init__(self, corpus: pc.VectorizedCorpus = None, n_top: int = 100000):
+    def __init__(self, corpus: pc.VectorizedCorpus | None = None, n_top: int = 100000) -> None:
         self.n_top: int = n_top
 
         self._transform_opts: TrendsComputeOpts = TrendsComputeOpts(
@@ -80,15 +82,15 @@ class TrendsServiceBase(abc.ABC):
         )
         self.tabular_compiler: TabularCompiler = TabularCompiler()
 
-        self._corpus: pc.VectorizedCorpus = None
+        self._corpus: pc.VectorizedCorpus | None = None
         self.corpus = corpus
 
     @property
-    def corpus(self) -> pc.VectorizedCorpus:
+    def corpus(self) -> pc.VectorizedCorpus | None:
         return self._corpus
 
     @corpus.setter
-    def corpus(self, corpus: pc.VectorizedCorpus):
+    def corpus(self, corpus: pc.VectorizedCorpus | None):
         self._corpus = corpus
         self._transformed_corpus = None
         self._gof_data = None
@@ -97,7 +99,12 @@ class TrendsServiceBase(abc.ABC):
     def _transform_corpus(self, opts: TrendsComputeOpts) -> pc.VectorizedCorpus: ...
 
     @property
-    def transformed_corpus(self) -> pc.VectorizedCorpus:
+    def transformed_corpus(self) -> pc.VectorizedCorpus | None:
+        return self._transformed_corpus
+
+    @property
+    def transformed_corpus2(self) -> pc.VectorizedCorpus:
+        assert self._transformed_corpus is not None
         return self._transformed_corpus
 
     @property
@@ -110,18 +117,18 @@ class TrendsServiceBase(abc.ABC):
     #         self._gof_data = gof.GofData.compute(self.corpus, n_top=self.n_top)
     #     return self._gof_data
 
-    @overload
-    def find_word_indices(self, opts: TrendsComputeOpts = ...) -> list[int]: ...
+    # @overload
+    # def find_word_indices(self, opts: TrendsComputeOpts = ...) -> list[int]: ...
 
-    @overload
-    def find_word_indices(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[int]: ...
+    # @overload
+    # def find_word_indices(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[int]: ...
 
     def find_word_indices(
         self,
-        opts: TrendsComputeOpts = None,
-        words: list[str] = None,
-        top_count: int = None,
-        descending: bool = None,
+        opts: TrendsComputeOpts | None = None,
+        words: list[str] | None = None,
+        top_count: int | None = None,
+        descending: bool | None = None,
     ) -> list[int]:
         """Find matching word indices. If `opts` is provided, it will be used to transform the corpus before finding matches.
             Otherwise the already transformed corpus will be used.
@@ -138,17 +145,20 @@ class TrendsServiceBase(abc.ABC):
             list[int]: list of word indicies
         """
         if isinstance(opts, TrendsComputeOpts):
-            return self.transform(opts).transformed_corpus.find_matching_words_indices(
-                words or opts.words,
-                top_count or opts.top_count,
+            search_words: list[str] = words or opts.words or []
+            return self.transform(opts).transformed_corpus.find_matching_words_indices(  # type: ignore
+                search_words,
+                top_count or opts.top_count or 99,
                 descending=descending if descending is not None else opts.descending,
             )
 
         if isinstance(words, list):
-            if self._transformed_corpus is None:
+            if self.transformed_corpus is None:
                 raise ValueError("Corpus is not transformed")
 
-            return self.transformed_corpus.find_matching_words_indices(words, top_count, descending=descending)
+            return self.transformed_corpus.find_matching_words_indices(
+                words, top_count or 99, descending=descending if descending is not None else False
+            )
 
         raise TypeError("Either opts or words must be provided")
 
@@ -156,10 +166,20 @@ class TrendsServiceBase(abc.ABC):
     def find_words(self, opts: TrendsComputeOpts = ...) -> list[str]: ...
 
     @overload
-    def find_words(self, words: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
+    def find_words(
+        self,
+        opts: TrendsComputeOpts | None,
+        words: list[str] | None = ...,
+        top_count: int | None = ...,
+        descending: bool | None = ...,
+    ) -> list[str]: ...
 
     def find_words(
-        self, opts: TrendsComputeOpts = None, words: list[str] = None, top_count: int = None, descending: bool = None
+        self,
+        opts: TrendsComputeOpts | None = None,
+        words: list[str] | None = None,
+        top_count: int | None = None,
+        descending: bool | None = None,
     ) -> list[str]:
         """Find matching words. If `opts` is provided, it will be used to transform the corpus before finding matches.
             Otherwise the already transformed corpus will be used.
@@ -176,16 +196,23 @@ class TrendsServiceBase(abc.ABC):
             list[str]: list of words
         """
         if isinstance(opts, TrendsComputeOpts):
-            return self.transform(opts).transformed_corpus.find_matching_words(
-                words or opts.words, top_count or opts.top_count, descending=descending or opts.descending
+            return self.transform(opts).transformed_corpus.find_matching_words(  # type: ignore
+                words or opts.words,  # type: ignore
+                top_count or opts.top_count,
+                descending=descending or opts.descending,
             )
         if isinstance(words, list):
-            return self.transformed_corpus.find_matching_words(words, top_count, descending=descending)
+            return self.transformed_corpus.find_matching_words(  # type: ignore
+                words,
+                top_count,
+                descending=descending or False,
+            )
         raise TypeError("Either opts or words must be provided")
 
     def get_top_terms(
         self, n_top: int = 100, kind: str = 'token+count', category_column: str = "category"
     ) -> pd.DataFrame:
+        assert self._transformed_corpus is not None
         top_terms = self._transformed_corpus.get_top_terms(category_column=category_column, n_top=n_top, kind=kind)
         return top_terms
 
@@ -201,30 +228,44 @@ class TrendsServiceBase(abc.ABC):
 
         return self
 
-    @overload
-    def extract(
-        self, indices: Sequence[int | str] = ..., filter_opts: pu.PropertyValueMaskingOpts = ...
-    ) -> list[str]: ...
+    # @overload
+    # def extract(
+    #     self, indices: Sequence[int | str] = ..., filter_opts: pu.PropertyValueMaskingOpts = ...
+    # ) -> list[str]: ...
 
-    @overload
-    def extract(self, indices: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
+    # @overload
+    # def extract(self, indices: list[str] = ..., top_count: int = ..., descending: bool = ...) -> list[str]: ...
 
     def extract(
         self,
-        indices: Sequence[int | str],
-        top_count: int = None,
-        descending: bool = None,
-        filter_opts: pu.PropertyValueMaskingOpts = None,
+        indices: Sequence[int] | Sequence[str],
+        top_count: int | None = None,
+        descending: bool | None = None,
+        filter_opts: pu.PropertyValueMaskingOpts | None = None,
     ) -> pd.DataFrame:
+        """Extracts trend data for tokens ´indices` and returns a pd.DataFrame.
+        Args:
+            indices: List of token indices (int or str)
+            top_count: Maximum number of tokens to include (if indices are str)
+            descending: Whether to sort tokens by descending frequency (if indices are str)
+            filter_opts: Optional filter options to apply to the extracted data
+        Returns:
+            DataFrame with trend data
+        """
+        if self.transformed_corpus is None:
+            raise ValueError("Corpus is not transformed")
+
         if len(indices) > 0:
             if isinstance(indices[0], str):
-                indices = self.transformed_corpus.find_matching_words_indices(indices, top_count, descending=descending)
+                indices = self.transformed_corpus.find_matching_words_indices(
+                    list(indices), top_count, descending=descending  # type: ignore[arg-type]
+                )
 
         data: pd.DataFrame = self.tabular_compiler.compile(
             corpus=self.transformed_corpus,
             temporal_key=self.compute_opts.temporal_key,
             pivot_keys_id_names=self.compute_opts.pivot_keys_id_names,
-            indices=indices,
+            indices=indices,  # type: ignore ; ->  We know indices is list[int] here
         )
         if filter_opts and len(filter_opts) > 0:
             data = data[filter_opts.mask(data)]
@@ -238,23 +279,23 @@ class TrendsServiceBase(abc.ABC):
 
 
 class TrendsService(TrendsServiceBase):
-    def __init__(self, corpus: pc.VectorizedCorpus = None, n_top: int = 100000):
+    def __init__(self, corpus: pc.VectorizedCorpus | None = None, n_top: int = 100000) -> None:
         super().__init__(corpus=corpus, n_top=n_top)
 
     def _transform_corpus(self, opts: TrendsComputeOpts) -> pc.VectorizedCorpus:
         corpus: pc.VectorizedCorpus = (
-            self.corpus.tf_idf()
+            self.corpus.tf_idf()  # type: ignore
             if opts.keyness == pk.KeynessMetric.TF_IDF
             else (
-                self.corpus.normalize_by_raw_counts() if opts.keyness == pk.KeynessMetric.TF_normalized else self.corpus
+                self.corpus.normalize_by_raw_counts() if opts.keyness == pk.KeynessMetric.TF_normalized else self.corpus  # type: ignore
             )
         )
 
-        corpus = corpus.group_by_pivot_keys(
+        corpus = corpus.group_by_pivot_keys(  # type: ignore
             temporal_key=opts.temporal_key,
             pivot_keys=list(opts.pivot_keys_id_names),
             filter_opts=opts.filter_opts,
-            document_namer=None,  # FIXME
+            document_namer=None,
             fill_gaps=opts.fill_gaps,
             aggregate='sum',
         )

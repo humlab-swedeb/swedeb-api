@@ -1,53 +1,133 @@
+import os
+import shutil
 import sqlite3
 import sys
+from pathlib import Path
 
 import ccc
+import dotenv
 import pandas as pd
 import pytest
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
+from jinja2 import Template
 from loguru import logger
 
-from api_swedeb.api import metadata_router, tool_router
-from api_swedeb.api.utils import corpus as api_swedeb
-from api_swedeb.core.codecs import PersonCodecs
-from api_swedeb.core.configuration import ConfigStore, ConfigValue
-
-ConfigStore.configure_context(source='tests/config.yml')
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.app import create_app
+from api_swedeb.core.configuration import ConfigValue, get_config_store
+from api_swedeb.core.person_codecs import PersonCodecs
 
 # pylint: disable=redefined-outer-name
 
+dotenv.load_dotenv("tests/test.env")
 
 logger.remove()
 logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 
-@pytest.fixture(scope='module')
-def corpus() -> ccc.Corpus:
-    # Use shared data_dir for better performance and disk efficiency.
-    # CWB-CCC creates corpus-specific subdirectories, so multiple processes can safely share.
-    data_dir: str = '/tmp/ccc-swedeb-test'
+def generate_config_file(output_folder: Path, corpus_folder: Path, corpus_version: str, metadata_version: str) -> Path:
+    """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
+    The config file is created once per test session and shared across tests.
+    Pytest automatically removes the tmp_path_factory directory after the session ends.
+    """
+
+    output_folder = output_folder.absolute()
+    corpus_folder = corpus_folder.absolute()
+
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    # Create CWB registry file
+    registry_template_path: Path = Path("./tests/templates/registry.jinja")
+    cwb_folder: Path = (Path(corpus_folder) / corpus_version / "cwb").absolute()
+    registry_folder: Path = output_folder / "registry"
+    registry_folder.mkdir(parents=True, exist_ok=True)
+    registry_file: Path = registry_folder / "riksprot_corpus"
+    content: str = Template(registry_template_path.read_text(encoding="utf-8")).render(cwb_folder=str(cwb_folder))
+    registry_file.write_text(content)
+
+    # Create config file
+    config_template_path: Path = Path("./tests/templates/config.yml.jinja")
+    config_content = Template(config_template_path.read_text(encoding="utf-8")).render(
+        registry_dir=str(registry_folder),
+        metadata_version=metadata_version,
+        corpus_version=corpus_version,
+        corpus_folder=str(corpus_folder),
+    )
+    config_file: Path = output_folder / "config.yml"
+    config_file.write_text(config_content)
+
+    return config_file
+
+
+@pytest.fixture(scope='session')
+def config_file_path() -> Path:
+    """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
+    The config file is created once per test session and shared across tests.
+    Pytest automatically removes the tmp_path_factory directory after the session ends.
+    """
+
+    shutil.rmtree(Path(__file__).parent / "output", ignore_errors=True)
+
+    corpus_version: str = os.environ.get("CORPUS_VERSION", "latest")
+    metadata_version: str = os.environ.get("METADATA_VERSION", "latest")
+
+    config_file = generate_config_file(
+        output_folder=Path(__file__).parent / "output",
+        corpus_folder=Path(__file__).parent / "test_data",
+        corpus_version=corpus_version,
+        metadata_version=metadata_version,
+    )
+
+    return config_file
+
+
+@pytest.fixture(scope='session', autouse=True)
+def configure_config_store(config_file_path: Path) -> None:
+    """Initialises ConfigStore once per session before any other fixtures run."""
+    get_config_store().configure_context(source=str(config_file_path), env_filename="tests/test.env")
+
+
+@pytest.fixture(scope='session')
+def corpus(tmp_path_factory):
+    # # Use shared data_dir for better performance and disk efficiency.
+    # # CWB-CCC creates corpus-specific subdirectories, so multiple processes can safely share.
+    # data_dir: str = '/tmp/ccc-swedeb-test'
+    # corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
+    # registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
+    # return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)
+
+    # Creates a unique temp dir for this test module run
+    data_dir: Path = tmp_path_factory.mktemp("ccc-swedeb-test")
+
     corpus_name: str = ConfigValue("cwb.corpus_name").resolve()
     registry_dir: str = ConfigValue("cwb.registry_dir").resolve()
-    return ccc.Corpora(registry_dir=registry_dir).corpus(corpus_name=corpus_name, data_dir=data_dir)
+
+    corpus = ccc.Corpora(registry_dir=registry_dir).corpus(
+        corpus_name=corpus_name,
+        data_dir=str(data_dir),
+    )
+
+    yield corpus
+
+    # shutil.rmtree(data_dir, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")
-def api_corpus() -> api_swedeb.Corpus:
-    corpus: api_swedeb.Corpus = api_swedeb.Corpus()
-    _ = corpus.vectorized_corpus
-    _ = corpus.person_codecs
-    _ = corpus.document_index
-    _ = corpus.decoded_persons
-    _ = corpus.repository
-    return corpus
+def corpus_loader() -> CorpusLoader:
+    loader: CorpusLoader = CorpusLoader()
+    _ = loader.vectorized_corpus
+    _ = loader.person_codecs
+    _ = loader.document_index
+    _ = loader.decoded_persons
+    _ = loader.repository
+    return loader
 
 
 @pytest.fixture(scope="module")
-def _speech_index_cached() -> pd.DataFrame:
+def _speech_index_cached(corpus_loader: CorpusLoader) -> pd.DataFrame:
     """Cached speech index - internal use only."""
-    return api_swedeb.Corpus().vectorized_corpus.document_index
+    return corpus_loader.vectorized_corpus.document_index
 
 
 @pytest.fixture
@@ -57,8 +137,8 @@ def speech_index(_speech_index_cached: pd.DataFrame) -> pd.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def _person_codecs_cached(api_corpus: api_swedeb.Corpus) -> PersonCodecs:
-    return api_corpus.person_codecs
+def _person_codecs_cached(corpus_loader: CorpusLoader) -> PersonCodecs:
+    return corpus_loader.person_codecs
 
 
 @pytest.fixture
@@ -68,22 +148,7 @@ def person_codecs(_person_codecs_cached: PersonCodecs) -> PersonCodecs:
 
 @pytest.fixture(scope='session')
 def fastapi_app() -> FastAPI:
-    app = FastAPI()
-
-    origins: list[str] = ConfigValue("fastapi.origins").resolve()
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_methods=['GET', 'POST'],
-        allow_headers=[],
-        allow_credentials=True,
-    )
-
-    app.include_router(tool_router.router)
-    app.include_router(metadata_router.router)
-
-    return app
+    return create_app(config_source=None)
 
 
 @pytest.fixture(scope='session')
@@ -100,141 +165,109 @@ def fixture_sqlite3db(tmp_path):
     # Create tables and insert test data
     cursor = conn.cursor()
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE gender (
             gender_id INTEGER PRIMARY KEY,
             gender TEXT,
             gender_abbrev TEXT
         )
-    '''
-    )
-    cursor.execute(
-        '''
+    ''')
+    cursor.execute('''
         INSERT INTO gender (gender_id, gender, gender_abbrev) VALUES
         (1, 'Male', 'M'),
         (2, 'Female', 'F')
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE persons_of_interest (
             pid INTEGER PRIMARY KEY AUTOINCREMENT,
             person_id TEXT,
             name TEXT
         )
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         INSERT INTO persons_of_interest (person_id, name) VALUES
         ('p1', 'John Doe'),
         ('p2', 'Jane Doe')
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE chamber (
             chamber_id INTEGER PRIMARY KEY,
             chamber TEXT,
             chamber_abbrev TEXT
         )
-    '''
-    )
-    cursor.execute(
-        '''
+    ''')
+    cursor.execute('''
         INSERT INTO chamber (chamber_id, chamber, chamber_abbrev) VALUES
         (1, 'Chamber A', 'CA'),
         (2, 'Chamber B', 'CB')
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE government (
             government_id INTEGER PRIMARY KEY,
             government TEXT
         )
-    '''
-    )
-    cursor.execute(
-        '''
+    ''')
+    cursor.execute('''
         INSERT INTO government (government_id, government) VALUES
         (1, 'Government A'),
         (2, 'Government B')
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE office_type (
             office_type_id INTEGER PRIMARY KEY,
             office TEXT
         )
-    '''
-    )
-    cursor.execute(
-        '''
+    ''')
+    cursor.execute('''
         INSERT INTO office_type (office_type_id, office) VALUES
         (1, 'Office A'),
         (2, 'Office B')
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE party (
             party_id INTEGER PRIMARY KEY,
             party TEXT,
             party_abbrev TEXT
         )
-    '''
-    )
-    cursor.execute(
-        '''
+    ''')
+    cursor.execute('''
         INSERT INTO party (party_id, party, party_abbrev) VALUES
         (1, 'Party A', 'PA'),
         (2, 'Party B', 'PB')
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE sub_office_type (
             sub_office_type_id INTEGER PRIMARY KEY,
             office_type_id INTEGER,
             identifier TEXT,
             description TEXT
         )
-    '''
-    )
-    cursor.execute(
-        '''
+    ''')
+    cursor.execute('''
         INSERT INTO sub_office_type (sub_office_type_id, office_type_id, identifier, description) VALUES
         (1, 1, 'A', 'Description A'),
         (2, 2, 'B', 'Description B')
-    '''
-    )
+    ''')
 
-    cursor.execute(
-        '''
+    cursor.execute('''
         CREATE TABLE person_party (
             person_party_id integer PRIMARY KEY,
             person_id TEXT,
             party_id INTEGER
         )
-    '''
-    )
-    cursor.execute(
-        '''
+    ''')
+    cursor.execute('''
         INSERT INTO person_party (person_party_id, person_id, party_id) VALUES
         (1, 'p1', 1),
         (2, 'p2', 2)
-    '''
-    )
+    ''')
 
     conn.commit()
     return conn
@@ -279,5 +312,7 @@ def fixture_codecs_speech_index_source_dict():
         'party_id': {0: 2, 1: 1},
         'office_type_id': {0: 1, 1: 1},
         'sub_office_type_id': {0: 1, 1: 2},
+        'page_number_start': {0: 10, 1: 11},
+        'page_number_end': {0: 10, 1: 11},
         'protocol_name': {0: 'prot-1970--ak--029', 1: 'prot-1970--ak--029'},
     }

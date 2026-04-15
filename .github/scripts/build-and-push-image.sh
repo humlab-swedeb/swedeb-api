@@ -18,10 +18,9 @@ if [[ ! "$ENVIRONMENT" =~ ^(test|staging|production)$ ]]; then
 fi
 
 IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY}"
-FRONTEND_IMAGE_BASE="ghcr.io/humlab-swedeb/swedeb_frontend"
-FRONTEND_VERSION=${FRONTEND_VERSION_TAG:-latest}
 
 log "Building ${ENVIRONMENT} image for version ${VERSION}"
+log "Note: Frontend assets will be downloaded at container runtime from GitHub releases"
 log "Logging into GitHub Container Registry..."
 
 if [ -n "${CWB_REGISTRY_TOKEN:-}" ]; then
@@ -32,12 +31,10 @@ else
   echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
 fi
 
-log "Using frontend image: ${FRONTEND_IMAGE_BASE}:${FRONTEND_VERSION}"
-
 # Build wheel in docker/wheels directory
 log "Building Python wheel..."
 mkdir -p docker/wheels
-poetry build --format wheel --output docker/wheels
+uv build --wheel --out-dir docker/wheels
 
 pushd docker > /dev/null
 
@@ -49,7 +46,6 @@ MINOR_VERSION=$(echo ${VERSION} | cut -d. -f1-2)
 if [ "$ENVIRONMENT" = "test" ]; then
   log "Building test image with tags: ${VERSION}-test, test, test-latest"
   docker build \
-    --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
     --tag "${IMAGE_NAME}:${VERSION}-test" \
     --tag "${IMAGE_NAME}:test" \
     --tag "${IMAGE_NAME}:test-latest" \
@@ -59,7 +55,6 @@ if [ "$ENVIRONMENT" = "test" ]; then
 elif [ "$ENVIRONMENT" = "staging" ]; then
   log "Building staging image with tags: ${VERSION}-staging, staging"
   docker build \
-    --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
     --tag "${IMAGE_NAME}:${VERSION}-staging" \
     --tag "${IMAGE_NAME}:staging" \
     -f ./Dockerfile .
@@ -68,7 +63,6 @@ elif [ "$ENVIRONMENT" = "staging" ]; then
 else
   log "Building production image with tags: ${VERSION}, ${MAJOR_VERSION}, ${MINOR_VERSION}, latest, production"
   docker build \
-    --build-arg "FRONTEND_VERSION=${FRONTEND_VERSION}" \
     --tag "${IMAGE_NAME}:${VERSION}" \
     --tag "${IMAGE_NAME}:${MAJOR_VERSION}" \
     --tag "${IMAGE_NAME}:${MINOR_VERSION}" \

@@ -8,14 +8,14 @@ from penelope import corpus as pc  # type: ignore
 from penelope.common import word_trends as wt  # type: ignore
 from penelope.common.keyness import KeynessMetric
 
-from . import codecs as md
+from . import person_codecs as md
 
 # These two class are currently identical to the ones in welfare_state_analytics.notebookd...word_trends.py
 
 
 @dataclass
-class SweDebComputeOpts(wt.TrendsComputeOpts):
-    source_folder: str = None
+class SweDebComputeOpts(wt.TrendsComputeOpts["SweDebComputeOpts"]):
+    source_folder: str | None = None
 
     def invalidates_corpus(self, other: "SweDebComputeOpts") -> bool:
         if super().invalidates_corpus(other):
@@ -26,7 +26,7 @@ class SweDebComputeOpts(wt.TrendsComputeOpts):
 
     @property
     def clone(self) -> "SweDebComputeOpts":
-        obj: SweDebComputeOpts = super(SweDebComputeOpts, self).clone  # pylint: disable=super-with-arguments
+        obj: SweDebComputeOpts = super().clone
         obj.source_folder = self.source_folder
         return obj
 
@@ -43,7 +43,7 @@ class SweDebTrendsData(wt.TrendsService):
             words=None,
         )
 
-    def _transform_corpus(self, opts: SweDebComputeOpts) -> pc.VectorizedCorpus:
+    def _transform_corpus(self, opts: SweDebComputeOpts) -> pc.VectorizedCorpus:  # type: ignore
         corpus: pc.VectorizedCorpus = super()._transform_corpus(opts)
         if len(corpus.document_index) == 0:
             return corpus
@@ -61,21 +61,23 @@ class SweDebTrendsData(wt.TrendsService):
         di["time_period"] = di[opts.temporal_key]
         return di
 
-    def _generate_pivot_document_name(self, di: pd.DataFrame, pivot_keys: list[str], temporal_key: str) -> pd.DataFrame:
+    def _generate_pivot_document_name(
+        self, di: pd.DataFrame, pivot_keys: list[str], temporal_key: str
+    ) -> pd.DataFrame | pd.Series:
         id2name: dict[str, str] = {
             x.from_column: x.to_column
             for x in self.person_codecs.decoders
             if x.from_column in pivot_keys and x.to_column in di.columns
         }
         pivot_keys_text_names: list[str] = [id2name.get(x, x) for x in pivot_keys]
-        return di[pivot_keys_text_names + ([temporal_key] if temporal_key else [])].astype(str).agg('_'.join, axis=1)
+        return di[pivot_keys_text_names + ([temporal_key] if temporal_key else [])].astype(str).agg('_'.join, axis=1)  # type: ignore
 
 
-# FIXME: Add this logic to penelope.VectorizedCorpus
 def get_words_per_year(corpus: pc.VectorizedCorpus) -> pd.DataFrame:
     """Cach computation of words per year"""
-    if corpus.recall("words_per_year"):
-        return corpus.recall("words_per_year")
+    stored: pd.DataFrame | None = corpus.recall("words_per_year")
+    if isinstance(stored, pd.DataFrame):
+        return stored
     year_count_series: pd.Series = corpus.document_index.groupby("year")["n_raw_tokens"].sum()
     year_count_frame: pd.DataFrame = year_count_series.to_frame().set_index(year_count_series.index.astype(str))
     corpus.remember(words_per_year=year_count_frame)
@@ -84,7 +86,7 @@ def get_words_per_year(corpus: pc.VectorizedCorpus) -> pd.DataFrame:
 
 def normalize_word_per_year(corpus: pc.VectorizedCorpus, data: pd.DataFrame) -> pd.DataFrame:
     data = data.merge(get_words_per_year(corpus), left_index=True, right_index=True)
-    data = data.iloc[:, :].div(data.n_raw_tokens, axis=0)
+    data = data.iloc[:, :].div(data.n_raw_tokens, axis=0)  # type: ignore
     data.drop(columns=["n_raw_tokens"], inplace=True)
 
     return data
@@ -122,7 +124,7 @@ def compute_word_trends(
     trends: pd.DataFrame = trends_data.extract(indices=trends_data.find_word_indices(opts))
 
     if start_year or end_year:
-        trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]
+        trends = trends[trends["year"].between(start_year or 0, end_year or 9999)]  # type: ignore
 
     trends.rename(columns={"who": "person_id"}, inplace=True)
     trends = trends_data.person_codecs.decode(trends, ignores=["wiki_id", "party"], drop=True)

@@ -21,7 +21,7 @@ def execute_kwic_singleprocess(
     **_,
 ) -> pd.DataFrame | Any:
     """Execute KWIC query in a single process."""
-    corpus: Corpus = CorpusCreateOpts.resolve(corpus)
+    corpus = CorpusCreateOpts.resolve(corpus)
 
     query: str = to_cqp_exprs(opts, within="speech")
 

@@ -23,19 +23,19 @@ import scipy.sparse as sp
 SparseMatrix = sp.spmatrix
 
 
-def compute_hal_score_by_co_occurrence_matrix(co_occurrences: pd.DataFrame, nw_x_matrix: SparseMatrix) -> pd.Series:
+def compute_hal_score_by_co_occurrence_matrix(co_occurrences: pd.DataFrame, nw_x_matrix: sp.csr_matrix) -> pd.Series:
     """Compute yearly HAL-score for each co-occurrence pair (w1, w2)"""
 
     # nw_xy is given by co_occurrences data frame
     co_occurrences = co_occurrences[['document_id', 'w1_id', 'w2_id', 'value']]
     co_occurrences['nw_xy'] = co_occurrences.value
 
-    nw_x_matrix: SparseMatrix = nw_x_matrix.tocoo()
+    nw_x_array: sp.coo_array = nw_x_matrix.tocoo()
     nw_x_frame: pd.DataFrame = pd.DataFrame(
         data={
-            'document_id': nw_x_matrix.row,
-            'token_id': nw_x_matrix.col,
-            'nw_x': nw_x_matrix.data,
+            'document_id': nw_x_array.row,
+            'token_id': nw_x_array.col,
+            'nw_x': nw_x_array.data,
         },
     ).set_index(['document_id', 'token_id'])
 
@@ -55,11 +55,11 @@ def compute_hal_score_by_co_occurrence_matrix(co_occurrences: pd.DataFrame, nw_x
 
 
 def compute_hal_cwr_score(
-    nw_xy: SparseMatrix,
-    nw_x: SparseMatrix,
+    nw_xy: sp.csr_matrix,
+    nw_x: sp.csr_matrix,
     vocabs_mapping: dict,
     inplace: bool = False,
-) -> SparseMatrix:
+) -> sp.csr_matrix:
     """Computes HAL common windows ratio (CWR) score for co-occurrings terms.
 
     Note: The `nw_xy` is a *document-term matrix* (DTM) gives the common window count CW for terms x and y
@@ -90,10 +90,10 @@ def compute_hal_cwr_score(
 
     reverse_mapping = {v: k for k, v in vocabs_mapping.items()}
 
-    w1_indices = [reverse_mapping[i][0] for i in range(0, nw_xy.shape[1])]
-    w2_indices = [reverse_mapping[i][1] for i in range(0, nw_xy.shape[1])]
+    w1_indices = [reverse_mapping[i][0] for i in range(0, nw_xy.shape[1])]  # type: ignore
+    w2_indices = [reverse_mapping[i][1] for i in range(0, nw_xy.shape[1])]  # type: ignore
 
-    for d in range(0, nw_xy.shape[0]):
+    for d in range(0, nw_xy.shape[0]):  # type: ignore
         nw_xy[d, :] = nw_xy[d, :] / (nw_x[d, w1_indices] + nw_x[d, w2_indices] - nw_xy[d, :])
 
     nw_xy.data[np.isnan(nw_xy.data)] = 0.0

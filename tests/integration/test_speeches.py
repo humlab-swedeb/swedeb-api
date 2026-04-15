@@ -1,0 +1,161 @@
+import pandas as pd
+import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
+from httpx import Response
+
+from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.core.speech import Speech
+
+# these tests mainly check that the endpoints are reachable and returns something
+# the actual content of the response is not checked
+
+# pylint: disable=redefined-outer-name
+
+version = "v1"
+
+
+def test_speeches_get(fastapi_client: TestClient):
+    # assert that the speeches endpoint is reachable
+    speech_name: str = "i-dc65b5aa94ad0910-1"  # "prot-1971--117_007"
+    response = fastapi_client.get(f"{version}/tools/speeches/{speech_name}")
+    assert response.status_code == status.HTTP_200_OK
+    data: dict[str, str] = response.json()
+    assert 'speech_text' in data
+    assert 'speaker_note' in data
+    assert data["speaker_note"] == "Herr justitieministern GEIJER:"
+    assert len(data['speech_text']) > 0
+
+
+def test_get_speech_by_id_page_number(fastapi_client: TestClient):
+
+    speech_id = 'i-34625fce7c35cf80-3'
+
+    response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    data: dict = response.json()
+    assert data['page_number'] == 38
+    assert 'speech_text' in data
+    assert len(data['speech_text']) > 1
+    assert len(data['speaker_note']) > 1
+
+
+def test_get_speech_by_id_page_number_byclient(
+    fastapi_client: TestClient, corpus_loader: CorpusLoader  # pylint: disable=unused-argument
+):
+    speech_id = 'i-34625fce7c35cf80-3'
+    response: Response = fastapi_client.get(f"v1/tools/speeches/{speech_id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert (data or {}).get('page_number') == 38
+
+
+def test_speeches_get_years(fastapi_client: TestClient):
+    # assert that the returned speeches comes from the correct years
+    start_year = 1970
+    end_year = 1971
+    response: Response = fastapi_client.get(f"{version}/tools/speeches?from_year={start_year}&to_year={end_year}")
+    assert response.status_code == status.HTTP_200_OK
+    speeches = response.json()['speech_list']
+    for speech in speeches:
+        assert 'year' in speech, 'year is missing in response'
+        assert speech['year'] >= start_year, 'year is less than start_year'
+        assert speech['year'] <= end_year, 'year is greater than end_year'
+
+
+def test_speeches_zip(fastapi_client: TestClient, corpus_loader: CorpusLoader):
+    payload: list[str] = corpus_loader.document_index.sample(2).speech_id.to_list()
+    response: Response = fastapi_client.post(f"{version}/tools/speech_download/", json=payload)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.headers['Content-Disposition'] == 'attachment; filename=speeches.zip'
+    assert response.headers['Content-Type'] == 'application/zip'
+    assert len(response.content) > 0
+
+
+def test_speeches_zip_rejects_non_string_ids(fastapi_client: TestClient):
+    response: Response = fastapi_client.post(f"{version}/tools/speech_download/", json=[1, 2])
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_get_speeches_corpus(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    fx = corpus_loader.person_codecs.get_mapping('party_abbrev', 'party_id').get
+    df_filtered: pd.DataFrame = search_service.get_speeches(
+        selections={'party_id': [fx(x) for x in ('L', 'S')], 'gender_id': [1, 2], 'year': (1970, 1980)}
+    )
+    df_unfiltered: pd.DataFrame = search_service.get_speeches(selections={'year': (1970, 1980)})
+    assert len(df_filtered) < len(df_unfiltered)
+    assert 'L' in df_filtered['party_abbrev'].unique()
+    assert 'S' in df_filtered['party_abbrev'].unique()
+
+
+def test_get_speeches_by_ids(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    speech_ids: list[str] = corpus_loader.document_index.speech_id.sample(3).to_list()
+    speeches: pd.DataFrame = search_service.get_speeches(selections={'speech_id': speech_ids})
+    assert len(speeches) == len(speech_ids)
+    assert set(speeches.speech_id) == set(speech_ids)
+
+
+def test_get_speeches_by_ids_by_api(fastapi_client: TestClient, corpus_loader: CorpusLoader):
+    speech_ids: list[str] = corpus_loader.document_index.speech_id.sample(3).to_list()
+    args: str = '&'.join([f"speech_id={speech_id}" for speech_id in speech_ids])
+    url: str = f"{version}/tools/speeches/?{args}"
+    response: Response = fastapi_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert 'speech_list' in response.json()
+    speeches: list[dict] = response.json()['speech_list']
+
+    assert len(speeches) == len(speech_ids)
+
+    url: str = f"{version}/tools/speeches"
+    json: dict = {'speech_id': speech_ids}
+    response: Response = fastapi_client.post(url, json=json)
+    assert response.status_code == status.HTTP_200_OK
+
+
+def find_a_speech_id(search_service: SearchService):
+    df = search_service.loader.document_index.sample(1)
+    return df.iloc[0]['document_name'], df.iloc[0]['speech_id']
+
+
+def test_get_speech_by_document_name_raises_valueerror(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    document_name, speech_id = find_a_speech_id(search_service)
+    speech: Speech = search_service.get_speech(speech_id)
+    assert speech is not None
+    assert len(speech.text) > 1
+    with pytest.raises(ValueError):
+        search_service.get_speech(document_name)
+
+
+def test_get_speech_by_id_missing(corpus_loader: CorpusLoader):
+    # non-existing speech (gives empty string as response)
+    search_service = SearchService(corpus_loader)
+    speech_id: str = 'i-000000000000000000000'
+    speech: Speech = search_service.get_speech(speech_id)
+    assert speech is not None
+    assert len(speech.text) == 0
+
+
+def test_speaker_note(corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    _, speech_id = find_a_speech_id(search_service)
+
+    speech: Speech = search_service.get_speech(speech_id)
+    assert speech is not None
+    assert len(speech.speaker_note) > 0
+
+    speaker_note_by_id: str = search_service.get_speech(speech_id).speaker_note
+    assert speaker_note_by_id == speech.speaker_note
+
+
+def test_get_speech_by_api(fastapi_client: TestClient, corpus_loader: CorpusLoader):
+    search_service = SearchService(corpus_loader)
+    _, speech_id = find_a_speech_id(search_service)
+    response: Response = fastapi_client.get(f"{version}/tools/speeches/{speech_id}", timeout=10)
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.json()['speech_text']) > 0
+    assert len(response.json()['speaker_note']) > 0

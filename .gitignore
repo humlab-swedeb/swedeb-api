@@ -136,7 +136,12 @@ ipython_config.py
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
+poetry.lock
+
+# uv
+#   uv.lock should be committed to version control
+#   https://docs.astral.sh/uv/concepts/projects/#project-lockfile
+# uv.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
@@ -199,6 +204,9 @@ cython_debug/
 ### Python Patch ###
 # Poetry local configuration file - https://python-poetry.org/docs/configuration/#local-configuration
 poetry.toml
+
+# uv
+.python-version
 
 # ruff
 .ruff_cache/
@@ -266,7 +274,6 @@ docker/swedeb_frontend
 # .vscode
 output
 test_data
-profiling
 *.code-workspace
 deprecated
 .vscode/settings.json

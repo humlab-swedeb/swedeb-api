@@ -64,7 +64,7 @@ def fit_ordinary_least_square(ys, xs=None) -> Tuple[float, float, Any, Point, Po
 
     (x1, x2), (y1, y2) = (xs[0], xs[-1]), (intercept + slope * xs[0], intercept + slope * xs[-1])
 
-    return intercept, slope, p, (x1, x2), (y1, y2)
+    return intercept, slope, p, (x1, x2), (y1, y2)  # type: ignore
 
 
 def fit_ordinary_least_square_ravel(Y, xs):
@@ -90,7 +90,7 @@ def fit_polynomial_ravel(Y, xs):
 
 
 def gof_chisquare_to_uniform(f_obs, axis=0):
-    (chi2, p) = scipy.stats.chisquare(f_obs, axis=axis)
+    chi2, p = scipy.stats.chisquare(f_obs, axis=axis)
 
     return (chi2, p)
 

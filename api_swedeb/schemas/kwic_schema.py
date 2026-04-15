@@ -1,12 +1,13 @@
+from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
 
 class KeywordInContextItem(BaseModel):
     left_word: str = Field(..., description="Left context of search hit")
-    node_word: str = Field(None, description="The hits correpsonding to the search string")
+    node_word: str | None = Field(None, description="The hits correpsonding to the search string")
     right_word: Optional[str] = Field(None, description="Right context of search hit")
     year: Optional[int] = Field(None, description="Year of speech")
     name: Optional[str] = Field(None, description="Name of speaker")
@@ -16,17 +17,71 @@ class KeywordInContextItem(BaseModel):
     link: Optional[str] = Field(None, description="Link to speaker wiki")
     speech_name: Optional[str] = Field(None, description="Formatted speech id")  # RENAMED
     speech_link: Optional[str] = Field(None, description="Link to speech")
-    gender_abbrev: str = Field(None, description="Gender of speaker")  # NEW
-    document_name: str = Field(None, description="Unique id of speech")  # NEW
-    chamber_abbrev: str = Field(None, description="Chamber of speech")  # NEW
-    speech_id: str = Field(None, description="Unique id of speech")  # NEW
-    wiki_id: str = Field(None, description="Wiki id of speaker")  # NEW
-    document_id: int = Field(None, description="Document's system id")  # NEW
-    party: str = Field(None, description="Full party name of speaker")
+    gender_abbrev: str | None = Field(None, description="Gender of speaker")  # NEW
+    document_name: str | None = Field(None, description="Unique id of speech")  # NEW
+    chamber_abbrev: str | None = Field(None, description="Chamber of speech")  # NEW
+    speech_id: str | None = Field(None, description="Unique id of speech")  # NEW
+    wiki_id: str | None = Field(None, description="Wiki id of speaker")  # NEW
+    party: str | None = Field(None, description="Full party name of speaker")
 
 
 class KeywordInContextResult(BaseModel):
     kwic_list: List[KeywordInContextItem]
+
+
+class KWICFilterRequest(BaseModel):
+    from_year: int | None = None
+    to_year: int | None = None
+    who: list[str] | None = None
+    party_id: list[int] | None = None
+    gender_id: list[int] | None = None
+    chamber_abbrev: list[str] | None = None
+    speech_id: list[str] | None = None
+
+
+class KWICQueryRequest(BaseModel):
+    search: str
+    lemmatized: bool = True
+    words_before: int = 2
+    words_after: int = 2
+    cut_off: int = 200000
+    filters: KWICFilterRequest = Field(default_factory=KWICFilterRequest)
+
+
+class KWICTicketAccepted(BaseModel):
+    ticket_id: str
+    status: Literal["pending"]
+    expires_at: datetime
+
+
+class KWICTicketStatus(BaseModel):
+    ticket_id: str
+    status: Literal["pending", "ready", "error"]
+    total_hits: int | None = None
+    error: str | None = None
+    expires_at: datetime
+
+
+class KWICTicketSortBy(str, Enum):
+    year = "year"
+    speaker_name = "name"
+    party_abbrev = "party_abbrev"
+    gender = "gender"
+    left_word = "left_word"
+    node_word = "node_word"
+    right_word = "right_word"
+    speech_name = "speech_name"
+
+
+class KWICPageResult(BaseModel):
+    ticket_id: str
+    status: Literal["ready"]
+    page: int
+    page_size: int
+    total_hits: int
+    total_pages: int
+    expires_at: datetime
+    kwic_list: list[KeywordInContextItem]
 
 
 class SortBy(Enum):
@@ -34,7 +89,7 @@ class SortBy(Enum):
     node_word = "node_word"
     right_word = "right_word"
     year = "year"
-    name = "name"
+    speaker_name = "name"
     party_abbrev = "party_abbrev"
     speech_title = "speech_title"
     gender = "gender"

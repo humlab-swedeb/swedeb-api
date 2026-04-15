@@ -2,7 +2,6 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from typing import Any, Container, Dict, List, Union
 
-import numpy as np
 import pandas as pd
 from loguru import logger
 from more_itertools import collapse
@@ -206,11 +205,11 @@ PD_PennTree_O5_PoS_tags = (
 class PoS_Tag_Scheme:
     def __init__(self, df: pd.DataFrame) -> None:
         self.PD_PoS_tags: pd.DataFrame = df
-        self.PD_PoS_groups: pd.DataFrame = df.groupby('tag_group_name')['tag'].agg(list)
+        self.PD_PoS_groups: pd.DataFrame | pd.Series = df.groupby('tag_group_name')['tag'].agg(list)
         self.pos_to_id: dict = df['pos_id'].to_dict()
         self.id_to_pos: dict = {v: k for k, v in self.pos_to_id.items()}
-        self.groups: Dict[str, List[str]] = self.PD_PoS_groups.to_dict()
-        self.tag_to_group: Dict[str, str] = self.PD_PoS_tags.set_index('tag')['tag_group_name'].to_dict()
+        self.groups: Dict[str, List[str]] = self.PD_PoS_groups.to_dict()  # type: ignore
+        self.tag_to_group: Dict[str, str] = self.PD_PoS_tags.set_index('tag')['tag_group_name'].to_dict()  # type: ignore
 
     @property
     def tags(self) -> List[str]:
@@ -225,7 +224,7 @@ class PoS_Tag_Scheme:
             return x
         return list(x)
 
-    def exclude(self, excludes: Union[str, Container[str]] = None) -> List[str]:
+    def exclude(self, excludes: Union[str, Container[str]] | None = None) -> List[str]:
         _all_tags = list(self.PD_PoS_tags.index)
 
         if excludes is None:
@@ -234,12 +233,12 @@ class PoS_Tag_Scheme:
         if isinstance(excludes, str):
             excludes = [excludes]
 
-        excludes = set(collapse(map(self.unwrap, excludes)))
+        excludes = set(collapse(map(self.unwrap, excludes)))  # type: ignore
 
         return [x for x in _all_tags if x not in excludes]
 
-    def all_types_except(self, tags: Union[str, Container[str]] = None) -> List[str]:
-        return self.exclude([tags, self.Delimiter])
+    def all_types_except(self, tags: Union[str, Container[str]] | None = None) -> List[str]:
+        return self.exclude([tags, self.Delimiter])  # type: ignore
 
     @property
     def Pronoun(self) -> List[str]:
@@ -283,7 +282,7 @@ class PoS_Tag_Scheme:
 
     @property
     def description(self) -> Dict[str, str]:
-        return self.PD_PoS_tags.set_index('tag')['description'].to_dict()
+        return self.PD_PoS_tags.set_index('tag')['description'].to_dict()  # type: ignore
 
     def PoS_group_counts(self, PoS_sequence: pd.Series) -> dict:
         """Computes word counts (total and per part-of-speech) given tagged_frame"""
@@ -299,7 +298,7 @@ class PoS_Tag_Scheme:
             tag_counts[PoS] += 1
 
         """Convert to strings if PoS-sequence is integers"""
-        if np.issubdtype(PoS_sequence.dtype, np.integer):
+        if pd.api.types.is_integer_dtype(PoS_sequence.dtype):
             ig = self.id_to_pos.get
             tag_counts = {ig(k, 'XYZ'): v for k, v in tag_counts.items()}
 
@@ -308,7 +307,7 @@ class PoS_Tag_Scheme:
         tg = self.tag_to_group.get
         n_tokens: int = 0
         for k, v in tag_counts.items():
-            group_name: str = tg(k)
+            group_name: str = tg(k)  # type: ignore
             if group_name:
                 group_counts[group_name] += v
             else:
@@ -321,11 +320,11 @@ class PoS_Tag_Scheme:
         return group_counts
 
 
-Known_PoS_Tag_Schemes = dict(
-    SUC=PoS_Tag_Scheme(PD_SUC_PoS_tags),
-    Universal=PoS_Tag_Scheme(PD_Universal_PoS_tags),
-    PennTree=PoS_Tag_Scheme(PD_PennTree_O5_PoS_tags),
-)
+Known_PoS_Tag_Schemes = {
+    "SUC": PoS_Tag_Scheme(PD_SUC_PoS_tags),
+    "Universal": PoS_Tag_Scheme(PD_Universal_PoS_tags),
+    "PennTree": PoS_Tag_Scheme(PD_PennTree_O5_PoS_tags),
+}
 
 
 @dataclass
@@ -341,7 +340,7 @@ Known_PoS_Tag_Schemes = asdict(PoS_TAGS_SCHEMES)
 
 
 def get_pos_schema(name: str) -> PoS_Tag_Scheme:
-    return Known_PoS_Tag_Schemes.get(name, None)
+    return Known_PoS_Tag_Schemes.get(name, None)  # type: ignore
 
 
 def pos_tags_to_str(tags: List[str]) -> str:

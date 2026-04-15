@@ -5,10 +5,10 @@ import os
 import re
 import sqlite3
 import time
-import types
+import warnings
 from functools import wraps
 from os.path import basename, dirname, splitext
-from typing import Any, Callable, ItemsView, Iterator, KeysView, Type, TypeVar, ValuesView
+from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
 
 import numpy as np
 import pandas as pd
@@ -17,13 +17,14 @@ from loguru import logger
 
 from penelope.utility import PropertyValueMaskingOpts
 
-try:
-    import github as gh  # type: ignore
-except ImportError:
+# try:
+#     import github as gh  # type: ignore
+# except ImportError:
 
-    def Github(_) -> types.SimpleNamespace:
-        return types.SimpleNamespace()
+#     def Github(_) -> types.SimpleNamespace:
+#         return types.SimpleNamespace()
 
+#     gh = types.SimpleNamespace(Github=Github)
 
 # pylint: disable=missing-timeout
 
@@ -90,21 +91,26 @@ def flatten(lst: list[list[Any]]) -> list[Any]:
     return [item for sublist in lst for item in sublist]
 
 
-class Lazy:
+L = TypeVar("L")
+
+
+class Lazy(Generic[L]):
     """Implements Lazy evaluation of a value."""
 
-    def __init__(self, factory: Callable[[], Any]) -> None:
-        self._factory: Callable[[], Any] = factory
+    def __init__(self, factory: Callable[[], L]) -> None:
+        self._factory: Callable[[], L] = factory
         self._is_initialized: bool = False
-        self._value: Any = None
+        self._value: L | None = None
 
     @property
-    def value(self) -> Any | None:
+    def value(self) -> L:
         if not self._is_initialized:
             self._value = self._factory()
             self._is_initialized = True
+        assert self._value is not None
         return self._value
 
+    @property
     def is_initialized(self) -> bool:
         return self._is_initialized
 
@@ -120,6 +126,26 @@ def lazy_property(fn) -> property:
         return getattr(self, attr_name)
 
     return _lazy_property
+
+
+_slow_avoid_use_warned: set[str] = set()
+
+
+def slow_avoid_use(fn: Callable) -> Callable:
+    """Decorator that logs a warning the first time a slow function is called per session.
+
+    Use this to mark functions known to be performance-sensitive so callers
+    are reminded to prefer faster alternatives.
+    """
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if fn.__qualname__ not in _slow_avoid_use_warned:
+            _slow_avoid_use_warned.add(fn.__qualname__)
+            logger.warning("slow_avoid_use: {} is known to be slow — consider a faster alternative", fn.__qualname__)
+        return fn(*args, **kwargs)
+
+    return wrapper
 
 
 def revdict(d: dict) -> dict:
@@ -165,12 +191,12 @@ def load_tables(
     tables: dict[str, str],
     *,
     db: sqlite3.Connection,
-    defaults: dict[str, Any] = None,
-    dtypes: dict[str, Any] = None,
+    defaults: dict[str, Any] | None = None,
+    dtypes: dict[str, Any] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Loads tables as pandas dataframes, slims types, fills NaN, sets pandas index"""
     data: dict[str, pd.DataFrame] = read_sql_tables(list(tables.keys()), db)
-    slim_table_types(data.values(), defaults=defaults, dtypes=dtypes)
+    slim_table_types(list(data.values()), defaults=defaults, dtypes=dtypes)
     assign_primary_key(tables, data)
     return data
 
@@ -200,16 +226,16 @@ def assign_primary_key(schema: dict[str, str], data: dict[str, pd.DataFrame]) ->
 
 def slim_table_types(
     tables: list[pd.DataFrame] | pd.DataFrame,
-    defaults: dict[str, Any] = None,
-    dtypes: dict[str, Any] = None,
+    defaults: dict[str, Any] | None = None,
+    dtypes: dict[str, Any] | None = None,
 ) -> None:
     """Slims types and sets default value for NaN entries"""
 
     if isinstance(tables, pd.DataFrame):
         tables = [tables]
 
-    defaults: dict[str, Any] = COLUMN_DEFAULTS if defaults is None else defaults
-    dtypes: dict[str, Any] = COLUMN_TYPES if dtypes is None else dtypes
+    defaults = COLUMN_DEFAULTS if defaults is None else defaults
+    dtypes = COLUMN_TYPES if dtypes is None else dtypes
 
     for table in tables:
         for column_name, value in defaults.items():
@@ -226,23 +252,23 @@ def slim_table_types(
 
 def group_to_list_of_records2(df: pd.DataFrame, key: str) -> dict[str | int, list[dict]]:
     """Groups `df` by `key` and aggregates each group to list of row records (dicts)"""
-    return {q: df.loc[ds].to_dict(orient="records") for q, ds in df.groupby(key).groups.items()}
+    return {q: df.loc[ds].to_dict(orient="records") for q, ds in df.groupby(key).groups.items()}  # type: ignore
 
 
 def group_to_list_of_records(
-    df: pd.DataFrame, key: str, properties: list[str] = None, ctor: Type = None
+    df: pd.DataFrame, key: str, properties: list[str] | None = None, ctor: Type | None = None
 ) -> dict[str | int, list[dict]]:
     """Groups `df` by `key` and aggregates each group to list of row records (dicts)"""
     key_rows: pd.DataFrame = pd.DataFrame(
         data={
             key: df[key],
-            "data": (df[properties] if properties else df).to_dict("records"),
+            "data": (df[properties] if properties else df).to_dict("records"),  # type: ignore
         }
     )
     if ctor is not None:
         key_rows["data"] = key_rows["data"].apply(lambda x: ctor(**x))
 
-    return key_rows.groupby(key)["data"].apply(list).to_dict()
+    return key_rows.groupby(key)["data"].apply(list).to_dict()  # type: ignore
 
 
 def download_url_to_file(url: str, target_name: str, force: bool = False) -> None:
@@ -254,14 +280,18 @@ def download_url_to_file(url: str, target_name: str, force: bool = False) -> Non
     ensure_path(target_name)
 
     with open(target_name, "w", encoding="utf-8") as fp:
-        data: str = requests.get(url, allow_redirects=True).content.decode("utf-8")  # type: ignore
+        data: str = str(requests.get(url, allow_redirects=True).content.decode("utf-8"))
         fp.write(data)
 
 
-def probe_filename(filename: list[str], exts: list[str] = None) -> str | None:
+def probe_filename(filename: list[str], exts: list[str] | None = None) -> str | None:
     """Probes existence of filename with any of given extensions in folder"""
-    for probe_name in set([filename] + ([replace_extension(filename, ext) for ext in exts] if exts else [])):
-        if os.path.isfile(probe_name):
+    if not isinstance(filename, list):
+        filename = [filename]
+
+    probe_names: set[str] = set(filename) | {replace_extension(f, ext) for f in filename for ext in (exts or [])}
+    for probe_name in probe_names:
+        if probe_name and os.path.isfile(probe_name):
             return probe_name
     raise FileNotFoundError(filename)
 
@@ -273,7 +303,7 @@ def replace_extension(filename: str, extension: str) -> str:
     return f"{base}{'' if extension.startswith('.') else '.'}{extension}"
 
 
-def path_add_suffix(path: str, suffix: str, new_extension: str = None) -> str:
+def path_add_suffix(path: str, suffix: str, new_extension: str | None = None) -> str:
     base, ext = splitext(path)
     return f'{base}{suffix}{ext if new_extension is None else new_extension}'
 
@@ -297,7 +327,7 @@ def dget(data: dict, *path: str | list[str], default: Any = None) -> Any:
     if path is None or not data:
         return default
 
-    ps: list[str] = path if isinstance(path, (list, tuple)) else [path]
+    ps: Sequence[str] = path if isinstance(path, (list, tuple)) else [path]  # type: ignore
 
     d = None
 
@@ -310,7 +340,7 @@ def dget(data: dict, *path: str | list[str], default: Any = None) -> Any:
     return d or default
 
 
-def dotexists(data: dict, *paths: list[str]) -> bool:
+def dotexists(data: dict, *paths: str) -> bool:
     for path in paths:
         if dotget(data, path, default="@@") != "@@":
             return True
@@ -335,9 +365,9 @@ def dotget(data: dict, path: str, default: Any = None) -> Any:
     if path is x:y:y then element is search using borh x.y.y or x_y_y."""
 
     for key in dotexpand(path):
-        d: dict = data
+        d: dict | None = data
         for attr in key.split('.'):
-            d: dict = d.get(attr) if isinstance(d, dict) else None
+            d = d.get(attr) if isinstance(d, dict) else None
             if d is None:
                 break
         if d is not None:
@@ -379,7 +409,7 @@ def strip_paths(filenames: str | list[str]) -> str | list[str]:
     return [basename(filename) for filename in filenames]
 
 
-def strip_extensions(filename: str | list[str]) -> list[str]:
+def strip_extensions(filename: str | list[str]) -> list[str] | str:
     if isinstance(filename, str):
         return splitext(filename)[0]
     return [splitext(x)[0] for x in filename]
@@ -400,41 +430,35 @@ def fix_whitespace(text: str) -> str:
     return SUBST_PUNCTS.sub(r"\1", text)
 
 
-def get_release_tags(user: str, repository: str, github_access_token: str = None) -> list[str]:
-    release_tags: list[str] = ["main", "dev"]
-    try:
-        access_token: str = github_access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
-        github: gh.Github = gh.Github(access_token)
-        riksdagen_corpus = github.get_repo(f"{user}/{repository}")
-        release_tags = release_tags + [x.title for x in riksdagen_corpus.get_releases()]
-    except:  # pylint: disable=bare-except
-        ...
-    return release_tags
+def deprecated(func: Callable) -> Callable:
+    """Decorator that marks a function or method as deprecated.
+
+    Emits a :class:`DeprecationWarning` at call time pointing at the caller's
+    frame (``stacklevel=2``).
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.warn(
+            f"{func.__qualname__}() is deprecated and will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
-def format_protocol_id(selected_protocol: str) -> str:
-    try:
-        protocol_parts: list[str] = selected_protocol.split("-")
-
-        if "ak" in selected_protocol or "fk" in selected_protocol:
-            id_parts: str = protocol_parts[-1].replace("_", " ")
-            ch = "Andra" if "ak" in selected_protocol else "Första"
-            chamber = f"{ch} kammaren"
-            if len(protocol_parts) == 6:
-                return f"{chamber} {protocol_parts[1]}:{id_parts}"
-            # if len(protocol_parts) == 7:
-            # prot-1958-a-ak--17-01_094
-            return f"{chamber} {protocol_parts[1]}:{protocol_parts[5]} {id_parts}"
-
-        #'prot-2004--113_075' -> '2004:113 075'
-        year = protocol_parts[1]
-        if len(year) == 4:
-            return f"{year[:4]}:{protocol_parts[3].replace('_', ' ')}"
-        #'prot-200405--113_075' -> '2004/05:113 075'
-
-        return f"{year[:4]}/{year[4:]}:{protocol_parts[3].replace('_', ' ')}"
-    except IndexError:
-        return selected_protocol
+# def get_release_tags(user: str, repository: str, github_access_token: str | None = None) -> list[str]:
+#     release_tags: list[str] = ["main", "dev"]
+#     try:
+#         access_token: str = github_access_token or os.environ.get("GITHUB_ACCESS_TOKEN", None)
+#         github: gh.Github = gh.Github(access_token)
+#         riksdagen_corpus = github.get_repo(f"{user}/{repository}")
+#         release_tags = release_tags + [x.title for x in riksdagen_corpus.get_releases()]
+#     except:  # pylint: disable=bare-except
+#         ...
+#     return release_tags
 
 
 def time_call(func):
@@ -450,7 +474,7 @@ def time_call(func):
     return timeit_wrapper
 
 
-def replace_by_patterns(names: list[str], cfg: dict[str, str]) -> pd.DataFrame:
+def replace_by_patterns(names: list[str], cfg: dict[str, str]) -> list[str]:
     """Replaces patterns in names using old-pattern to new-pattern mapping in cfg."""
 
     def fx(name: str) -> str:
@@ -524,9 +548,9 @@ def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
     """Unstacks a dataframe that has been grouped by temporal_key and pivot_keys"""
     if len(pivot_keys) <= 1 or data is None:
         return data
-    data: pd.DataFrame = data.set_index(pivot_keys)
+    data = data.set_index(pivot_keys)
     while isinstance(data.index, pd.MultiIndex):
-        data = data.unstack(level=1, fill_value=0)
+        data = data.unstack(level=1, fill_value=0)  # type: ignore
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = [' '.join(x) for x in data.columns]
     return data

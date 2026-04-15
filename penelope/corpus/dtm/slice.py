@@ -6,7 +6,8 @@ import numpy as np
 import scipy.sparse as sp
 from loguru import logger
 
-from ..token2id import id2token2token2id
+from penelope.corpus.token2id import id2token2token2id
+
 from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol
 
 # pylint: disable=no-member, attribute-defined-outside-init, access-member-before-definition, unused-argument
@@ -25,32 +26,43 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
 
     @staticmethod
     def where_is_above_threshold_with_keeps(
-        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] = None
+        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] | None = None
     ) -> np.ndarray: ...
 
     def term_frequencies_greater_than_or_equal_to_threshold(self, threshold: Union[int, float]) -> np.ndarray: ...
 
     def compress(
-        self, tf_threshold: int = 1, extra_keep_ids: List[int] = None, inplace: bool = False
+        self, tf_threshold: int = 1, extra_keep_ids: List[int] | None = None, inplace: bool = False
     ) -> Tuple[IVectorizedCorpus, Mapping[int, int], Sequence[int]]: ...
 
     @property
-    def overridden_term_frequency(self) -> np.ndarray: ...
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None: ...
+
+    @property
+    def shape(self) -> Tuple[int, int]: ...
+
+    # Internal mutable attributes for inplace operations
+    _bag_term_matrix: sp.csr_matrix
+    _token2id: dict[str, int]
+    _id2token: dict[int, str] | None
+    _overridden_term_frequency: np.ndarray | dict[str, int] | None
 
 
-class SliceMixIn:
+class SliceMixIn(ISlicedCorpusProtocol):
     def slice_by_tf(
-        self: ISlicedCorpusProtocol, threshold: Union[int, float], inplace: bool = False
+        self: ISlicedCorpusProtocol, tf_threshold: Union[int, float], inplace: bool = False
     ) -> IVectorizedCorpus:
         """Returns subset corpus where low frequent words are filtered out"""
-        if threshold is None:
+        if tf_threshold is None:
             return self
-        indices: np.ndarray = np.argwhere(self.term_frequency >= threshold).ravel()
+        tf = self.term_frequency
+        assert isinstance(tf, np.ndarray), "term_frequency should be ndarray"
+        indices: np.ndarray = np.argwhere(tf >= tf_threshold).ravel()
         if len(indices) == self.shape[1]:
-            return self
-        return self.slice_by_indices(indices, inplace=inplace)
+            return self  # type: ignore[returnValue]
+        return self.slice_by_indices(indices.tolist(), inplace=inplace)
 
-    def slice_by_n_top(self: ISlicedCorpusProtocol, n_top: int, inplace: bool = False) -> IVectorizedCorpus:
+    def slice_by_n_top(self: ISlicedCorpusProtocol, n_top: int | None, inplace: bool = False) -> IVectorizedCorpus:
         """Create a subset corpus that only contains most frequent `n_top` words
 
         Parameters
@@ -64,8 +76,8 @@ class SliceMixIn:
             Subset of self where words having a count less than 'tf_threshold' are removed
         """
         if n_top is None:
-            return self
-        return self.slice_by_indices(self.nlargest(n_top=n_top), inplace=inplace)
+            return self  # type: ignore[returnValue]
+        return self.slice_by_indices(self.nlargest(n_top=n_top).tolist(), inplace=inplace)
 
     def slice_by_document_frequency(
         self: ISlicedCorpusProtocol, max_df=1.0, min_df=1, max_n_terms=None
@@ -128,17 +140,21 @@ class SliceMixIn:
 
         if indices is None:
             indices = []
+        else:
+            indices = list(indices)
 
         if len(indices) == self.bag_term_matrix.shape[1]:
-            return self
+            return self  # type: ignore[returnValue]
 
         indices.sort()
 
         bag_term_matrix = self.bag_term_matrix[:, indices]
-        token2id = {self.id2token[indices[i]]: i for i in range(0, len(indices))}
+        token2id: dict[str, int] = {self.id2token[indices[i]]: i for i in range(0, len(indices))}
 
         overridden_term_frequency = (
-            self._overridden_term_frequency[indices] if self._overridden_term_frequency is not None else None
+            self._overridden_term_frequency[indices]
+            if isinstance(self._overridden_term_frequency, np.ndarray)
+            else self._overridden_term_frequency
         )
 
         if not inplace:
@@ -150,7 +166,7 @@ class SliceMixIn:
         self._id2token = None
         self._overridden_term_frequency = overridden_term_frequency
 
-        return self
+        return self  # type: ignore[returnValue]
 
     def translate_to_vocab(
         self: ISlicedCorpusProtocol, id2token: Mapping[int, str], inplace=False
@@ -158,7 +174,7 @@ class SliceMixIn:
         """Translates corpus to new vocabulary. Tokens not found in target vocabulary are removed."""
 
         common_tokens: list[str] = sorted(list(set(id2token.values()).intersection(self.token2id.keys())))
-        token2id: Mapping[str, int] = id2token2token2id(id2token)
+        token2id: Mapping[str, int] = id2token2token2id(id2token)  # type: ignore
         og = self.token2id.get
         ng = token2id.get
 
@@ -179,8 +195,8 @@ class SliceMixIn:
             f"corpus translated to new vocabulary: {len(common_tokens)} tokens kept, {len(self.token2id) - len(common_tokens)} ({(len(self.token2id) - len(common_tokens))/len(self.token2id):.1%}) removed. "
         )
 
-        o_tf: dict = (
-            self.overridden_term_frequency[old_indicies] if self.overridden_term_frequency is not None else None
+        o_tf: dict = (  # type: ignore
+            self.overridden_term_frequency[old_indicies] if self.overridden_term_frequency is not None else None  # type: ignore
         )
 
         if not inplace:
@@ -192,16 +208,16 @@ class SliceMixIn:
             )
             return corpus
 
-        self._bag_term_matrix = new_dtm
+        self._bag_term_matrix = new_dtm  # type: ignore
         self._token2id = token2id
         self._id2token = None
         self._overridden_term_frequency = o_tf
 
-        return self
+        return self  # type: ignore[returnValue]
 
     @staticmethod
     def where_is_above_threshold_with_keeps(
-        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] = None
+        values: np.ndarray, threshold: Union[int, float], keep_indices: List[int] | None = None
     ) -> np.ndarray:
         """Returns indices for values above threshold or in keeps"""
         mask = values >= threshold
@@ -211,18 +227,18 @@ class SliceMixIn:
         return indices
 
     def term_frequencies_greater_than_or_equal_to_threshold(
-        self: ISlicedCorpusProtocol, threshold: Union[int, float], keep_indices: List[int] = None
+        self: ISlicedCorpusProtocol, threshold: Union[int, float], keep_indices: List[int] | None = None
     ) -> np.ndarray:
         """Returns indices of words having a frequency below a given threshold"""
         indices = self.where_is_above_threshold_with_keeps(
-            self.term_frequency, threshold, keep_indices=keep_indices
+            self.term_frequency, threshold, keep_indices=keep_indices  # type: ignore
         ).ravel()
         return indices
 
     def compress(
         self: ISlicedCorpusProtocol,
         tf_threshold: int = 1,
-        extra_keep_ids: List[int] = None,
+        extra_keep_ids: List[int] | None = None,
         inplace=False,
     ) -> Tuple[IVectorizedCorpus, Mapping[int, int], Sequence[int]]:
         """Compresses corpus by eliminating zero-TF terms.
@@ -230,10 +246,10 @@ class SliceMixIn:
         Returns:
             Tuple[IVectorizedCorpus, Mapping[int,int], Sequence[int]]: compressed corpus, mapping between old/new vocabularies and affected original indices
         """
-        keep_ids = self.term_frequencies_greater_than_or_equal_to_threshold(tf_threshold, keep_indices=extra_keep_ids)
+        keep_ids = self.term_frequencies_greater_than_or_equal_to_threshold(tf_threshold, keep_indices=extra_keep_ids)  # type: ignore
 
         if len(keep_ids) == 0:
-            return self, {}, []
+            return self, {}, []  # type: ignore[returnValue]
 
         ids_translation: Mapping[int, int] = {old_id: new_id for new_id, old_id in enumerate(keep_ids)}
 

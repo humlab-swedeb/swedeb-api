@@ -1,16 +1,16 @@
 import logging
 import os
 import re
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Union
+from typing import Callable, Optional
 
 from .filename_utils import strip_paths
 
-FilenameFieldSpec = Union[List[str], Dict[str, Union[Callable, str]]]
-FilenameFieldSpecs = Optional[Sequence[FilenameFieldSpec]]
+FilenameFieldSpec = list[str] | dict[str, Callable | str]
+FilenameFieldSpecs = None | list[FilenameFieldSpec]
 NameFieldSpecs = Optional[FilenameFieldSpecs]
 
 
-def _parse_indexed_fields(filename_fields: List[str]):
+def _parse_indexed_fields(filename_fields: list[str]) -> dict[str, Callable | str]:
     """Parses a list of meta-field expressions into a format suitable for `extract_filename_fields`
     The meta-field expressions must either of:
         `fieldname:regexp`
@@ -21,6 +21,9 @@ def _parse_indexed_fields(filename_fields: List[str]):
     meta_fields : [type]
         [description]
     """
+
+    if filename_fields is None:
+        return {}
 
     def extract_field(data):
         if len(data) == 1:  # regexp
@@ -34,9 +37,7 @@ def _parse_indexed_fields(filename_fields: List[str]):
         raise ValueError("to many parts in extract expression")
 
     try:
-        filename_fields = {x[0]: extract_field(x[1:]) for x in [y.split(':') for y in filename_fields]}
-
-        return filename_fields
+        return {x[0]: extract_field(x[1:]) for x in [y.split(':') for y in filename_fields]}
 
     except Exception as ex:  # pylint: disable=bare-except
         logging.exception(ex)
@@ -44,7 +45,7 @@ def _parse_indexed_fields(filename_fields: List[str]):
         raise
 
 
-def extract_filename_metadata(filename: str, filename_fields: FilenameFieldSpec) -> Mapping[str, Any]:
+def extract_filename_metadata(filename: str, filename_fields: FilenameFieldSpecs) -> dict[str, int | str | None]:
     """Extracts metadata from filename
 
     The extractor in kwargs must be either a regular expression that extracts the single value
@@ -54,20 +55,20 @@ def extract_filename_metadata(filename: str, filename_fields: FilenameFieldSpec)
     ----------
     filename : str
         Filename (basename)
-    kwargs: Dict[str, Union[Callable, str]]
+    kwargs: dict[str, Union[Callable, str]]
         key=extractor list
 
     Returns
     -------
-    Dict[str,Union[int,str]]
+    dict[str,Union[int,str]]
         Each key in kwargs is extacted and stored in the dict.
 
     """
 
-    def astype_int_or_str(v):
+    def astype_int_or_str(v: str) -> int | str | None:
         return int(v) if v is not None and v.isnumeric() else v
 
-    def regexp_extract(compiled_regexp, filename: str) -> str:
+    def regexp_extract(compiled_regexp, filename: str) -> str | None:
         try:
             return compiled_regexp.match(filename).groups()[0]
         except:  # pylint: disable=bare-except
@@ -92,22 +93,24 @@ def extract_filename_metadata(filename: str, filename_fields: FilenameFieldSpec)
 
     if isinstance(filename_fields, (list, tuple)):
         # List of `key:sep:index`
-        filename_fields = _parse_indexed_fields(filename_fields)
+        filename_fields = _parse_indexed_fields(filename_fields)  # type: ignore
 
     if isinstance(filename_fields, str):
         # List of `key:sep:index`
-        filename_fields = _parse_indexed_fields(filename_fields.split('#'))
+        filename_fields = _parse_indexed_fields(filename_fields.split('#'))  # type: ignore
 
-    key_fx = {key: fxify(fx_or_re) for key, fx_or_re in filename_fields.items()}
+    key_fx = {key: fxify(fx_or_re) for key, fx_or_re in filename_fields.items()}  # type: ignore
 
-    data = {'filename': basename}
+    data: dict[str, int | str | None] = {'filename': basename}
     for key, fx in key_fx.items():
         data[key] = astype_int_or_str(fx(basename))
 
     return data
 
 
-def extract_filenames_metadata(*, filenames: List[str], filename_fields: FilenameFieldSpecs) -> List[Mapping[str, Any]]:
+def extract_filenames_metadata(
+    *, filenames: list[str], filename_fields: FilenameFieldSpecs
+) -> list[dict[str, int | str | None]]:
     return [
         {'filename': filename, **extract_filename_metadata(filename, filename_fields)}
         for filename in strip_paths(filenames)

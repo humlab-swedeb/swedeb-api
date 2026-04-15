@@ -4,7 +4,8 @@ import contextlib
 import fnmatch
 import re
 import warnings
-from typing import Any, Callable, Iterable, Optional, Sequence, Set, Tuple, Union
+from collections.abc import Collection
+from typing import Any, Callable, Iterable, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -16,7 +17,6 @@ from scipy.sparse import SparseEfficiencyWarning, lil_matrix
 
 from penelope import utility
 
-from ..document_index import DocumentIndex
 from .group import GroupByMixIn
 from .interface import IVectorizedCorpus, VectorizedCorpusError
 from .slice import SliceMixIn
@@ -24,23 +24,25 @@ from .stats import StatsMixIn
 from .store import StoreMixIn
 
 try:
-    import sklearn.preprocessing
-    from sklearn.feature_extraction.text import TfidfTransformer
+    import sklearn.preprocessing  # type: ignore
+    from sklearn.feature_extraction.text import TfidfTransformer  # type: ignore
 except ImportError:
     ...
 
 
 warnings.simplefilter('ignore', SparseEfficiencyWarning)
 
+# pylint: disable=super-init-not-called
 
-class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVectorizedCorpus):
+
+class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
     def __init__(
         self,
         bag_term_matrix: scipy.sparse.csr_matrix,
         *,
         token2id: dict[str, int],
-        document_index: DocumentIndex,
-        overridden_term_frequency: Optional[dict[int, int]] = None,
+        document_index: pd.DataFrame,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
     ):
         """Class that encapsulates a bag-of-word matrix
@@ -48,8 +50,8 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         Args:
             bag_term_matrix (scipy.sparse.csr_matrix): Bag-of-word matrix
             token2id (dict[str, int]): Token to token/column index translation
-            document_index (DocumentIndex): Corpus document/row metadata
-            overridden_term_frequency (np.ndarrys, optional): Supplied if source TF
+            document_index (pd.DataFrame): Corpus document/row metadata
+            overridden_term_frequency (np.ndarray, optional): Supplied if source TF differs from corpus TF
         """
         self._class_name: str = "penelope.corpus.dtm.corpus.VectorizedCorpus"
 
@@ -66,12 +68,12 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             else token2id.data if hasattr(token2id, 'data') else token2id
         )
         self._id2token: Optional[dict[int, str]] = None
-        self._document_index: DocumentIndex = self._ingest_document_index(document_index=document_index)
-        self._overridden_term_frequency: Optional[np.ndarray] = overridden_term_frequency
-        self._payload: dict = dict(**kwargs)
+        self._document_index: pd.DataFrame = self._ingest_document_index(document_index=document_index)
+        self._overridden_term_frequency: np.ndarray | dict[str, int] | None = overridden_term_frequency
+        self._payload: dict = {**kwargs}
 
-    def _ingest_document_index(self, document_index: DocumentIndex):
-        if not np.issubdtype(document_index.index.dtype, np.number):
+    def _ingest_document_index(self, document_index: pd.DataFrame) -> pd.DataFrame:
+        if not pd.api.types.is_integer_dtype(document_index.index.dtype):
             logger.warning("VectorizedCorpus: supplied document index has not an integral index")
             document_index = document_index.set_index('document_id', drop=False).rename_axis('')
 
@@ -101,6 +103,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     def id2token(self) -> dict[int, str]:
         if self._id2token is None and self.token2id is not None:
             self._id2token = {i: t for t, i in self.token2id.items()}
+        assert self._id2token is not None
         return self._id2token
 
     @property
@@ -117,29 +120,30 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return self._bag_term_matrix.T
 
     @property
-    def term_frequency0(self) -> np.ndarray:
+    def term_frequency0(self) -> np.ndarray | dict[str, int] | None:
         """Global TF (absolute term count), overridden prioritized"""
         if self._overridden_term_frequency is not None:
             return self._overridden_term_frequency
         return self.term_frequency
 
     @property
-    def term_frequency(self) -> np.ndarray:
+    def term_frequency(self) -> np.ndarray | dict[str, int] | None:
         """Global TF (absolute term count)"""
         return self._bag_term_matrix.sum(axis=0).A1.ravel()
 
     @property
-    def overridden_term_frequency(self) -> np.ndarray:
+    def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None:
         """Overridden global token frequencies (source corpus size)"""
         return self._overridden_term_frequency
 
     def term_frequency_map(self) -> dict[str, int]:
         fg = self.id2token.get
         tf = self.term_frequency
-        return {fg(i): tf[i] for i in range(0, len(self.token2id))}
+        assert isinstance(tf, np.ndarray), "term_frequency should always return ndarray"
+        return {fg(i) or "": int(tf[i]) for i in range(0, len(self.token2id))}
 
     @property
-    def TF(self) -> np.ndarray:
+    def TF(self) -> np.ndarray | dict[str, int] | None:
         """Term frequencies (TF)"""
         return self.term_frequency
 
@@ -168,11 +172,11 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return self._bag_term_matrix.shape[1]
 
     @property
-    def document_index(self) -> DocumentIndex:
+    def document_index(self) -> pd.DataFrame:
         """Returns number document index (part of interface)"""
         return self._document_index
 
-    def replace_document_index(self, value: DocumentIndex) -> None:
+    def replace_document_index(self, value: pd.DataFrame) -> None:
         """Special case: replace existing document index, use with care"""
         self._document_index = value
 
@@ -267,7 +271,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         di = di.reset_index(drop=True)
         di['document_id'] = di.index
 
-        corpus = VectorizedCorpus(bag_term_matrix=dtm, token2id=self.token2id, document_index=di, **self.payload)
+        corpus = VectorizedCorpus(bag_term_matrix=dtm, token2id=self.token2id, document_index=di, **self.payload)  # type: ignore[reportAbstractUsage]
 
         return corpus
 
@@ -300,7 +304,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             factor = self._bag_term_matrix[0, :].sum() / btm[0, :].sum()
             btm = btm * factor
 
-        corpus = VectorizedCorpus(
+        corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=btm,
             token2id=self.token2id,
             document_index=self.document_index,
@@ -317,8 +321,8 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             raise VectorizedCorpusError("raw count normalize attempted but no n_raw_tokens in document index")
 
         token_counts = self.document_index.n_raw_tokens.values
-        btm = utility.normalize_sparse_matrix_by_vector(self._bag_term_matrix, token_counts)
-        corpus = VectorizedCorpus(
+        btm = utility.normalize_sparse_matrix_by_vector(self._bag_term_matrix, token_counts)  # type: ignore
+        corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=btm,
             token2id=self.token2id,
             document_index=self.document_index,
@@ -363,11 +367,11 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         VectorizedCorpus
             The TF-IDF transformed corpus
         """
-        transformer = TfidfTransformer(norm=norm, use_idf=use_idf, smooth_idf=smooth_idf)
+        transformer = TfidfTransformer(norm=norm, use_idf=use_idf, smooth_idf=smooth_idf)  # type: ignore
 
         tfidf_bag_term_matrix = transformer.fit_transform(self._bag_term_matrix)
 
-        n_corpus = VectorizedCorpus(
+        n_corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=tfidf_bag_term_matrix,
             token2id=self.token2id,
             document_index=self.document_index,
@@ -413,7 +417,9 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         return term_term_matrix
 
-    def find_matching_words(self, word_or_regexp: Set[str], n_max_count: int, descending: bool = False) -> list[str]:
+    def find_matching_words(
+        self, word_or_regexp: Collection[str], n_max_count: int | None, descending: bool = False
+    ) -> list[str]:
         """Returns words in corpus that matches candidate tokens"""
         words = self.pick_n_top_words(
             find_matching_words_in_vocabulary(self.token2id, word_or_regexp),
@@ -423,11 +429,9 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         return words
 
     def find_matching_words_indices(
-        self, word_or_regexp: list[str], n_max_count: int, descending: bool = False
+        self, word_or_regexp: list[str], n_max_count: int | None, descending: bool = False
     ) -> list[int]:
         """Returns `tokens´ indices` in corpus that matches candidate tokens"""
-
-        # FIXME: Use https://github.com/WojciechMula/pyahocorasick to search for words
 
         indices: list[int] = [
             self.token2id[token]
@@ -440,11 +444,11 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     def create(
         bag_term_matrix: scipy.sparse.csr_matrix,
         token2id: dict[str, int],
-        document_index: DocumentIndex,
-        overridden_term_frequency: dict[str, int] = None,
+        document_index: pd.DataFrame,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
     ) -> "IVectorizedCorpus":
-        return VectorizedCorpus(
+        return VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=bag_term_matrix,
             token2id=token2id,
             document_index=document_index,
@@ -458,8 +462,8 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         token2id: dict[str, int],
         document_index: pd.DataFrame,
         min_tf: int = 1,
-        max_tokens: int = None,
-    ) -> VectorizedCorpus:
+        max_tokens: int | None = None,
+    ) -> IVectorizedCorpus:
         """Convert a stream of (document_id, Iterable[token_id]) into a VectorizedCorpus"""
 
         D, T = document_index.document_id.max() + 1, max(token2id.values()) + 1
@@ -467,10 +471,10 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         M: lil_matrix = lil_matrix((D, T), dtype=int)
 
         for document_id, document_token_ids in stream:
-            token_ids, counts = np.unique(document_token_ids, return_counts=True)
+            token_ids, counts = np.unique(document_token_ids, return_counts=True)  # type: ignore
             M[document_id, token_ids] = counts
 
-        corpus: VectorizedCorpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)
+        corpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)  # type: ignore[reportAbstractUsage]
 
         if min_tf:
             corpus = corpus.slice_by_tf(min_tf, inplace=True)
@@ -480,19 +484,19 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         return corpus
 
-    def nbytes(self, kind="bytes") -> float:
+    def nbytes(self, kind="bytes") -> float | None:
         k = {'bytes': 0, 'kb': 1, 'mb': 2, 'gb': 3}.get(kind.lower(), 0)
         with contextlib.suppress(Exception):
             return (self.data.data.nbytes + self.data.indptr.nbytes + self.data.indices.nbytes) / pow(1024, k)
         return None
 
-    def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]:
-        """Clears (inplace) tokens (columns) having a TF-value (column sum) less than threshold
-        Does not change shape."""
-        indices = np.argwhere(self.term_frequency < tf_threshold).ravel()
-        if len(indices) > 0:
-            self.zero_out_by_indices(indices)
-        return indices
+    # def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]:
+    #     """Clears (inplace) tokens (columns) having a TF-value (column sum) less than threshold
+    #     Does not change shape."""
+    #     indices = np.argwhere(self.term_frequency < tf_threshold).ravel()
+    #     if len(indices) > 0:
+    #         self.zero_out_by_indices(indices)
+    #     return indices
 
     def zero_out_by_others_zeros(self, other: VectorizedCorpus) -> VectorizedCorpus:
         """Zeroes out elements in `self` where corresponding element in `other` is zero
@@ -509,9 +513,9 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         if indices is None or len(indices) == 0:
             return indices
 
-        term_frequency = self.term_frequency
+        term_frequency = self.term_frequency or {}
 
-        indices: Sequence[int] = [i for i in indices if term_frequency[i] > 0]
+        indices = [i for i in indices if term_frequency[i] > 0]  # type: ignore
 
         if len(indices) == 0:
             return indices
@@ -533,7 +537,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     #     self.data.eliminate_zeros()
 
 
-def find_matching_words_in_vocabulary(token2id: dict[str], candidate_words: Set[str]) -> Set[str]:
+def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Collection[str]) -> set[str]:
     words = {w for w in candidate_words if w in token2id}
 
     remaining_words = [w for w in candidate_words if w not in words and len(w) > 0]

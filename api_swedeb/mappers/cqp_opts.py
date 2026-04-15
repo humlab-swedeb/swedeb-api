@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from fastapi.params import Query
 
-from api_swedeb.api.utils.common_params import CommonQueryParams
+from api_swedeb.api.params import CommonQueryParams
 
 YEAR_EPOCH: int = 1850
 
@@ -56,7 +56,7 @@ def query_params_to_CQP_criterias(params: CommonQueryParams | None = None) -> li
 
 def query_params_to_CQP_opts(
     params: CommonQueryParams,
-    word_targets: str | tuple[str, str] | list[str | tuple[str, str]],
+    word_targets: str | tuple[str, str] | list[str] | list[tuple[str, str]],
     search_target: None | Literal["word", "lemma"] = None,
 ) -> list[dict[str, Any]]:
     """Maps a QueryParams to CQP options
@@ -65,7 +65,7 @@ def query_params_to_CQP_opts(
     ----------
     params : CommonQueryParams | SpeakerQueryParams
         Query APU parameters
-    word_targets : str | tuple[str, str] | list[str  |  tuple[str, str]]
+    word_targets : str | tuple[str, str] | list[str] | list[tuple[str, str]]
         Positional targets i.e. a sequence of words to match, if a tuple is provided
         the second element is the target type ("pos", "word", or "Lemma").
         If a literal string is provided, the target type defaults to "word".
@@ -78,7 +78,7 @@ def query_params_to_CQP_opts(
     if isinstance(word_targets, str):
         word_targets = [word_targets]
 
-    word_targets: list[tuple[str, str]] = [
+    word_targets_tuples: list[tuple[str, str | None]] = [
         (word, search_target) if isinstance(word, str) else word for word in word_targets
     ]
 
@@ -86,7 +86,7 @@ def query_params_to_CQP_opts(
 
     sequence: list[dict] = []
 
-    for word, target in word_targets:
+    for word, target in word_targets_tuples:
         opts: dict[str, Any] = {
             "prefix": "a" if criterias else None,
             "criterias": criterias,

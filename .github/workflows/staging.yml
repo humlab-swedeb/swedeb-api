@@ -26,10 +26,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
   
-      - name: Install Python build tools
-        run: pipx install poetry
+      - name: Install uv
+        run: pipx install uv
 
       - name: Get version from pyproject.toml
         id: get_version
@@ -37,7 +37,7 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
           else
-            VERSION=$(poetry version -s)
+            VERSION=$(uv version)
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building staging image for version: ${VERSION} from staging branch"
@@ -56,6 +56,4 @@ jobs:
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           CWB_REGISTRY_TOKEN: ${{ secrets.CWB_REGISTRY_TOKEN }}
-          VERSION: ${{ steps.get_version.outputs.version }}
-          FRONTEND_VERSION_TAG: latest
-        run: ./.github/scripts/build-and-push-image.sh "${VERSION}" staging
+        run: ./.github/scripts/build-and-push-image.sh "${{ steps.get_version.outputs.version }}" staging

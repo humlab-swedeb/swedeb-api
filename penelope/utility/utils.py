@@ -56,7 +56,7 @@ def load_cwd_dotenv():
 def fn_name(default=None):
     try:
         return inspect.stack()[1][3]
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         return default or str(uuid.uuid1())
 
 
@@ -118,8 +118,10 @@ def isint(s: Any) -> bool:
         return False
 
 
-def filter_dict(d: dict[str, Any], keys: list[str] = None, filter_out: bool = False) -> dict[str, Any]:
-    keys = set(d.keys()) - set(keys or []) if filter_out else (keys or [])  # type: ignore
+def filter_dict(d: dict[str, Any], keys: list[str] | None = None, filter_out: bool = False) -> dict[str, Any]:
+    keys = keys or []
+    keys = set(d.keys()) - set(keys or []) if filter_out else keys  # type: ignore
+    assert keys is not None
     return {k: v for k, v in d.items() if k in keys}
 
 
@@ -193,7 +195,7 @@ def better_flatten2(lst) -> Iterable[Any]:
 def better_flatten(lst: Iterable[Any]) -> list[Any]:
     if isinstance(lst, (str, bytes)):
         return lst  # type: ignore
-    return [x for x in better_flatten2(lst)]
+    return list(better_flatten2(lst))
 
 
 def project_series_to_range(series: list[Number], low: Number, high: Number) -> list[Number]:
@@ -284,7 +286,7 @@ def dict_split(d: dict[Any, Any], fn: Callable[[dict[Any, Any], str], bool]) -> 
 def dict_to_list_of_tuples(d: dict) -> list[Tuple[Any, Any]]:
     if d is None:
         return []
-    return [(k, v) for (k, v) in d.items()]
+    return list(d.items())
 
 
 def revdict(d: dict) -> dict:
@@ -309,7 +311,7 @@ def dotcoalesce(d: dict, *paths: str, default: Any = None) -> Any:
     return default
 
 
-def list_of_dicts_to_dict_of_lists(dl: list[dict[str, Any]]) -> dict[str, list[Any]]:
+def list_of_dicts_to_dict_of_lists(dl: list[dict[str, Any]]) -> dict[str, tuple[Any, ...]]:
     dict_of_lists = dict(zip(dl[0], zip(*[d.values() for d in dl])))
     return dict_of_lists
 
@@ -518,25 +520,29 @@ def assert_is_strictly_increasing(series: pd.Series) -> None:
         raise ValueError(f"series: {series.name} must be an integer typed, strictly increasing series starting from 0")
 
 
-def is_strictly_increasing(series: pd.Series, by_value=1, start_value: int = 0, sort_values: bool = True) -> bool:
+def is_strictly_increasing(
+    series: pd.Series | pd.Index, by_value=1, start_value: int = 0, sort_values: bool = True
+) -> bool:
     if len(series) == 0:
         return True
 
-    if not np.issubdtype(series.dtype, np.integer):  # type: ignore
+    if not pd.api.types.is_integer_dtype(series.dtype):
         return False
 
     if sort_values:
         series = series.sort_values()
 
+    values = series.to_numpy(dtype=np.int64, copy=False)
+
     if start_value is not None:
-        if series[0] != start_value:
+        if values[0] != start_value:
             return False
 
     if not series.is_monotonic_increasing:
         return False
 
     if by_value is not None:
-        if not np.all((series[1:].values - series[:-1].values) == by_value):  # type: ignore
+        if not np.all(np.diff(values) == by_value):
             return False
 
     return True
@@ -695,13 +701,19 @@ def try_load_function_or_class_method(name: str, **args) -> Callable[[str], str]
 
 def multiple_replace(text: str, replace_map: dict, ignore_case: bool = False) -> str:
     # Create a regular expression  from the dictionary keys
-    opts = dict(flags=re.IGNORECASE) if ignore_case else {}
+    opts = {"flags": re.IGNORECASE} if ignore_case else {}
     sorted_keys = sorted(replace_map.keys(), key=lambda k: len(replace_map[k]), reverse=True)
     regex = re.compile(f"({'|'.join(map(re.escape, sorted_keys))})", **opts)
     if ignore_case:
-        fx = lambda mo: replace_map[(mo.string[mo.start() : mo.end()]).lower()]
+
+        def fx(mo):
+            return replace_map[mo.string[mo.start() : mo.end()].lower()]
+
     else:
-        fx = lambda mo: replace_map[mo.string[mo.start() : mo.end()]]
+
+        def fx(mo):
+            return replace_map[mo.string[mo.start() : mo.end()]]
+
     return regex.sub(fx, text)
 
 
@@ -781,7 +793,7 @@ class CommaStr(str):
 
     def __or__(self, x: str | CommaStr) -> CommaStr:
         parts: list[str] = self.split(',')
-        parts.extend(part for part in x.parts() if part not in parts)
+        parts.extend(part for part in x.parts() if part not in parts)  # type: ignore ; FIXME: can be a bug
         return self.__class__(','.join(parts))
 
     def parts(self) -> list[str]:

@@ -126,7 +126,7 @@ All three environments use the **same Docker build script** with different param
 - `DOCKER_USERNAME`: GitHub actor
 - `DOCKER_PASSWORD`: GitHub token
 - `CWB_REGISTRY_TOKEN`: Personal token for cross-org access (optional)
-- `FRONTEND_VERSION_TAG`: Frontend version to include (default: latest)
+- `FRONTEND_VERSION`: Frontend version to download at runtime (default: latest)
 - `GITHUB_REPOSITORY`: Org/repo name
 
 ### 2. Test Build Flow
@@ -199,22 +199,56 @@ main branch push
 | **GitHub Release** | ❌ Not created | ❌ Not created | ✅ Created with assets |
 | **Python Wheel** | ❌ Not built | ❌ Not built | ✅ Built and attached |
 
-## Multi-Image Architecture
+## Frontend Asset Management
 
-The API Docker image depends on two other images:
+### Current Architecture (Decoupled)
+
+The API container downloads frontend assets at runtime from GitHub releases, eliminating the container dependency:
+
+**At Container Startup**:
+1. Check if frontend assets exist and version matches
+2. If needed, download appropriate tarball from GitHub releases
+3. Extract assets to `/app/public`
+4. Start the API server
+
+**Environment Variables**:
+- `FRONTEND_VERSION`: Frontend version to download (default: `latest`)
+
+**Supported Versions**:
+- `latest` - Latest production release (stable, versioned)
+- `staging` - Latest staging build (pre-release, floating)
+- `v0.10.1` - Specific production version (recommended for production)
+
+**Frontend Release Process**:
+
+| Branch | Release Type | Tarball Name | GitHub Release Tag | Updated On Push |
+|--------|--------------|--------------|-------------------|-----------------|
+| `main` | Production | `frontend-v0.11.0.tar.gz` | `v0.11.0` (permanent) | Yes, via semantic-release |
+| `staging` | Pre-release | `frontend-0.11.0-staging.tar.gz` | `staging` (floating) | Yes, always latest |
+
+**Benefits**:
+- ✅ No build-time dependency between frontend and backend
+- ✅ Backend can be built independently
+- ✅ Podman-compatible (no shared volumes)
+- ✅ Security-focused (self-contained containers)
+- ✅ Flexible version management
+- ✅ Staging builds available for pre-production testing
+
+See [Decoupled Architecture Guide](./README-DECOUPLED.md) for details.
+
+### Legacy Architecture (Deprecated)
+
+Previously, the backend container copied assets from the frontend container image:
 
 ```dockerfile
+# DEPRECATED - No longer used
 ARG FRONTEND_VERSION=latest
 FROM ghcr.io/humlab-swedeb/swedeb_frontend:${FRONTEND_VERSION} AS frontend-dist
 FROM ghcr.io/humlab/cwb-container:latest AS final
-
-# ... copy frontend assets from frontend-dist ...
 COPY --from=frontend-dist /app/public ./public
 ```
 
-**Dependencies**:
-1. **Frontend Image**: `ghcr.io/humlab-swedeb/swedeb_frontend` (same org)
-2. **CWB Base Image**: `ghcr.io/humlab/cwb-container` (different org - requires CWB_REGISTRY_TOKEN)
+This approach has been replaced with runtime asset downloading.
 
 ## Cross-Organization Access
 

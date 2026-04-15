@@ -7,7 +7,7 @@ import pathlib
 import pickle
 from os.path import basename, exists, isdir, isfile, join
 from pathlib import Path
-from typing import Any, AnyStr, Dict, List, Mapping, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 import pandas as pd
 import yaml
@@ -40,7 +40,7 @@ def find_parent_folder(name: str) -> str:
     return folder
 
 
-def find_parent_folder_with_child(folder: str, target: str) -> pathlib.Path:
+def find_parent_folder_with_child(folder: str, target: str) -> pathlib.Path | None:
     path = pathlib.Path(folder).resolve()
     while path is not None:
         name = join(path, target)
@@ -58,7 +58,7 @@ def touch(filename: str) -> str:
     return filename
 
 
-def probe_extension(filename: str, extensions: str = 'feather,csv,zip') -> str:
+def probe_extension(filename: str, extensions: str = 'feather,csv,zip') -> str | None:
     """Checks if `filename` exists, or with any of given extensions"""
     if os.path.isfile(filename):
         return filename
@@ -77,18 +77,12 @@ def find_folder(folder: str, parent: str) -> str:
 
 def read_excel(filename: str, sheet: str) -> pd.DataFrame:
     if not isfile(filename):
-        raise Exception(f"File {filename} does not exist!")
+        raise FileNotFoundError(f"File {filename} does not exist!")
     with pd.ExcelFile(filename) as xls:
         return pd.read_excel(xls, sheet)
 
 
-def save_excel(data: pd.DataFrame, filename: str):
-    with pd.ExcelWriter(filename) as writer:  # pylint: disable=abstract-class-instantiated
-        for df, name in data:
-            df.to_excel(writer, name, engine='xlsxwriter')
-
-
-def read_json(path: str, default: dict = None) -> Dict:
+def read_json(path: str, default: dict | None = None) -> Dict:
     """Reads JSON from file"""
 
     if not isfile(path):
@@ -104,7 +98,7 @@ def read_json(path: str, default: dict = None) -> Dict:
 def write_json(path: str, data: Dict, default=None):
     if default is not None:
         if not callable(default):
-            default = lambda _: default
+            default = lambda _: default  # noqa: E731 ; pylint: disable=unnecessary-lambda-assignment
 
     with open(path, 'w', encoding='utf-8') as json_file:
         json.dump(data, json_file, indent=4, default=default)
@@ -150,8 +144,8 @@ def symlink_files(source_pattern: str, target_folder: str) -> None:
 
 def read_textfile(filename: str, as_binary: bool = False) -> str:
     """Returns text content from `filename`"""
-    opts = {'mode': 'rb'} if as_binary else {'mode': 'r', 'encoding': 'utf-8'}
-    with open(filename, **opts) as f:
+    opts: Dict[str, str] = {'mode': 'rb'} if as_binary else {'mode': 'r', 'encoding': 'utf-8'}
+    with open(filename, **opts) as f:  # type: ignore
         try:
             data = f.read()
             content = data  # .decode('utf-8')
@@ -162,7 +156,7 @@ def read_textfile(filename: str, as_binary: bool = False) -> str:
         return content
 
 
-def read_textfile2(filename: str, as_binary: bool = False) -> Tuple[str, AnyStr]:
+def read_textfile2(filename: str, as_binary: bool = False) -> Tuple[str, str]:
     """Reads text in `filename` and return a tuple filename and text"""
     data = read_textfile(filename, as_binary=as_binary)
     return basename(filename), data

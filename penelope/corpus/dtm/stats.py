@@ -1,5 +1,5 @@
 from numbers import Number
-from typing import Container, Dict, List, Sequence, Tuple
+from typing import Container, Dict, List, Self, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -14,7 +14,7 @@ class StatsMixIn:
     def get_top_n_words(
         self: IVectorizedCorpusProtocol,
         n: int = 1000,
-        indices: Sequence[int] = None,
+        indices: Sequence[int] | None = None,
     ) -> Sequence[Tuple[str, Number]]:
         """Returns the top n words in a subset of the self sorted according to occurrence."""
 
@@ -26,15 +26,13 @@ class StatsMixIn:
             (self.id2token[i], sum_of_token_counts[i]) for i in largest_token_indices if sum_of_token_counts[i] > 0
         ]
 
-        return largest_tokens
+        return largest_tokens  # type: ignore
 
-    def nlargest(
-        self: IVectorizedCorpusProtocol, n_top: int, *, sort_indices: bool = False, override: bool = False
-    ) -> np.ndarray:
+    def nlargest(self: Self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray:
         """Return indices for the `n_top` most frequent terms in DTM
         Note: indices are sorted by TF count as default."""
-        n_top = min(n_top, len(self.term_frequency))
-        indices: np.ndarray = np.argpartition(self.term_frequency if not override else self.term_frequency0, -n_top)[
+        n_top = min(n_top, len(self.term_frequency))  # type: ignore
+        indices: np.ndarray = np.argpartition(self.term_frequency if not override else self.term_frequency0, -n_top)[  # type: ignore
             -n_top:
         ]
         if sort_indices:
@@ -46,7 +44,7 @@ class StatsMixIn:
         *,
         category_column: str = 'category',
         n_top: int = 100,
-        pad: str = None,
+        pad: str | None = None,
         keep_empty: bool = False,
     ) -> dict:
         """Returns top `n_top` terms per category (as defined by `category_column`) as a dict.
@@ -57,7 +55,7 @@ class StatsMixIn:
         Args:
             category_column (str, optional): Column in document index that defines categories. Defaults to 'category'.
             n_top (int, optional): Number of words to return per category. Defaults to 100.
-            pad (str, optional): If specified, the lists are padded to be of equal length by appending tuples (`pad`, 0)
+            pad (str | None, optional): If specified, the lists are padded to be of equal length by appending tuples (`pad`, 0)
             keep_empty (bool, optional): If false, then empty categories are removed
         Returns:
             dict:
@@ -78,7 +76,7 @@ class StatsMixIn:
         if pad is not None:
             if (n_max := max(len(data[c]) for c in data)) != min(len(data[c]) for c in data):
                 data = {
-                    c: data[c] if len(data[c]) == n_max else data[c] + [(pad, 0)] * (n_max - len(data[c])) for c in data
+                    c: data[c] if len(data[c]) == n_max else data[c] + [(pad, 0)] * (n_max - len(data[c])) for c in data  # type: ignore
                 }
 
         return data
@@ -129,8 +127,8 @@ class StatsMixIn:
 
     def pick_top_tf_map(self: IVectorizedCorpusProtocol, n_top: int) -> Dict[str, int]:
         """Returns `n_top` largest tokens and TF as a dict"""
-        tokens = {self.id2token[i]: self.term_frequency[i] for i in self.nlargest(n_top)}
-        return tokens
+        tokens = {self.id2token[i]: self.term_frequency[i] for i in self.nlargest(n_top)}  # type: ignore
+        return tokens  # type: ignore
 
     def stats(self: IVectorizedCorpusProtocol):
         """Returns (and prints) some corpus status
@@ -145,8 +143,8 @@ class StatsMixIn:
             'sum_over_bags': self.bag_term_matrix.sum(),
             '10_top_tokens': ' '.join(self.pick_top_tf_map(10).keys()),
         }
-        for key in stats_data:
-            logger.info(f'   {key}: {stats_data[key]}')
+        for key, value in stats_data.items():
+            logger.info(f'   {key}: {value}')
         return stats_data
 
     def to_n_top_dataframe(self: IVectorizedCorpusProtocol, n_top: int) -> pd.DataFrame:
@@ -174,19 +172,18 @@ class StatsMixIn:
     def pick_n_top_words(
         self: IVectorizedCorpusProtocol,
         words: Container[str],
-        n_top: int,
+        n_top: int | None = None,
         descending: bool = False,
     ) -> List[str]:
         """Returns the `n_top` globally most frequent word in `tokens`"""
-        words = list(words)
+        words = list(words)  # type: ignore
         n_top = n_top or len(words)
         if len(words) < n_top:
             return words
-        # FIXME: What to do if overriden term frequency?
         fg = self.token2id.get
         tf = self.term_frequency
-        token_counts = [tf[fg(w)] for w in words]
-        most_frequent_words = [words[x] for x in np.argsort(token_counts)[-n_top:]]
+        token_counts = [tf[fg(w)] for w in words]  # type: ignore
+        most_frequent_words = [words[x] for x in np.argsort(token_counts)[-n_top:]]  # type: ignore
         if descending:
             most_frequent_words = list(sorted(most_frequent_words, reverse=descending))
         return most_frequent_words
