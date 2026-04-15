@@ -669,7 +669,6 @@ class TestPersonCodecs:
                 assert "party_abbrev" in persons.columns
                 assert "multi_party_id" in persons.columns
 
-
     def test_decode_speech_index_empty_dataframe(self):
         """Test decode_speech_index with empty DataFrame."""
         person_codecs = PersonCodecs()

@@ -36,14 +36,17 @@ def test_format_speech_name_ak_chamber():
     assert "Andra kammaren" in result
     assert "1958" in result
 
+
 def test_format_speech_name_fk_chamber():
     """Test format_speech_name with Första kammaren."""
     result = format_speech_name("prot-1958-a-fk--17-01_094")
     assert "Första kammaren" in result
 
+
 def test_format_speech_name_invalid_returns_original():
     """Test format_speech_name returns original for invalid format."""
     assert format_speech_name("invalid-format") == "invalid-format"
+
 
 def test_format_speech_names_series():
     """Test format_speech_names with a pandas Series."""

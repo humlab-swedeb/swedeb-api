@@ -6,8 +6,8 @@ import pytest
 
 from api_swedeb.api.services.result_store import (
     ResultStore,
-    ResultStorePendingLimitError,
     ResultStoreNotFound,
+    ResultStorePendingLimitError,
     TicketStatus,
 )
 
@@ -81,7 +81,9 @@ def test_result_store_cleans_up_expired_ticket_and_artifact(tmp_path) -> None:
         ticket = store.create_ticket(query_meta={"search": "demokrati"})
         store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "demokrati"}]))
 
-        expired = replace(store.require_ticket(ticket.ticket_id), expires_at=store.require_ticket(ticket.ticket_id).created_at)
+        expired = replace(
+            store.require_ticket(ticket.ticket_id), expires_at=store.require_ticket(ticket.ticket_id).created_at
+        )
         store._tickets[ticket.ticket_id] = expired
 
         store.cleanup_expired()

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from api_swedeb.api.services.kwic_ticket_service import KWICTicketService, TICKET_ROW_ID
+from api_swedeb.api.services.kwic_ticket_service import TICKET_ROW_ID, KWICTicketService
 from api_swedeb.api.services.result_store import ResultStore, TicketStatus
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketSortBy
 from api_swedeb.schemas.sort_order import SortOrder

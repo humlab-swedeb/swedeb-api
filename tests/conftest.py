@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 from jinja2 import Template
 from loguru import logger
 
-from api_swedeb.app import create_app
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.app import create_app
 from api_swedeb.core.configuration import ConfigValue, get_config_store
 from api_swedeb.core.person_codecs import PersonCodecs
 

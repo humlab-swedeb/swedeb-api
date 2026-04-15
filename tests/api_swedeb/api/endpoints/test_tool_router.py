@@ -9,15 +9,13 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from fastapi import BackgroundTasks
-from fastapi import HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.responses import StreamingResponse
+from fastapi import BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.v1.endpoints.tool_router import (
+    get_kwic_results,
     get_kwic_ticket_results,
     get_kwic_ticket_status,
-    get_kwic_results,
     get_ngram_results,
     get_speech_by_id_result,
     get_speeches_result,

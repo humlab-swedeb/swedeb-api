@@ -2,8 +2,7 @@ from typing import Annotated, Any, Literal
 
 import fastapi
 from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pandas import DataFrame
 
 from api_swedeb.api.dependencies import (
@@ -23,7 +22,12 @@ from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import DEFAULT_PAGE_SIZE, KWICTicketService
 from api_swedeb.api.services.ngrams_service import NGramsService
-from api_swedeb.api.services.result_store import ResultStore, ResultStoreNotFound, ResultStorePendingLimitError, TicketStatus
+from api_swedeb.api.services.result_store import (
+    ResultStore,
+    ResultStoreNotFound,
+    ResultStorePendingLimitError,
+    TicketStatus,
+)
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.mappers.kwic import kwic_to_api_model
@@ -34,17 +38,17 @@ from api_swedeb.mappers.word_trends import (
     word_trends_to_api_model,
 )
 from api_swedeb.schemas.kwic_schema import (
+    KeywordInContextResult,
     KWICPageResult,
     KWICQueryRequest,
     KWICTicketAccepted,
     KWICTicketSortBy,
     KWICTicketStatus,
-    KeywordInContextResult,
 )
 from api_swedeb.schemas.ngrams_schema import NGramResult
+from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
-from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
 CommonParams = Annotated[CommonQueryParams, Depends()]

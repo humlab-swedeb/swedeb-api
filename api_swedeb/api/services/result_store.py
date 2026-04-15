@@ -190,7 +190,10 @@ class ResultStore:
 
             self._evict_ready_tickets_locked(required_bytes=artifact_bytes, exclude_ticket_id=ticket_id)
 
-            if artifact_bytes > self.max_artifact_bytes or self._artifact_bytes + artifact_bytes > self.max_artifact_bytes:
+            if (
+                artifact_bytes > self.max_artifact_bytes
+                or self._artifact_bytes + artifact_bytes > self.max_artifact_bytes
+            ):
                 partial_path.unlink(missing_ok=True)
                 message = "Insufficient result-store capacity for ticket artifact"
                 self._tickets[ticket_id] = replace(ticket, status=TicketStatus.ERROR, error=message)
@@ -235,9 +238,7 @@ class ResultStore:
                 return
 
             now = datetime.now(UTC)
-            expired_ticket_ids = [
-                ticket_id for ticket_id, ticket in self._tickets.items() if ticket.expires_at <= now
-            ]
+            expired_ticket_ids = [ticket_id for ticket_id, ticket in self._tickets.items() if ticket.expires_at <= now]
             for ticket_id in expired_ticket_ids:
                 self._delete_ticket_locked(ticket_id)
 
