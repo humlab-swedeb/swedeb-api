@@ -82,8 +82,8 @@ Content-Type: application/json
 {
   "search": "demokrati",
   "lemmatized": true,
-  "words_before": 5,
-  "words_after": 5,
+  "words_before": 2,
+  "words_after": 2,
   "cut_off": 200000,
   "filters": {
     "from_year": 1970,
@@ -108,7 +108,16 @@ Content-Type: application/json
 
 The server creates a ticket immediately, schedules the KWIC job, and returns without waiting for the full corpus scan.
 
-The submit body should be represented by dedicated request models such as `KWICQueryRequest` and `KWICFilterRequest`. Filter field names should match the existing filter vocabulary exactly, and filter normalization should be shared with the current GET-based flow through a pure helper rather than through direct reuse of FastAPI `Query(...)` objects.
+The submit body is frozen as dedicated request models in `api_swedeb/schemas/kwic_schema.py`.
+
+Contract decisions:
+
+1. `KWICQueryRequest` has fields `search`, `lemmatized`, `words_before`, `words_after`, `cut_off`, and `filters`.
+2. Defaults must match the current synchronous endpoint: `lemmatized=True`, `words_before=2`, `words_after=2`, `cut_off=200000`.
+3. `KWICFilterRequest` contains exactly `from_year`, `to_year`, `who`, `party_id`, `gender_id`, `chamber_abbrev`, and `speech_id`.
+4. `filters.who` maps to the same speaker-selection behavior currently exposed as `person_id` in `CommonQueryParams.get_filter_opts(...)`.
+5. `page`, `page_size`, `sort_by`, and `sort_order` do not belong to the submit body.
+6. Filter normalization must be implemented as a pure helper in `api_swedeb/api/params.py` so both the existing GET flow and the new POST flow reuse the same selection logic without depending directly on FastAPI `Query(...)` objects.
 
 ### Phase 2 — Poll status
 
@@ -133,6 +142,11 @@ Possible states:
 | `pending` | Query accepted and still running                      |
 | `ready`   | Result artifact is available for paging/download      |
 | `error`   | Query failed; ticket stores a user-safe error message |
+
+Status endpoint decisions:
+
+1. `GET /v1/tools/kwic/status/{ticket_id}` returns `200 OK` with `KWICTicketStatus` for any existing `pending`, `ready`, or `error` ticket.
+2. `GET /v1/tools/kwic/status/{ticket_id}` returns `404 Not Found` for expired or unknown tickets.
 
 ### Phase 3 — Fetch a page
 
@@ -370,12 +384,19 @@ Download precedence decisions:
 9. Speech ordering for ticket download is the first-occurrence order from the completed cached artifact, using `_ticket_row_id` order and deduplicating `speech_id` values while preserving order.
 10. The checksum remains the SHA-256 of sorted unique `speech_id` values so it stays stable and comparable to the current manifest style.
 
-That metadata should include:
+That metadata should include one normalized `manifest_meta` object with these fields:
 
-1. The normalized filter options used to create the ticket.
-2. The speech IDs associated with the cached result.
-3. Query parameters relevant to the archive manifest, such as search term and time window.
-4. `ticket_id`, `lemmatized`, `words_before`, `words_after`, `cut_off`, `total_hits`, `speech_count`, checksum, and generation timestamp.
+1. `ticket_id`
+2. `search`
+3. `lemmatized`
+4. `words_before`
+5. `words_after`
+6. `cut_off`
+7. `filters`
+8. `total_hits`
+9. `speech_count`
+10. `checksum`
+11. `generated_at`
 
 Without that, the current manifest logic would lose context because it currently derives filter data from `commons.get_filter_opts(...)` on the active request.
 
@@ -421,6 +442,13 @@ class KWICPageResult(BaseModel):
     expires_at: datetime
     kwic_list: list[KeywordInContextItem]
 ```
+
+Model and sorting decisions:
+
+1. These ticket models live in `api_swedeb/schemas/kwic_schema.py` beside the existing synchronous KWIC response models.
+2. The allowed ticket sort fields are `year`, `name`, `party_abbrev`, `gender`, `left_word`, `node_word`, `right_word`, and `speech_name`.
+3. Legacy aliases such as `speaker_name`, `speech_title`, and `year_title` are not valid `sort_by` values for the ticketed results endpoint.
+4. The default ticket sort is `_ticket_row_id` ascending, with `_ticket_row_id` also used as the final tie-breaker for all explicit sorts.
 
 ---
 
@@ -538,6 +566,16 @@ Implementation should not be considered complete until all of the following pass
   - initial query execution is not materially worse than the current synchronous endpoint for the same search,
   - cached page fetch stays under 500 ms at `page_size=50` for the common case,
   - total artifact usage stays within the configured byte budget after eviction.
+
+### 7.8 Phase 0 Scaffolding Targets
+
+The Phase 0 scaffolding decisions are frozen as follows.
+
+1. The canonical FastAPI app factory will live in `api_swedeb/app.py` and export `create_app()`.
+2. `main.py`, `docker/main.py`, and the FastAPI test fixture will all construct the application through that factory in Phase 1.
+3. The ticket cache implementation will live in `api_swedeb/api/services/result_store.py` as `ResultStore`.
+4. The request dependency for app-state access will be added to `api_swedeb/api/dependencies.py` as `get_result_store(request)`.
+5. Shared filter normalization for both synchronous and ticketed KWIC flows will remain in `api_swedeb/api/params.py`; do not introduce a separate wrapper-only utility module for this work.
 
 ---
 

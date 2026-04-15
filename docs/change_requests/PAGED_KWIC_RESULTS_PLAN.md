@@ -1,0 +1,400 @@
+# Implementation Plan: Paged KWIC Results
+
+## Execution Status
+
+Current execution progress:
+
+- Proposal approved as the implementation baseline: `docs/change_requests/PAGED_KWIC_RESULTS_DESIGN.md`
+- Follow-up n-gram proposal split out: `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`
+- Phase 0 finalized in the design: request/response contracts, manifest metadata, sort rules, and module targets are now frozen
+- Backend implementation: **NOT STARTED**
+- Frontend implementation: **NOT STARTED**
+- Validation and benchmarks: **NOT STARTED**
+
+Status by phase:
+
+1. Phase 0: **COMPLETED**
+2. Phase 1: **READY TO START**
+3. Phase 2: **NOT STARTED**
+4. Phase 3: **NOT STARTED**
+5. Phase 4: **NOT STARTED**
+6. Phase 5: **NOT STARTED**
+7. Phase 6: **NOT STARTED**
+
+## Scope
+
+This plan implements `docs/change_requests/PAGED_KWIC_RESULTS_DESIGN.md`.
+
+Target outcomes:
+
+1. Add an additive ticket-based KWIC workflow alongside the existing synchronous endpoint.
+2. Persist mapped KWIC result artifacts on disk with short-lived server-side reuse.
+3. Add server-side page and sort retrieval for cached KWIC results.
+4. Add ticket-based speech download using cached speech IDs and manifest metadata.
+5. Migrate the frontend to an opt-in ticket flow while keeping current CSV/XLSX export on the synchronous path.
+6. Validate parity, non-happy-path behavior, cleanup, and performance before rollout.
+
+## Non-Goals
+
+This plan does not implement:
+
+1. n-gram paging; see `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`
+2. within-ticket re-filtering of KWIC results
+3. ticket-based CSV/XLSX export for the frontend
+4. multi-worker shared-cache support
+
+## Guiding Principles
+
+- Keep `GET /v1/tools/kwic/{search}` unchanged.
+- Keep router logic thin and push behavior into services and mappers.
+- Cache the mapped KWIC API frame, not the raw KWIC service frame.
+- Use one canonical app factory and lifespan path.
+- Keep rollout reversible and frontend adoption explicit.
+
+## Work Breakdown
+
+## Phase 0: Freeze Contracts and Scaffolding
+
+### Tasks
+
+1. Freeze request and response contracts
+- Finalize `KWICFilterRequest` and `KWICQueryRequest`.
+- Finalize `KWICTicketAccepted`, `KWICTicketStatus`, and `KWICPageResult`.
+- Freeze allowed sort fields and default ordering.
+
+2. Freeze artifact contract
+- Define the canonical cached artifact as the mapped KWIC API frame plus `_ticket_row_id`.
+- Freeze `speech_ids` ordering and checksum rules.
+- Freeze manifest metadata fields for ticket-based download.
+
+3. Freeze module layout
+- Decide the canonical app factory module.
+- Decide the `ResultStore` module path.
+- Decide the dependency entrypoints to add in `api_swedeb/api/dependencies.py`.
+
+### Deliverables
+
+- Finalized schema section in `PAGED_KWIC_RESULTS_DESIGN.md`.
+- Finalized app factory and `ResultStore` module targets.
+- Finalized sort/order/download rules.
+
+### Progress Checklist
+
+- [x] Request models named and field list approved
+- [x] Response models named and field list approved
+- [x] Sort fields frozen
+- [x] Default order frozen
+- [x] Artifact column contract frozen
+- [x] Speech ID ordering rule frozen
+- [x] Checksum rule frozen
+- [x] Manifest field list frozen
+- [x] Canonical app factory target chosen
+- [x] `ResultStore` module target chosen
+
+### Exit Criteria
+
+- No unresolved contract questions remain for the backend MVP.
+
+## Phase 1: App Factory, Lifespan, and ResultStore Skeleton
+
+### Tasks
+
+1. Introduce canonical app construction
+- Add one `create_app()` entrypoint.
+- Move middleware and router assembly behind that factory.
+- Make `main.py`, `docker/main.py`, and test app setup use the same factory.
+
+2. Add `ResultStore` skeleton
+- Add a dedicated `ResultStore` class.
+- Add app-state storage via lifespan.
+- Add dependency access through `get_result_store(request)`.
+
+3. Add config keys
+- Add cache config keys to `config/config.yml` and `tests/config.yml`:
+  - `cache.result_ttl_seconds`
+  - `cache.cleanup_interval_seconds`
+  - `cache.max_artifact_bytes`
+  - `cache.max_pending_jobs`
+  - `cache.root_dir`
+  - `cache.max_page_size`
+
+### Deliverables
+
+- Canonical app factory
+- Lifespan-managed `ResultStore`
+- Config keys in production and test config
+
+### Progress Checklist
+
+- [ ] `create_app()` added
+- [ ] `main.py` uses `create_app()`
+- [ ] `docker/main.py` uses `create_app()`
+- [ ] Test app uses `create_app()`
+- [ ] `ResultStore` class added
+- [ ] `ResultStore` stored in `app.state`
+- [ ] `get_result_store(request)` dependency added
+- [ ] Cache config added to `config/config.yml`
+- [ ] Cache config added to `tests/config.yml`
+- [ ] Startup cleanup hook added
+- [ ] Shutdown cleanup hook added
+
+### Exit Criteria
+
+- All runtime entrypoints and tests construct the app through one lifespan path.
+
+## Phase 2: ResultStore Persistence, Cleanup, and Concurrency
+
+### Tasks
+
+1. Implement ticket metadata handling
+- Add ticket creation, state transitions, and metadata persistence.
+- Store `speech_ids`, `manifest_meta`, and artifact size.
+
+2. Implement disk artifact lifecycle
+- Write artifacts atomically.
+- Load mapped KWIC artifacts from disk.
+- Delete expired or corrupt artifacts.
+
+3. Implement locking and budget accounting
+- Guard ticket state mutation and byte-budget accounting with a process-local lock.
+- Define `pending`, `ready`, `error`, and cleanup transitions.
+- Count `max_pending_jobs` as accepted tickets still in `pending` state.
+
+4. Implement cleanup flows
+- Request-path cleanup
+- Periodic sweeper
+- Startup stale-artifact cleanup
+- Oldest-ready eviction under byte pressure
+
+### Deliverables
+
+- Working `ResultStore` with cleanup and locking
+- Artifact persistence using Feather/Arrow IPC
+- Explicit byte-budget and pending-job enforcement
+
+### Progress Checklist
+
+- [ ] Ticket creation method implemented
+- [ ] Ticket state enum/contract implemented
+- [ ] Atomic artifact write implemented
+- [ ] Artifact load method implemented
+- [ ] Expired artifact delete path implemented
+- [ ] Corrupt/missing artifact delete path implemented
+- [ ] Process-local lock added
+- [ ] Budget accounting added
+- [ ] Pending-job accounting added
+- [ ] Request-path cleanup added
+- [ ] Periodic sweeper added
+- [ ] Startup cleanup added
+- [ ] Oldest-ready eviction added
+
+### Exit Criteria
+
+- `ResultStore` can safely accept, complete, expire, and evict tickets under single-worker concurrent request load.
+
+## Phase 3: Backend KWIC Ticket API
+
+### Tasks
+
+1. Add request/response schemas
+- Add submit, status, and page schemas.
+- Add validation for page size and sort fields.
+
+2. Add submit flow
+- Normalize request filters using a pure helper.
+- Create a ticket immediately.
+- Reject on queue saturation.
+- Schedule background execution without adding a second process pool around KWIC.
+
+3. Add query completion flow
+- Call `KWICService.get_kwic()`.
+- Map the result with `kwic_to_api_frame(...)`.
+- Add `_ticket_row_id`.
+- Persist the artifact and ready metadata.
+
+4. Add status and results endpoints
+- Return `202` for pending results.
+- Return `409` for error results.
+- Return `404` for expired or unknown tickets.
+- Return `400` for invalid sort or out-of-range page requests.
+
+### Deliverables
+
+- `POST /v1/tools/kwic/query`
+- `GET /v1/tools/kwic/status/{ticket_id}`
+- `GET /v1/tools/kwic/results/{ticket_id}`
+
+### Progress Checklist
+
+- [ ] Submit request schema added
+- [ ] Status response schema added
+- [ ] Page response schema added
+- [ ] Filter normalization helper added
+- [ ] Submit endpoint added
+- [ ] Status endpoint added
+- [ ] Results endpoint added
+- [ ] Queue saturation path returns `429`
+- [ ] Pending results path returns `202`
+- [ ] Error results path returns `409`
+- [ ] Expired/unknown path returns `404`
+- [ ] Invalid sort path returns `400`
+- [ ] Out-of-range page path returns `400`
+- [ ] Default ordering uses `_ticket_row_id`
+- [ ] Sort tie-breaker uses `_ticket_row_id`
+
+### Exit Criteria
+
+- The ticketed KWIC backend works end-to-end without changing the existing synchronous endpoint.
+
+## Phase 4: Ticket-Based Download Integration
+
+### Tasks
+
+1. Extend download service contract
+- Add a dedicated path that accepts `speech_ids` plus `manifest_meta` directly.
+- Preserve existing body-ids and query-filter flows.
+
+2. Add endpoint precedence handling
+- Make `ticket_id` mutually exclusive with user-supplied selection-bearing filters and body `ids`.
+- Ignore default sort/pagination params when checking for conflicts.
+- Return explicit `400`, `404`, or `409` behavior.
+
+3. Preserve stable ordering and checksum
+- Use first-occurrence `_ticket_row_id` order for deduplicated speech IDs.
+- Use checksum over sorted unique `speech_id` values.
+
+### Deliverables
+
+- Download service method for `speech_ids + manifest_meta`
+- `/speeches/download?ticket_id=...` ticket path
+- Conflict detection helper for selection-bearing filters
+
+### Progress Checklist
+
+- [ ] Download service direct-input method added
+- [ ] Ticket manifest metadata shape implemented
+- [ ] Ticket download path added to router
+- [ ] `ticket_id` vs `ids` conflict handling added
+- [ ] `ticket_id` vs selection-filter conflict handling added
+- [ ] Default sort/pagination params ignored in conflict detection
+- [ ] Pending ticket download returns `409`
+- [ ] Expired ticket download returns `404`
+- [ ] Stable speech ordering implemented
+- [ ] Stable checksum implemented
+
+### Exit Criteria
+
+- Ticket-based download produces a stable, validated archive without re-deriving selection from `CommonQueryParams`.
+
+## Phase 5: Frontend Opt-In Migration
+
+### Tasks
+
+1. Add ticket workflow to frontend store
+- Update `kwicDataStore.js` to submit, poll, and fetch pages.
+- Keep the old synchronous flow available during rollout.
+
+2. Update table behavior
+- Switch `kwicDataTable.vue` to server-side pagination mode for the new flow.
+- Preserve user-visible page and sort behavior.
+
+3. Preserve export behavior
+- Keep CSV/XLSX export on the synchronous flow for the MVP.
+- Do not make the frontend fetch all pages to rebuild export.
+
+### Deliverables
+
+- Frontend ticket flow behind an explicit opt-in path
+- Server-side paged table behavior
+- Export preserved on existing flow
+
+### Progress Checklist
+
+- [ ] Store submit action added
+- [ ] Store status polling added
+- [ ] Store page fetch action added
+- [ ] Table switched to server-side pagination for ticket flow
+- [ ] Total count wired to paged response
+- [ ] Pending/error UI state added
+- [ ] Existing synchronous path still callable
+- [ ] CSV/XLSX export still works through synchronous path
+- [ ] No frontend code fetches all pages for export
+
+### Exit Criteria
+
+- Frontend can opt into ticketed paging without breaking existing export behavior.
+
+## Phase 6: Validation, Benchmarking, and Rollout
+
+### Tasks
+
+1. Functional parity
+- Compare paged ticket output against the current synchronous KWIC endpoint after mapping.
+- Validate stable totals and ordering.
+
+2. Download validation
+- Validate deduplicated speech IDs from the cached artifact.
+- Validate manifest content, ordering, and checksum.
+
+3. Cleanup and reliability
+- Validate expiry, startup cleanup, and corrupt artifact behavior.
+- Validate queue saturation and byte-budget exhaustion behavior.
+
+4. Benchmarking
+- Measure initial query execution versus the current synchronous endpoint.
+- Measure cached page fetch latency.
+- Measure artifact storage behavior under eviction pressure.
+
+5. Rollout
+- Keep the existing KWIC endpoint live.
+- Enable frontend opt-in gradually.
+- Defer n-gram work to `PAGED_NGRAM_RESULTS_DESIGN.md`.
+
+### Deliverables
+
+- Parity report
+- Download validation report
+- Cleanup/reliability summary
+- Benchmark report
+- Rollout checklist completion
+
+### Progress Checklist
+
+- [ ] Paged rows match synchronous mapped endpoint for the same query
+- [ ] Stable totals verified
+- [ ] Stable ordering verified
+- [ ] Ticket download speech ID baseline verified
+- [ ] Ticket download manifest verified
+- [ ] Expiry cleanup verified
+- [ ] Startup cleanup verified
+- [ ] Corrupt artifact behavior verified
+- [ ] Queue saturation behavior verified
+- [ ] Byte-budget exhaustion behavior verified
+- [ ] Query latency benchmark recorded
+- [ ] Page latency benchmark recorded
+- [ ] Artifact budget behavior recorded
+- [ ] Existing synchronous KWIC endpoint still live
+- [ ] Frontend opt-in rollout path documented
+
+### Exit Criteria
+
+- The ticketed KWIC path meets parity and reliability requirements and can be rolled out without removing the existing endpoint.
+
+## Final Readiness Checklist
+
+- [ ] One canonical app factory exists and is used by runtime, Docker, and tests
+- [ ] `ResultStore` lifecycle is managed by FastAPI lifespan
+- [ ] Mapped KWIC frame is the cached artifact contract
+- [ ] Ticket metadata includes `speech_ids` and `manifest_meta`
+- [ ] Non-happy-path API behavior is fully defined and implemented
+- [ ] Ticket download works without re-deriving filter selection from `CommonQueryParams`
+- [ ] Frontend ticket flow is opt-in
+- [ ] CSV/XLSX export remains on the synchronous flow for the MVP
+- [ ] Validation and benchmark reports exist
+- [ ] Follow-up n-gram work remains separate
+
+## Final Recommendation
+
+Implement the plan in order.
+
+Do backend infrastructure and validation before frontend migration, keep the synchronous KWIC path intact throughout, and do not begin n-gram paging until the KWIC ticket flow has been validated in practice.
