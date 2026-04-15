@@ -1,5 +1,6 @@
+from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,6 +27,61 @@ class KeywordInContextItem(BaseModel):
 
 class KeywordInContextResult(BaseModel):
     kwic_list: List[KeywordInContextItem]
+
+
+class KWICFilterRequest(BaseModel):
+    from_year: int | None = None
+    to_year: int | None = None
+    who: list[str] | None = None
+    party_id: list[int] | None = None
+    gender_id: list[int] | None = None
+    chamber_abbrev: list[str] | None = None
+    speech_id: list[str] | None = None
+
+
+class KWICQueryRequest(BaseModel):
+    search: str
+    lemmatized: bool = True
+    words_before: int = 2
+    words_after: int = 2
+    cut_off: int = 200000
+    filters: KWICFilterRequest = Field(default_factory=KWICFilterRequest)
+
+
+class KWICTicketAccepted(BaseModel):
+    ticket_id: str
+    status: Literal["pending"]
+    expires_at: datetime
+
+
+class KWICTicketStatus(BaseModel):
+    ticket_id: str
+    status: Literal["pending", "ready", "error"]
+    total_hits: int | None = None
+    error: str | None = None
+    expires_at: datetime
+
+
+class KWICTicketSortBy(str, Enum):
+    year = "year"
+    speaker_name = "name"
+    party_abbrev = "party_abbrev"
+    gender = "gender"
+    left_word = "left_word"
+    node_word = "node_word"
+    right_word = "right_word"
+    speech_name = "speech_name"
+
+
+class KWICPageResult(BaseModel):
+    ticket_id: str
+    status: Literal["ready"]
+    page: int
+    page_size: int
+    total_hits: int
+    total_pages: int
+    expires_at: datetime
+    kwic_list: list[KeywordInContextItem]
 
 
 class SortBy(Enum):

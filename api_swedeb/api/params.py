@@ -1,6 +1,6 @@
 """Query parameter classes for FastAPI endpoints."""
 
-from typing import List, Self
+from typing import Any, List, Self
 
 import fastapi.params
 from fastapi import Query
@@ -8,6 +8,31 @@ from fastapi import Query
 year_regex = r"^\d{4}$"
 
 # pylint: disable=too-many-arguments
+
+
+def build_filter_opts(
+    *,
+    from_year: int | None = None,
+    to_year: int | None = None,
+    who: list[str] | None = None,
+    party_id: list[int] | None = None,
+    gender_id: list[int] | None = None,
+    chamber_abbrev: list[str] | None = None,
+    speech_id: list[str] | None = None,
+    include_year: bool = True,
+) -> dict[str, Any]:
+    year_opts: dict[str, tuple[int, int]] = {}
+    if include_year and (from_year or to_year):
+        year_opts = {"year": (from_year or 0, to_year or 3000)}
+
+    return {
+        **({"party_id": party_id} if party_id else {}),
+        **({"gender_id": gender_id} if gender_id else {}),
+        **({"chamber_abbrev": chamber_abbrev} if chamber_abbrev else {}),
+        **({"person_id": who} if who else {}),
+        **({"speech_id": speech_id} if speech_id else {}),
+        **year_opts,
+    }
 
 
 class SpeakerQueryParams:
@@ -26,14 +51,12 @@ class SpeakerQueryParams:
         self.chamber_abbrev: List[str] | None = chamber_abbrev
 
     def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:  # pylint: disable=unused-argument
-        opts: dict[str, list[int]] = {  # type: ignore
-            # **({"office_id": self.office_types} if self.office_types else {}),
-            # **({"sub_office_type_id": self.sub_office_types} if self.sub_office_types else {}),
-            **({"party_id": self.party_id} if self.party_id else {}),
-            **({"gender_id": self.gender_id} if self.gender_id else {}),
-            **({"chamber_abbrev": self.chamber_abbrev} if self.chamber_abbrev else {}),
-        }
-        return opts
+        return build_filter_opts(
+            party_id=self.party_id,
+            gender_id=self.gender_id,
+            chamber_abbrev=self.chamber_abbrev,
+            include_year=include_year,
+        )
 
 
 class CommonQueryParams(SpeakerQueryParams):
@@ -67,16 +90,16 @@ class CommonQueryParams(SpeakerQueryParams):
         self.sort_order: str = sort_order
 
     def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:
-        year_opts: dict = {}
-        if include_year and (self.from_year or self.to_year):
-            year_opts = {'year': (self.from_year or 0, self.to_year or 3000)}
-        opts: dict[str, list[int]] = {  # type: ignore
-            **super().get_filter_opts(include_year),
-            **({"person_id": self.who} if self.who else {}),
-            **({"speech_id": self.speech_id} if self.speech_id else {}),
-            **year_opts,
-        }
-        return opts
+        return build_filter_opts(
+            from_year=self.from_year,
+            to_year=self.to_year,
+            who=self.who,
+            party_id=self.party_id,
+            gender_id=self.gender_id,
+            chamber_abbrev=self.chamber_abbrev,
+            speech_id=self.speech_id,
+            include_year=include_year,
+        )
 
     def resolve(self) -> Self:
         """Replaces all Query instances with their default values."""
@@ -84,3 +107,32 @@ class CommonQueryParams(SpeakerQueryParams):
             if isinstance(value, fastapi.params.Query):
                 setattr(self, key, value.default)
         return self
+
+
+def build_common_query_params(
+    *,
+    from_year: int | None = None,
+    to_year: int | None = None,
+    who: list[str] | None = None,
+    party_id: list[int] | None = None,
+    gender_id: list[int] | None = None,
+    chamber_abbrev: list[str] | None = None,
+    speech_id: list[str] | None = None,
+    sort_by: str = "year_title",
+    sort_order: str = "asc",
+    limit: int | None = None,
+    offset: int | None = None,
+) -> CommonQueryParams:
+    return CommonQueryParams(
+        from_year=from_year,
+        to_year=to_year,
+        who=who,
+        sort_by=sort_by,
+        party_id=party_id,
+        gender_id=gender_id,
+        chamber_abbrev=chamber_abbrev,
+        speech_id=speech_id,
+        limit=limit,
+        offset=offset,
+        sort_order=sort_order,
+    ).resolve()

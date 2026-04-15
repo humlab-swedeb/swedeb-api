@@ -9,6 +9,7 @@ Current execution progress:
 - Phase 0 finalized in the design: request/response contracts, manifest metadata, sort rules, and module targets are now frozen
 - Phase 1 foundation implemented: shared `create_app()`, lifespan-managed `ResultStore`, dependency wiring, and cache config keys
 - Phase 2 store foundation implemented: ticket metadata, Feather artifacts, expiry cleanup, sweeper loop, and eviction rules
+- Phase 3 API implemented: ticket schemas, submit/status/results endpoints, shared filter normalization, and ticket paging behavior
 - Backend implementation: **IN PROGRESS**
 - Frontend implementation: **NOT STARTED**
 - Validation and benchmarks: **NOT STARTED**
@@ -18,8 +19,8 @@ Status by phase:
 1. Phase 0: **COMPLETED**
 2. Phase 1: **COMPLETED**
 3. Phase 2: **COMPLETED**
-4. Phase 3: **READY TO START**
-5. Phase 4: **NOT STARTED**
+4. Phase 3: **COMPLETED**
+5. Phase 4: **READY TO START**
 6. Phase 5: **NOT STARTED**
 7. Phase 6: **NOT STARTED**
 
@@ -228,21 +229,21 @@ This plan does not implement:
 
 ### Progress Checklist
 
-- [ ] Submit request schema added
-- [ ] Status response schema added
-- [ ] Page response schema added
-- [ ] Filter normalization helper added
-- [ ] Submit endpoint added
-- [ ] Status endpoint added
-- [ ] Results endpoint added
-- [ ] Queue saturation path returns `429`
-- [ ] Pending results path returns `202`
-- [ ] Error results path returns `409`
-- [ ] Expired/unknown path returns `404`
-- [ ] Invalid sort path returns `400`
-- [ ] Out-of-range page path returns `400`
-- [ ] Default ordering uses `_ticket_row_id`
-- [ ] Sort tie-breaker uses `_ticket_row_id`
+- [x] Submit request schema added
+- [x] Status response schema added
+- [x] Page response schema added
+- [x] Filter normalization helper added
+- [x] Submit endpoint added
+- [x] Status endpoint added
+- [x] Results endpoint added
+- [x] Queue saturation path returns `429`
+- [x] Pending results path returns `202`
+- [x] Error results path returns `409`
+- [x] Expired/unknown path returns `404`
+- [x] Invalid sort path returns `400`
+- [x] Out-of-range page path returns `400`
+- [x] Default ordering uses `_ticket_row_id`
+- [x] Sort tie-breaker uses `_ticket_row_id`
 
 ### Exit Criteria
 

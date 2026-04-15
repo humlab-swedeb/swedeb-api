@@ -8,6 +8,7 @@ from loguru import logger
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
+from api_swedeb.api.services.kwic_ticket_service import KWICTicketService
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.result_store import ResultStore
@@ -22,6 +23,7 @@ __word_trends_service: WordTrendsService | None = None
 __ngrams_service: NGramsService | None = None
 __search_service: SearchService | None = None
 __kwic_service: KWICService | None = None
+__kwic_ticket_service: KWICTicketService | None = None
 __download_service: DownloadService | None = None
 
 # pylint: disable=global-statement
@@ -65,6 +67,13 @@ def get_search_service() -> SearchService:
     if __search_service is None:
         __search_service = SearchService(get_corpus_loader())
     return __search_service
+
+
+def get_kwic_ticket_service() -> KWICTicketService:
+    global __kwic_ticket_service
+    if __kwic_ticket_service is None:
+        __kwic_ticket_service = KWICTicketService()
+    return __kwic_ticket_service
 
 
 def get_download_service() -> DownloadService:
