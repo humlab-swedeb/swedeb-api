@@ -5,11 +5,11 @@
  - [ ] TODO: Move prebuilt_speech_index to pyriksprot
  - [ ] TODO: Replace use of Codecs with prebuilt_speech_index
  - [ ] FIXME: Add strict mode to alignment check in CorpusLoader
+ - [ ] TODO: fixa get_config_store i Shape Shifter att följa samma mönster som i detta project (enklare unit testing)
+ - [ ] FIXME: Try using category type for names?
+
+ - [ ] TODO: Go through _get_filtered_speakers and decide if it can be improved (e.g. using prebuilt index)
  - [ ] TODO: replace _get_filtered_speakers with get_filtered_speakers_improved
- - [ ] TODO: fixa get_config_store i Shape Shifter att följa samma mönster som här
- - [ ] FIXME: Try using category type for names
-
-
  - [ ] TODO: Use prebuilt speech index in these methods
   
 | Current use                                    | File                                             | Replaceable? | Notes                                    |
@@ -30,3 +30,4 @@ prot-YYYY--XK--MMDD
 prot-YYYY--XK--NNN
 prot-YYYY--XK--NNN-ZZ
 prot-YYYYYY--NNN
+

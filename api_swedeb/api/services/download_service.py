@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import io
 import json
+import os
 import re
 import tarfile
 import zipfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Callable, Generator
 
 import pandas as pd
 
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.core.configuration.inject import ConfigValue
 
 if TYPE_CHECKING:
     from api_swedeb.api.v1.endpoints.tool_router import CommonParams
@@ -57,6 +61,7 @@ class CompressionStrategy(ABC):
     def stream(
         self,
         speeches: Generator[tuple[SpeechMetadata, str], None, None],
+        extra_files: dict[str, bytes] | None = None,
     ) -> Generator[bytes, None, None]:
         """Yield compressed bytes incrementally."""
         raise NotImplementedError
@@ -77,6 +82,7 @@ class ZipCompressionStrategy(CompressionStrategy):
     def stream(
         self,
         speeches: Generator[tuple[SpeechMetadata, str], None, None],
+        extra_files: dict[str, bytes] | None = None,
     ) -> Generator[bytes, None, None]:
         writer = _StreamingBuffer()
 
@@ -89,6 +95,12 @@ class ZipCompressionStrategy(CompressionStrategy):
             compresslevel=self.compresslevel,
             allowZip64=True,
         ) as zf:
+            for name, data in (extra_files or {}).items():
+                zf.writestr(name, data)
+                chunk = writer.pop()
+                if chunk:
+                    yield chunk
+
             for meta, text in speeches:
                 filename = f"{self._safe_filename_part(meta.speaker)}_{meta.speech_id}.txt"
                 zf.writestr(filename, text.encode("utf-8"))
@@ -122,11 +134,21 @@ class TarGzCompressionStrategy(CompressionStrategy):
     def stream(
         self,
         speeches: Generator[tuple[SpeechMetadata, str], None, None],
+        extra_files: dict[str, bytes] | None = None,
     ) -> Generator[bytes, None, None]:
         writer = _StreamingBuffer()
 
         with gzip.GzipFile(fileobj=writer, mode="wb", compresslevel=1, mtime=0) as gz:
             with tarfile.open(fileobj=gz, mode="w|") as tf:  # uncompressed tar inside gz
+                for name, data in (extra_files or {}).items():
+                    tarinfo = tarfile.TarInfo(name=name)
+                    tarinfo.size = len(data)
+                    tf.addfile(tarinfo, io.BytesIO(data))
+                    gz.flush()
+                    chunk = writer.pop()
+                    if chunk:
+                        yield chunk
+
                 for meta, text in speeches:
                     filename = f"{self._safe_filename_part(meta.speaker)}_{meta.speech_id}.txt"
                     data = text.encode("utf-8")
@@ -151,7 +173,11 @@ class JsonlGzCompressionStrategy(CompressionStrategy):
     def __init__(self, compresslevel: int = 1) -> None:
         self.compresslevel = compresslevel
 
-    def stream(self, speeches: Generator[tuple[SpeechMetadata, str], None, None]) -> Generator[bytes, None, None]:
+    def stream(
+        self,
+        speeches: Generator[tuple[SpeechMetadata, str], None, None],
+        extra_files: dict[str, bytes] | None = None,  # noqa: ARG002 (not applicable for JSONL)
+    ) -> Generator[bytes, None, None]:
         writer = _StreamingBuffer()
 
         with gzip.GzipFile(
@@ -189,8 +215,24 @@ class DownloadService:
 
         df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
 
-        id_to_name: dict[str, str] = dict(zip(df["speech_id"], df["name"]))
-        speech_ids: list[str] = df["speech_id"].tolist()
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+        id_to_name: dict[str, str] = {
+            sid: (name if name and name != "Okänt" else unknown) for sid, name in zip(df["speech_id"], df["name"])
+        }
+        speech_ids: list[str] = list(dict.fromkeys(df["speech_id"].tolist()))  # deduplicate, preserving order
+
+        filters: dict = {k: v for k, v in commons.get_filter_opts(True).items() if k != "speech_id"}
+        checksum: str = hashlib.sha256(",".join(sorted(speech_ids)).encode()).hexdigest()
+        manifest: dict = {
+            "download_time": datetime.now(timezone.utc).isoformat(),
+            "corpus_version": os.environ.get("CORPUS_VERSION", "unknown"),
+            "metadata_version": ConfigValue("metadata.version").resolve(),
+            "speech_count": len(speech_ids),
+            "speech_id_checksum": checksum,
+            "filters": filters,
+        }
+        manifest_bytes: bytes = json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8")
+        extra_files: dict[str, bytes] = {"manifest.json": manifest_bytes}
 
         def _iter_speeches() -> Generator[tuple[SpeechMetadata, str], None, None]:
             for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
@@ -200,7 +242,7 @@ class DownloadService:
                 )
 
         def _generate() -> Generator[bytes, None, None]:
-            yield from self.compression_strategy.stream(_iter_speeches())
+            yield from self.compression_strategy.stream(_iter_speeches(), extra_files=extra_files)
 
         return _generate
 
