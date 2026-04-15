@@ -1,8 +1,8 @@
 # Change Request: Paged KWIC Results via Server-Side Result Cache
 
-**Status**: Revised proposal with accepted implementation decisions  
+**Status**: Revised proposal with accepted implementation decisions and assessment responses  
 **Primary area**: `api_swedeb/api/v1/endpoints/tool_router.py`, `KWICService`, download flow  
-**Follow-up area**: n-gram paging requires a separate payload decision before implementation  
+**Follow-up area**: n-gram paging is covered separately in `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`  
 **Affects**: API, frontend (`kwicDataStore.js`, `kwicDataTable.vue`), download flow
 
 ---
@@ -11,7 +11,7 @@
 
 ### Request/Response Flow
 
-KWIC and n-gram searches currently follow the same broad request shape:
+KWIC searches currently follow this broad request shape:
 
 ```text
 Client → GET /v1/tools/kwic/{search}?<all-filters>&cut_off=100000
@@ -22,8 +22,6 @@ Client → GET /v1/tools/kwic/{search}?<all-filters>&cut_off=100000
 2. `KWICService.get_kwic()` runs the corpus query, materializes the full result as a Pandas DataFrame, and the mapper serializes the entire list to JSON.
 3. The frontend stores the full list in Pinia state and applies client-side paging.
 4. The user sees nothing until the full response arrives.
-
-For n-grams, the backend also returns the entire response in one call, but the payload is already a reduced aggregation: raw keyword windows are collapsed into `ngram`, `window_count`, and a deduplicated `documents` list before the API response is built.
 
 ### Performance Implications
 
@@ -53,7 +51,7 @@ This proposal should be narrowed to a **KWIC-first MVP**.
 
 1. Re-filtering a cached result with new year/party/gender constraints.
 2. Returning `total_hits` in the initial submit response.
-3. Applying the exact same cache payload design to n-grams.
+3. N-gram paging; see `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`.
 
 Changing the search term or any metadata filter still creates a **new** ticket. The cache is for reuse of one completed query result, not for incremental recomputation of new filtered subsets.
 
@@ -175,6 +173,8 @@ POST /v1/tools/speeches/download?ticket_id=3f2a1b4c-...
 
 The download endpoint reuses the cached speech IDs and the cached normalized query metadata. It does not reconstruct the manifest from the current request query string alone.
 
+For the MVP, frontend CSV/XLSX export should remain on the existing synchronous flow. The ticketed KWIC path should not take over export until a dedicated export endpoint or equivalent server-side export contract exists.
+
 ---
 
 ## 4. Implementation Approach
@@ -206,6 +206,8 @@ class TicketMeta:
     artifact_bytes: int | None
     total_hits: int | None
     query_meta: dict
+    speech_ids: list[str] | None
+    manifest_meta: dict | None
     error: str | None = None
 ```
 
@@ -216,6 +218,14 @@ Suggested storage model:
 3. Explicit cleanup of expired tickets and a global `max_artifact_bytes` budget.
 
 This removes long-lived full-result RAM retention while preserving page reuse.
+
+Canonical artifact contract:
+
+1. The cached artifact should be the mapped KWIC API frame, not the raw `KWICService.get_kwic()` DataFrame.
+2. The artifact should be produced by `kwic_to_api_frame(...)` and persisted with one additional hidden `_ticket_row_id` column.
+3. The canonical artifact columns are `KWIC_API_COLUMNS` plus `_ticket_row_id`.
+4. This keeps sort fields such as `speech_name` valid and makes parity with the synchronous mapped endpoint directly testable.
+5. `document_name` remains in the artifact because the current frontend export path still depends on it.
 
 How expired disk artifacts should be removed:
 
@@ -264,6 +274,15 @@ Lifecycle decisions:
 3. Expose it through a dependency such as `get_result_store(request)`.
 4. On startup: create the cache root, remove stale artifacts, and start the cleanup sweeper.
 5. On shutdown: cancel the sweeper and remove leftover partial-write files.
+6. Use one canonical app factory with lifespan wiring, and make `main.py`, `docker/main.py`, and test app setup all use that same factory.
+
+Concurrency decisions:
+
+1. `ResultStore` is the sole owner of ticket state and byte-budget accounting.
+2. Guard all ticket metadata mutation and budget accounting with a process-local lock.
+3. Use explicit ticket states: `pending`, `ready`, `error`, and internal terminal cleanup states such as expired/deleted.
+4. Count `cache.max_pending_jobs` as tickets currently accepted and still in `pending` state.
+5. Artifact writes may happen outside the lock, but registration of a completed artifact must reacquire the lock before mutating state.
 
 Execution decisions:
 
@@ -327,6 +346,12 @@ Paging decisions:
 2. Add a hidden `_ticket_row_id` column at artifact creation time and always use it as the final tie-breaker.
 3. Use `page_size=50` by default and `cache.max_page_size=200` for the MVP.
 4. For the MVP, each page request may load the cached artifact and sort it in process.
+5. If `sort_by` is omitted, default to `_ticket_row_id` ascending.
+6. If the ticket is `pending`, `GET /results/{ticket_id}` returns `202 Accepted` with ticket status.
+7. If the ticket is `error`, `GET /results/{ticket_id}` returns `409 Conflict` with ticket status and error message.
+8. If the ticket is expired or unknown, `GET /results/{ticket_id}` returns `404 Not Found`.
+9. Invalid `sort_by` values return `400 Bad Request`.
+10. Requesting a page beyond `total_pages` returns `400 Bad Request` with a clear out-of-range message.
 
 ### 4.4 Download Manifest Requirements
 
@@ -341,6 +366,9 @@ Download precedence decisions:
 5. If neither `ticket_id` nor `ids` is provided, keep the current query-filter behavior.
 6. A pending ticket returns `409 Conflict`.
 7. An expired or unknown ticket returns `404 Not Found`.
+8. The ticket-specific download path should call a dedicated download service API that accepts `speech_ids` and `manifest_meta` directly instead of reconstructing everything from `CommonQueryParams`.
+9. Speech ordering for ticket download is the first-occurrence order from the completed cached artifact, using `_ticket_row_id` order and deduplicating `speech_id` values while preserving order.
+10. The checksum remains the SHA-256 of sorted unique `speech_id` values so it stays stable and comparable to the current manifest style.
 
 That metadata should include:
 
@@ -396,38 +424,11 @@ class KWICPageResult(BaseModel):
 
 ---
 
-## 5. N-Gram Follow-Up
+## 5. Related Follow-Up Proposal
 
-The original proposal treated n-grams as if they could use the same cache semantics as KWIC. That is too loose.
+N-gram paging has been split into a separate follow-up proposal: `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`.
 
-### Why It Differs
-
-The current n-gram pipeline already reduces raw keyword windows into a grouped table:
-
-1. Raw windows are queried from the corpus.
-2. Windows are transformed into n-grams.
-3. Counts are aggregated into `window_count`.
-4. Document IDs are deduplicated into a flattened `documents` field.
-
-After that reduction, the final API payload is suitable for:
-
-1. Paging the existing table.
-2. Sorting the existing table.
-
-It is **not** sufficient for:
-
-1. Re-filtering by metadata inside the cached result.
-2. Recomputing counts for a narrower year or party subset.
-3. Deriving new aggregations without returning to underlying windows or segments.
-
-### Recommendation
-
-Keep n-grams out of the KWIC MVP and make it a follow-up design decision:
-
-1. **Simple option**: cache only the final aggregated n-gram table, which supports page/sort reuse for one exact query.
-2. **Richer option**: cache pre-aggregation window or segment data so the server can re-aggregate later, at materially higher storage cost.
-
-Until that choice is made, this change request should not claim that KWIC and n-grams share the same cache payload strategy.
+This KWIC proposal does not define the n-gram cache payload, export story, or API contract beyond deferring that work to the follow-up design.
 
 ---
 
@@ -447,6 +448,7 @@ Until that choice is made, this change request should not claim that KWIC and n-
 | **Artifact write failure**   | Delete partial files, mark the ticket as `error`, and expose a user-safe error message through the status endpoint.                                                |
 | **Byte-budget exhaustion**   | Evict expired artifacts first, then oldest ready artifacts; if a new artifact still cannot fit, mark the ticket as `error` using `507` semantics.                |
 | **Single-worker assumption** | The MVP explicitly supports one worker and local writable cache storage only. Multi-worker portability requires shared storage and shared metadata.               |
+| **Export behavior**          | Keep CSV/XLSX export on the synchronous KWIC flow for the MVP; add a dedicated export contract before moving export to the ticketed path.                         |
 
 ---
 
@@ -493,6 +495,7 @@ The proposal says `/speeches/download` should accept `ticket_id`, but the endpoi
 5. A pending ticket returns `409 Conflict` with a clear `Ticket not ready` message.
 6. An expired or unknown ticket returns `404 Not Found`.
 7. The manifest rebuilt from a ticket should include at least: `ticket_id`, search term, `lemmatized`, `words_before`, `words_after`, `cut_off`, normalized filters, `total_hits`, `speech_count`, checksum, and generation timestamp.
+8. “Query-based filters” means only user-supplied selection-bearing filters, not default pagination or sort fields. Detect conflicts with a helper that checks only filter fields that affect speech selection.
 
 ### 7.5 Operational Defaults
 
@@ -530,7 +533,7 @@ Implementation should not be considered complete until all of the following pass
 1. For the same search, filters, and `cut_off`, concatenating all ticketed pages in default order produces the same KWIC rows as the current `GET /v1/tools/kwic/{search}` endpoint after the same mapper is applied.
 2. Repeated requests for the same ticket, page, and sort settings return stable totals and stable row order.
 3. Expired tickets are removed within one cleanup interval, and a restart test shows that stale artifacts from a previous process are removed on startup.
-4. Download by `ticket_id` returns the same speech ID set as the equivalent existing download path and produces the expected manifest metadata.
+4. Download by `ticket_id` returns the deduplicated `speech_id` set derived from the completed cached KWIC artifact in first-occurrence `_ticket_row_id` order, and produces the expected manifest metadata.
 5. Manual benchmark on a representative staging corpus shows:
   - initial query execution is not materially worse than the current synchronous endpoint for the same search,
   - cached page fetch stays under 500 ms at `page_size=50` for the common case,
@@ -553,5 +556,39 @@ During rollout, both endpoint families should remain live:
 | **Phase 1** | Add KWIC ticket registry, disk-backed result artifacts, `POST /kwic/query`, `GET /kwic/status/{ticket_id}`, and `GET /kwic/results/{ticket_id}`. |
 | **Phase 2** | Update `kwicDataStore.js` and `kwicDataTable.vue` to submit, poll, then request pages in server-side pagination mode.                            |
 | **Phase 3** | Update `/speeches/download` to accept `ticket_id` and build the manifest from cached query metadata plus speech IDs.                             |
-| **Phase 4** | Design n-gram paging separately, choosing between final-table caching and pre-aggregation caching.                                               |
+| **Phase 4** | Implement the follow-up design in `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md` after the KWIC ticket flow is validated.                 |
 | **Phase 5** | If multi-worker deployment becomes necessary, replace local-only ticket storage with shared metadata and shared result storage.                  |
+
+
+# Assessment
+
+Status at review time: Not implementation-ready.
+
+1. The cached artifact contract is still internally inconsistent. The proposal stores the raw KWICService.get_kwic() DataFrame at PAGED_KWIC_RESULTS_DESIGN.md (line 289), but later requires sorting by speech_name at PAGED_KWIC_RESULTS_DESIGN.md (line 326) and parity with the mapped synchronous endpoint at PAGED_KWIC_RESULTS_DESIGN.md (line 530). speech_name, speech_link, and link are only added in api_swedeb/mappers/kwic.py (line 41). This needs one explicit decision: cache the mapped API frame, or cache raw KWIC plus precomputed derived columns, and define the canonical column set.
+
+2. Download-by-ticket is not wired to the current service contract. The proposal requires ticket-only manifest rebuilding at PAGED_KWIC_RESULTS_DESIGN.md (line 333) and says ticket metadata must include speech IDs at PAGED_KWIC_RESULTS_DESIGN.md (line 345), but TicketMeta itself does not include them at PAGED_KWIC_RESULTS_DESIGN.md (line 199). The current DownloadService.create_stream() (line 209) only accepts CommonQueryParams and recomputes both speech selection and manifest from commons.get_filter_opts(True). The proposal needs an explicit download service API for speech_ids + manifest metadata, plus a defined speech ordering/checksum rule.
+
+3. The app lifecycle insertion point is unresolved. The proposal depends on a FastAPI lifespan-managed ResultStore at PAGED_KWIC_RESULTS_DESIGN.md (line 262), but the active app in main.py (line 10) has no lifespan hook, the test app in tests/conftest.py (line 151) also has none, and there is a separate app assembly in docker/main.py (line 18). This needs a single canonical app factory/lifespan path before implementation starts.
+
+4. The frontend migration omits current export behavior. The proposal says it affects kwicDataStore.js and kwicDataTable.vue at PAGED_KWIC_RESULTS_DESIGN.md (line 6) and phase 2 at PAGED_KWIC_RESULTS_DESIGN.md (line 554), but docs/DESIGN.md (line 294) documents that the frontend CSV/XLSX export path currently depends on holding the full KWIC result, including document_name, client-side. The proposal needs an explicit export story: keep export on the old synchronous flow, fetch all pages, or add a dedicated export endpoint.
+
+5. Endpoint behavior is incomplete for non-happy paths. KWICTicketStatus includes error at PAGED_KWIC_RESULTS_DESIGN.md (line 379), but the page contract at PAGED_KWIC_RESULTS_DESIGN.md (line 386) only defines ready, and the prose only shows pending handling at PAGED_KWIC_RESULTS_DESIGN.md (line 159). It still needs explicit rules for results/{ticket_id} when the ticket is error, for out-of-range pages, and for invalid sort fields. It also needs a defined default order when sort_by is omitted, otherwise the parity requirement at line 530 is not testable.
+
+6. The concurrency model for ResultStore is underspecified. The proposal allows a plain dict/TTL cache at PAGED_KWIC_RESULTS_DESIGN.md (line 214), request-path cleanup at line 222, a background sweeper at line 223, and background job completion via threadpool at line 281. That means multiple threads/tasks will mutate ticket state and byte-budget accounting concurrently. The design needs explicit locking/state-transition rules and a precise definition of what counts toward cache.max_pending_jobs.
+
+7. The validation target for ticket-based download is ambiguous. The proposal says download-by-ticket should match “the equivalent existing download path” at PAGED_KWIC_RESULTS_DESIGN.md (line 533), but there is no current endpoint that downloads “the KWIC result set” as such. The proposal should define the baseline as deduplicated speech_id values derived from the completed KWIC result in a specified stable order.
+
+8. ticket_id conflict handling needs a concrete detection rule. The proposal says ticket_id is mutually exclusive with query-based filters at PAGED_KWIC_RESULTS_DESIGN.md (line 489), but CommonQueryParams (line 50) always carries default sort_by and sort_order values. You need to specify whether “query-based filters” means only user-supplied filter params, or literally any populated query param object, otherwise the endpoint logic is ambiguous.
+
+## Assessment Response
+
+All eight assessment issues are valid.
+
+1. Valid. Resolution: cache the mapped KWIC API frame produced by `kwic_to_api_frame(...)`, not the raw service frame. The canonical artifact columns are `KWIC_API_COLUMNS` plus `_ticket_row_id`.
+2. Valid. Resolution: extend ticket metadata to include `speech_ids` and `manifest_meta`, and add a dedicated download service path that accepts `speech_ids` plus manifest data directly.
+3. Valid. Resolution: introduce one canonical app factory with lifespan wiring and make runtime, Docker, and tests all construct the app through it.
+4. Valid. Resolution: keep CSV/XLSX export on the existing synchronous KWIC path for the MVP. Do not migrate export to the ticketed path until a dedicated export contract exists.
+5. Valid. Resolution: define non-happy-path behavior explicitly for `results/{ticket_id}`: `202` for pending, `409` for error, `404` for expired or unknown, `400` for invalid sort fields, and `400` for out-of-range pages. Default order is `_ticket_row_id` ascending.
+6. Valid. Resolution: make `ResultStore` the single owner of ticket state behind a process-local lock, define explicit state transitions, and define `max_pending_jobs` as the number of accepted tickets still in `pending` state.
+7. Valid. Resolution: define the ticket-download validation baseline as the deduplicated `speech_id` set derived from the completed cached KWIC artifact in stable `_ticket_row_id` order.
+8. Valid. Resolution: define ticket conflict detection in terms of user-supplied selection-bearing filters only, ignoring default `sort_by`, `sort_order`, and other non-selection defaults.
