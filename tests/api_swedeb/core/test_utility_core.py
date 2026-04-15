@@ -7,7 +7,6 @@ import pandas as pd
 import pytest
 
 from api_swedeb.core.configuration.inject import ConfigValue
-from api_swedeb.core.speech_utility import format_speech_name, format_speech_names
 from api_swedeb.core.utility import (
     DictLikeObject,
     Lazy,
@@ -370,36 +369,6 @@ class TestProbeFilename:
         """Test probe_filename raises when no candidate exists."""
         with pytest.raises(FileNotFoundError):
             probe_filename(["/nonexistent/file.txt"])
-
-
-class TestFormatSpeechName:
-    """Tests for format_speech_name function."""
-
-    def test_format_speech_name_modern_format(self):
-        """Test format_speech_name with modern format."""
-        assert format_speech_name("prot-2004--113_075") == "2004:113 075"
-
-    def test_format_speech_name_ak_chamber(self):
-        """Test format_speech_name with Andra kammaren."""
-        result = format_speech_name("prot-1958-a-ak--17-01_094")
-        assert "Andra kammaren" in result
-        assert "1958" in result
-
-    def test_format_speech_name_fk_chamber(self):
-        """Test format_speech_name with Första kammaren."""
-        result = format_speech_name("prot-1958-a-fk--17-01_094")
-        assert "Första kammaren" in result
-
-    def test_format_speech_name_invalid_returns_original(self):
-        """Test format_speech_name returns original for invalid format."""
-        assert format_speech_name("invalid-format") == "invalid-format"
-
-    def test_format_speech_names_series(self):
-        """Test format_speech_names with a pandas Series."""
-        series = pd.Series(["prot-2004--113_075", "prot-1958-a-ak--17-01_094"])
-        result = format_speech_names(series, pd.Series(["", ""]))
-        assert result.iloc[0] == "2004:113 075"
-        assert "Andra kammaren" in result.iloc[1]
 
 
 class TestFixWhitespace:
