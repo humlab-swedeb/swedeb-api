@@ -3,8 +3,8 @@ from typing import Any
 import pandas as pd
 
 from api_swedeb.core.speech_utility import (
-    create_pdf_links,
     format_speech_names,
+    resolve_pdf_links_for_speeches,
     resolve_wiki_url_for_speaker,
 )
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
@@ -57,7 +57,10 @@ def kwic_to_api_frame(data: pd.DataFrame) -> pd.DataFrame:
         result["link"] = resolve_wiki_url_for_speaker(result["wiki_id"])
 
     if "document_name" in result.columns and "page_number_start" in result.columns:
-        result["speech_link"] = create_pdf_links(result["document_name"], result["page_number_start"])
+        result["speech_link"] = resolve_pdf_links_for_speeches(
+            speech_names=result["document_name"],
+            page_nr=result["page_number_start"],
+        )
 
     return result[[column for column in KWIC_API_COLUMNS if column in result.columns]]
 
