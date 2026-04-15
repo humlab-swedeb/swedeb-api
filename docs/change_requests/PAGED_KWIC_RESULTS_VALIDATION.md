@@ -102,6 +102,31 @@ This means the current branch has local coverage for:
 - startup cleanup, expiry cleanup, corrupt artifact cleanup, queue saturation, and byte-budget behavior
 - shared FastAPI app lifecycle with `ResultStore` lifespan management
 
+## Broader Local Query Matrix
+
+To extend the validation beyond the initial single sample, the local test corpus was exercised with a broader set of queries and filter combinations through both the synchronous KWIC endpoint and the ticketed query plus paged-results flow.
+
+| Case | Sync Hits | Ticket Hits | Total Pages | Parity | Sync | Ticket + First Page | Cached Page Avg |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |
+| `debatt_male_1970_1975` | 50 | 50 | 1 | exact | `164.32 ms` | `170.54 ms` | `4.67 ms` |
+| `sverige_ak` | 34 | 34 | 1 | exact | `147.98 ms` | `162.02 ms` | `4.60 ms` |
+| `sverige_both_chambers` | 205 | 205 | 4 | exact | `163.16 ms` | `180.50 ms` | `4.84 ms` |
+| `karnkraft_lemmatized` | 4 | 4 | 1 | exact | `150.93 ms` | `158.25 ms` | `6.37 ms` |
+
+Observations:
+
+- Exact parity held across all four local cases.
+- The multi-page `sverige_both_chambers` case verified page aggregation across four ticket pages.
+- Cached page fetches remained low-latency across both smaller and larger result sets on the local corpus.
+
+Additional broader download sample:
+
+- Query case: `sverige_both_chambers`
+- `total_hits`: `205`
+- deduplicated `speech_count`: `85`
+- archive entries: `86` (`85` speech files + `manifest.json`)
+- manifest checksum: `0309a86620c83aba13e3447523ee8a9204d7b4c69b7b0d263a7642e2fa958377`
+
 ## Frontend Rollout Path
 
 - Keep `GET /v1/tools/kwic/{search}` available throughout rollout.
@@ -114,6 +139,10 @@ This means the current branch has local coverage for:
 
 The local repository phase is complete. Remaining follow-up is operational rather than implementation-blocking:
 
-- repeat parity and latency checks on a broader or staging-representative corpus
+- repeat parity and latency checks on a staging-representative corpus or deployment-sized dataset
 - validate multi-query or larger-corpus behavior on a staging-representative corpus
 - decide whether to archive or trim transient validation notes once rollout is complete
+
+Note:
+
+- A true staging pass was not run from this workspace because no staging environment or remote corpus access is available through the current tool context.
