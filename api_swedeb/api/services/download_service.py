@@ -195,7 +195,7 @@ class DownloadService:
             sid: (name if name and name != "Okänt" else unknown)
             for sid, name in zip(df["speech_id"], df["name"])
         }
-        speech_ids: list[str] = df["speech_id"].tolist()
+        speech_ids: list[str] = list(dict.fromkeys(df["speech_id"].tolist()))  # deduplicate, preserving order
 
         def _iter_speeches() -> Generator[tuple[SpeechMetadata, str], None, None]:
             for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
