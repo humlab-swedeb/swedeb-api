@@ -1,9 +1,7 @@
 """Unit tests for uncovered tool router endpoints."""
 
 import asyncio
-import io
 import json
-import zipfile
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 

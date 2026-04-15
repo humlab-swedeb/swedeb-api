@@ -19,7 +19,13 @@ from api_swedeb.api.services.result_store import (
     TicketStatus,
 )
 from api_swedeb.mappers.kwic import kwic_api_frame_to_model, kwic_to_api_frame
-from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketAccepted, KWICTicketSortBy, KWICTicketStatus
+from api_swedeb.schemas.kwic_schema import (
+    KWICPageResult,
+    KWICQueryRequest,
+    KWICTicketAccepted,
+    KWICTicketSortBy,
+    KWICTicketStatus,
+)
 from api_swedeb.schemas.sort_order import SortOrder
 
 DEFAULT_PAGE_SIZE = 50
