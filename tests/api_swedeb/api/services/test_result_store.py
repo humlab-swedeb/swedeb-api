@@ -1,11 +1,13 @@
 import asyncio
 from dataclasses import replace
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from api_swedeb.api.services.result_store import (
     ResultStore,
+    ResultStoreCapacityError,
     ResultStoreNotFound,
     ResultStorePendingLimitError,
     TicketStatus,
@@ -117,5 +119,84 @@ def test_result_store_evicts_oldest_ready_ticket_when_budget_is_exceeded(tmp_pat
 
         assert store.get_ticket(first.ticket_id) is None
         assert store.require_ticket(second.ticket_id).status == TicketStatus.READY
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_startup_removes_stale_artifacts_and_partials(tmp_path) -> None:
+    stale_artifact = Path(tmp_path) / "stale.feather"
+    stale_partial = Path(tmp_path) / "stale.feather.partial"
+    stale_tmp = Path(tmp_path) / "stale.tmp"
+    stale_artifact.write_bytes(b"artifact")
+    stale_partial.write_bytes(b"partial")
+    stale_tmp.write_bytes(b"tmp")
+
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+
+    asyncio.run(store.startup())
+    try:
+        assert stale_artifact.exists() is False
+        assert stale_partial.exists() is False
+        assert stale_tmp.exists() is False
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_deletes_corrupt_artifact_on_load(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+        store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "demokrati"}]))
+
+        corrupt_path = store.require_ticket(ticket.ticket_id).artifact_path
+        assert corrupt_path is not None
+        corrupt_path.write_bytes(b"not-a-feather-file")
+
+        with pytest.raises(ResultStoreNotFound):
+            store.load_artifact(ticket.ticket_id)
+
+        assert store.get_ticket(ticket.ticket_id) is None
+        assert corrupt_path.exists() is False
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_marks_ticket_error_when_artifact_exceeds_capacity(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+
+        with pytest.raises(ResultStoreCapacityError, match="Insufficient result-store capacity"):
+            store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "demokrati" * 100}]))
+
+        failed = store.require_ticket(ticket.ticket_id)
+        assert failed.status == TicketStatus.ERROR
+        assert failed.error == "Insufficient result-store capacity for ticket artifact"
+        assert failed.artifact_path is None
     finally:
         asyncio.run(store.shutdown())

@@ -25,6 +25,7 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     get_zip,
     submit_kwic_query,
 )
+from api_swedeb.api.services.result_store import ResultStorePendingLimitError
 from api_swedeb.core.speech import Speech
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketStatus
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
@@ -65,6 +66,28 @@ class TestToolRouterEndpoints:
         kwic_ticket_service.submit_query.assert_called_once_with(request, result_store)
         assert result.ticket_id == "ticket-1"
         assert len(background_tasks.tasks) == 1
+
+    def test_submit_kwic_query_returns_429_when_pending_limit_is_reached(self):
+        request = KWICQueryRequest(search="demokrati")
+        background_tasks = BackgroundTasks()
+        kwic_ticket_service = MagicMock()
+        kwic_ticket_service.submit_query.side_effect = ResultStorePendingLimitError("Too many pending KWIC jobs")
+        result_store = MagicMock(cleanup_interval_seconds=45)
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                submit_kwic_query(
+                    request=request,
+                    background_tasks=background_tasks,
+                    kwic_service=MagicMock(),
+                    kwic_ticket_service=kwic_ticket_service,
+                    result_store=result_store,
+                    cwb_opts={"registry_dir": "/tmp/registry", "corpus_name": "CORPUS", "data_dir": "/tmp/data"},
+                )
+            )
+
+        assert excinfo.value.status_code == 429
+        assert excinfo.value.headers == {"Retry-After": "45"}
 
     def test_get_kwic_ticket_status_maps_service_result(self):
         kwic_ticket_service = MagicMock()

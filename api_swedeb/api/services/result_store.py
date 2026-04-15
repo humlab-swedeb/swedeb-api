@@ -165,7 +165,14 @@ class ResultStore:
                 if current is not None:
                     self._delete_ticket_locked(ticket_id)
             raise ResultStoreNotFound("Ticket artifact not found or expired")
-        return pd.read_feather(ticket.artifact_path)
+        try:
+            return pd.read_feather(ticket.artifact_path)
+        except Exception as exc:  # pylint: disable=broad-except
+            with self._lock:
+                current = self._tickets.get(ticket_id)
+                if current is not None:
+                    self._delete_ticket_locked(ticket_id)
+            raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
 
     def store_ready(
         self,

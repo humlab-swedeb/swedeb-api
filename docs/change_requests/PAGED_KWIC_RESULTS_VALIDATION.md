@@ -65,9 +65,32 @@ Interpretation:
 - Cached page retrieval is materially faster than recomputing the query.
 - These numbers are local test-corpus baselines, not staging or production benchmarks.
 
+## Reliability Validation
+
+Verified through the current automated backend suite:
+
+- Expiry cleanup: expired tickets and their artifacts are removed by `ResultStore.cleanup_expired()`.
+- Startup cleanup: stale `.feather`, `.feather.partial`, and `.tmp` files are removed on `ResultStore.startup()`.
+- Corrupt artifact handling: unreadable Feather artifacts are deleted on load and surfaced as `ResultStoreNotFound`.
+- Queue saturation: `POST /v1/tools/kwic/query` returns `429` with `Retry-After` when `max_pending_jobs` is exhausted.
+- Byte-budget exhaustion: oversized artifacts transition the ticket to `error` and raise `ResultStoreCapacityError` during store completion.
+- Artifact-budget behavior: oldest ready artifacts are evicted first when a new artifact needs space inside the configured byte budget.
+
+This validation is currently covered by:
+
+- `tests/api_swedeb/api/services/test_result_store.py`
+- `tests/api_swedeb/api/endpoints/test_tool_router.py`
+- `tests/integration/test_kwic_ticket_validation.py`
+
+## Frontend Rollout Path
+
+- Keep `GET /v1/tools/kwic/{search}` available throughout rollout.
+- Keep the frontend KWIC ticket flow explicitly controlled by `kwicDataStore.useTicketFlow`.
+- Keep CSV/XLSX export on the synchronous endpoint for the MVP.
+- Keep speech ZIP download on the ticket path only when a completed KWIC ticket exists.
+- Defer n-gram pagination to `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`.
+
 ## Remaining Phase 6 Work
 
-- Validate expiry, startup cleanup, corrupt artifact handling, queue saturation, and byte-budget exhaustion against explicit Phase 6 scenarios.
 - Repeat parity and latency checks on a broader or staging-representative corpus.
-- Record artifact-budget behavior under eviction pressure.
-- Document the staged frontend rollout path separately from this validation sample.
+- Validate multi-query or larger-corpus behavior on a staging-representative corpus.

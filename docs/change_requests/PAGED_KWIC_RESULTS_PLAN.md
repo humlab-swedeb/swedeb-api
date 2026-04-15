@@ -371,16 +371,16 @@ This plan does not implement:
 - [x] Stable ordering verified
 - [x] Ticket download speech ID baseline verified
 - [x] Ticket download manifest verified
-- [ ] Expiry cleanup verified
-- [ ] Startup cleanup verified
-- [ ] Corrupt artifact behavior verified
-- [ ] Queue saturation behavior verified
-- [ ] Byte-budget exhaustion behavior verified
+- [x] Expiry cleanup verified
+- [x] Startup cleanup verified
+- [x] Corrupt artifact behavior verified
+- [x] Queue saturation behavior verified
+- [x] Byte-budget exhaustion behavior verified
 - [x] Query latency benchmark recorded
 - [x] Page latency benchmark recorded
-- [ ] Artifact budget behavior recorded
+- [x] Artifact budget behavior recorded
 - [x] Existing synchronous KWIC endpoint still live
-- [ ] Frontend opt-in rollout path documented
+- [x] Frontend opt-in rollout path documented
 
 ### Exit Criteria
 
