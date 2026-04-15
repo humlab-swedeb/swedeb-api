@@ -42,7 +42,7 @@ def config_store() -> Generator[ConfigStore, None, None]:
         yield store
 
 
-@pytest.mark.skip(reason="SSlow regression test. Protocol IDs are zeropadded in the refactored version.")
+@pytest.mark.skip(reason="SSlow regression test.")
 def test_get_kwic_results(config_store):
 
     commons: CommonQueryParams = CommonQueryParams(from_year=1867, to_year=2023, sort_by="name", sort_order="asc")
