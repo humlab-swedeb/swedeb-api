@@ -39,10 +39,7 @@ CommonParams = Annotated[CommonQueryParams, Depends()]
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
 
 
-@router.get(
-    "/kwic/{search}",
-    response_model=KeywordInContextResult,
-)
+@router.get("/kwic/{search}", response_model=KeywordInContextResult)
 async def get_kwic_results(
     commons: CommonParams,
     search: str,

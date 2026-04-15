@@ -135,6 +135,7 @@ def _resolve_pdf_links_for_speeches(
 
 def resolve_pdf_links_for_speeches(
     speech_names: str | pd.Series,
+    *,
     page_nr: str | int | pd.Series = 1,
     base_url: str | None = None,
 ) -> str | pd.Series:
