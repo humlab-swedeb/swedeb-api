@@ -3,6 +3,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.core import speech
 from api_swedeb.core.speech_utility import (
     create_pdf_links,
     create_wiki_reference_links,
@@ -35,6 +37,55 @@ def test_format_speech_name_ak_chamber():
     result = format_speech_name("prot-1958-a-ak--17-01_094")
     assert "Andra kammaren" in result
     assert "1958" in result
+
+
+# prot-YYYY-ABC-NNN
+# prot-YYYY-ABC-XK--NNN
+# prot-YYYY-ABC-XK--NNN-ZZ
+# prot-YYYY--NNN
+# prot-YYYY--XK--MMDD
+# prot-YYYY--XK--NNN
+# prot-YYYY--XK--NNN-ZZ
+# prot-YYYYYY--NNN
+
+
+def test_format_all_speech_names():
+
+    speech_names = [
+        "prot-1970--ak--029_001",
+        "prot-1971--117_001",
+        "prot-1972--021_001",
+        "prot-1973--121_001",
+        "prot-1974--136_001",
+        "prot-1975--041_001",
+        "prot-197576--087_001",
+        "prot-197778--005_001",
+        "prot-197879--063_001",
+    ]
+    df = pd.DataFrame({"document_name": speech_names})
+    actual: dict[str, str] = {speech_name: format_speech_name(speech_name) for speech_name in df['document_name']}
+    expected: dict[str, str] = {
+        'prot-1970--ak--029_001': 'Andra kammaren 1970:029 001',
+        'prot-1971--117_001': '1971:117 001',
+        'prot-1972--021_001': '1972:021 001',
+        'prot-1973--121_001': '1973:121 001',
+        'prot-1974--136_001': '1974:136 001',
+        'prot-1975--041_001': '1975:041 001',
+        'prot-197576--087_001': '1975/76:087 001',
+        'prot-197778--005_001': '1977/78:005 001',
+        'prot-197879--063_001': '1978/79:063 001',
+    }
+
+    assert all(actual[speech_name] == expected_value for speech_name, expected_value in expected.items())
+
+
+def test_format_speech_name():
+    speech_name = 'prot-1966-höst-fk--38_044'
+    assert format_speech_name(speech_name) == 'Första kammaren 1966:38 044'
+    speech_name = 'prot-200405--113_075'
+    assert format_speech_name(speech_name) == '2004/05:113 075'
+    speech_name = 'prot-1958-a-ak--17-01_001'
+    assert format_speech_name(speech_name) == 'Andra kammaren 1958:17 01 001'
 
 
 def test_format_speech_name_fk_chamber():
@@ -174,11 +225,13 @@ def test_speech_link_series():
 def test_speech_link_series_with_scalar_page_number():
     """Test speech_link applies a scalar page number to every document in a Series."""
     base_url: str = "https://example.com/"
-    documents = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'], index=[10, 20])
+    documents: pd.Series = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'], index=[10, 20])
 
     result = resolve_pdf_links_for_speeches(documents, page_nr="12", base_url=base_url)
 
-    expected = pd.Series(
+    assert isinstance(result, pd.Series)
+
+    expected: pd.Series = pd.Series(
         [
             "https://example.com/1970/prot-1970--ak--029.pdf#page=12",
             "https://example.com/1980/prot-1980--ak--029.pdf#page=12",
@@ -201,8 +254,8 @@ def test_speech_link_requires_configured_or_explicit_base_url(mock_config_value)
 def test_create_pdf_links_handles_blank_document_names(mock_config_value):
     """Test create_pdf_links builds links for valid rows and leaves blank rows empty."""
     mock_config_value.return_value.resolve.return_value = "https://example.com/"
-    document_name = pd.Series(["prot-1970--ak--029_001", ""])
-    page_number_start = pd.Series([5, 7])
+    document_name: pd.Series = pd.Series(["prot-1970--ak--029_001", ""])
+    page_number_start: pd.Series = pd.Series([5, 7])
 
     with pytest.warns(DeprecationWarning, match="create_pdf_links"):
         result = create_pdf_links(document_name, page_number_start)

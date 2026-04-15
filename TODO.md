@@ -22,15 +22,6 @@
 For all of these, the result is the same: replace a runtime codec translate-step with a
 `DataFrame.join(prebuilt_speech_index, on='speech_id', how='left')`.
 
-prot-YYYY-ABC-NNN
-prot-YYYY-ABC-XK--NNN
-prot-YYYY-ABC-XK--NNN-ZZ
-prot-YYYY--NNN
-prot-YYYY--XK--MMDD
-prot-YYYY--XK--NNN
-prot-YYYY--XK--NNN-ZZ
-prot-YYYYYY--NNN
-
 #  VS Code Codex extension
 
 In the VS Code Codex extension, you can add file context in three main ways:

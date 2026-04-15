@@ -72,35 +72,6 @@ def test_speeches_get(fastapi_client: TestClient):
     assert len(data['speech_text']) > 0
 
 
-def test_format_all_speech_names(corpus_loader: CorpusLoader):
-    search_service = SearchService(corpus_loader)
-
-    df: pd.DataFrame = search_service.get_speeches(selections={'year': (1900, 2000)})
-
-    actual: dict[str, str] = {speech_name: format_speech_name(speech_name) for speech_name in df['document_name']}
-    expected: dict[str, str] = {
-        'prot-1970--ak--029_001': 'Andra kammaren 1970:029 001',
-        'prot-1971--117_001': '1971:117 001',
-        'prot-1972--021_001': '1972:021 001',
-        'prot-1973--121_001': '1973:121 001',
-        'prot-1974--136_001': '1974:136 001',
-        'prot-1975--041_001': '1975:041 001',
-        'prot-197576--087_001': '1975/76:087 001',
-        'prot-197778--005_001': '1977/78:005 001',
-        'prot-197879--063_001': '1978/79:063 001',
-    }
-
-    assert all(actual[speech_name] == expected_value for speech_name, expected_value in expected.items())
-
-
-def test_format_speech_name():
-    speech_name = 'prot-1966-höst-fk--38_044'
-    assert format_speech_name(speech_name) == 'Första kammaren 1966:38 044'
-    speech_name = 'prot-200405--113_075'
-    assert format_speech_name(speech_name) == '2004/05:113 075'
-    speech_name = 'prot-1958-a-ak--17-01_001'
-    assert format_speech_name(speech_name) == 'Andra kammaren 1958:17 01 001'
-
 
 def test_get_speech_by_id_page_number(fastapi_client: TestClient):
 
