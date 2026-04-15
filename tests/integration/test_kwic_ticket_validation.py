@@ -9,6 +9,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+# pylint: disable=redefined-outer-name
+
 VERSION = "/v1/tools"
 SYNC_PARAMS = {
     "words_before": 2,
