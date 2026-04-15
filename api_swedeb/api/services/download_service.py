@@ -217,8 +217,7 @@ class DownloadService:
 
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         id_to_name: dict[str, str] = {
-            sid: (name if name and name != "Okänt" else unknown)
-            for sid, name in zip(df["speech_id"], df["name"])
+            sid: (name if name and name != "Okänt" else unknown) for sid, name in zip(df["speech_id"], df["name"])
         }
         speech_ids: list[str] = list(dict.fromkeys(df["speech_id"].tolist()))  # deduplicate, preserving order
 
@@ -246,7 +245,6 @@ class DownloadService:
             yield from self.compression_strategy.stream(_iter_speeches(), extra_files=extra_files)
 
         return _generate
-
 
 
 # Optional convenience factory if you want simple string-based selection.

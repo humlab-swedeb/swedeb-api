@@ -25,14 +25,14 @@ Client → GET /v1/tools/kwic/{search}?<all-filters>&cut_off=100000
 
 ### Performance Implications
 
-| Concern | Detail |
-|---|---|
-| **Large payloads** | A `cut_off=100000` KWIC result with context fields serialises to ~50–200 MB of JSON depending on hit density and field width. This is transferred on every search. |
-| **Blocking server thread** | CWB/CQP is CPU-bound and synchronous. During query execution the FastAPI event loop is blocked for the duration of the corpus scan. |
-| **No incremental feedback** | The browser shows nothing until the entire response arrives. Long queries (5–15 s at high `cut_off`) give a poor UX. |
-| **Repeated full fetches** | Every filter change re-executes the full corpus query. There is no reuse of a previous matching set even when only the page or sort order changes. |
-| **Memory pressure** | The server materialises the full hit list in a Pandas DataFrame before serialising. At 100k hits this can use 500 MB+ of RAM per concurrent user. |
-| **Client memory** | The browser holds the entire result array in a reactive Pinia store; large lists can degrade Vue reactivity performance. |
+| Concern                     | Detail                                                                                                                                                             |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Large payloads**          | A `cut_off=100000` KWIC result with context fields serialises to ~50–200 MB of JSON depending on hit density and field width. This is transferred on every search. |
+| **Blocking server thread**  | CWB/CQP is CPU-bound and synchronous. During query execution the FastAPI event loop is blocked for the duration of the corpus scan.                                |
+| **No incremental feedback** | The browser shows nothing until the entire response arrives. Long queries (5–15 s at high `cut_off`) give a poor UX.                                               |
+| **Repeated full fetches**   | Every filter change re-executes the full corpus query. There is no reuse of a previous matching set even when only the page or sort order changes.                 |
+| **Memory pressure**         | The server materialises the full hit list in a Pandas DataFrame before serialising. At 100k hits this can use 500 MB+ of RAM per concurrent user.                  |
+| **Client memory**           | The browser holds the entire result array in a reactive Pinia store; large lists can degrade Vue reactivity performance.                                           |
 
 ---
 

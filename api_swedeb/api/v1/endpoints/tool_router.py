@@ -153,7 +153,9 @@ async def get_speeches_result(
 @router.post("/speeches/download")
 async def get_speeches_download_result(
     commons: CommonParams,
-    ids: list[str] | None = Body(default=None, description="List of speech IDs to download. When provided, overrides query parameter filters."),
+    ids: list[str] | None = Body(
+        default=None, description="List of speech IDs to download. When provided, overrides query parameter filters."
+    ),
     download_service: DownloadService = Depends(get_download_service),
     search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
