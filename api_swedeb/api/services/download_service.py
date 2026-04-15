@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Callable, Generator
 import pandas as pd
 
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.core.configuration.inject import ConfigValue
 
 if TYPE_CHECKING:
     from api_swedeb.api.v1.endpoints.tool_router import CommonParams
@@ -189,7 +190,11 @@ class DownloadService:
 
         df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
 
-        id_to_name: dict[str, str] = dict(zip(df["speech_id"], df["name"]))
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+        id_to_name: dict[str, str] = {
+            sid: (name if name and name != "Okänt" else unknown)
+            for sid, name in zip(df["speech_id"], df["name"])
+        }
         speech_ids: list[str] = df["speech_id"].tolist()
 
         def _iter_speeches() -> Generator[tuple[SpeechMetadata, str], None, None]:
@@ -203,6 +208,7 @@ class DownloadService:
             yield from self.compression_strategy.stream(_iter_speeches())
 
         return _generate
+
 
 
 # Optional convenience factory if you want simple string-based selection.

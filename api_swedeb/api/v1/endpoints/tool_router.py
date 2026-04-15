@@ -1,5 +1,3 @@
-import io
-import zipfile
 from typing import Annotated, Any, Literal
 
 import fastapi
@@ -154,10 +152,12 @@ async def get_speeches_result(
 
 @router.post("/speeches/download")
 async def get_speeches_download_result(
-    commons: CommonParams, download_service: DownloadService = Depends(get_download_service)
+    commons: CommonParams,
+    download_service: DownloadService = Depends(get_download_service),
+    search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
     """Find speeches matching filter criteria and return them as a streamed ZIP file."""
-    streamer = download_service.create_stream(search_service=get_search_service(), commons=commons)
+    streamer = download_service.create_stream(search_service=search_service, commons=commons)
 
     return StreamingResponse(
         streamer(),
@@ -181,24 +181,19 @@ async def get_speech_by_id_result(
 
 @router.post("/speech_download/")
 async def get_zip(
-    ids: list[str] = Body(..., min_length=1, max_length=100),
+    ids: list[str] = Body(..., min_length=1),
+    download_service: DownloadService = Depends(get_download_service),
     search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
     """Download speeches as ZIP file"""
     if not ids:
         raise HTTPException(status_code=400, detail="Speech ids are required")
 
-    speaker_names: dict[str, str] = search_service.get_speaker_names(ids)
+    commons = CommonQueryParams(speech_id=ids).resolve()
+    streamer = download_service.create_stream(search_service=search_service, commons=commons)
 
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for speech_id, speech in search_service.get_speeches_batch(ids):
-            speaker = speaker_names.get(speech_id, "unknown")
-            zipf.writestr(f"{speaker}_{speech_id}.txt", speech.text.encode("utf-8"))
-
-    buffer.seek(0)
     return StreamingResponse(
-        iter([buffer.getvalue()]),
+        streamer(),
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=speeches.zip"},
     )
