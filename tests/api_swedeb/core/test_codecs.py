@@ -3,6 +3,7 @@ Tests for api_swedeb.core.codecs module.
 """
 
 import os
+import re
 import sqlite3
 import tempfile
 from typing import Any
@@ -703,8 +704,8 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
-            patch.object(person_codecs, 'person_wiki_link') as mock_wiki_link,
-            patch.object(person_codecs, 'speech_link') as mock_speech_link,
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value="http://pdfserver.se/1.pdf") as mock_speech_link,
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value="http://example.com/wiki/") as mock_wiki_link
         ):
 
             mock_wiki_link.return_value = pd.Series(["link1", "link2"])
@@ -730,8 +731,9 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
-            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", "link"])),
-            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", "speech"])),
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value=pd.Series(["", "link"])) as mock_wiki_link,
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value=pd.Series(["", "speech"])) as mock_speech_link,
+
         ):
 
             value_updates = {"": "Unknown"}
@@ -758,8 +760,8 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
-            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", "", "", ""])),
-            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", "", "", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value=pd.Series(["", "", "", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value=pd.Series(["", "", "", ""])),
         ):
 
             result = person_codecs.decode_speech_index(speech_index, sort_values=True)
@@ -784,8 +786,8 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=df),
-            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", ""])),
-            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value=pd.Series(["", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value=pd.Series(["", ""])),
         ):
 
             result = person_codecs.decode_speech_index(df, sort_values=False)

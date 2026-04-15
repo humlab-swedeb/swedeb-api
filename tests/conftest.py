@@ -312,5 +312,7 @@ def fixture_codecs_speech_index_source_dict():
         'party_id': {0: 2, 1: 1},
         'office_type_id': {0: 1, 1: 1},
         'sub_office_type_id': {0: 1, 1: 2},
+        'page_number_start': {0: 10, 1: 11},
+        'page_number_end': {0: 10, 1: 11},
         'protocol_name': {0: 'prot-1970--ak--029', 1: 'prot-1970--ak--029'},
     }
