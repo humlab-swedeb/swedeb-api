@@ -1,7 +1,8 @@
 import os
+from typing import cast
 
 import ccc
-from fastapi import Depends
+from fastapi import Depends, Request
 from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
@@ -9,6 +10,7 @@ from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
+from api_swedeb.api.services.result_store import ResultStore
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import ConfigValue
@@ -118,3 +120,10 @@ async def get_kwic_service() -> KWICService:
     if __kwic_service is None:
         __kwic_service = KWICService(get_corpus_loader())
     return __kwic_service
+
+
+def get_result_store(request: Request) -> ResultStore:
+    result_store = getattr(request.app.state, "result_store", None)
+    if result_store is None:
+        raise RuntimeError("ResultStore is not initialized")
+    return cast(ResultStore, result_store)

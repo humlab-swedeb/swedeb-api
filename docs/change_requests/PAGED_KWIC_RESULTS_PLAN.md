@@ -7,16 +7,18 @@ Current execution progress:
 - Proposal approved as the implementation baseline: `docs/change_requests/PAGED_KWIC_RESULTS_DESIGN.md`
 - Follow-up n-gram proposal split out: `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`
 - Phase 0 finalized in the design: request/response contracts, manifest metadata, sort rules, and module targets are now frozen
-- Backend implementation: **NOT STARTED**
+- Phase 1 foundation implemented: shared `create_app()`, lifespan-managed `ResultStore`, dependency wiring, and cache config keys
+- Phase 2 store foundation implemented: ticket metadata, Feather artifacts, expiry cleanup, sweeper loop, and eviction rules
+- Backend implementation: **IN PROGRESS**
 - Frontend implementation: **NOT STARTED**
 - Validation and benchmarks: **NOT STARTED**
 
 Status by phase:
 
 1. Phase 0: **COMPLETED**
-2. Phase 1: **READY TO START**
-3. Phase 2: **NOT STARTED**
-4. Phase 3: **NOT STARTED**
+2. Phase 1: **COMPLETED**
+3. Phase 2: **COMPLETED**
+4. Phase 3: **READY TO START**
 5. Phase 4: **NOT STARTED**
 6. Phase 5: **NOT STARTED**
 7. Phase 6: **NOT STARTED**
@@ -126,17 +128,17 @@ This plan does not implement:
 
 ### Progress Checklist
 
-- [ ] `create_app()` added
-- [ ] `main.py` uses `create_app()`
-- [ ] `docker/main.py` uses `create_app()`
-- [ ] Test app uses `create_app()`
-- [ ] `ResultStore` class added
-- [ ] `ResultStore` stored in `app.state`
-- [ ] `get_result_store(request)` dependency added
-- [ ] Cache config added to `config/config.yml`
-- [ ] Cache config added to `tests/config.yml`
-- [ ] Startup cleanup hook added
-- [ ] Shutdown cleanup hook added
+- [x] `create_app()` added
+- [x] `main.py` uses `create_app()`
+- [x] `docker/main.py` uses `create_app()`
+- [x] Test app uses `create_app()`
+- [x] `ResultStore` class added
+- [x] `ResultStore` stored in `app.state`
+- [x] `get_result_store(request)` dependency added
+- [x] Cache config added to `config/config.yml`
+- [x] Cache config added to `tests/config.yml`
+- [x] Startup cleanup hook added
+- [x] Shutdown cleanup hook added
 
 ### Exit Criteria
 
@@ -174,19 +176,19 @@ This plan does not implement:
 
 ### Progress Checklist
 
-- [ ] Ticket creation method implemented
-- [ ] Ticket state enum/contract implemented
-- [ ] Atomic artifact write implemented
-- [ ] Artifact load method implemented
-- [ ] Expired artifact delete path implemented
-- [ ] Corrupt/missing artifact delete path implemented
-- [ ] Process-local lock added
-- [ ] Budget accounting added
-- [ ] Pending-job accounting added
-- [ ] Request-path cleanup added
-- [ ] Periodic sweeper added
-- [ ] Startup cleanup added
-- [ ] Oldest-ready eviction added
+- [x] Ticket creation method implemented
+- [x] Ticket state enum/contract implemented
+- [x] Atomic artifact write implemented
+- [x] Artifact load method implemented
+- [x] Expired artifact delete path implemented
+- [x] Corrupt/missing artifact delete path implemented
+- [x] Process-local lock added
+- [x] Budget accounting added
+- [x] Pending-job accounting added
+- [x] Request-path cleanup added
+- [x] Periodic sweeper added
+- [x] Startup cleanup added
+- [x] Oldest-ready eviction added
 
 ### Exit Criteria
 
