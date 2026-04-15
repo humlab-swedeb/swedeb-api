@@ -37,7 +37,7 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
           else
-            VERSION=$(uv version)
+            VERSION=$(uv version | awk '{print $NF}')
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building test image for version: ${VERSION} from test branch"
