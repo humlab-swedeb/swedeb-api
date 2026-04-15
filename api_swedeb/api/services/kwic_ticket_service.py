@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import math
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -14,18 +15,11 @@ from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreCapacityError,
     ResultStoreNotFound,
-    ResultStorePendingLimitError,
     TicketMeta,
     TicketStatus,
 )
 from api_swedeb.mappers.kwic import kwic_api_frame_to_model, kwic_to_api_frame
-from api_swedeb.schemas.kwic_schema import (
-    KWICPageResult,
-    KWICQueryRequest,
-    KWICTicketAccepted,
-    KWICTicketSortBy,
-    KWICTicketStatus,
-)
+from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketAccepted, KWICTicketSortBy, KWICTicketStatus
 from api_swedeb.schemas.sort_order import SortOrder
 
 DEFAULT_PAGE_SIZE = 50
@@ -85,7 +79,7 @@ class KWICTicketService:
             return
         except ResultStoreNotFound:
             return
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             result_store.store_error(ticket_id, message="Failed to generate KWIC results")
 
     def get_status(self, ticket_id: str, result_store: ResultStore) -> KWICTicketStatus:
@@ -202,8 +196,6 @@ class KWICTicketService:
         return list(dict.fromkeys(speech_id for speech_id in api_frame["speech_id"].tolist() if speech_id))
 
     def _checksum(self, speech_ids: Sequence[str]) -> str:
-        import hashlib
-
         payload = "\n".join(sorted(set(speech_ids))).encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
 
