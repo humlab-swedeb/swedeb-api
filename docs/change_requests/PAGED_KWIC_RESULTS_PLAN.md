@@ -10,7 +10,8 @@ Current execution progress:
 - Phase 1 foundation implemented: shared `create_app()`, lifespan-managed `ResultStore`, dependency wiring, and cache config keys
 - Phase 2 store foundation implemented: ticket metadata, Feather artifacts, expiry cleanup, sweeper loop, and eviction rules
 - Phase 3 API implemented: ticket schemas, submit/status/results endpoints, shared filter normalization, and ticket paging behavior
-- Backend implementation: **IN PROGRESS**
+- Phase 4 download integration implemented: ticket-based speech download, direct artifact-backed archive generation, and `ticket_id` conflict handling
+- Backend implementation: **COMPLETED**
 - Frontend implementation: **NOT STARTED**
 - Validation and benchmarks: **NOT STARTED**
 
@@ -20,7 +21,7 @@ Status by phase:
 2. Phase 1: **COMPLETED**
 3. Phase 2: **COMPLETED**
 4. Phase 3: **COMPLETED**
-5. Phase 4: **READY TO START**
+5. Phase 4: **COMPLETED**
 6. Phase 5: **NOT STARTED**
 7. Phase 6: **NOT STARTED**
 
@@ -274,16 +275,16 @@ This plan does not implement:
 
 ### Progress Checklist
 
-- [ ] Download service direct-input method added
-- [ ] Ticket manifest metadata shape implemented
-- [ ] Ticket download path added to router
-- [ ] `ticket_id` vs `ids` conflict handling added
-- [ ] `ticket_id` vs selection-filter conflict handling added
-- [ ] Default sort/pagination params ignored in conflict detection
-- [ ] Pending ticket download returns `409`
-- [ ] Expired ticket download returns `404`
-- [ ] Stable speech ordering implemented
-- [ ] Stable checksum implemented
+- [x] Download service direct-input method added
+- [x] Ticket manifest metadata shape implemented
+- [x] Ticket download path added to router
+- [x] `ticket_id` vs `ids` conflict handling added
+- [x] `ticket_id` vs selection-filter conflict handling added
+- [x] Default sort/pagination params ignored in conflict detection
+- [x] Pending ticket download returns `409`
+- [x] Expired ticket download returns `404`
+- [x] Stable speech ordering implemented
+- [x] Stable checksum implemented
 
 ### Exit Criteria
 
@@ -385,12 +386,12 @@ This plan does not implement:
 
 ## Final Readiness Checklist
 
-- [ ] One canonical app factory exists and is used by runtime, Docker, and tests
-- [ ] `ResultStore` lifecycle is managed by FastAPI lifespan
-- [ ] Mapped KWIC frame is the cached artifact contract
-- [ ] Ticket metadata includes `speech_ids` and `manifest_meta`
-- [ ] Non-happy-path API behavior is fully defined and implemented
-- [ ] Ticket download works without re-deriving filter selection from `CommonQueryParams`
+- [x] One canonical app factory exists and is used by runtime, Docker, and tests
+- [x] `ResultStore` lifecycle is managed by FastAPI lifespan
+- [x] Mapped KWIC frame is the cached artifact contract
+- [x] Ticket metadata includes `speech_ids` and `manifest_meta`
+- [x] Non-happy-path API behavior is fully defined and implemented
+- [x] Ticket download works without re-deriving filter selection from `CommonQueryParams`
 - [ ] Frontend ticket flow is opt-in
 - [ ] CSV/XLSX export remains on the synchronous flow for the MVP
 - [ ] Validation and benchmark reports exist

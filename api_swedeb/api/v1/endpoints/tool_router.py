@@ -239,10 +239,12 @@ async def get_speeches_result(
 @router.post("/speeches/download")
 async def get_speeches_download_result(
     commons: CommonParams,
+    ticket_id: str | None = Query(default=None, description="Result ticket to download speeches from"),
     ids: list[str] | None = Body(
         default=None, description="List of speech IDs to download. When provided, overrides query parameter filters."
     ),
     download_service: DownloadService = Depends(get_download_service),
+    result_store: ResultStore = Depends(get_result_store),
     search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
     """Find speeches matching filter criteria and return them as a streamed ZIP file.
@@ -251,9 +253,31 @@ async def get_speeches_download_result(
     filters (CommonParams). When a body is provided, it sets the speech_id filter and
     combines with any other query parameter filters (year, party, gender, etc.).
     """
-    if ids is not None:
-        commons.speech_id = ids
-    streamer = download_service.create_stream(search_service=search_service, commons=commons)
+    if ticket_id is not None:
+        if ids is not None or commons.get_filter_opts(True):
+            raise HTTPException(status_code=400, detail="ticket_id cannot be combined with ids or query filters")
+
+        try:
+            ticket = result_store.require_ticket(ticket_id)
+        except ResultStoreNotFound as exc:
+            raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+        if ticket.status == TicketStatus.PENDING:
+            raise HTTPException(status_code=409, detail="Ticket not ready")
+        if ticket.status == TicketStatus.ERROR:
+            raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+        if ticket.speech_ids is None or ticket.manifest_meta is None:
+            raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
+
+        streamer = download_service.create_stream_from_speech_ids(
+            search_service=search_service,
+            speech_ids=ticket.speech_ids,
+            manifest_meta=ticket.manifest_meta,
+        )
+    else:
+        if ids is not None:
+            commons.speech_id = ids
+        streamer = download_service.create_stream(search_service=search_service, commons=commons)
 
     return StreamingResponse(
         streamer(),
