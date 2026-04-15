@@ -153,10 +153,18 @@ async def get_speeches_result(
 @router.post("/speeches/download")
 async def get_speeches_download_result(
     commons: CommonParams,
+    ids: list[str] | None = Body(default=None, description="List of speech IDs to download. When provided, overrides query parameter filters."),
     download_service: DownloadService = Depends(get_download_service),
     search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
-    """Find speeches matching filter criteria and return them as a streamed ZIP file."""
+    """Find speeches matching filter criteria and return them as a streamed ZIP file.
+
+    Accepts an optional JSON body with a list of speech IDs and/or query parameter
+    filters (CommonParams). When a body is provided, it sets the speech_id filter and
+    combines with any other query parameter filters (year, party, gender, etc.).
+    """
+    if ids is not None:
+        commons.speech_id = ids
     streamer = download_service.create_stream(search_service=search_service, commons=commons)
 
     return StreamingResponse(
@@ -179,7 +187,7 @@ async def get_speech_by_id_result(
     )
 
 
-@router.post("/speech_download/")
+@router.post("/speech_download/", deprecated=True)
 async def get_zip(
     ids: list[str] = Body(..., min_length=1),
     download_service: DownloadService = Depends(get_download_service),
