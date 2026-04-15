@@ -1,6 +1,6 @@
 """Unit tests for CorpusLoader service."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import pandas as pd
 import pytest
@@ -383,14 +383,18 @@ class TestCorpusLoaderAdditionalBranches:
             metadata_filename="metadata",
             tagged_corpus_folder="corpus",
         )
-        loader._cached_document_index = pd.DataFrame(
+        si: pd.DataFrame = pd.DataFrame(
             {
                 "document_name": ["prot-1_001", "prot-1_002", "prot-2_001"],
-                "page_number": [5, 12, 30],
+                "protocol_name": ["prot-1", "prot-1", "prot-2"],
+                "page_number_start": [5, 12, 30],
+                "page_number_end": [10, 15, 35],
             }
         )
+        with patch.object(type(loader), 'prebuilt_speech_index', new_callable=PropertyMock) as mock_value:
+            mock_value.return_value = si
+            assert loader.protocol_page_range("prot-1") == (5, 15)
 
-        assert loader.protocol_page_range("prot-1_999") == (5, 12)
 
     def test_protocol_page_range_returns_fallback_on_error(self):
         loader = CorpusLoader(
@@ -401,7 +405,7 @@ class TestCorpusLoaderAdditionalBranches:
         )
         loader._cached_document_index = pd.DataFrame({"speech_id": ["i-1"]})
 
-        assert loader.protocol_page_range("prot-1_001") == (1867, 2022)
+        assert loader.protocol_page_range("prot-1_001") == (1, 200)
 
 
 class TestIntegrationFullCorpus:

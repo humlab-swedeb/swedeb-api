@@ -1,21 +1,3 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from api_swedeb.app import create_app
 
-from api_swedeb.api.v1.endpoints import tool_router
-from api_swedeb.api.v1.endpoints import metadata_router
-from api_swedeb.core.configuration import get_config_store, ConfigValue
-
-get_config_store().configure_context(source='config/config.yml')
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ConfigValue("fastapi.origins").resolve(),
-    allow_methods=['GET', 'POST'],
-    allow_headers=[],
-    allow_credentials=True,
-)
-
-app.include_router(tool_router.router)
-app.include_router(metadata_router.router)
+app = create_app()

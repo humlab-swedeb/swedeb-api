@@ -3,6 +3,7 @@ Tests for api_swedeb.core.codecs module.
 """
 
 import os
+import re
 import sqlite3
 import tempfile
 from typing import Any
@@ -669,91 +670,6 @@ class TestPersonCodecs:
                 assert "party_abbrev" in persons.columns
                 assert "multi_party_id" in persons.columns
 
-    def test_person_wiki_link_single_value(self):
-        """Test person_wiki_link with single value."""
-        result = PersonCodecs.person_wiki_link("Q123456")
-        expected: str = "https://www.wikidata.org/wiki/Q123456"
-        assert str(result) == expected
-
-    @patch('api_swedeb.core.person_codecs.ConfigValue')
-    def test_person_wiki_link_unknown_value(self, mock_config_value):
-        """Test person_wiki_link with unknown value."""
-        mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
-
-        result = PersonCodecs.person_wiki_link("unknown")
-        assert str(result) == "Unknown Speaker"
-
-    def test_person_wiki_link_series(self):
-        """Test person_wiki_link with pandas Series."""
-        wiki_ids = pd.Series(["Q123", "Q456", "unknown"])
-
-        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
-            mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
-
-            result = PersonCodecs.person_wiki_link(wiki_ids)
-
-            expected = pd.Series(
-                pd.Categorical(
-                    ["https://www.wikidata.org/wiki/Q123", "https://www.wikidata.org/wiki/Q456", "Unknown Speaker"]
-                )
-            )
-            assert isinstance(result, pd.Series)
-            assert isinstance(result.dtype, pd.CategoricalDtype)
-
-            pd.testing.assert_series_equal(result, expected)
-
-    def test_person_wiki_link_categorical_series(self):
-        """Test person_wiki_link preserves categorical output for categorical input."""
-        wiki_ids = pd.Series(pd.Categorical(["Q123", "unknown", "Q123"]))
-
-        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
-            mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
-
-            result = PersonCodecs.person_wiki_link(wiki_ids)
-
-            expected = pd.Series(
-                pd.Categorical(
-                    [
-                        "https://www.wikidata.org/wiki/Q123",
-                        "Unknown Speaker",
-                        "https://www.wikidata.org/wiki/Q123",
-                    ],
-                    categories=["https://www.wikidata.org/wiki/Q123", "Unknown Speaker"],
-                )
-            )
-            assert isinstance(result, pd.Series)
-            assert isinstance(result.dtype, pd.CategoricalDtype)
-
-            pd.testing.assert_series_equal(result, expected)
-
-    @patch('api_swedeb.core.person_codecs.ConfigValue')
-    def test_speech_link_single_document(self, mock_config_value):
-        """Test speech_link with single document."""
-        mock_config_value.return_value.resolve.return_value = "https://example.com/"
-
-        result = PersonCodecs.speech_link("prot-1970--ak--029_001", 5)
-        expected = "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
-        assert isinstance(result, str)
-        assert result == expected
-
-    @patch('api_swedeb.core.person_codecs.ConfigValue')
-    def test_speech_link_series(self, mock_config_value):
-        """Test speech_link with pandas Series."""
-        mock_config_value.return_value.resolve.return_value = "https://example.com/"
-
-        documents = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'])
-        pages = pd.Series([1, 2])
-
-        result = PersonCodecs.speech_link(documents, pages)
-        expected = pd.Series(
-            [
-                "https://example.com/1970/prot-1970--ak--029.pdf#page=1",
-                "https://example.com/1980/prot-1980--ak--029.pdf#page=2",
-            ]
-        )
-        assert isinstance(result, pd.Series)
-        pd.testing.assert_series_equal(result, expected)
-
     def test_decode_speech_index_empty_dataframe(self):
         """Test decode_speech_index with empty DataFrame."""
         person_codecs = PersonCodecs()
@@ -788,8 +704,8 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
-            patch.object(person_codecs, 'person_wiki_link') as mock_wiki_link,
-            patch.object(person_codecs, 'speech_link') as mock_speech_link,
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value="http://pdfserver.se/1.pdf") as mock_speech_link,
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value="http://example.com/wiki/") as mock_wiki_link
         ):
 
             mock_wiki_link.return_value = pd.Series(["link1", "link2"])
@@ -815,8 +731,9 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
-            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", "link"])),
-            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", "speech"])),
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value=pd.Series(["", "link"])) as mock_wiki_link,
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value=pd.Series(["", "speech"])) as mock_speech_link,
+
         ):
 
             value_updates = {"": "Unknown"}
@@ -843,8 +760,8 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=decoded_speech_index),
-            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", "", "", ""])),
-            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", "", "", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value=pd.Series(["", "", "", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value=pd.Series(["", "", "", ""])),
         ):
 
             result = person_codecs.decode_speech_index(speech_index, sort_values=True)
@@ -869,8 +786,8 @@ class TestPersonCodecs:
         with (
             patch.object(person_codecs, 'is_decoded', return_value=False),
             patch.object(person_codecs, 'decode', return_value=df),
-            patch.object(person_codecs, 'person_wiki_link', return_value=pd.Series(["", ""])),
-            patch.object(person_codecs, 'speech_link', return_value=pd.Series(["", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_wiki_url_for_speaker', return_value=pd.Series(["", ""])),
+            patch('api_swedeb.core.person_codecs.resolve_pdf_links_for_speeches', return_value=pd.Series(["", ""])),
         ):
 
             result = person_codecs.decode_speech_index(df, sort_values=False)

@@ -1,286 +1,92 @@
-# AI Coding Agent Instructions - Swedeb API
+# Swedeb API - AI Coding Instructions
 
-## Project Overview
-Backend API for Swedish parliamentary debates (Swedeb) - a FastAPI application analyzing parliamentary speech data using the IMS Open Corpus Workbench (CWB). The system processes historical Swedish parliamentary data (1867-2020+) from the SWERIK project.
+This file should stay small and always-on. Put detailed backend guidance in `.github/instructions/*.instructions.md` so it loads only when relevant.
 
-## Current Architecture (Post-Archival Migration State)
-**Summary**: All unnecessary wrapper layers are gone. The system uses direct service injection with mappers for result transformation, while the old ZIP-backed speech lookup runtime has been archived under `api_swedeb/legacy/` during the prebuilt-backend rollout.
+## Documentation scope
 
-- **Pattern**: Direct service injection via FastAPI's `Depends()` mechanism with singleton caching
-- **Services** (`api_swedeb/api/services/`):
-  - `CorpusLoader` - Manages CWB, vectorized corpus, and codec resources
-  - `MetadataService` - Parliament metadata (parties, genders, chambers, office types, speakers)
-  - `WordTrendsService` - Word frequency analysis and trends (includes `get_search_hits()` helper)
-  - `SearchService` - Speech search and retrieval
-  - `NGramsService` - N-gram analysis
-  - `KWICService` - Keyword-in-context analysis (NEW: replaces utils wrapper)
-- **Mappers** (`api_swedeb/mappers/`):
-  - Transform service DataFrames to API response schemas (kwic, word_trends, ngrams)
-  - No business logic, only schema conversion
-- **Archived Runtime** (`api_swedeb/legacy/`):
-  - `speech_lookup.py` - Archived `SpeechTextService` and `SpeechTextRepository`
-  - `load.py` - Archived `Loader` and `ZipLoader`
-  - Use only for parity debugging, rollback support, or forensic reproduction
-- **Utils** (`api_swedeb/api/utils/`):
-  - `common_params.py` - Query parameter handling only (all other utils deleted)
-- **Benefits**: Single responsibility per service, easy testing, minimal abstraction layers, clear data flow
-- **Router Pattern**: Routes inject services → call methods → apply mapper → return schema
-- **Deleted Wrappers**: `utils/ngrams.py`, `utils/word_trends.py`, `utils/kwic.py` (replaced with direct service + mapper pattern)
-- **Compatibility Shims**: `api_swedeb/core/speech_text.py` is a temporary re-export shim; avoid adding new production logic there
+- Trust current runtime and deployment docs in `docs/`.
+- Start with `docs/DESIGN.md`, `docs/DEPLOYMENT.md`, `docs/WORKFLOW_GUIDE.md`, `docs/WORKFLOW_ARCHITECTURE.md`, and `docs/TROUBLESHOOTING.md`.
+- For proposal work, use `docs/PROPOSAL_WRITING_GUIDE.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
+- Treat `docs/change_requests/` as design and migration context, not source of truth for current behavior, unless the task is explicitly proposal-related.
+- Ignore `docs/archive/` for implementation decisions.
 
-## Architecture & Core Components
+## Repository structure
 
-### Configuration System (`api_swedeb/core/configuration/`)
-- **Critical**: Always initialize ConfigStore before accessing any configuration
-- `ConfigStore` is a **dataclass instance** (not a static/class-method class). The module-level singleton is accessed via `get_config_store()` from `api_swedeb.core.configuration.inject`
-- At application startup call `get_config_store().configure_context(source='config/config.yml')`. The module-level alias `configure_context` (bound at import time) is equivalent but **cannot be patched** in tests — prefer the explicit form
-- Access values via `ConfigValue("key.nested").resolve()` — internally calls `get_config_store().config()`, so patching `get_config_store` is sufficient to isolate any `ConfigValue` resolution
-- YAML config uses custom constructors: `!jj` (path join), `!join` (string join)
-- Environment variables override YAML via `PYRIKSPROT_` prefix
-- Test configuration: `tests/config.yml`, production: `config/config.yml`
+Swedeb API is a FastAPI backend with a direct service-injection architecture.
 
-### Data Loading Pattern (`api_swedeb/core/load.py`)
-- Speech index: Feather format for performance, falls back to CSV.gz
-- Document-term matrices (DTM): Uses `penelope.corpus.VectorizedCorpus`
-- Always check feather cache before loading: `is_invalidated(source, target)`
-- Memory-optimized columns defined in `USED_COLUMNS`, skip `SKIP_COLUMNS`
-- Keep active shared load helpers in `api_swedeb/core/load.py`; archived ZIP loading now lives in `api_swedeb/legacy/load.py`
+- `api_swedeb/api/v1/endpoints/`: API routes
+- `api_swedeb/api/services/`: service layer
+- `api_swedeb/api/dependencies.py`: singleton dependency wiring
+- `api_swedeb/mappers/`: DataFrame-to-schema mappers
+- `api_swedeb/schemas/`: API response and request models
+- `api_swedeb/core/`: active corpus, CWB, config, and load logic
+- `api_swedeb/legacy/`: archived fallback runtime; debug-only unless the task explicitly targets it
+- `tests/api_swedeb/` and `tests/integration/`: active runtime tests
+- `tests/legacy/`: legacy-only coverage
 
-### API Structure (`api_swedeb/api/`)
-- **Routers**: `v1/endpoints/tool_router.py` (`/v1/tools`) and `metadata_router.py` (`/v1/metadata`)
-- **Service Injection** via `Depends()`: `get_corpus_loader()`, `get_metadata_service()`, `get_word_trends_service()`, `get_search_service()`, `get_ngrams_service()`, `get_kwic_service()`
-- **Services**: All singletons (cached) with specific domain responsibilities
-- **Result Transformation**: Mappers convert service output (DataFrames) to API schemas
-- **Query Parameters**: `CommonQueryParams` dependency for common filters (year, party, gender, etc.)
-- **Speech Backend**: `CorpusLoader` uses the prebuilt `bootstrap_corpus` backend exclusively; `api_swedeb/legacy/` is archived and debug-only.
-- **Endpoints**:
-  - KWIC: Uses `KWICService.get_kwic()` + `kwic_to_api_model()` mapper
-  - Word Trends: Uses `WordTrendsService` methods + word_trends mappers
-  - N-grams: Uses `NGramsService.get_ngrams()` directly
-  - Speeches: Uses `SearchService` methods
+## Always-on architecture rules
 
-### CWB Integration (`api_swedeb/core/cwb/`)
-- Uses `ccc` (cwb-ccc) package for Corpus Workbench queries
-- CQP (Corpus Query Processor) pattern compilation in `cwb/compiler.py`
-- Registry directory and data directory configured per environment
-- Shared `/tmp/ccc-*` data directory for test isolation
+### Router, service, mapper boundaries
 
-## Development Workflows
+- Keep routers thin: inject a service, call a service method, apply a mapper, return a schema.
+- Keep business logic out of routers and mappers.
+- Keep mappers pure and schema-focused.
+- Do not add pass-through util wrappers around service calls.
 
-### Running & Testing
-```bash
-# Local development with auto-reload
-uv run uvicorn main:app --reload
+### Active vs legacy code
 
-# Run tests with pytest
-uv run pytest tests/
+- Prefer active runtime code in `api_swedeb/api/` and `api_swedeb/core/`.
+- Use `api_swedeb/legacy/` only for explicit legacy-runtime work.
+- Do not add new production behavior to compatibility shims.
 
-# Code formatting (REQUIRED before commits)
-make tidy        # Runs black + isort
-make black       # Black with --line-length 120 --target-version py313
-make isort       # isort with --profile black
+### Configuration and data access
 
-# Coverage report
-make coverage    # Generates XML and HTML reports
-```
+- Initialize config with `get_config_store().configure_context(source='config/config.yml')` before resolving settings.
+- Use `ConfigValue("...").resolve()` for configuration reads.
+- When adding config keys, update both `config/config.yml` and `tests/config.yml`.
+- Prefer Feather/Arrow-backed storage patterns already used in the repo.
 
-### Environment Setup
-1. Configure data paths in `.env` or `.env_example`
-2. Required variables: `DATA_DIR`, `METADATA_FILENAME`, `TAGGED_CORPUS_FOLDER`, `FOLDER`, `TAG`, `KWIC_CORPUS_NAME`, `KWIC_DIR`
-3. Use absolute paths for corpus data directories
+## Workflow expectations
 
-### Profiling
-```bash
-make profile-kwic-pyinstrument  # Profile KWIC queries, outputs to tests/output/
-```
+- Use the repository virtual environment and existing Make/uv commands.
+- Common commands:
+  - `uv run uvicorn main:app --reload`
+  - `uv run pytest tests/`
+  - `make tidy`
+  - `make coverage`
+  - `make profile-kwic-pyinstrument`
+- Run targeted tests for the changed area before finishing.
+- Run broader tests when a change crosses router, service, config, or corpus boundaries.
+- Validate config-driven changes with the test config as well as production config files.
 
-## Git Workflow & CI/CD
+## Code conventions
 
-### Branch Strategy (Four-Branch Progressive Deployment)
-- `dev` → Integration (NO auto-builds, manual testing only)
-- `test` → Auto-builds images tagged `{version}-test`, `test`, `test-latest`
-- `staging` → Auto-builds images tagged `{version}-staging`, `staging`
-- `main` → Production releases with semantic versioning
+- Follow the existing FastAPI + service + mapper pattern.
+- Keep changes minimal and local to the correct layer.
+- Use explicit types and response models.
+- Raise `HTTPException` for user-facing API errors.
+- Use `loguru` for logging where the codebase already does.
+- Prefer absolute imports within the package.
+- Use Black/isort style via `make tidy`.
 
-### Commit Convention (Conventional Commits - CRITICAL)
-- Format: `<type>[scope]: <description>`
-- `feat:` - Minor version bump (new features)
-- `fix:` - Patch version bump (bug fixes)
-- `docs:`, `chore:` - No version bump
-- `BREAKING CHANGE:` in footer - Major version bump
-- Used by semantic-release for automatic versioning
+## Safe change defaults
 
-### PR Workflow
-1. Feature branch → PR to `dev` (no builds triggered)
-2. `dev` → `test` (triggers CI/CD, creates test images)
-3. `test` → `staging` (triggers CI/CD, creates staging images)
-4. `staging` → `main` (triggers release workflow, semantic versioning)
+- Add new API behavior in services and schemas before touching routers.
+- Reuse existing dependency factories and mappers before introducing new abstractions.
+- Prefer extending active modules over creating parallel code paths.
+- If a task touches CWB, config, speech loading, or request contracts, check the relevant docs first and test the affected path directly.
+- When a change only applies to rollback or forensic debugging, keep it in `api_swedeb/legacy/` and do not mix it into active runtime code.
 
-### Docker Build Pipeline
-- Single unified build script: `.github/scripts/build-and-push-image.sh`
-- Frontend assets downloaded at runtime (via )`download-frontend.sh`)
-- Images pushed to GitHub Container Registry: `ghcr.io/humlab-swedeb/swedeb-api`
-- Environment-specific compose files: `compose.test.yml`, `compose.staging.yml`, `docker-compose.yml`
+## Validation before finishing
 
-## Code Patterns & Conventions
+- Run at least one targeted test for the changed area.
+- Run broader tests when you cross API, config, or corpus boundaries.
+- Keep unrelated user changes untouched.
+- Call out config updates, migration effects, or residual risks in the handoff.
 
-### FastAPI Dependencies & Service Injection
-```python
-# Direct service injection with mapper pattern
-from api_swedeb.api.dependencies import get_kwic_service, get_word_trends_service
-from api_swedeb.api.services.kwic_service import KWICService
-from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.mappers.kwic import kwic_to_api_model
-from api_swedeb.mappers.word_trends import word_trends_to_api_model
+## Task-specific instructions
 
-@router.get("/kwic/{search}")
-async def get_kwic(search: str, kwic_service: KWICService = Depends(get_kwic_service)):
-    # Service handles business logic
-    data = kwic_service.get_kwic(corpus=..., commons=..., keywords=search, ...)
-    # Mapper transforms to API schema
-    return kwic_to_api_model(data)
+Use the targeted files under `.github/instructions/` instead of expanding this file again:
 
-@router.get("/word_trends/{search}")
-async def get_trends(search: str, word_trends_service: WordTrendsService = Depends(get_word_trends_service)):
-    df = word_trends_service.get_word_trend_results(search_terms=search.split(","), ...)
-    return word_trends_to_api_model(df)
-```
-
-### Configuration Access
-```python
-from api_swedeb.core.configuration.inject import get_config_store, ConfigValue
-
-# At module/application startup
-get_config_store().configure_context(source='config/config.yml')
-
-# Resolving values (internally calls get_config_store().config())
-registry_dir = ConfigValue("cwb.registry_dir").resolve()
-origins = ConfigValue("fastapi.origins").resolve()
-```
-
-### Patching ConfigStore in Tests
-`ConfigValue.resolve()` calls `get_config_store()` — patch that function to inject an isolated store:
-```python
-from typing import Generator
-from unittest.mock import patch
-from api_swedeb.core.configuration.inject import ConfigStore, get_config_store
-
-# Unit test fixture (function-scoped, isolated store)
-@pytest.fixture()
-def config_store() -> Generator[ConfigStore, None, None]:
-    store = ConfigStore()
-    store.configure_context(source={"key": "value"}, env_prefix=None)
-    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
-        yield store
-
-# Integration test fixture (module-scoped, real config — no patch needed)
-@pytest.fixture(scope="module", autouse=True)
-def configure_config_store():
-    get_config_store().configure_context(source="config/config.yml")
-    yield
-```
-**Scope rule**: when a fixture that calls `CorpusLoader()` (or any `ConfigValue.resolve()`) is module-scoped, the `config_store` patch fixture must also be module-scoped (or use the autouse integration style above).
-
-**Do not use the module-level `configure_context` alias in tests** — it is bound to the global singleton at import time and is not affected by patching `get_config_store`.
-
-### Testing Fixtures (`tests/conftest.py`)
-- `config_file_path()` - Session-scoped fixture that yields the path to `tests/config.yml`
-- `configure_config_store()` - Session-scoped `autouse=True` fixture that calls `ConfigStore.configure_context()` for the whole test session
-- `api_corpus()` - `CorpusLoader` instance (module-scoped) - Resource manager for CWB and vectorized data
-- `fastapi_client()` - `TestClient` for testing API endpoints (module-scoped)
-- `corpus_loader()` - Provides CorpusLoader for service instantiation in tests
-- `speech_index()` - Deep copy for test isolation (function-scoped)
-- `person_codecs()` - Cloned codecs (function-scoped)
-- **Service Testing**: Instantiate services directly in tests with mocked or real fixtures:
-  ```python
-  kwic_service = KWICService(loader, person_codecs)
-  word_trends_service = WordTrendsService(loader)
-  search_service = SearchService(loader)
-  ```
-- Fixtures support both unit testing (mocked) and integration testing (real data)
-- **Legacy Test Layout**: Keep archived legacy unit tests in `tests/legacy/`; use `tests/api_swedeb/` and `tests/integration/` for active production behavior
-
-### Penelope Integration
-- Internal package for text analysis: `penelope/corpus/`, `penelope/utility/`
-- VectorizedCorpus: Sparse matrices (scipy.sparse.csr_matrix) with document index
-- Token2Id mappings for vocabulary management
-
-## Critical Implementation Notes
-
-### Performance
-- KWIC queries have `cut_off` parameter (default 200K) to prevent timeout
-- Speech index loaded once at startup, cached in memory
-- CWB data directory uses `/tmp/ccc-*` for subprocess isolation
-- Mappers are lightweight (schema transformation only) - no performance concern
-- Services handle caching (VectorizedCorpus, codecs) - mappers just format output
-
-### Data Versioning
-- Corpus version (e.g., `v1.4.1`) and metadata version (e.g., `v1.1.3`) tracked separately
-- Version info in `config.yml` under `metadata.version`
-- Folder structure: `data/v{version}/cwb/`, `data/metadata/{version}/`
-
-### Error Handling
-- FastAPI HTTPException for user-facing errors
-- Loguru for structured logging (configured in `conftest.py` for tests)
-- Always validate CWB registry directory existence before queries
-
-## Documentation
-- Deployment: `docs/DEPLOYMENT.md`, `docs/DEPLOY_DOCKER.md`, `docs/DEPLOY_PODMAN.md`
-- Workflow: `docs/WORKFLOW_GUIDE.md`, `docs/WORKFLOW_ARCHITECTURE.md`
-- Troubleshooting: `docs/TROUBLESHOOTING.md`
-- API docs auto-generated at `/docs` (Swagger UI) and `/redoc`
-
-## Common Tasks
-
-### Adding a New Endpoint
-1. **Schema**: Define response model in `api_swedeb/schemas/`
-2. **Service**: Create or extend service in `api_swedeb/api/services/`
-3. **Mapper**: Add mapper function in `api_swedeb/mappers/` (if needed) to transform DataFrame → schema
-4. **Dependency**: Add `get_*_service()` function in `api_swedeb/api/dependencies.py` if creating new service
-5. **Endpoint**: Add route in `tool_router.py` or `metadata_router.py`:
-   ```python
-   @router.get("/my_endpoint/{param}")
-   async def my_endpoint(param: str, service: MyService = Depends(get_my_service)):
-       data = service.get_data(param)  # Returns DataFrame or list
-       return my_mapper(data)           # Transform to API schema
-   ```
-6. **Tests**: Add tests in `tests/api_swedeb/api/services/test_my_service.py` (unit) and `tests/integration/` (e2e)
-
-### Modifying Configuration
-1. Update `config/config.yml` with new keys
-2. Add `ConfigValue` instances where needed
-3. Update `tests/config.yml` for test compatibility
-4. Document changes in deployment docs if environment-specific
-
-### Performance Optimization
-1. Profile with `make profile-kwic-pyinstrument`
-2. Check speech index memory usage: `load.py::_memory_usage()`
-3. Use feather format for large DataFrames
-4. Consider CWB query optimization via CQP patterns
-
-### Avoiding Unnecessary Wrappers
-- **Rule**: No utility wrapper functions that just call a single service method
-- **Bad Pattern**: `utils/ngrams.py` → `def get_ngrams(): return service.get_ngrams()`
-- **Good Pattern**: Route directly injects service and calls method, applies mapper
-- **Exception**: Keep `common_params.py` for shared query parameter handling only
-- If you create a util function, it must:
-  - Have complex business logic (not just a pass-through)
-  - Be reused by multiple routes or services
-  - Not duplicate service responsibility
-
-### Refactoring Patterns (Recent Improvements)
-- **Removed Wrapper Pattern**: Deleted `utils/ngrams.py`, `utils/word_trends.py`, `utils/kwic.py`
-  - Reason: Unnecessary indirection between routes and services
-  - Benefit: Cleaner code path, easier to understand flow
-- **Added Service Pattern**: Created `KWICService` to encapsulate KWIC logic
-  - Reason: Needed persistent access to loader and codecs
-  - Benefit: Reusable, testable, follows existing pattern
-- **Enhanced Services**: Added helpers like `WordTrendsService.get_search_hits()`
-  - Reason: Related functionality grouped with service
-  - Benefit: Cohesive service interface, easier discoverability
-- **Result**: 3 fewer files, clearer architecture, same functionality
-
-### Archived Legacy Runtime Rules
-- Do not move preserved runtime lookup code into `api_swedeb/workflows/`; workflows are for offline/build-time pipeline code only.
-- If a task explicitly targets the fallback ZIP-backed runtime, make those changes in `api_swedeb/legacy/` and keep matching unit coverage in `tests/legacy/`.
-- Avoid adding new feature work, new dependencies, or new production entry points to the archived legacy runtime.
+- `python.instructions.md`: backend architecture, config, CWB, testing, and Python change patterns
+- `github-workflow.instructions.md`: issue creation, staging discipline, and commit message rules

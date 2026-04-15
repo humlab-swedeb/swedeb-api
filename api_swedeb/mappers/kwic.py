@@ -3,8 +3,8 @@ from typing import Any
 import pandas as pd
 
 from api_swedeb.core.speech_utility import (
-    create_pdf_links,
     format_speech_names,
+    resolve_pdf_links_for_speeches,
     resolve_wiki_url_for_speaker,
 )
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
@@ -50,15 +50,27 @@ def kwic_to_api_frame(data: pd.DataFrame) -> pd.DataFrame:
     if "speaker_id" in result.columns:
         result["person_id"] = result["speaker_id"]
 
-    result["speech_name"] = format_speech_names(result["document_name"])
-    result["link"] = resolve_wiki_url_for_speaker(result["wiki_id"])
-    result["speech_link"] = create_pdf_links(result["document_name"], result["page_number_start"])
+    if "document_name" in result.columns:
+        result["speech_name"] = format_speech_names(result["document_name"])
+
+    if "wiki_id" in result.columns:
+        result["link"] = resolve_wiki_url_for_speaker(result["wiki_id"])
+
+    if "document_name" in result.columns and "page_number_start" in result.columns:
+        result["speech_link"] = resolve_pdf_links_for_speeches(
+            speech_names=result["document_name"],
+            page_nr=result["page_number_start"],
+        )
 
     return result[[column for column in KWIC_API_COLUMNS if column in result.columns]]
 
 
 def kwic_to_api_model(data: pd.DataFrame) -> KeywordInContextResult:
     data = kwic_to_api_frame(data)
+    return kwic_api_frame_to_model(data)
+
+
+def kwic_api_frame_to_model(data: pd.DataFrame) -> KeywordInContextResult:
     rows: list[KeywordInContextItem] = [
         KeywordInContextItem.model_validate(
             {k: (None if (isinstance(v, float) and pd.isna(v)) else v) for k, v in row.items()}

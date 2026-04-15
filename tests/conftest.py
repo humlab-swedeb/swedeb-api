@@ -9,13 +9,12 @@ import dotenv
 import pandas as pd
 import pytest
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 from jinja2 import Template
 from loguru import logger
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
-from api_swedeb.api.v1.endpoints import metadata_router, tool_router
+from api_swedeb.app import create_app
 from api_swedeb.core.configuration import ConfigValue, get_config_store
 from api_swedeb.core.person_codecs import PersonCodecs
 
@@ -149,22 +148,7 @@ def person_codecs(_person_codecs_cached: PersonCodecs) -> PersonCodecs:
 
 @pytest.fixture(scope='session')
 def fastapi_app() -> FastAPI:
-    app = FastAPI()
-
-    origins: list[str] = ConfigValue("fastapi.origins").resolve()
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_methods=['GET', 'POST'],
-        allow_headers=[],
-        allow_credentials=True,
-    )
-
-    app.include_router(tool_router.router)
-    app.include_router(metadata_router.router)
-
-    return app
+    return create_app(config_source=None)
 
 
 @pytest.fixture(scope='session')
@@ -328,5 +312,7 @@ def fixture_codecs_speech_index_source_dict():
         'party_id': {0: 2, 1: 1},
         'office_type_id': {0: 1, 1: 1},
         'sub_office_type_id': {0: 1, 1: 2},
+        'page_number_start': {0: 10, 1: 11},
+        'page_number_end': {0: 10, 1: 11},
         'protocol_name': {0: 'prot-1970--ak--029', 1: 'prot-1970--ak--029'},
     }

@@ -1,17 +1,20 @@
 """Unit tests for uncovered tool router endpoints."""
 
 import asyncio
-import io
-import zipfile
+import json
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from fastapi import HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
 
+from api_swedeb.api.services.result_store import ResultStorePendingLimitError
 from api_swedeb.api.v1.endpoints.tool_router import (
     get_kwic_results,
+    get_kwic_ticket_results,
+    get_kwic_ticket_status,
     get_ngram_results,
     get_speech_by_id_result,
     get_speeches_result,
@@ -21,9 +24,12 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     get_word_trends_result,
     get_year_range,
     get_zip,
+    submit_kwic_query,
 )
 from api_swedeb.core.speech import Speech
+from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketStatus
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
+from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 
 
@@ -35,6 +41,127 @@ async def _collect_streaming_response(response: StreamingResponse) -> bytes:
 
 
 class TestToolRouterEndpoints:
+    def test_submit_kwic_query_creates_ticket_and_schedules_background_task(self):
+        request = KWICQueryRequest(search="demokrati")
+        background_tasks = BackgroundTasks()
+        kwic_ticket_service = MagicMock()
+        kwic_ticket_service.submit_query.return_value = type(
+            "Accepted",
+            (),
+            {"ticket_id": "ticket-1", "status": "pending", "expires_at": "2026-01-01T00:00:00Z"},
+        )()
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        result = asyncio.run(
+            submit_kwic_query(
+                request=request,
+                background_tasks=background_tasks,
+                kwic_service=MagicMock(),
+                kwic_ticket_service=kwic_ticket_service,
+                result_store=result_store,
+                cwb_opts={"registry_dir": "/tmp/registry", "corpus_name": "CORPUS", "data_dir": "/tmp/data"},
+            )
+        )
+
+        kwic_ticket_service.submit_query.assert_called_once_with(request, result_store)
+        assert result.ticket_id == "ticket-1"
+        assert len(background_tasks.tasks) == 1
+
+    def test_submit_kwic_query_returns_429_when_pending_limit_is_reached(self):
+        request = KWICQueryRequest(search="demokrati")
+        background_tasks = BackgroundTasks()
+        kwic_ticket_service = MagicMock()
+        kwic_ticket_service.submit_query.side_effect = ResultStorePendingLimitError("Too many pending KWIC jobs")
+        result_store = MagicMock(cleanup_interval_seconds=45)
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                submit_kwic_query(
+                    request=request,
+                    background_tasks=background_tasks,
+                    kwic_service=MagicMock(),
+                    kwic_ticket_service=kwic_ticket_service,
+                    result_store=result_store,
+                    cwb_opts={"registry_dir": "/tmp/registry", "corpus_name": "CORPUS", "data_dir": "/tmp/data"},
+                )
+            )
+
+        assert excinfo.value.status_code == 429
+        assert excinfo.value.headers == {"Retry-After": "45"}
+
+    def test_get_kwic_ticket_status_maps_service_result(self):
+        kwic_ticket_service = MagicMock()
+        kwic_ticket_service.get_status.return_value = KWICTicketStatus(
+            ticket_id="ticket-1",
+            status="ready",
+            total_hits=10,
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        result = asyncio.run(
+            get_kwic_ticket_status(
+                ticket_id="ticket-1",
+                kwic_ticket_service=kwic_ticket_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert result.status == "ready"
+        assert result.total_hits == 10
+
+    def test_get_kwic_ticket_results_returns_pending_json_response(self):
+        kwic_ticket_service = MagicMock()
+        kwic_ticket_service.get_page_result.return_value = KWICTicketStatus(
+            ticket_id="ticket-1",
+            status="pending",
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        result = asyncio.run(
+            get_kwic_ticket_results(
+                ticket_id="ticket-1",
+                page=1,
+                page_size=50,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+                kwic_ticket_service=kwic_ticket_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, JSONResponse)
+        assert result.status_code == 202
+        assert json.loads(bytes(result.body))["status"] == "pending"
+
+    def test_get_kwic_ticket_results_returns_ready_page_result(self):
+        kwic_ticket_service = MagicMock()
+        kwic_ticket_service.get_page_result.return_value = KWICPageResult(
+            ticket_id="ticket-1",
+            status="ready",
+            page=1,
+            page_size=50,
+            total_hits=1,
+            total_pages=1,
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+            kwic_list=[],
+        )
+
+        result = asyncio.run(
+            get_kwic_ticket_results(
+                ticket_id="ticket-1",
+                page=1,
+                page_size=50,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+                kwic_ticket_service=kwic_ticket_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, KWICPageResult)
+        assert result.status == "ready"
+        assert result.total_hits == 1
+
     def test_get_kwic_results_splits_search_and_maps_response(self):
         commons = MagicMock()
         corpus = MagicMock()
@@ -215,6 +342,8 @@ class TestToolRouterEndpoints:
         assert result.speaker_note == "speaker note"
 
     def test_get_zip_streams_archive_from_speech_ids(self):
+        download_service = MagicMock()
+        download_service.create_stream.return_value = lambda: iter([b"payload"])
         search_service = MagicMock()
         search_service.get_speaker_names.return_value = {"i-501": "Alice Andersson", "i-502": "Bob Berg"}
         search_service.get_speeches_batch.return_value = iter(
@@ -224,18 +353,15 @@ class TestToolRouterEndpoints:
             ]
         )
 
-        response = asyncio.run(get_zip(ids=["i-501", "i-502"], search_service=search_service))
+        response = asyncio.run(
+            get_zip(ids=["i-501", "i-502"], download_service=download_service, search_service=search_service)
+        )
         body = asyncio.run(_collect_streaming_response(response))
 
         assert response.media_type == "application/zip"
         assert response.headers["Content-Disposition"] == "attachment; filename=speeches.zip"
-        search_service.get_speaker_names.assert_called_once_with(["i-501", "i-502"])
-        search_service.get_speeches_batch.assert_called_once_with(["i-501", "i-502"])
-
-        with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
-            assert sorted(archive.namelist()) == ["Alice Andersson_i-501.txt", "Bob Berg_i-502.txt"]
-            assert archive.read("Alice Andersson_i-501.txt") == b"first speech"
-            assert archive.read("Bob Berg_i-502.txt") == b"second speech"
+        assert body == b"payload"
+        download_service.create_stream.assert_called_once()
 
     def test_get_zip_rejects_empty_ids(self):
         search_service = MagicMock()

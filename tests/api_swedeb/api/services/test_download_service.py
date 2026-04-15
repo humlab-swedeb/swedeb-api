@@ -44,7 +44,7 @@ def test_create_zip_stream_uses_speech_ids_for_text_batch_lookup():
     search_service.get_speeches_text_batch.assert_called_once_with(["i-1", "i-2"])
 
     with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as archive:
-        assert sorted(archive.namelist()) == ["Speaker_One_i-1.txt", "Speaker_Two_i-2.txt"]
+        assert sorted(archive.namelist()) == ["Speaker_One_i-1.txt", "Speaker_Two_i-2.txt", "manifest.json"]
         assert archive.read("Speaker_One_i-1.txt") == b"first speech"
         assert archive.read("Speaker_Two_i-2.txt") == b"second speech"
 
@@ -61,8 +61,34 @@ def test_create_zip_stream_uses_unknown_name_fallback():
     zip_bytes = b"".join(stream())
 
     with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as archive:
-        assert archive.namelist() == ["unknown_i-missing.txt"]
-        assert archive.read("unknown_i-missing.txt") == b"speech text"
+        assert sorted(archive.namelist()) == ["Okänd_i-missing.txt", "manifest.json"]
+        assert archive.read("Okänd_i-missing.txt") == b"speech text"
+
+
+def test_create_stream_from_speech_ids_uses_given_order_and_manifest():
+    search_service = MagicMock()
+    search_service.get_speaker_names.return_value = {"i-2": "Speaker Two", "i-1": "Speaker One"}
+    search_service.get_speeches_text_batch.return_value = iter(
+        [
+            ("i-2", "second speech"),
+            ("i-1", "first speech"),
+        ]
+    )
+
+    stream = DownloadService().create_stream_from_speech_ids(
+        search_service=search_service,
+        speech_ids=["i-2", "i-1", "i-2"],
+        manifest_meta={"ticket_id": "ticket-1", "speech_count": 2},
+    )
+    zip_bytes = b"".join(stream())
+
+    search_service.get_speaker_names.assert_called_once_with(["i-2", "i-1"])
+    search_service.get_speeches_text_batch.assert_called_once_with(["i-2", "i-1"])
+
+    with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as archive:
+        assert sorted(archive.namelist()) == ["Speaker_One_i-1.txt", "Speaker_Two_i-2.txt", "manifest.json"]
+        manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+        assert manifest == {"ticket_id": "ticket-1", "speech_count": 2}
 
 
 def test_tar_gz_strategy_streams_plain_text_entries():
@@ -78,8 +104,8 @@ def test_tar_gz_strategy_streams_plain_text_entries():
 
     with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz") as archive:
         members = archive.getmembers()
-        assert [member.name for member in members] == ["Speaker_One_i-1.txt"]
-        extracted = archive.extractfile(members[0])
+        assert [member.name for member in members] == ["manifest.json", "Speaker_One_i-1.txt"]
+        extracted = archive.extractfile(members[1])
         assert extracted is not None
         assert extracted.read() == b"speech text"
 

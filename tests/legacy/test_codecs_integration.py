@@ -447,23 +447,23 @@ class TestPersonCodecs:
     def test_speech_link(self, speech_id, subfolder, page_nr):
         base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
         protocol_name: str = speech_id.split('_')[0]
-        expected: str = f'{base_url}/{subfolder}/{protocol_name}.pdf#page={page_nr}'
-        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_id, page_nr)
+        expected: str = f'{base_url}{subfolder}/{protocol_name}.pdf#page={page_nr}'
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_id, page_nr=page_nr, base_url=base_url)
         assert isinstance(speech_links, str)
         assert speech_links == expected
 
     def test_speech_link_series(self):
-        base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
+        base_url: str = ConfigValue("pdf_server.base_url").resolve()
         speech_ids: pd.Series = pd.Series(["prot-1867--ak--0118_001", "prot-19992000--001_001", "prot-201011--084_160"])
         page_nrs: pd.Series = pd.Series([1, 6, 4])
         expected: pd.Series = pd.Series(
             [
-                f"{base_url}/1867/prot-1867--ak--0118.pdf#page=1",
-                f"{base_url}/19992000/prot-19992000--001.pdf#page=6",
-                f"{base_url}/201011/prot-201011--084.pdf#page=4",
+                f"{base_url}1867/prot-1867--ak--0118.pdf#page=1",
+                f"{base_url}19992000/prot-19992000--001.pdf#page=6",
+                f"{base_url}201011/prot-201011--084.pdf#page=4",
             ]
         )
-        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_ids, page_nrs)
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_ids, page_nr=page_nrs, base_url=base_url)
         assert isinstance(speech_links, pd.Series)
         pd.testing.assert_series_equal(speech_links, expected)
 
@@ -478,7 +478,7 @@ class TestPersonCodecs:
     ) -> None:
         speech_index_copy = speech_index.copy()
 
-        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.speech_utility.ConfigValue') as mock_config_value:
             base_url: str = "https://example.com/"
             mock_config_value.return_value.resolve.return_value = base_url
             result: pd.DataFrame = person_codecs.decode_speech_index(speech_index_copy)
@@ -493,7 +493,7 @@ class TestPersonCodecs:
     ) -> None:
         speech_index_copy: pd.DataFrame = speech_index.copy()
 
-        with patch('api_swedeb.core.person_codecs.ConfigValue') as mock_config_value:
+        with patch('api_swedeb.core.speech_utility.ConfigValue') as mock_config_value:
             base_url: str = "https://example.com/"
             mock_config_value.return_value.resolve.return_value = base_url
             result: pd.DataFrame | Any = person_codecs.decode_speech_index(speech_index_copy)

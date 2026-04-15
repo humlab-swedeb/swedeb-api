@@ -213,7 +213,8 @@ class DownloadService:
     ) -> Callable[[], Generator[bytes, None, None]]:
         """Return a generator function that yields compressed archive bytes."""
 
-        df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
+        filter_opts: dict = commons.get_filter_opts(True)
+        df: pd.DataFrame = search_service.get_speeches(selections=filter_opts)
 
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         id_to_name: dict[str, str] = {
@@ -221,7 +222,7 @@ class DownloadService:
         }
         speech_ids: list[str] = list(dict.fromkeys(df["speech_id"].tolist()))  # deduplicate, preserving order
 
-        filters: dict = {k: v for k, v in commons.get_filter_opts(True).items() if k != "speech_id"}
+        filters: dict = {k: v for k, v in filter_opts.items() if k != "speech_id"}
         checksum: str = hashlib.sha256(",".join(sorted(speech_ids)).encode()).hexdigest()
         manifest: dict = {
             "download_time": datetime.now(timezone.utc).isoformat(),
@@ -231,13 +232,31 @@ class DownloadService:
             "speech_id_checksum": checksum,
             "filters": filters,
         }
-        manifest_bytes: bytes = json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8")
+        return self.create_stream_from_speech_ids(
+            search_service=search_service,
+            speech_ids=speech_ids,
+            manifest_meta=manifest,
+            id_to_name=id_to_name,
+        )
+
+    def create_stream_from_speech_ids(
+        self,
+        *,
+        search_service: SearchService,
+        speech_ids: list[str],
+        manifest_meta: dict,
+        id_to_name: dict[str, str] | None = None,
+    ) -> Callable[[], Generator[bytes, None, None]]:
+        ordered_speech_ids: list[str] = list(dict.fromkeys(speech_ids))
+        resolved_names: dict[str, str] = id_to_name or search_service.get_speaker_names(ordered_speech_ids)
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
+        manifest_bytes: bytes = json.dumps(manifest_meta, indent=2, ensure_ascii=False).encode("utf-8")
         extra_files: dict[str, bytes] = {"manifest.json": manifest_bytes}
 
         def _iter_speeches() -> Generator[tuple[SpeechMetadata, str], None, None]:
-            for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
+            for speech_id, text in search_service.get_speeches_text_batch(ordered_speech_ids):
                 yield (
-                    SpeechMetadata(speech_id=speech_id, speaker=id_to_name.get(speech_id, "unknown")),
+                    SpeechMetadata(speech_id=speech_id, speaker=resolved_names.get(speech_id, unknown)),
                     text,
                 )
 

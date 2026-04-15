@@ -1,15 +1,18 @@
 from typing import Annotated, Any, Literal
 
 import fastapi
-from fastapi import Body, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, StreamingResponse
 from pandas import DataFrame
 
 from api_swedeb.api.dependencies import (
     get_corpus_loader,
     get_cwb_corpus,
+    get_cwb_corpus_opts,
     get_download_service,
     get_kwic_service,
+    get_kwic_ticket_service,
+    get_result_store,
     get_search_service,
     get_word_trends_service,
 )
@@ -17,7 +20,14 @@ from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
+from api_swedeb.api.services.kwic_ticket_service import DEFAULT_PAGE_SIZE, KWICTicketService
 from api_swedeb.api.services.ngrams_service import NGramsService
+from api_swedeb.api.services.result_store import (
+    ResultStore,
+    ResultStoreNotFound,
+    ResultStorePendingLimitError,
+    TicketStatus,
+)
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.mappers.kwic import kwic_to_api_model
@@ -27,8 +37,16 @@ from api_swedeb.mappers.word_trends import (
     word_trend_speeches_to_api_model,
     word_trends_to_api_model,
 )
-from api_swedeb.schemas.kwic_schema import KeywordInContextResult
+from api_swedeb.schemas.kwic_schema import (
+    KeywordInContextResult,
+    KWICPageResult,
+    KWICQueryRequest,
+    KWICTicketAccepted,
+    KWICTicketSortBy,
+    KWICTicketStatus,
+)
 from api_swedeb.schemas.ngrams_schema import NGramResult
+from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
@@ -39,10 +57,82 @@ CommonParams = Annotated[CommonQueryParams, Depends()]
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
 
 
-@router.get(
-    "/kwic/{search}",
-    response_model=KeywordInContextResult,
-)
+@router.post("/kwic/query", response_model=KWICTicketAccepted, status_code=202)
+async def submit_kwic_query(
+    request: KWICQueryRequest,
+    background_tasks: BackgroundTasks,
+    kwic_service: KWICService = Depends(get_kwic_service),
+    kwic_ticket_service: KWICTicketService = Depends(get_kwic_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+    cwb_opts: dict[str, str | None] = Depends(get_cwb_corpus_opts),
+) -> KWICTicketAccepted:
+    try:
+        accepted = kwic_ticket_service.submit_query(request, result_store)
+    except ResultStorePendingLimitError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers={"Retry-After": str(result_store.cleanup_interval_seconds)},
+        ) from exc
+
+    background_tasks.add_task(
+        kwic_ticket_service.execute_ticket,
+        ticket_id=accepted.ticket_id,
+        request=request,
+        cwb_opts=dict(cwb_opts),
+        kwic_service=kwic_service,
+        result_store=result_store,
+    )
+    return accepted
+
+
+@router.get("/kwic/status/{ticket_id}", response_model=KWICTicketStatus)
+async def get_kwic_ticket_status(
+    ticket_id: str,
+    kwic_ticket_service: KWICTicketService = Depends(get_kwic_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> KWICTicketStatus:
+    try:
+        return kwic_ticket_service.get_status(ticket_id, result_store)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+
+@router.get("/kwic/results/{ticket_id}", response_model=KWICPageResult | KWICTicketStatus)
+async def get_kwic_ticket_results(
+    ticket_id: str,
+    page: int = Query(1, description="1-based page number"),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, description="Number of rows to return"),
+    sort_by: KWICTicketSortBy | None = Query(None, description="Ticket sort field"),
+    sort_order: SortOrder = Query(SortOrder.asc, description="Ticket sort order"),
+    kwic_ticket_service: KWICTicketService = Depends(get_kwic_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> KWICPageResult | JSONResponse:
+    try:
+        result = kwic_ticket_service.get_page_result(
+            ticket_id=ticket_id,
+            result_store=result_store,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if isinstance(result, KWICTicketStatus):
+        if result.status == TicketStatus.PENDING.value:
+            return JSONResponse(status_code=202, content=result.model_dump(mode="json"))
+        if result.status == TicketStatus.ERROR.value:
+            return JSONResponse(status_code=409, content=result.model_dump(mode="json"))
+
+    assert isinstance(result, KWICPageResult)
+    return result
+
+
+@router.get("/kwic/{search}", response_model=KeywordInContextResult)
 async def get_kwic_results(
     commons: CommonParams,
     search: str,
@@ -153,10 +243,12 @@ async def get_speeches_result(
 @router.post("/speeches/download")
 async def get_speeches_download_result(
     commons: CommonParams,
+    ticket_id: str | None = Query(default=None, description="Result ticket to download speeches from"),
     ids: list[str] | None = Body(
         default=None, description="List of speech IDs to download. When provided, overrides query parameter filters."
     ),
     download_service: DownloadService = Depends(get_download_service),
+    result_store: ResultStore = Depends(get_result_store),
     search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
     """Find speeches matching filter criteria and return them as a streamed ZIP file.
@@ -165,9 +257,31 @@ async def get_speeches_download_result(
     filters (CommonParams). When a body is provided, it sets the speech_id filter and
     combines with any other query parameter filters (year, party, gender, etc.).
     """
-    if ids is not None:
-        commons.speech_id = ids
-    streamer = download_service.create_stream(search_service=search_service, commons=commons)
+    if ticket_id is not None:
+        if ids is not None or commons.get_filter_opts(True):
+            raise HTTPException(status_code=400, detail="ticket_id cannot be combined with ids or query filters")
+
+        try:
+            ticket = result_store.require_ticket(ticket_id)
+        except ResultStoreNotFound as exc:
+            raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+        if ticket.status == TicketStatus.PENDING:
+            raise HTTPException(status_code=409, detail="Ticket not ready")
+        if ticket.status == TicketStatus.ERROR:
+            raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+        if ticket.speech_ids is None or ticket.manifest_meta is None:
+            raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
+
+        streamer = download_service.create_stream_from_speech_ids(
+            search_service=search_service,
+            speech_ids=ticket.speech_ids,
+            manifest_meta=ticket.manifest_meta,
+        )
+    else:
+        if ids is not None:
+            commons.speech_id = ids
+        streamer = download_service.create_stream(search_service=search_service, commons=commons)
 
     return StreamingResponse(
         streamer(),
