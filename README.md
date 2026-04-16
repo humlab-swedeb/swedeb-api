@@ -54,7 +54,7 @@ The backend is built on a containerized architecture, leveraging modern Python t
 
 ## Dependencies
 
-Built with **FastAPI**, **CWB (Corpus Workbench)** via cwb-ccc, **Pydantic** for validation, **NumPy/SciPy** for numerical processing, and **Penelope** for corpus analysis. Development uses **uv/Poetry** for dependency management, **pytest** for testing, and **Black/isort** for code formatting.
+Built with **FastAPI**, **CWB (Corpus Workbench)** via cwb-ccc, **Pydantic** for validation, **NumPy/SciPy** for numerical processing, and **Penelope** for corpus analysis. Development uses **uv** for dependency management, **pytest** for testing, and **Black/isort** for code formatting.
 
 See [pyproject.toml](pyproject.toml) for the complete dependency list.
 
@@ -62,8 +62,8 @@ See [pyproject.toml](pyproject.toml) for the complete dependency list.
 
 ### Prerequisites
 
-- **Python** 3.11+ (3.13 recommended)
-- **uv** or **Poetry** for dependency management
+- **Python** 3.13+
+- **uv** for dependency management
 - **Docker** (optional, for containerized development)
 - **CWB data** - Corpus files from [sample-data repository](https://github.com/humlab-swedeb/sample-data)
 - **Metadata database** - SQLite database with speaker/party information
@@ -78,11 +78,7 @@ See [pyproject.toml](pyproject.toml) for the complete dependency list.
 
 2.  **Install dependencies:**
     ```bash
-    # Using uv (recommended)
     uv pip install -e .
-    
-    # Or using Poetry
-    poetry install
     ```
 
 3. **Configure environment:**
@@ -94,7 +90,6 @@ See [pyproject.toml](pyproject.toml) for the complete dependency list.
 4.  **Run the development server:**
     ```bash
     uv run uvicorn main:app --reload
-    # Or: poetry run uvicorn main:app --reload
     ```
     The API will be available at `http://127.0.0.1:8000`.
 
@@ -221,21 +216,34 @@ Backend containers automatically detect which frontend version to download based
 
 You can override this by setting the `FRONTEND_VERSION` environment variable.
 
-### Quick Deploy
+### Quick Deploy of API & Frontend (staging)
 
 ```bash
-# Production deployment (Podman Quadlet recommended)
-# See docs/DEPLOY_PODMAN.md for full setup
+# enter swedeb staging shell
+λ sudo su 
+λ cd /srv/swedeb_staging
+λ manage-quadlet shell
 
-# Pull latest image
-podman pull ghcr.io/humlab-swedeb/swedeb-api:0.7.0
+# pull latest staging
+λ podman image pull ghcr.io/humlab-swedeb/swedeb-api:staging
 
-# Start container (systemd service)
-systemctl --user restart swedeb-api-production
+# complete reinstall
+λ manage-quadlet remove && manage-quadlet install
 
-# Verify deployment
-systemctl --user status swedeb-api-production
-journalctl --user -u swedeb-api-production -n 100
+# view status
+λ manage-quadlet status
+```
+
+### Quick Deploy of Front-end Only (staging)
+
+Push new PR to `staging` -> triggers a new release being built on Github. Check that the asset was built successfully at [swedeb_frontend/releases] (https://github.com/humlab-swedeb/swedeb_frontend/releases).
+
+The enter swedeb_staging (as above) and restart ontinaer
+```bash
+λ podman compose restart 
+# ...or...
+λ podman compose down && podman compose up -d
+
 ```
 
 **Complete guides:**
@@ -246,15 +254,15 @@ journalctl --user -u swedeb-api-production -n 100
 
 Key environment variables for build and runtime configuration:
 
-| Variable | Description | Phase |
-|----------|-------------|-------|
+| Variable             | Description                           | Phase           |
+|----------------------|---------------------------------------|-----------------|
 | `SWEDEB_ENVIRONMENT` | Environment (test/staging/production) | Build & Runtime |
-| `SWEDEB_IMAGE_TAG` | Docker image tag | Build & Runtime |
-| `SWEDEB_PORT` | Container port | Build & Runtime |
-| `SWEDEB_HOST_PORT` | Host port mapping | Build & Runtime |
-| `SWEDEB_DATA_FOLDER` | Corpus data path | Runtime |
-| `METADATA_VERSION` | Metadata version | Runtime |
-| `CORPUS_VERSION` | Corpus version | Runtime |
+| `SWEDEB_IMAGE_TAG`   | Docker image tag                      | Build & Runtime |
+| `SWEDEB_PORT`        | Container port                        | Build & Runtime |
+| `SWEDEB_HOST_PORT`   | Host port mapping                     | Build & Runtime |
+| `SWEDEB_DATA_FOLDER` | Corpus data path                      | Runtime         |
+| `METADATA_VERSION`   | Metadata version                      | Runtime         |
+| `CORPUS_VERSION`     | Corpus version                        | Runtime         |
 
 See [Deployment Guide](docs/DEPLOYMENT.md) for complete variable reference.
 
