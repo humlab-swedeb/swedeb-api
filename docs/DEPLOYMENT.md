@@ -353,10 +353,25 @@ FRONTEND_VERSION=1.2.3    # Specific version (with or without 'v' prefix)
 
 ### Version Caching
 
-The deployed frontend version is stored in `/app/public/.frontend_version`. The container will:
-- Skip downloads if the cached version matches the requested version
-- Download fresh assets if the version changes
-- Always download on first startup (no cache exists)
+The frontend download mechanism uses intelligent caching to minimize unnecessary downloads:
+
+**For Pinned Versions** (e.g., `1.2.3`):
+- Version stored in `/app/public/.frontend_version`
+- Downloads only when version number changes
+- Fast restarts when version matches
+
+**For Rolling Releases** (`latest`, `staging`, `test`):
+- Downloads tarball on every container restart
+- Computes SHA256 checksum of downloaded tarball
+- Compares with cached SHA256 from `/app/public/.frontend_sha256`
+- **Skips extraction** if SHA256 matches (assets unchanged)
+- **Extracts fresh assets** if SHA256 differs (new release detected)
+
+This approach provides:
+- **Automatic updates**: New staging/test releases detected immediately on restart
+- **Fast restarts**: When no update exists, extraction is skipped (SHA256 match)
+- **Minimal downloads**: Only ~3MB tarball download, extraction only when needed
+- **Reliable detection**: SHA256 ensures byte-perfect change detection
 
 ### Operational Implications
 
@@ -376,9 +391,17 @@ podman logs -f swedeb-api
 # Confirm deployed frontend version
 podman exec swedeb-api cat /app/public/.frontend_version
 
+# Check cached SHA256 (for rolling releases)
+podman exec swedeb-api cat /app/public/.frontend_sha256
+
 # Confirm frontend entry file exists
 podman exec swedeb-api test -f /app/public/index.html && echo ok
 ```
+
+**Log Messages to Watch For:**
+- `"SHA256 matches, would skip extraction"` - Using cached assets (fast)
+- `"SHA256 mismatch - new version detected"` - New release, extracting fresh assets
+- `"Frontend assets up-to-date"` - No download needed (pinned version)
 
 If you deploy with Docker Compose instead of Podman, use the equivalent `docker compose logs` and `docker exec` commands.
 
