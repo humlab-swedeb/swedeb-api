@@ -10,6 +10,12 @@ services:
     environment:
       - SWEDEB_CONFIG_PATH=${SWEDEB_CONFIG_PATH}
       - SWEDEB_DATA_FOLDER=${SWEDEB_DATA_FOLDER}
+      # Optional: Override auto-detected frontend version
+      # Defaults based on GIT_BRANCH: main→latest, staging→staging, test→test
+      # Uncomment to use specific version:
+      # - FRONTEND_VERSION=latest
+      # - FRONTEND_VERSION=staging
+      # - FRONTEND_VERSION=1.2.3
     volumes:
       - "${SWEDEB_DATA_FOLDER}:/data"
       - "${SWEDEB_METADATA_FILENAME}:/data/riksprot_metadata.${METADATA_VERSION}.db"
