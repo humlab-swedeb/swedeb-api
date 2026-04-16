@@ -25,6 +25,24 @@ fi
 
 SKIP_PUSH=${SKIP_PUSH:-0}
 
+# Detect Git branch for auto-detection of frontend version
+# Priority: GITHUB_REF_NAME (CI), git command (local), ENVIRONMENT fallback
+if [ -n "${GITHUB_REF_NAME:-}" ]; then
+  GIT_BRANCH="${GITHUB_REF_NAME}"
+elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+else
+  # Fallback: derive from environment
+  case "$ENVIRONMENT" in
+    test) GIT_BRANCH="test" ;;
+    staging) GIT_BRANCH="staging" ;;
+    production) GIT_BRANCH="main" ;;
+    *) GIT_BRANCH="main" ;;
+  esac
+fi
+
+log "Detected Git branch: ${GIT_BRANCH}"
+
 if [ -n "${IMAGE_NAME_OVERRIDE:-}" ]; then
   IMAGE_NAME="${IMAGE_NAME_OVERRIDE}"
 elif [ -n "${GITHUB_REPOSITORY:-}" ]; then
@@ -67,6 +85,7 @@ MINOR_VERSION=$(echo ${VERSION} | cut -d. -f1-2)
 if [ "$ENVIRONMENT" = "test" ]; then
   log "Building test image with tags: ${VERSION}-test, test, test-latest"
   docker build \
+    --build-arg GIT_BRANCH="${GIT_BRANCH}" \
     --tag "${IMAGE_NAME}:${VERSION}-test" \
     --tag "${IMAGE_NAME}:test" \
     --tag "${IMAGE_NAME}:test-latest" \
@@ -76,6 +95,7 @@ if [ "$ENVIRONMENT" = "test" ]; then
 elif [ "$ENVIRONMENT" = "staging" ]; then
   log "Building staging image with tags: ${VERSION}-staging, staging"
   docker build \
+    --build-arg GIT_BRANCH="${GIT_BRANCH}" \
     --tag "${IMAGE_NAME}:${VERSION}-staging" \
     --tag "${IMAGE_NAME}:staging" \
     -f ./Dockerfile .
@@ -84,6 +104,7 @@ elif [ "$ENVIRONMENT" = "staging" ]; then
 else
   log "Building production image with tags: ${VERSION}, ${MAJOR_VERSION}, ${MINOR_VERSION}, latest, production"
   docker build \
+    --build-arg GIT_BRANCH="${GIT_BRANCH}" \
     --tag "${IMAGE_NAME}:${VERSION}" \
     --tag "${IMAGE_NAME}:${MAJOR_VERSION}" \
     --tag "${IMAGE_NAME}:${MINOR_VERSION}" \
