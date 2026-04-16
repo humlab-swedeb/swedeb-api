@@ -1,9 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
+DOCKER_DIR="${REPO_ROOT}/docker"
+
 log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" >&2
 }
+
+cd "${REPO_ROOT}"
 
 VERSION=$1
 if [ -z "$VERSION" ]; then
@@ -17,26 +23,41 @@ if [[ ! "$ENVIRONMENT" =~ ^(test|staging|production)$ ]]; then
   exit 1
 fi
 
-IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY}"
+SKIP_PUSH=${SKIP_PUSH:-0}
+
+if [ -n "${IMAGE_NAME_OVERRIDE:-}" ]; then
+  IMAGE_NAME="${IMAGE_NAME_OVERRIDE}"
+elif [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY}"
+elif [ "$SKIP_PUSH" = "1" ]; then
+  IMAGE_NAME="swedeb-api"
+else
+  log "ERROR: GITHUB_REPOSITORY is required unless IMAGE_NAME_OVERRIDE is set or SKIP_PUSH=1"
+  exit 1
+fi
 
 log "Building ${ENVIRONMENT} image for version ${VERSION}"
 log "Note: Frontend assets will be downloaded at container runtime from GitHub releases"
-log "Logging into GitHub Container Registry..."
-
-if [ -n "${CWB_REGISTRY_TOKEN:-}" ]; then
-  log "Using cross-org registry token for build and push..."
-  echo "${CWB_REGISTRY_TOKEN}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
+if [ "$SKIP_PUSH" = "1" ]; then
+  log "SKIP_PUSH=1, skipping registry login and image push"
 else
-  log "Using standard GitHub token..."
-  echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
+  log "Logging into GitHub Container Registry..."
+
+  if [ -n "${CWB_REGISTRY_TOKEN:-}" ]; then
+    log "Using cross-org registry token for build and push..."
+    echo "${CWB_REGISTRY_TOKEN}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
+  else
+    log "Using standard GitHub token..."
+    echo "${DOCKER_PASSWORD}" | docker login ghcr.io -u "${DOCKER_USERNAME}" --password-stdin
+  fi
 fi
 
 # Build wheel in docker/wheels directory
 log "Building Python wheel..."
-mkdir -p docker/wheels
-uv build --wheel --out-dir docker/wheels
+mkdir -p "${DOCKER_DIR}/wheels"
+uv build --wheel --out-dir "${DOCKER_DIR}/wheels"
 
-pushd docker > /dev/null
+pushd "${DOCKER_DIR}" > /dev/null
 
 # Extract version components
 MAJOR_VERSION=$(echo ${VERSION} | cut -d. -f1)
@@ -76,7 +97,12 @@ fi
 popd > /dev/null
 
 # Clean up wheel directory
-rm -rf docker/wheels
+rm -rf "${DOCKER_DIR}/wheels"
+
+if [ "$SKIP_PUSH" = "1" ]; then
+  log "✅ Successfully built tags without pushing: ${TAGS}"
+  exit 0
+fi
 
 # Push all tags
 docker push --all-tags "${IMAGE_NAME}"
