@@ -39,6 +39,7 @@ retry_command() {
 # Validate environment
 command -v curl >/dev/null 2>&1 || error_exit "curl is required but not installed"
 command -v tar >/dev/null 2>&1 || error_exit "tar is required but not installed"
+command -v sha256sum >/dev/null 2>&1 || error_exit "sha256sum is required but not installed"
 
 log "Starting frontend asset download for version: ${FRONTEND_VERSION}"
 
@@ -82,22 +83,8 @@ else
     DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION_TAG}"
 fi
 
-# Check if assets already exist and are current
-if [ -f "$ASSETS_DIR/.frontend_version" ]; then
-    CURRENT_VERSION=$(cat "$ASSETS_DIR/.frontend_version" 2>/dev/null || echo "")
-    if [ "$CURRENT_VERSION" = "$VERSION" ]; then
-        log "Frontend assets already up-to-date (version: $VERSION)"
-        exit 0
-    else
-        log "Version mismatch detected (current: $CURRENT_VERSION, requested: $VERSION)"
-        log "Cleaning existing assets before downloading new version..."
-        if [ -z "$ASSETS_DIR" ] || [ "$ASSETS_DIR" = "/" ]; then error_exit "Invalid ASSETS_DIR"; fi
-        rm -rf "${ASSETS_DIR:?}"/*
-    fi
-fi
-
 # Create assets directory
-log "Creating assets directory: $ASSETS_DIR"
+log "Creating assets directory if needed: $ASSETS_DIR"
 mkdir -p "$ASSETS_DIR"
 
 # Download and extract frontend assets
@@ -112,6 +99,31 @@ if [ ! -s "$TMP_FILE" ]; then
     error_exit "Downloaded file is empty or does not exist"
 fi
 
+# Compute SHA256 of downloaded tarball
+log "Computing SHA256 checksum..."
+DOWNLOADED_SHA256=$(sha256sum "$TMP_FILE" | cut -d' ' -f1)
+log "Downloaded tarball SHA256: $DOWNLOADED_SHA256"
+
+# Check if we already have this exact version cached
+if [ -f "$ASSETS_DIR/.frontend_sha256" ]; then
+    CACHED_SHA256=$(cat "$ASSETS_DIR/.frontend_sha256" 2>/dev/null || echo "")
+    if [ "$CACHED_SHA256" = "$DOWNLOADED_SHA256" ]; then
+        log "Frontend assets are already up-to-date (SHA256 match)"
+        log "Skipping extraction"
+        exit 0
+    else
+        log "SHA256 mismatch - new version detected"
+        log "Cached:     $CACHED_SHA256"
+        log "Downloaded: $DOWNLOADED_SHA256"
+        log "Cleaning existing assets before extracting new version..."
+        if [ -z "$ASSETS_DIR" ] || [ "$ASSETS_DIR" = "/" ]; then error_exit "Invalid ASSETS_DIR"; fi
+        rm -rf "${ASSETS_DIR:?}"/*
+        mkdir -p "$ASSETS_DIR"
+    fi
+else
+    log "No cached SHA256 found, proceeding with extraction"
+fi
+
 log "Extracting frontend assets to $ASSETS_DIR"
 tar -xzf "$TMP_FILE" -C "$ASSETS_DIR" || error_exit "Failed to extract tarball"
 
@@ -120,10 +132,12 @@ if [ ! "$(ls -A "$ASSETS_DIR")" ]; then
     error_exit "Assets directory is empty after extraction"
 fi
 
-# Mark version
+# Mark version and save SHA256 checksum
 echo "$VERSION" > "$ASSETS_DIR/.frontend_version"
+echo "$DOWNLOADED_SHA256" > "$ASSETS_DIR/.frontend_sha256"
 
 log "Frontend assets successfully downloaded and extracted"
 log "Version: $VERSION"
+log "SHA256:  $DOWNLOADED_SHA256"
 log "Location: $ASSETS_DIR"
 log "Files: $(find "$ASSETS_DIR" -type f | wc -l) files"

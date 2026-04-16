@@ -48,15 +48,23 @@ if [ ! -d "/app/public" ] || [ ! "$(ls -A /app/public)" ]; then
 elif [ ! -f "/app/public/.frontend_version" ]; then
     log "Frontend version file missing, download required"
     NEEDS_DOWNLOAD=true
-elif [ "$FRONTEND_VERSION" != "latest" ]; then
-    CURRENT_VERSION=$(cat /app/public/.frontend_version 2>/dev/null || echo "")
-    # Normalize version strings by stripping 'v' prefix for comparison
-    REQUESTED_VERSION=${FRONTEND_VERSION#v}
-    CACHED_VERSION=${CURRENT_VERSION#v}
-    
-    if [ "$CACHED_VERSION" != "$REQUESTED_VERSION" ]; then
-        log "Frontend version mismatch (current: $CURRENT_VERSION, requested: $FRONTEND_VERSION), download required"
+else
+    # For staging/test/latest (rolling releases), check SHA256 to detect updates
+    if [ "$FRONTEND_VERSION" = "staging" ] || [ "$FRONTEND_VERSION" = "test" ] || [ "$FRONTEND_VERSION" = "latest" ]; then
+        log "Checking for updates to ${FRONTEND_VERSION} release..."
+        # Trigger download which will check SHA256 and skip if unchanged
         NEEDS_DOWNLOAD=true
+    else
+        # For pinned versions, check version number
+        CURRENT_VERSION=$(cat /app/public/.frontend_version 2>/dev/null || echo "")
+        # Normalize version strings by stripping 'v' prefix for comparison
+        REQUESTED_VERSION=${FRONTEND_VERSION#v}
+        CACHED_VERSION=${CURRENT_VERSION#v}
+        
+        if [ "$CACHED_VERSION" != "$REQUESTED_VERSION" ]; then
+            log "Frontend version mismatch (current: $CURRENT_VERSION, requested: $FRONTEND_VERSION), download required"
+            NEEDS_DOWNLOAD=true
+        fi
     fi
 fi
 
