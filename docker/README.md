@@ -1,162 +1,117 @@
-# Environment Management and Deployment Strategy
+# Docker Image Build
 
-This project utilizes Docker and Docker Compose to manage different environments: Development, Staging, and Production. This document outlines the setup and deployment process for each.
+This directory contains the runtime files that are copied into the API image.
 
-## Core Principles
+The image build is driven by:
 
-*   **Consistency:** The Docker build process aims to be as consistent as possible across all environments.
-*   **Configuration via Environment Variables:** Application behavior, connection strings, image tags, and network names are primarily controlled by environment variables, managed through XYX.envXYX files specific to each environment.
-*   **Single XYXdocker-compose.ymlXYX:** We use a single XYXdocker-compose.ymlXYX file that is parameterized by environment variables.
+- [Dockerfile](Dockerfile)
+- [build-local-image.sh](build-local-image.sh)
+- [.github/scripts/build-and-push-image.sh](../.github/scripts/build-and-push-image.sh)
 
-## Environment Setup
+## What The Image Contains
 
-### 1. Environment Files (XYX.envXYX files)
+The build process does this:
 
-Environment-specific configurations are managed using XYX.envXYX files. You will need to create these based on the provided examples. These files are typically gitignored to prevent committing sensitive or environment-specific data.
+1. Builds a wheel from the `swedeb-api` repository root with `uv build`.
+2. Writes that wheel to the temporary `docker/wheels/` directory.
+3. Builds the image from [Dockerfile](Dockerfile).
+4. Copies the built wheel plus the runtime files in this directory into the image.
 
-*   XYX.env.developmentXYX: For local development.
-*   XYX.env.stagingXYX: For the staging environment.
-*   XYX.env.productionXYX: For the production environment.
+At runtime:
 
-**Example structure of an environment file (e.g., XYX.env.developmentXYX):**
-XYZXYZXYZdotenv
-# Environment identifier
-SWEDEB_ENVIRONMENT=development
+- [entrypoint.sh](entrypoint.sh) starts the container.
+- [download-frontend.sh](download-frontend.sh) fetches frontend assets from GitHub releases when needed.
+- [main.py](main.py) exposes the FastAPI app for `uvicorn`.
 
-# Docker Image Configuration
-SWEDEB_IMAGE_NAME=your-repo/swedeb-api # Or just swedeb-api if building locally
-SWEDEB_IMAGE_TAG=dev-latest
-SWEDEB_BACKEND_TAG=dev-latest # Build arg for Dockerfile
-SWEDEB_FRONTEND_TAG=dev     # Build arg for Dockerfile
-# NODE_VERSION=20           # Build arg for Dockerfile, if needed
+## GitHub Actions Workflow
 
-# Docker Compose Runtime Configuration
-SWEDEB_CONTAINER_NAME=swedeb_api
-SWEDEB_HOST_PORT=8094      # Port on the host machine
-SWEDEB_PORT=8092           # Port the application listens on inside the container
-SWEDEB_NETWORK_NAME=swedeb_development_network # Actual Docker network name
+The repository has three build-related workflows:
 
-# Application Specific Configuration
-SWEDEB_CONFIG_PATH=config/config_development.yml
-SWEDEB_DATA_FOLDER=./data_dev # Local path for development data
-SWEDEB_METADATA_FILENAME=./metadata/dev_metadata.db # Example
-METADATA_VERSION=dev # Example
-# ... other application-specific variables
-XYZXYZXYZ
-*(Ensure you have corresponding XYX.env.stagingXYX and XYX.env.productionXYX files with appropriate values.)*
+- [test.yml](../.github/workflows/test.yml): on pushes to `test`, builds and pushes test tags.
+- [staging.yml](../.github/workflows/staging.yml): on pushes to `staging`, builds and pushes staging tags.
+- [release.yml](../.github/workflows/release.yml): on pushes to `main`, runs `semantic-release` first and only builds the production image when a new release is published.
 
-### 2. XYXdocker-compose.ymlXYX
+All three workflows call the same shared script:
 
-Our XYXdocker-compose.ymlXYX is designed to read variables from an environment-specific XYX.envXYX file determined by the XYXSWEDEB_ENVIRONMENTXYX variable.
+- [.github/scripts/build-and-push-image.sh](../.github/scripts/build-and-push-image.sh)
 
-Key parts of XYXdocker-compose.ymlXYX:
-XYZXYZXYZyaml
-# docker-compose.yml (snippet)
-version: '3.8'
+That script:
 
-services:
-  swedeb_api:
-    build:
-      context: .
-      args: # Populated from the loaded .env.<environment> file
-        SWEDEB_PORT: "${SWEDEB_PORT}"
-        SWEDEB_BACKEND_TAG: "${SWEDEB_BACKEND_TAG}"
-        # ... other build args
-    image: "${SWEDEB_IMAGE_NAME}:${SWEDEB_IMAGE_TAG}"
-    container_name: "${SWEDEB_CONTAINER_NAME}-${SWEDEB_ENVIRONMENT}"
-    env_file:
-      - ".env.${SWEDEB_ENVIRONMENT}" # Loads the specific .env file
-    # ... other service configurations
-    networks:
-      - swedeb_app_network
+- derives tags from the requested environment and version
+- builds the wheel into `docker/wheels/`
+- runs `docker build` from the `docker/` directory
+- pushes tags to `ghcr.io` unless `SKIP_PUSH=1`
 
-networks:
-  swedeb_app_network:
-    name: "${SWEDEB_NETWORK_NAME}" # Actual network name from .env.<environment>
-    driver: bridge
-XYZXYZXYZ
+## Local Testing
 
-## Deployment Workflows
+### Prerequisites
 
-### A. Development Environment
+- Docker
+- `uv`
+- `act` if you want to run the workflows locally
+- a GitHub token if you want `act` to fetch actions or log in to GHCR
 
-Typically run on a developer's local machine.
+### Fastest Local Build Test
 
-1.  **Prerequisites:**
-    *   Git, Docker, and Docker Compose installed.
-    *   Repository cloned.
-2.  **Setup:**
-    *   Create or copy the XYX.env.developmentXYX file in the project root.
-    *   Populate it with your local development settings (e.g., local paths for XYXSWEDEB_DATA_FOLDERXYX).
-3.  **Running:**
-    XYZXYZXYZbash
-    # Set the environment context
-    export SWEDEB_ENVIRONMENT=development
+This is the simplest local check and does not push anything:
 
-    # Build (if needed) and start services
-    docker-compose up --build -d
+```bash
+bash docker/build-local-image.sh test
+bash docker/build-local-image.sh staging
+```
 
-    # To stop
-    docker-compose down
-    XYZXYZXYZ
-    Alternatively, use a Makefile target:
-    XYZXYZXYZbash
-    make up-dev
-    XYZXYZXYZ
+This uses the same Dockerfile and the same wheel-first build pattern as CI, but it tags the image locally as `swedeb-api`.
 
-### B. Staging Environment
+### Run The Shared CI Build Script Without Pushing
 
-Deployed to a dedicated staging server for testing and validation before production.
+If you want to test the same script that GitHub Actions uses, run it with `SKIP_PUSH=1`:
 
-1.  **Trigger:**
-    *   Deployment to staging is typically initiated manually via a GitHub Actions XYXworkflow_dispatchXYX trigger or automatically on pushes/merges to a specific staging branch (e.g., XYXrelease/*XYX or a dedicated XYXstagingXYX branch).
-2.  **Process (GitHub Action XYXstaging-deploy.ymlXYX):**
-    *   The GitHub Action workflow is triggered.
-    *   It checks out the specified commit/branch.
-    *   It builds the Docker image, tagging it appropriately for staging (e.g., XYXyour-ghcr-repo/swedeb-api:staging-latestXYX or XYXyour-ghcr-repo/swedeb-api:staging-<commit-sha>XYX).
-    *   It pushes the image to GitHub Container Registry (GHCR).
-    *   It connects to the staging server via SSH (using secrets for credentials).
-    *   On the staging server, it:
-        *   Ensures the XYXdocker-compose.ymlXYX is up-to-date.
-        *   Ensures an XYX.env.stagingXYX file is present and correctly configured (this file might be managed on the server or its content injected via GitHub Actions secrets).
-        *   Sets the XYXSWEDEB_ENVIRONMENT=stagingXYX variable.
-        *   Pulls the new Docker image from GHCR.
-        *   Runs XYXdocker-compose -f docker-compose.yml --env-file .env.staging up -d --remove-orphansXYX (or similar, ensuring it reads the XYX.env.stagingXYX by setting XYXSWEDEB_ENVIRONMENTXYX before the compose command).
-3.  **Manual Fallback (if needed):**
-    *   SSH into the staging server.
-    *   Set XYXexport SWEDEB_ENVIRONMENT=stagingXYX.
-    *   Pull the latest image: XYXdocker pull your-ghcr-repo/swedeb-api:staging-tagXYX.
-    *   Update XYXSWEDEB_IMAGE_TAGXYX in XYX.env.stagingXYX if necessary.
-    *   Run XYXdocker-compose up -dXYX.
+```bash
+SKIP_PUSH=1 \
+GITHUB_REPOSITORY=humlab-swedeb/swedeb-api \
+./.github/scripts/build-and-push-image.sh "$(uv version | awk '{print $NF}')" staging
+```
 
-### C. Production Environment
+Notes:
 
-Deployed to the live production server.
+- `SKIP_PUSH=1` skips both registry push and registry login inside the shared script.
+- `GITHUB_REPOSITORY` keeps the local tags aligned with CI tag names.
+- You can replace `staging` with `test` or `production`.
 
-1.  **Trigger:**
-    *   Deployment to production is typically automated and triggered by:
-        *   Pushing a new Git tag (e.g., XYXv1.0.0XYX).
-        *   Merging changes into the XYXmainXYX branch.
-2.  **Process (GitHub Action XYXproduction-deploy.ymlXYX or XYXrelease.ymlXYX):**
-    *   The GitHub Action workflow is triggered.
-    *   It checks out the specific tag/commit from the XYXmainXYX branch.
-    *   It builds the Docker image, tagging it with the version and XYXlatestXYX (e.g., XYXyour-ghcr-repo/swedeb-api:v1.0.0XYX and XYXyour-ghcr-repo/swedeb-api:prod-latestXYX).
-    *   It pushes the image(s) to GHCR.
-    *   It connects to the production server(s) via SSH.
-    *   On the production server, it performs a similar sequence to staging:
-        *   Ensures XYXdocker-compose.ymlXYX and XYX.env.productionXYX are correct.
-        *   Sets XYXSWEDEB_ENVIRONMENT=productionXYX.
-        *   Pulls the new production-tagged Docker image.
-        *   Runs XYXdocker-compose -f docker-compose.yml --env-file .env.production up -d --remove-orphansXYX.
-        *   May include additional steps like database migrations, health checks, or rolling updates if applicable.
+## Testing With `act`
 
-## Managing Configuration Files on Servers
+`act` is useful for validating workflow wiring locally. For this repository, `test.yml` and `staging.yml` are the practical workflows to run with `act`.
 
-*   **XYXdocker-compose.ymlXYX**: Can be checked into Git and pulled onto the server, or copied via XYXscpXYX during deployment.
-*   **XYX.env.<environment>XYX files**:
-    *   **Option 1 (Recommended for security):** Do not commit these to Git if they contain secrets.
-        *   Create them manually on the server.
-        *   Or, use a secrets management system (like HashiCorp Vault, or GitHub Actions encrypted secrets for CI/CD) to inject their content during deployment. For GitHub Actions, you can store the *content* of the XYX.envXYX file as a secret and write it to the server.
-    *   **Option 2 (If no sensitive data):** Commit template/example files (XYX.env.exampleXYX) and copy/rename them on the server, then populate values.
+### Dry-Run A Workflow
 
-This strategy provides a clear path for code from development to production, leveraging Docker for consistency and GitHub Actions for automation where appropriate.
+This checks the workflow structure without executing containers:
+
+```bash
+act -n workflow_dispatch \
+  -W .github/workflows/staging.yml \
+  -s GITHUB_TOKEN="$(gh auth token)"
+```
+
+### Run A Workflow Locally Without Pushing
+
+To execute the staging workflow locally while still preventing image push:
+
+```bash
+act workflow_dispatch \
+  -W .github/workflows/staging.yml \
+  -a <your-github-username> \
+  --env SKIP_PUSH=1 \
+  -s GITHUB_TOKEN="$(gh auth token)" \
+  -s CWB_REGISTRY_TOKEN=<github-pat-with-read-packages>
+```
+
+Notes:
+
+- `SKIP_PUSH=1` is consumed by [.github/scripts/build-and-push-image.sh](../.github/scripts/build-and-push-image.sh), so the workflow can build locally without publishing tags.
+- `-a <your-github-username>` matters because the workflow uses `github.actor` during `docker login`.
+- `CWB_REGISTRY_TOKEN` is the safer option when the build needs authenticated access to `ghcr.io/humlab/cwb-container`.
+- If you only want to validate the workflow definition, prefer `act -n`.
+
+### About `release.yml`
+
+You can inspect [release.yml](../.github/workflows/release.yml) with `act -n`, but a full local run is usually not worth it because it also expects `semantic-release`, repository history, and release credentials to behave like GitHub.

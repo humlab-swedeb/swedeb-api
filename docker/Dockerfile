@@ -6,8 +6,8 @@ LABEL maintainer="Roger Mähler <roger dot mahler at umu dot se>"
 ENV APP_USER=cwbuser
 ENV APP_UID=1021
 ENV APP_GID=1021
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 USER root
 
@@ -49,8 +49,13 @@ ENV SWEDEB_PORT=${SWEDEB_PORT}
 ARG CONFIG_FILE=config/config.yml
 ENV CONFIG_FILE=${CONFIG_FILE}
 
-# Make frontend version available at runtime
-ARG FRONTEND_VERSION=latest
-ENV FRONTEND_VERSION=${FRONTEND_VERSION}
+# Git branch for auto-detecting frontend version (optional)
+ARG GIT_BRANCH=main
+ENV GIT_BRANCH=${GIT_BRANCH}
+
+# Frontend version - leave empty for auto-detection based on GIT_BRANCH
+# or set explicitly to override (e.g., "latest", "staging", "test", "1.2.3")
+ARG FRONTEND_VERSION
+ENV FRONTEND_VERSION=${FRONTEND_VERSION:-}
 
 ENTRYPOINT ["./entrypoint.sh"]

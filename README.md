@@ -6,14 +6,12 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 ## 📚 Documentation
 
 ### For Developers
+- **[Developer Guide](docs/DEVELOPER.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
 - **[AI Coding Agent Instructions](.github/copilot-instructions.md)** - Essential guide for AI assistants working with this codebase
-- **[Workflow Guide](docs/WORKFLOW_GUIDE.md)** - Developer workflow, branching strategy, and commit conventions
-- **[Workflow Architecture](docs/WORKFLOW_ARCHITECTURE.md)** - CI/CD pipeline architecture and technical details
 
-### For Deployment
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Overview of deployment strategy, CI/CD pipeline, and workflow
-  - **[Docker Compose Deployment](docs/DEPLOY_DOCKER.md)** - Complete Docker Compose deployment procedures
-  - **[Podman Quadlet Deployment](docs/DEPLOY_PODMAN.md)** - Complete Podman systemd deployment procedures (recommended for production)
+### For Deployment & Operations
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment guide covering all environments (test, staging, production)
+- **[Podman Quadlet Deployment](docs/DEPLOY_PODMAN.md)** - Detailed Podman systemd deployment procedures (recommended for production)
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions for deployment problems
 
 ## Technology Stack
@@ -110,66 +108,73 @@ poetry run uvicorn main:app --reload
 
 ## Contributing
 
-### Commit Convention
-
 This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automatic versioning and changelog generation.
 
-**Format:**
-```
-<type>[optional scope]: <description>
+**Quick reference:**
+- `feat:` - New feature (minor version bump: 0.6.0 → 0.7.0)
+- `fix:` - Bug fix (patch version bump: 0.6.0 → 0.6.1)
+- `BREAKING CHANGE:` - Breaking change (major version bump: 0.6.0 → 1.0.0)
+- `docs:`, `chore:` - No version bump
 
-[optional body]
-
-[optional footer(s)]
-```
-
-**Common types:**
-- `feat:` - New feature (triggers minor version bump)
-- `fix:` - Bug fix (triggers patch version bump)
-- `docs:` - Documentation changes (no release)
-- `chore:` - Maintenance tasks (no release)
-- `BREAKING CHANGE:` - Breaking changes (triggers major version bump)
-
-**Examples:**
+**Example:**
 ```bash
-# New feature
 git commit -m "feat: add user authentication endpoint"
-
-# Bug fix
 git commit -m "fix: resolve database connection timeout"
+git commit -m "feat!: redesign API
 
-# Documentation
-git commit -m "docs: update API usage examples"
-
-# Breaking change
-git commit -m "feat!: redesign API response format
-
-BREAKING CHANGE: All endpoints now return JSON instead of XML"
+BREAKING CHANGE: All endpoints now use /v2/ prefix"
 ```
 
-### Development Workflow
+**Workflow:** Create feature branch from `dev` → PR to `dev` → After merge: `dev` → `test` → `staging` → `main`
 
-1. Create a feature branch from `dev`
-2. Make changes and commit using conventional commits
-3. Open a Pull Request to `dev`
-4. After review and merge, changes flow through: `dev` → `test` → `staging` → `main`
+See the [Developer Guide](docs/DEVELOPER.md) for complete workflow, branching strategy, and CI/CD details.
 
-See the [Workflow Guide](docs/WORKFLOW_GUIDE.md) for detailed information.
+## Deployment & Release
 
-## Automated Release & Deployment
+This project uses automated CI/CD with semantic versioning and a four-branch workflow:
 
-This project uses a fully automated CI/CD pipeline with semantic versioning:
+**Branch Flow**: `dev` → `test` → `staging` → `main`
 
-- **Push to `test` branch** → Builds test environment images
-- **Push to `staging` branch** → Builds staging environment images  
+### Automated Deployments
+
+- **Push to `test` branch** → Builds test environment images (`:test`, `:test-latest`)
+- **Push to `staging` branch** → Builds staging environment images (`:staging`)  
 - **Push to `main` branch** → Triggers semantic-release:
-  - Analyzes commits to determine version bump
+  - Analyzes commits to determine version bump (major/minor/patch)
   - Updates CHANGELOG.md
-  - Creates GitHub Release with artifacts
-  - Builds and publishes production Docker images
+  - Creates GitHub Release with Python wheel artifacts
+  - Builds and publishes production Docker images (`:latest`, `:production`, versioned tags)
   - Commits version updates back to main
 
-See the [Deployment Guide](docs/DEPLOYMENT.md) for complete deployment instructions.
+### Frontend Version Auto-Detection
+
+Backend containers automatically detect which frontend version to download based on the git branch:
+- **main/master** → Downloads `latest` frontend
+- **staging** → Downloads `staging` frontend
+- **test** → Downloads `test` frontend
+
+You can override this by setting the `FRONTEND_VERSION` environment variable.
+
+### Quick Deploy
+
+```bash
+# Production deployment (Podman Quadlet recommended)
+# See docs/DEPLOY_PODMAN.md for full setup
+
+# Pull latest image
+podman pull ghcr.io/humlab-swedeb/swedeb-api:0.7.0
+
+# Start container (systemd service)
+systemctl --user restart swedeb-api-production
+
+# Verify deployment
+systemctl --user status swedeb-api-production
+journalctl --user -u swedeb-api-production -n 100
+```
+
+**Complete guides:**
+- [Deployment Guide](docs/DEPLOYMENT.md) - Full deployment instructions
+- [Developer Guide](docs/DEVELOPER.md) - Workflow and contribution guidelines
 
 ## Testing CI/CD Locally with `act`
 
