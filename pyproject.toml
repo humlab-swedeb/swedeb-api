@@ -3,6 +3,7 @@ name = "api-swedeb"
 version = "0.6.0"
 description = ""
 authors = [{name = "rebeckaw", email = "rebecka.weegar@umu.se"}]
+license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
