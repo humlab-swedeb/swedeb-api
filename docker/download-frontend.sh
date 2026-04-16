@@ -59,11 +59,8 @@ elif [ "$FRONTEND_VERSION" = "staging" ] || [ "$FRONTEND_VERSION" = "test" ]; th
     log "Fetching ${FRONTEND_VERSION} version information..."
     # For staging/test, the release tag is the branch name
     VERSION="${FRONTEND_VERSION}"
-    # Get the actual tarball name from the release assets
-    RELEASE_INFO=$(retry_command "curl -s --fail https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${FRONTEND_VERSION}")
-    # Extract the first asset name that matches frontend-*-{staging|test}.tar.gz
-    TARBALL=$(echo "$RELEASE_INFO" | grep -o "frontend-[^\"]*-${FRONTEND_VERSION}\.tar\.gz" | head -n 1)
-    [ -z "$TARBALL" ] && error_exit "Failed to find ${FRONTEND_VERSION} tarball in release"
+    # Tarball name is simply frontend-{staging|test}.tar.gz
+    TARBALL="frontend-${FRONTEND_VERSION}.tar.gz"
     log "${FRONTEND_VERSION^} tarball: $TARBALL"
     DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${FRONTEND_VERSION}"
     
