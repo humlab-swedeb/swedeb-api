@@ -23,7 +23,11 @@ elif [ ! -f "/app/public/.frontend_version" ]; then
     NEEDS_DOWNLOAD=true
 elif [ "$FRONTEND_VERSION" != "latest" ]; then
     CURRENT_VERSION=$(cat /app/public/.frontend_version 2>/dev/null || echo "")
-    if [ "$CURRENT_VERSION" != "$FRONTEND_VERSION" ]; then
+    # Normalize version strings by stripping 'v' prefix for comparison
+    REQUESTED_VERSION=${FRONTEND_VERSION#v}
+    CACHED_VERSION=${CURRENT_VERSION#v}
+    
+    if [ "$CACHED_VERSION" != "$REQUESTED_VERSION" ]; then
         log "Frontend version mismatch (current: $CURRENT_VERSION, requested: $FRONTEND_VERSION), download required"
         NEEDS_DOWNLOAD=true
     fi

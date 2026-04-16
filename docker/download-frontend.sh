@@ -45,28 +45,44 @@ log "Starting frontend asset download for version: ${FRONTEND_VERSION}"
 # Determine version and download URL
 if [ "$FRONTEND_VERSION" = "latest" ]; then
     log "Fetching latest version information..."
-    VERSION=$(retry_command "curl -s --fail https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | \
-              grep '"tag_name"' | cut -d '"' -f 4)
-    [ -z "$VERSION" ] && error_exit "Failed to determine latest version"
-    log "Latest version: $VERSION"
-    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}"
+    VERSION_TAG=$(retry_command "curl -s --fail https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | \
+                  grep '"tag_name"' | cut -d '"' -f 4)
+    [ -z "$VERSION_TAG" ] && error_exit "Failed to determine latest version"
+    log "Latest release tag: $VERSION_TAG"
+    
+    # Strip 'v' prefix from tag to get version number (v1.2.3 -> 1.2.3)
+    VERSION=${VERSION_TAG#v}
+    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION_TAG}"
     TARBALL="frontend-${VERSION}.tar.gz"
-elif [ "$FRONTEND_VERSION" = "staging" ]; then
-    log "Fetching staging version information..."
-    # For staging, the release tag is always "staging"
-    VERSION="staging"
-    # Get the actual version from the release assets
-    RELEASE_INFO=$(retry_command "curl -s --fail https://api.github.com/repos/${GITHUB_REPO}/releases/tags/staging")
-    # Extract the first asset name that matches frontend-*-staging.tar.gz
-    TARBALL=$(echo "$RELEASE_INFO" | grep -o 'frontend-[^"]*-staging\.tar\.gz' | head -n 1)
-    [ -z "$TARBALL" ] && error_exit "Failed to find staging tarball in release"
-    log "Staging tarball: $TARBALL"
-    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/staging"
+    
+elif [ "$FRONTEND_VERSION" = "staging" ] || [ "$FRONTEND_VERSION" = "test" ]; then
+    log "Fetching ${FRONTEND_VERSION} version information..."
+    # For staging/test, the release tag is the branch name
+    VERSION="${FRONTEND_VERSION}"
+    # Get the actual tarball name from the release assets
+    RELEASE_INFO=$(retry_command "curl -s --fail https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${FRONTEND_VERSION}")
+    # Extract the first asset name that matches frontend-*-{staging|test}.tar.gz
+    TARBALL=$(echo "$RELEASE_INFO" | grep -o "frontend-[^\"]*-${FRONTEND_VERSION}\.tar\.gz" | head -n 1)
+    [ -z "$TARBALL" ] && error_exit "Failed to find ${FRONTEND_VERSION} tarball in release"
+    log "${FRONTEND_VERSION^} tarball: $TARBALL"
+    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${FRONTEND_VERSION}"
+    
 else
-    VERSION="$FRONTEND_VERSION"
-    log "Using specified version: $VERSION"
-    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}"
-    TARBALL="frontend-${VERSION}.tar.gz"
+    # Specific version provided
+    log "Using specified version: $FRONTEND_VERSION"
+    # Strip 'v' prefix if present (v1.2.3 -> 1.2.3)
+    VERSION=${FRONTEND_VERSION#v}
+    # Determine if it's a version tag or branch tag
+    if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+        # Looks like a semantic version
+        VERSION_TAG="v${VERSION}"
+        TARBALL="frontend-${VERSION}.tar.gz"
+    else
+        # Treat as branch/tag name
+        VERSION_TAG="$FRONTEND_VERSION"
+        TARBALL="frontend-${FRONTEND_VERSION}.tar.gz"
+    fi
+    DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION_TAG}"
 fi
 
 # Check if assets already exist and are current
