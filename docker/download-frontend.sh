@@ -100,19 +100,14 @@ fi
 log "Creating assets directory if needed: $ASSETS_DIR"
 mkdir -p "$ASSETS_DIR"
 
-# Check if assets directory is writable
-if [ ! -w "$ASSETS_DIR" ]; then
-    error_exit "Assets directory is not writable: $ASSETS_DIR (check permissions and volume mounts)"
-fi
-
-# Test write access with a temporary file
+# Check if assets directory is writable (warning only, workaround will handle it)
 TEST_FILE="${ASSETS_DIR}/.write_test"
 if ! touch "$TEST_FILE" 2>/dev/null; then
-    error_exit "Cannot write to assets directory: $ASSETS_DIR (read-only filesystem or permission denied)"
+    log "WARNING: Assets directory may not be writable (will use /tmp extraction workaround if needed)"
+else
+    rm -f "$TEST_FILE"
+    log "Assets directory is writable"
 fi
-rm -f "$TEST_FILE"
-
-log "Assets directory is writable"
 
 # Check for local fallback tarball
 FALLBACK_TARBALL="/data/dist/${TARBALL}"
