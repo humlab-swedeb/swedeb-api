@@ -1,6 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+# Frontend Asset Download Script
+# Downloads frontend assets from GitHub releases or uses local fallback
+#
+# This script attempts to download frontend assets from GitHub releases.
+# If GitHub is unreachable (e.g., network connectivity issues in container),
+# it falls back to a local tarball if available.
+#
+# Fallback location: /data/dist/frontend-${FRONTEND_VERSION}.tar.gz
+# To use fallback, place tarball on host at: ${SWEDEB_DATA_FOLDER}/dist/
+#
+# The script also implements SHA256 caching to avoid re-extracting
+# the same version if it's already deployed.
+
 # Configuration
 FRONTEND_VERSION=${FRONTEND_VERSION:-latest}
 ASSETS_DIR=${ASSETS_DIR:-/app/public}
@@ -87,14 +100,55 @@ fi
 log "Creating assets directory if needed: $ASSETS_DIR"
 mkdir -p "$ASSETS_DIR"
 
+# Check for local fallback tarball
+FALLBACK_TARBALL="/data/dist/${TARBALL}"
+HAS_FALLBACK=false
+if [ -f "$FALLBACK_TARBALL" ]; then
+    log "Found local fallback tarball: $FALLBACK_TARBALL"
+    HAS_FALLBACK=true
+fi
+
 # Download and extract frontend assets
-log "Downloading ${TARBALL} from ${DOWNLOAD_URL}"
 TMP_FILE=$(mktemp)
 trap "rm -f $TMP_FILE" EXIT
 
-retry_command "curl -L --fail --progress-bar '${DOWNLOAD_URL}/${TARBALL}' -o '$TMP_FILE'"
+# Try GitHub download with retries
+DOWNLOAD_SUCCESS=false
+log "Downloading ${TARBALL} from ${DOWNLOAD_URL}"
+RETRIES=0
+while [ $RETRIES -lt $MAX_RETRIES ]; do
+    if curl -L --fail --progress-bar "${DOWNLOAD_URL}/${TARBALL}" -o "$TMP_FILE" 2>&1; then
+        DOWNLOAD_SUCCESS=true
+        log "Successfully downloaded from GitHub"
+        break
+    fi
+    
+    RETRIES=$((RETRIES + 1))
+    if [ $RETRIES -lt $MAX_RETRIES ]; then
+        log "Download failed, retrying in ${RETRY_DELAY}s (attempt $RETRIES/$MAX_RETRIES)..."
+        sleep $RETRY_DELAY
+    fi
+done
 
-# Verify download
+# Fall back to local tarball if GitHub download failed
+if [ "$DOWNLOAD_SUCCESS" = false ]; then
+    log "GitHub download failed after $MAX_RETRIES attempts"
+    
+    if [ "$HAS_FALLBACK" = true ]; then
+        log "Falling back to local tarball: $FALLBACK_TARBALL"
+        cp "$FALLBACK_TARBALL" "$TMP_FILE"
+        if [ -s "$TMP_FILE" ]; then
+            DOWNLOAD_SUCCESS=true
+            log "Successfully copied from local fallback"
+        else
+            error_exit "Local fallback tarball is empty"
+        fi
+    else
+        error_exit "GitHub download failed and no local fallback found at $FALLBACK_TARBALL"
+    fi
+fi
+
+# Verify download/fallback
 if [ ! -s "$TMP_FILE" ]; then
     error_exit "Downloaded file is empty or does not exist"
 fi
