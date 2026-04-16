@@ -19,6 +19,9 @@ services:
     volumes:
       - "${SWEDEB_DATA_FOLDER}:/data"
       - "${SWEDEB_METADATA_FILENAME}:/data/riksprot_metadata.${METADATA_VERSION}.db"
+      # Optional: For offline deployment or network issues, place frontend tarball at:
+      #   ${SWEDEB_DATA_FOLDER}/dist/frontend-${FRONTEND_VERSION}.tar.gz
+      # The download script will use it as fallback if GitHub is unreachable
     networks:
       - swedeb_app_network
 
