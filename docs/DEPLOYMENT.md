@@ -60,7 +60,7 @@ This project uses a **four-branch workflow** with progressive environment promot
 | **staging** | Pre-production validation    | ✅ Auto on push | `{version}-staging`, `staging`                            |
 | **main**    | Production releases          | ✅ Auto on push | `{version}`, `{major}`, `{minor}`, `latest`, `production` |
 
-For detailed developer workflow instructions, see the [Workflow Guide](./WORKFLOW_GUIDE.md).
+For detailed developer workflow instructions, see the [Developer Guide](./DEVELOPER.md).
 
 ## Architecture Overview
 
@@ -276,11 +276,11 @@ For deployment instructions:
 
 ## Promotion Workflows
 
-For detailed promotion workflows including the complete pipeline and hotfix procedures, see the [Workflow Guide](./WORKFLOW_GUIDE.md).
+For detailed promotion workflows including the complete pipeline and hotfix procedures, see the [Developer Guide](./DEVELOPER.md).
 
 **Quick links:**
-- [Complete Promotion Pipeline](./WORKFLOW_GUIDE.md#complete-promotion-pipeline) - Full end-to-end workflow from feature to production
-- [Hotfix Workflow](./WORKFLOW_GUIDE.md#hotfix-workflow) - Fast-track and emergency procedures
+- [Complete Promotion Pipeline](./DEVELOPER.md#complete-promotion-pipeline) - Full end-to-end workflow from feature to production
+- [Hotfix Workflow](./DEVELOPER.md#hotfix-procedures) - Fast-track and emergency procedures
 
 ## Rollback Procedures
 
@@ -316,11 +316,71 @@ podman exec swedeb-api test -f /app/public/index.html
 
 Frontend assets are no longer embedded into the backend image. They are downloaded during container startup and cached in `/app/public`.
 
-Operational implications:
+### Frontend Version Auto-Detection
+
+The backend automatically detects which frontend version to download based on the git branch:
+
+- **main/master branch** → Downloads `latest` frontend release
+- **staging branch** → Downloads `staging` frontend pre-release
+- **test branch** → Downloads `test` frontend pre-release
+- **Unknown branch** → Falls back to `latest`
+
+This is configured via the `GIT_BRANCH` build argument, which is automatically set by the CI/CD pipeline.
+
+### Manual Frontend Version Control
+
+You can override the auto-detected frontend version by setting the `FRONTEND_VERSION` environment variable:
+
+```bash
+# Use specific version
+FRONTEND_VERSION=1.2.3
+
+# Use pre-release
+FRONTEND_VERSION=staging
+
+# Use latest production release
+FRONTEND_VERSION=latest
+```
+
+### Supported Frontend Version Modes
+
+```bash
+FRONTEND_VERSION=latest   # Latest production release (default for main branch)
+FRONTEND_VERSION=staging  # Staging pre-release (default for staging branch)
+FRONTEND_VERSION=test     # Test pre-release (default for test branch)
+FRONTEND_VERSION=1.2.3    # Specific version (with or without 'v' prefix)
+```
+
+### Version Caching
+
+The frontend download mechanism uses intelligent caching to minimize unnecessary downloads:
+
+**For Pinned Versions** (e.g., `1.2.3`):
+- Version stored in `/app/public/.frontend_version`
+- Downloads only when version number changes
+- Fast restarts when version matches
+
+**For Rolling Releases** (`latest`, `staging`, `test`):
+- Downloads tarball on every container restart
+- Computes SHA256 checksum of downloaded tarball
+- Compares with cached SHA256 from `/app/public/.frontend_sha256`
+- **Skips extraction** if SHA256 matches (assets unchanged)
+- **Extracts fresh assets** if SHA256 differs (new release detected)
+
+This approach provides:
+- **Automatic updates**: New staging/test releases detected immediately on restart
+- **Fast restarts**: When no update exists, extraction is skipped (SHA256 match)
+- **Minimal downloads**: Only ~3MB tarball download, extraction only when needed
+- **Reliable detection**: SHA256 ensures byte-perfect change detection
+
+### Operational Implications
+
 - First startup of a new container can take longer because assets are fetched before the API starts
 - Reusing the same `FRONTEND_VERSION` avoids unnecessary downloads because `.frontend_version` is checked first
 - Changing `FRONTEND_VERSION` and restarting the container forces a refresh of frontend assets
 - Failed frontend downloads now block container readiness rather than surfacing as a bad build artifact
+
+### Verification Steps
 
 Recommended verification steps after deployment:
 
@@ -331,9 +391,17 @@ podman logs -f swedeb-api
 # Confirm deployed frontend version
 podman exec swedeb-api cat /app/public/.frontend_version
 
+# Check cached SHA256 (for rolling releases)
+podman exec swedeb-api cat /app/public/.frontend_sha256
+
 # Confirm frontend entry file exists
 podman exec swedeb-api test -f /app/public/index.html && echo ok
 ```
+
+**Log Messages to Watch For:**
+- `"SHA256 matches, would skip extraction"` - Using cached assets (fast)
+- `"SHA256 mismatch - new version detected"` - New release, extracting fresh assets
+- `"Frontend assets up-to-date"` - No download needed (pinned version)
 
 If you deploy with Docker Compose instead of Podman, use the equivalent `docker compose logs` and `docker exec` commands.
 
@@ -529,9 +597,9 @@ docker/
 
 ## Related Resources
 
-- [WORKFLOW_GUIDE.md](./WORKFLOW_GUIDE.md) - Developer workflow and branching strategy
-- [WORKFLOW_ARCHITECTURE.md](./WORKFLOW_ARCHITECTURE.md) - CI/CD architecture diagrams
+- [DEVELOPER.md](./DEVELOPER.md) - Developer workflow, branching strategy, and CI/CD architecture
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Troubleshooting common deployment issues
+- [DEPLOY_PODMAN.md](./DEPLOY_PODMAN.md) - Detailed Podman Quadlet deployment guide
 - [README.md](../README.md) - Project overview and quick start
 - [Docker Documentation](https://docs.docker.com/)
 - [Docker Compose Reference](https://docs.docker.com/compose/)
@@ -544,5 +612,5 @@ docker/
 
 ---
 
-*Last updated: Reflects decoupled frontend/backend deployments with runtime frontend asset downloads.*
+*Last updated: Reflects decoupled frontend/backend deployments with runtime frontend asset downloads and automatic version detection.*
 
