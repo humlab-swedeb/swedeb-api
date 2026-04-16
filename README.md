@@ -1,7 +1,18 @@
 
 # Backend API for Swedeb
 
-This repository contains the backend API for the Swedeb project. It is a Python application built with the FastAPI framework, designed to serve data to the frontend and handle complex queries.
+This repository contains the backend API for the Swedeb project. It is a Python application built with the FastAPI framework, designed to serve data to the frontend and handle complex queries over Swedish parliamentary debates (1867-2022).
+
+## Features
+
+- **Full-text corpus search** - CWB-based KWIC (keyword-in-context) queries with advanced filtering
+- **Word trends analysis** - Track word frequency over time periods and demographic groups
+- **N-gram extraction** - Extract and analyze n-grams from speeches with frequency statistics
+- **Metadata queries** - Search speakers, parties, offices, and parliamentary periods
+- **Speech retrieval** - Access individual speeches with full metadata enrichment
+- **Statistical aggregations** - Frequency distributions and temporal analysis
+- **REST API** - FastAPI-powered endpoints with automatic OpenAPI documentation
+- **High performance** - Optimized CWB queries with caching and lazy loading
 
 ## 📚 Documentation
 
@@ -24,32 +35,38 @@ The backend is built on a containerized architecture, leveraging modern Python t
 *   **[Docker](https://www.docker.com/)**: For containerizing the application, ensuring a consistent environment. The final image is built on a custom base image that includes CWB (Corpus Workbench) functionality.
 *   **[GitHub Container Registry (GHCR)](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)**: For hosting the final Docker application image.
 
+## Architecture
+
+- **FastAPI** - Modern async web framework for API endpoints with automatic OpenAPI docs
+- **CWB (Corpus Workbench)** - High-performance corpus queries via cwb-ccc Python wrapper
+- **Service Layer** - Business logic in dedicated services (SearchService, KWICService, WordTrendsService, etc.)
+- **Direct Injection** - Services injected via FastAPI `Depends()` for clean separation of concerns
+- **Pydantic** - Request/response validation with type safety and automatic serialization
+- **Feather/Arrow Storage** - Fast columnar storage for speech indexes and metadata
+- **Docker + Auto-detection** - Containerized deployment with automatic frontend version detection
+
 ## Related Repositories
-*   **[Swedeb Frontend](https://github.com/humlab-swedeb/swedeb-frontend)**: The frontend application for the Swedeb project, built with React.
+*   **[Swedeb Frontend](https://github.com/humlab-swedeb/swedeb_frontend)**: The frontend application for the Swedeb project, built with Vue.js and Quasar.
 *   **[Swedeb Sample Data](https://github.com/humlab-swedeb/sample-data)**: Produces data for the Swedeb infrastructure based on **[SWERIK](https://github.com/swerik)** data.
 *   **[humlab-penelope](https://github.com/humlab/humlab-penelope)**: A tools package supporting text analysis using Python.
 *   **[pyriksprot](https://github.com/humlab/pyriksprot)**: A Python package for reading and processing SWERIK parliamentary data.
 *   **[pyriksprot-tagger](https://github.com/humlab/pyriksprot-tagger)**: A tool for annotating and tagging SWERIK parliamentary data.
 
-## Other Used Packages
-*   **[cwb-ccc](https://github.com/humlab/cwb-ccc)**: A Python package for working with the CWB (Corpus Workbench) command-line tools.
-*   **[stanza](https://stanfordnlp.github.io/stanza/)**: A Python NLP library for tokenization, lemmatization, and part-of-speech tagging.
-*   **[pydantic](https://pydantic-docs.helpmanual.io/)**: For data validation and settings management using Python type annotations.
-*   **[uvicorn](https://www.uvicorn.org/)**: An ASGI server for running FastAPI applications.
+## Dependencies
 
-## Dev Tools
-*   **[Poetry](https://python-poetry.org/)**: For dependency management and packaging.
-*   **[pytest](https://docs.pytest.org/en/stable/)**: For running tests.
-*   **[black](https://black.readthedocs.io/en/stable/)**: A code formatter to ensure consistent code style.
-*   **[isort](https://pycqa.github.io/isort/)**: For sorting imports in Python files.
+Built with **FastAPI**, **CWB (Corpus Workbench)** via cwb-ccc, **Pydantic** for validation, **NumPy/SciPy** for numerical processing, and **Penelope** for corpus analysis. Development uses **uv/Poetry** for dependency management, **pytest** for testing, and **Black/isort** for code formatting.
 
-## Quick Start
+See [pyproject.toml](pyproject.toml) for the complete dependency list.
+
+## Getting Started
 
 ### Prerequisites
-- Python 3.11+ (3.12 recommended)
-- Poetry (dependency management)
-- Docker (optional, for containerized development)
-- CWB (Corpus Workbench) data files (see [sample-data repository](https://github.com/humlab-swedeb/sample-data))
+
+- **Python** 3.11+ (3.13 recommended)
+- **uv** or **Poetry** for dependency management
+- **Docker** (optional, for containerized development)
+- **CWB data** - Corpus files from [sample-data repository](https://github.com/humlab-swedeb/sample-data)
+- **Metadata database** - SQLite database with speaker/party information
 
 ### Local Development Setup
 
@@ -59,52 +76,101 @@ The backend is built on a containerized architecture, leveraging modern Python t
     cd swedeb-api
     ```
 
-2.  **Install Poetry:**
-    Follow the [official installation instructions](https://python-poetry.org/docs/#installation).
-
-3.  **Install Dependencies:**
+2.  **Install dependencies:**
     ```bash
+    # Using uv (recommended)
+    uv pip install -e .
+    
+    # Or using Poetry
     poetry install
     ```
-4. **Configure Environment:**
+
+3. **Configure environment:**
     ```bash
-    cp .env_example .env
-    # Edit .env with your data paths
+    cp config/config_example.yml config/config.yml
+    # Edit config.yml with your data paths and versions
     ```
 
-5.  **Run the Development Server:**
-6.  **View API Documentation:**
-    - Swagger UI: `http://127.0.0.1:8000/docs`
-    - ReDoc: `http://127.0.0.1:8000/redoc`
+4.  **Run the development server:**
+    ```bash
+    uv run uvicorn main:app --reload
+    # Or: poetry run uvicorn main:app --reload
+    ```
+    The API will be available at `http://127.0.0.1:8000`.
+
+5.  **View API documentation:**
+    - **Swagger UI**: http://127.0.0.1:8000/docs (interactive API explorer)
+    - **ReDoc**: http://127.0.0.1:8000/redoc (alternative documentation view)
+
+### Project Structure
+
+```
+api_swedeb/
+├── api/
+│   ├── v1/endpoints/     # API route handlers
+│   ├── services/         # Business logic layer
+│   └── dependencies.py   # Dependency injection setup
+├── core/                 # Core functionality (CWB, config, corpus loading)
+├── schemas/              # Pydantic request/response models
+├── mappers/              # Data transformation layer
+├── workflows/            # Offline processing pipelines
+└── legacy/               # Archived fallback runtime (debug only)
+tests/
+├── api_swedeb/           # Active runtime tests
+├── integration/          # Integration tests
+└── legacy/               # Legacy runtime tests
+```
 
 ### Common Development Commands
 
 ```bash
+# Run server
+uv run uvicorn main:app --reload
+
 # Run tests
-poetry run pytest tests/
+uv run pytest tests/
 
 # Code formatting (required before commits)
 make tidy                        # Format with black + isort
-make black                       # Format with black only
-make isort                       # Sort imports only
-
-# Code quality
-make pylint                      # Lint code
-make notes                       # Find FIXME/TODO comments
 
 # Coverage
 make coverage                    # Run tests with coverage report
 
 # Performance profiling
-make profile-kwic-pyinstrument  # Profile KWIC queries
+make profile-kwic-pyinstrument   # Profile KWIC queries
 ```
-poetry run uvicorn main:app --reload
-    ```
-    The API will be available at `http://127.0.0.1:8000`.
 
-5.  **View API Documentation:**
-    - Swagger UI: `http://127.0.0.1:8000/docs`
-    - ReDoc: `http://127.0.0.1:8000/redoc`
+## Testing
+
+Run the full test suite:
+```bash
+uv run pytest tests/
+```
+
+With coverage report:
+```bash
+make coverage
+```
+
+Profile KWIC performance:
+```bash
+make profile-kwic-pyinstrument
+```
+
+See [DEVELOPER.md](docs/DEVELOPER.md) for testing best practices and patterns.
+
+## API Documentation
+
+Once the server is running, explore the interactive API documentation:
+
+- **Swagger UI**: http://127.0.0.1:8000/docs
+  - Interactive API explorer with request/response examples
+  - Try out endpoints directly from the browser
+  - View request schemas and validation rules
+
+- **ReDoc**: http://127.0.0.1:8000/redoc
+  - Clean, readable alternative documentation view
+  - Better for browsing and understanding the full API surface
 
 ## Contributing
 
@@ -176,23 +242,6 @@ journalctl --user -u swedeb-api-production -n 100
 - [Deployment Guide](docs/DEPLOYMENT.md) - Full deployment instructions
 - [Developer Guide](docs/DEVELOPER.md) - Workflow and contribution guidelines
 
-## Testing CI/CD Locally with `act`
-
-To test GitHub Actions workflows locally:
-
-1.  **Install `act`:** Follow the [official installation instructions](https://github.com/nektos/act#installation).
-
-2.  **Create a Personal Access Token (PAT):**
-    - Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-    - Generate token with scopes: `repo`, `workflow`, `write:packages`
-    - Save to `~/.ghcr_token`
-
-3.  **Run workflows locally:**
-    ```bash
-    # Test the release workflow
-    act -j release -s GITHUB_TOKEN="$(cat ~/.ghcr_token)"
-    ```
-
 ## Environment Variables
 
 Key environment variables for build and runtime configuration:
@@ -208,6 +257,10 @@ Key environment variables for build and runtime configuration:
 | `CORPUS_VERSION` | Corpus version | Runtime |
 
 See [Deployment Guide](docs/DEPLOYMENT.md) for complete variable reference.
+
+## Acknowledgments
+
+This project is built on data from the [SWERIK project](https://github.com/swerik-project) (Swedish Parliamentary Records in the Digital Age) and uses [humlab-penelope](https://github.com/humlab/humlab-penelope) for corpus processing and [CWB (Corpus Workbench)](https://cwb.sourceforge.io/) for high-performance text queries.
 
 ## License
 
