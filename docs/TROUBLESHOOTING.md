@@ -295,11 +295,63 @@ free -h
 
 ### Permission Denied Errors
 
-**Symptom**: Volume mounts fail with permission errors
+**Symptom**: Volume mounts fail with permission errors, or "Read-only file system" errors
 
-**Cause**: UID/GID mismatch or SELinux
+**Cause**: UID/GID mismatch, SELinux, or filesystem mount options
 
-**Solution**:
+**Common Scenarios**:
+
+#### 1. Read-only /app/public directory
+
+**Error**:
+```
+tar: ./index.html: Cannot open: Read-only file system
+```
+
+**Diagnosis**:
+```bash
+# Check container filesystem
+podman exec -it <container> stat /app/public
+podman exec -it <container> mount | grep overlay
+
+# Check if container is running with read-only root
+podman inspect <container> | grep -i readonly
+```
+
+**Solutions**:
+
+**Option A**: Ensure /app/public is not mounted as read-only
+```bash
+# Check Quadlet file - ensure no :ro flag on /app or /app/public
+# Should NOT have:
+Volume=/app/public:/app/public:ro
+```
+
+**Option B**: Use SELinux volume labels
+```bash
+# Use :Z flag for SELinux context
+Volume=/data:/data:Z
+
+# Or use :U flag for UID/GID mapping (Podman 4.3+)
+Volume=/data:/data:U
+```
+
+**Option C**: Fix ownership in container
+```dockerfile
+# In Dockerfile, ensure proper ownership
+RUN mkdir -p /app/public && \
+    chown ${APP_USER}:${APP_USER} /app/public && \
+    chmod 755 /app/public
+```
+
+**Option D**: Use temporary extraction (automatic fallback)
+
+The download script now automatically tries to extract to /tmp first if /app/public is read-only, then copies the files. Check logs for:
+```
+Attempting workaround: extract to /tmp and copy...
+```
+
+#### 2. Volume mount permission issues
 ```bash
 # Use :Z flag for SELinux context
 Volume=/data:/data:Z

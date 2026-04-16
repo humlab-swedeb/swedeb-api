@@ -100,6 +100,20 @@ fi
 log "Creating assets directory if needed: $ASSETS_DIR"
 mkdir -p "$ASSETS_DIR"
 
+# Check if assets directory is writable
+if [ ! -w "$ASSETS_DIR" ]; then
+    error_exit "Assets directory is not writable: $ASSETS_DIR (check permissions and volume mounts)"
+fi
+
+# Test write access with a temporary file
+TEST_FILE="${ASSETS_DIR}/.write_test"
+if ! touch "$TEST_FILE" 2>/dev/null; then
+    error_exit "Cannot write to assets directory: $ASSETS_DIR (read-only filesystem or permission denied)"
+fi
+rm -f "$TEST_FILE"
+
+log "Assets directory is writable"
+
 # Check for local fallback tarball
 FALLBACK_TARBALL="/data/dist/${TARBALL}"
 HAS_FALLBACK=false
@@ -179,7 +193,43 @@ else
 fi
 
 log "Extracting frontend assets to $ASSETS_DIR"
-tar -xzf "$TMP_FILE" -C "$ASSETS_DIR" || error_exit "Failed to extract tarball"
+
+# Additional diagnostics for read-only filesystem issues
+log "Checking filesystem and permissions..."
+log "  Current user: $(whoami) (UID: $(id -u), GID: $(id -g))"
+log "  Directory owner: $(stat -c '%U:%G (%u:%g)' "$ASSETS_DIR" 2>/dev/null || echo 'unknown')"
+log "  Directory permissions: $(stat -c '%a' "$ASSETS_DIR" 2>/dev/null || echo 'unknown')"
+log "  Mount info: $(mount | grep "$(df "$ASSETS_DIR" | tail -1 | awk '{print $1}')" || echo 'unknown')"
+
+# Try extraction
+if ! tar -xzf "$TMP_FILE" -C "$ASSETS_DIR" 2>&1; then
+    log "ERROR: Failed to extract tarball to $ASSETS_DIR"
+    log "This may be due to:"
+    log "  1. Read-only filesystem (check: mount | grep $(df $ASSETS_DIR | tail -1 | awk '{print \$1}'))"
+    log "  2. SELinux/AppArmor restrictions"
+    log "  3. Permission issues"
+    log "  4. Podman security settings"
+    log ""
+    log "Attempting workaround: extract to /tmp and copy..."
+    
+    # Try extracting to /tmp first, then copying
+    TMP_EXTRACT=$(mktemp -d)
+    trap "rm -rf $TMP_EXTRACT $TMP_FILE" EXIT
+    
+    if tar -xzf "$TMP_FILE" -C "$TMP_EXTRACT"; then
+        log "Successfully extracted to temporary directory"
+        log "Copying files to $ASSETS_DIR..."
+        
+        if cp -r "$TMP_EXTRACT"/* "$ASSETS_DIR/" 2>/dev/null; then
+            log "Successfully copied files to $ASSETS_DIR"
+        else
+            log "ERROR: Failed to copy files to $ASSETS_DIR"
+            error_exit "Cannot write to assets directory - filesystem may be read-only or permissions issue"
+        fi
+    else
+        error_exit "Failed to extract tarball even to temporary directory"
+    fi
+fi
 
 # Verify extraction
 if [ ! "$(ls -A "$ASSETS_DIR")" ]; then

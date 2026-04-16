@@ -28,11 +28,13 @@ COPY --chown=${APP_USER}:${APP_USER} download-frontend.sh .
 # COPY --chown=${APP_USER}:${APP_USER} config ./config/
 
 # Create public directory for frontend assets (will be populated at runtime)
-RUN mkdir -p public
+RUN mkdir -p public && \
+    chown ${APP_USER}:${APP_USER} public && \
+    chmod 755 public
 
 # Set permissions
 RUN set -ex; \
-    chown -R ${APP_USER}:${APP_USER} /data public; \
+    chown -R ${APP_USER}:${APP_USER} /data; \
     chmod +x entrypoint.sh download-frontend.sh
 
 USER ${APP_USER}
