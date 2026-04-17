@@ -22,10 +22,11 @@ RUN set -ex; \
     rm -rf /tmp/*.whl
 
 # Copy runtime files including frontend download script
-COPY --chown=${APP_USER}:${APP_USER} main.py .
-COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh .
-COPY --chown=${APP_USER}:${APP_USER} download-frontend.sh .
-# COPY --chown=${APP_USER}:${APP_USER} config ./config/
+COPY --chown=${APP_USER}:${APP_USER} docker/main.py .
+COPY --chown=${APP_USER}:${APP_USER} docker/entrypoint.sh .
+COPY --chown=${APP_USER}:${APP_USER} docker/download-frontend.sh .
+COPY --chown=${APP_USER}:${APP_USER} docker/test-network.sh docker/
+COPY --chown=${APP_USER}:${APP_USER} config ./config/
 
 # Create public directory for frontend assets (will be populated at runtime)
 RUN mkdir -p public && \
@@ -35,7 +36,8 @@ RUN mkdir -p public && \
 # Set permissions
 RUN set -ex; \
     chown -R ${APP_USER}:${APP_USER} /data; \
-    chmod +x entrypoint.sh download-frontend.sh
+    chmod +x entrypoint.sh download-frontend.sh; \
+    chmod +x docker/test-network.sh
 
 USER ${APP_USER}
 

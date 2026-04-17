@@ -41,6 +41,16 @@ help:
 	@echo "  logs              - Follow container logs"
 	@echo "  bash              - Open a shell in the running container"
 	@echo ""
+	@echo "Local testing targets:"
+	@echo "  test-local        - Build and test container locally (full test)"
+	@echo "  test-local-podman - Test with Podman instead of Docker"
+	@echo "  test-local-skip-build - Test existing image without rebuilding"
+	@echo "  test-local-fallback - Test with local fallback tarball"
+	@echo "  test-local-mount-public - Test with writable /app/public mount"
+	@echo "  test-local-podman-fallback - Test Podman with fallback"
+	@echo "  test-help         - Show test script help"
+	@echo "  test-clean        - Clean up test artifacts and images"
+	@echo ""
 	@echo "Current values:"
 	@echo "  ENVIRONMENT=$(ENVIRONMENT)"
 	@echo "  VERSION=$(VERSION)"
@@ -114,3 +124,48 @@ logs:
 .PHONY: bash
 bash:
 	@docker exec -it "$(CONTAINER_NAME)" /bin/bash
+
+# ====================
+# Local Testing Targets
+# ====================
+
+.PHONY: test-local
+test-local:
+	@echo "Building and testing container locally..."
+	@./test-local.sh
+
+.PHONY: test-local-podman
+test-local-podman:
+	@echo "Building and testing container with Podman..."
+	@CONTAINER_TOOL=podman ./test-local.sh
+
+.PHONY: test-local-skip-build
+test-local-skip-build:
+	@echo "Testing existing local image..."
+	@./test-local.sh --skip-build
+
+.PHONY: test-local-fallback
+test-local-fallback:
+	@echo "Testing with local fallback tarball..."
+	@./test-local.sh --use-fallback
+
+.PHONY: test-local-mount-public
+test-local-mount-public:
+	@echo "Testing with writable /app/public mount..."
+	@./test-local.sh --mount-public
+
+.PHONY: test-local-podman-fallback
+test-local-podman-fallback:
+	@echo "Testing Podman with fallback..."
+	@CONTAINER_TOOL=podman ./test-local.sh --use-fallback
+
+.PHONY: test-help
+test-help:
+	@./test-local.sh --help
+
+.PHONY: test-clean
+test-clean:
+	@echo "Cleaning up test artifacts..."
+	@rm -rf test-data/
+	@docker rmi -f swedeb-api:local-test 2>/dev/null || true
+	@echo "Test cleanup complete"
