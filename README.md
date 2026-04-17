@@ -21,7 +21,7 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 - **[AI Coding Agent Instructions](.github/copilot-instructions.md)** - Essential guide for AI assistants working with this codebase
 
 ### For Deployment & Operations
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment guide covering all environments (test, staging, production)
+- **[Operations Guide](docs/OPERATIONS.md)** - Complete deployment and operations guide covering all environments (test, staging, production)
 
 ## Technology Stack
 
@@ -245,7 +245,7 @@ The enter swedeb_staging (as above) and restart ontinaer
 ```
 
 **Complete guides:**
-- [Deployment Guide](docs/DEPLOYMENT.md) - Full deployment instructions
+- [Operations Guide](docs/OPERATIONS.md) - Full deployment and operations instructions
 - [Developer Guide](docs/DEVELOPER.md) - Workflow and contribution guidelines
 
 ## Environment Variables
@@ -262,7 +262,7 @@ Key environment variables for build and runtime configuration:
 | `METADATA_VERSION`   | Metadata version                      | Runtime         |
 | `CORPUS_VERSION`     | Corpus version                        | Runtime         |
 
-See [Deployment Guide](docs/DEPLOYMENT.md) for complete variable reference.
+See [Operations Guide](docs/OPERATIONS.md) for complete variable reference.
 
 ## Acknowledgments
 
