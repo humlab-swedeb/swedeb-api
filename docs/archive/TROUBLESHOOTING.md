@@ -417,7 +417,7 @@ If you're still experiencing issues:
 2. **Check documentation**:
    - [Operations Guide](../OPERATIONS.md)
    - [Podman Deployment](./archive/DEPLOY_PODMAN.md) (archived)
-   - [Developer Guide](./DEVELOPER.md)
+   - [Development Guide](../DEVELOPMENT.md)
 
 3. **Report issues**:
    - Include all diagnostic output
