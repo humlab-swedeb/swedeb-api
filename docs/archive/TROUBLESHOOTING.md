@@ -1,413 +1,426 @@
 # Troubleshooting Guide
 
-This guide covers common issues and solutions when deploying and running the Swedeb API.
+This guide covers common issues and their solutions when deploying and running the Swedeb API.
 
 ## Table of Contents
 
-- [Common Issues](#common-issues)
-  - [Docker-Specific Issues](#docker-specific-issues)
-  - [Podman-Specific Issues](#podman-specific-issues)
-- [Debug Commands](#debug-commands)
-- [Performance Tuning](#performance-tuning)
-
-## Common Issues
-
-### Docker-Specific Issues
-
-#### 1. Image Pull Errors
-
-```bash
-# Error: pull access denied
-# Solution: Ensure proper authentication
-docker login ghcr.io -u username
-# Enter PAT when prompted
-
-# Verify login
-docker pull ghcr.io/humlab-swedeb/swedeb-api:latest
-
-# Check if image exists
-docker manifest inspect ghcr.io/humlab-swedeb/swedeb-api:0.6.1
-```
-
-#### 2. Cross-Organization Access Issues
-
-```bash
-# Error: Failed to pull ghcr.io/humlab/cwb-container
-# Solution: Ensure CWB_REGISTRY_TOKEN is configured in GitHub Actions
-
-# For local builds, login with appropriate PAT:
-echo $CWB_TOKEN | docker login ghcr.io -u username --password-stdin
-```
-
-#### 3. Data Mount Issues
-
-```bash
-# Error: Permission denied or file not found
-# Solution: Check data paths and permissions
-
-# Verify data exists
-ls -la /data/swedeb/v1.4.1/
-ls -la /data/swedeb/metadata/riksprot_metadata.v1.1.3.db
-
-# Fix permissions
-sudo chown -R 1021:1021 /data/swedeb/
-
-# Check mount paths in compose file match actual data location
-docker compose config | grep volumes
-```
-
-#### 4. Port Conflicts
-
-```bash
-# Error: Port already in use
-# Solution: Check for conflicting services
-
-# Find process using port
-netstat -tulpn | grep :8092
-lsof -i :8092
-
-# Check Docker containers
-docker ps --filter "publish=8092"
-
-# Change port in .env
-# Edit: SWEDEB_HOST_PORT=8093
-```
-
-#### 5. Container Won't Start
-
-```bash
-# Check container logs
-docker compose -f compose.production.yml logs swedeb_api
-
-# Check resource usage
-docker stats
-df -h
-free -m
-
-# Verify configuration
-docker compose -f compose.production.yml config
-
-# Check for errors in entrypoint
-docker compose -f compose.production.yml logs | grep -i error
-
-# Try running interactively
-docker compose -f compose.production.yml run --rm swedeb_api /bin/bash
-```
-
-#### 6. Application Not Responding
-
-```bash
-# Check if container is running
-docker compose -f compose.production.yml ps
-
-# Check internal connectivity
-docker compose -f compose.production.yml exec swedeb_api curl -f http://localhost:8000/health
-
-# Check logs for errors
-docker compose -f compose.production.yml logs --tail=100
-
-# Restart service
-docker compose -f compose.production.yml restart swedeb_api
-```
-
-#### 7. High Memory Usage
-
-```bash
-# Check memory consumption
-docker stats --no-stream
-
-# Identify memory-heavy processes
-docker compose -f compose.production.yml exec swedeb_api ps aux --sort=-%mem | head
-
-# Add to compose file:
-services:
-  swedeb_api:
-    deploy:
-      resources:
-        limits:
-          memory: 8G
-          cpus: '4'
-        reservations:
-          memory: 4G
-          cpus: '2'
-
-# Check host memory
-free -m
-```
-
-### Debug Commands
-
-#### Docker
-
-```bash
-# Enter container for debugging
-docker compose -f compose.production.yml exec swedeb_api /bin/bash
-
-# Check Python environment
-docker compose -f compose.production.yml exec swedeb_api python --version
-docker compose -f compose.production.yml exec swedeb_api pip list
-
-# Test configuration loading
-docker compose -f compose.production.yml exec swedeb_api python -c \
-  "from api_swedeb.core.configuration import ConfigStore; print(ConfigStore.default())"
-
-# Check file permissions
-docker compose -f compose.production.yml exec swedeb_api ls -la /app/
-docker compose -f compose.production.yml exec swedeb_api ls -la /data/
-
-# Check network connectivity
-docker compose -f compose.production.yml exec swedeb_api ping -c 3 ghcr.io
-docker compose -f compose.production.yml exec swedeb_api curl -I https://ghcr.io
-
-# Test CWB tools
-docker compose -f compose.production.yml exec swedeb_api cwb-describe-corpus
-```
-
-#### Podman
-
-```bash
-# Enter container for debugging
-podman exec -it swedeb-api-production /bin/bash
-
-# Check Python environment
-podman exec swedeb-api-production python --version
-podman exec swedeb-api-production pip list
-
-# Test configuration
-podman exec swedeb-api-production python -c \
-  "from api_swedeb.core.configuration import ConfigStore; print(ConfigStore.default())"
-
-# Check file permissions
-podman exec swedeb-api-production ls -la /app/
-podman exec swedeb-api-production ls -la /data/
-
-# Check network connectivity
-podman exec swedeb-api-production ping -c 3 ghcr.io
-podman exec swedeb-api-production curl -I https://ghcr.io
-
-# Check volume mounts
-podman inspect swedeb-api-production | jq '.[0].Mounts'
-
-# Test CWB tools
-podman exec swedeb-api-production cwb-describe-corpus
-
-# Check systemd service
-systemctl --user status swedeb-api-production.service
-journalctl --user -u swedeb-api-production.service --no-pager | tail -100
-```
+- [Container Issues](#container-issues)
+  - [Network Connectivity](#network-connectivity)
+  - [Frontend Download Failures](#frontend-download-failures)
+- [Data Issues](#data-issues)
+- [Performance Issues](#performance-issues)
+- [Podman-Specific Issues](#podman-specific-issues)
 
 ---
 
-### Podman-Specific Issues
+## Container Issues
 
-#### 1. Rootless Port Binding (<1024)
+### Network Connectivity
 
-```bash
-# Error: Cannot bind to privileged ports as rootless user
+**Symptom**: Container cannot reach external networks (GitHub, APIs, etc.)
 
-# Solution 1: Use port mapping (8092:8000 instead of 80:8000)
-# Already done in examples above
-
-# Solution 2: Enable rootless port binding
-sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
-# Make permanent:
-echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/50-rootless-ports.conf
-sudo sysctl --system
-
-# Solution 3: Use rootful Podman (not recommended)
-sudo podman ...
+**Common Error**:
+```
+curl: (7) Failed to connect to github.com port 443 after 2 ms: Couldn't connect to server
 ```
 
-#### 2. SELinux Permission Denied
+**Diagnosis**: Use the network troubleshooting script:
 
 ```bash
-# Error: Permission denied accessing volumes
+# Run inside the container
+podman exec -it swedeb-api-production /app/docker/test-network.sh
 
-# Solution: Add :Z flag to volume mounts in Quadlet
-Volume=/data/swedeb:/data/swedeb:Z
-
-# Or relabel manually
-sudo chcon -R -t container_file_t /data/swedeb/
-
-# Or disable SELinux (not recommended for production)
-sudo setenforce 0
+# Or from the container:
+/app/docker/test-network.sh
 ```
 
-#### 3. Systemd Service Won't Start After Reboot
+The script tests:
+- DNS resolution (github.com, api.github.com, google.com)
+- Network connectivity (ping tests)
+- HTTP/HTTPS connectivity
+- GitHub API access
+- Frontend tarball download
 
-```bash
-# Error: Service doesn't start automatically
+**Common Causes and Solutions**:
 
-# Solution: Enable user lingering
-sudo loginctl enable-linger $USER
+#### 1. DNS Resolution Failure
 
-# Verify
-loginctl show-user $USER | grep Linger
+**Cause**: Container can't resolve hostnames
 
-# Check if service is enabled
-systemctl --user is-enabled swedeb-api-production.service
+**Solution**: Add DNS servers to your container configuration
 
-# Enable if not
-systemctl --user enable swedeb-api-production.service
-```
-
-#### 4. Quadlet File Not Detected
-
-```bash
-# Quadlet file isn't generating systemd service
-
-# Check Quadlet file location
-ls -la ~/.config/containers/systemd/
-
-# Ensure correct extension (.container)
-mv swedeb-api.conf swedeb-api.container
-
-# Reload systemd
-systemctl --user daemon-reload
-
-# Check for errors
-journalctl --user -xe | grep -i quadlet
-
-# List generated services
-systemctl --user list-units 'swedeb-api*'
-```
-
-#### 5. Image Pull Fails in Rootless Mode
-
-```bash
-# Error: Failed to pull image
-
-# Check registry authentication
-cat ${XDG_RUNTIME_DIR}/containers/auth.json
-# or
-cat ~/.config/containers/auth.json
-
-# Re-authenticate
-podman login ghcr.io -u username
-
-# Pull manually to debug
-podman pull ghcr.io/humlab-swedeb/swedeb-api:0.6.1
-
-# Check for proxy issues
-env | grep -i proxy
-```
-
-#### 6. Volume Mount Permission Issues
-
-```bash
-# Error: Permission denied reading from volume
-
-# Check ownership
-ls -la /data/swedeb/
-
-# For rootless Podman, user ID mapping is used
-# Inside container, user may map to different UID outside
-
-# Solution 1: Ensure volume has correct permissions
-chmod -R u+rX /data/swedeb/
-
-# Solution 2: Use :U flag for automatic UID/GID mapping
-Volume=/data/swedeb:/data/swedeb:U
-
-# Solution 3: Check subuid/subgid mappings
-cat /etc/subuid
-cat /etc/subgid
-```
-
-#### 7. Container Can't Resolve DNS
-
-```bash
-# Error: Network resolution failed
-
-# Check DNS in container
-podman exec swedeb-api-production cat /etc/resolv.conf
-
-# Solution 1: Configure DNS in Quadlet
+For Quadlet (`.container` file):
+```ini
 [Container]
 DNS=8.8.8.8
 DNS=8.8.4.4
-
-# Solution 2: Use host network (less secure)
-[Container]
-Network=host
-
-# Solution 3: Check systemd-resolved
-systemctl status systemd-resolved
+DNS=1.1.1.1
 ```
 
-## Performance Tuning
-
-### Docker Performance Optimization
-
-```bash
-# Optimize Docker daemon
-# Edit /etc/docker/daemon.json:
-{
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3"
-  },
-  "storage-driver": "overlay2",
-  "default-ulimits": {
-    "nofile": {
-      "Name": "nofile",
-      "Hard": 64000,
-      "Soft": 64000
-    }
-  }
-}
-
-# Restart Docker daemon
-sudo systemctl restart docker
-```
-
-### Resource Limits
-
-```bash
-# Increase resource limits in compose file
+For Compose (docker/compose.yml):
+```yaml
 services:
   swedeb_api:
-    deploy:
-      resources:
-        limits:
-          memory: 16G
-          cpus: '8'
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-
-# Monitor performance
-docker stats --no-stream
-docker compose -f compose.production.yml top
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
 ```
 
-### Podman Performance
+System-wide Podman configuration (/etc/containers/containers.conf):
+```toml
+[network]
+dns_servers = [
+  "8.8.8.8",
+  "8.8.4.4",
+  "1.1.1.1"
+]
+```
+
+#### 2. Firewall Blocking
+
+**Cause**: Host firewall blocks container traffic
+
+**Test**:
+```bash
+# Check firewall rules
+sudo firewall-cmd --list-all
+
+# Temporarily disable (testing only!)
+sudo systemctl stop firewalld
+```
+
+**Solution**: Configure firewall to allow container traffic
+```bash
+# Allow specific ports
+sudo firewall-cmd --permanent --add-port=8000/tcp
+sudo firewall-cmd --reload
+
+# Or add podman interface to trusted zone
+sudo firewall-cmd --permanent --zone=trusted --add-interface=podman0
+sudo firewall-cmd --reload
+```
+
+#### 3. SELinux Issues
+
+**Cause**: SELinux prevents network access
+
+**Test**:
+```bash
+# Check SELinux mode
+getenforce
+
+# Temporarily set to permissive (testing only!)
+sudo setenforce 0
+```
+
+**Solution**: Configure SELinux policies or use appropriate labels
+```bash
+# For volume mounts, use :Z flag
+Volume=/data:/data:Z
+
+# Check audit logs
+sudo ausearch -m AVC -ts recent
+```
+
+#### 4. Network Mode Issues
+
+**Workaround**: Temporarily use host network for debugging
+```yaml
+# In compose.yml (testing only!)
+network_mode: "host"
+```
+
+**Note**: This bypasses network isolation and should not be used in production.
+
+---
+
+### Frontend Download Failures
+
+**Symptom**: Container fails to start due to frontend asset download failure
+
+**Error**:
+```
+ERROR: GitHub download failed and no local fallback found
+```
+
+**Solution 1: Fix Network Connectivity**
+
+See [Network Connectivity](#network-connectivity) section above.
+
+**Solution 2: Use Local Fallback**
+
+The container supports a local fallback tarball if GitHub is unreachable.
+
+1. **Download the frontend tarball** on a machine with internet access:
+   ```bash
+   # For latest version
+   VERSION=$(curl -s https://api.github.com/repos/humlab-swedeb/swedeb_frontend/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+   curl -L "https://github.com/humlab-swedeb/swedeb_frontend/releases/download/${VERSION}/frontend-${VERSION#v}.tar.gz" \
+     -o frontend-latest.tar.gz
+   
+   # For staging
+   curl -L "https://github.com/humlab-swedeb/swedeb_frontend/releases/download/staging/frontend-staging.tar.gz" \
+     -o frontend-staging.tar.gz
+   
+   # For test
+   curl -L "https://github.com/humlab-swedeb/swedeb_frontend/releases/download/test/frontend-test.tar.gz" \
+     -o frontend-test.tar.gz
+   ```
+
+2. **Copy the tarball to the data directory**:
+   ```bash
+   # Create dist directory
+   mkdir -p ${SWEDEB_DATA_FOLDER}/dist
+   
+   # Copy tarball (use correct filename for your version)
+   cp frontend-staging.tar.gz ${SWEDEB_DATA_FOLDER}/dist/
+   ```
+
+3. **Start the container**:
+   The download script will automatically detect and use the local tarball if GitHub fails.
+
+**Fallback Mechanism**:
+
+The container looks for tarballs at:
+```
+/data/dist/frontend-${FRONTEND_VERSION}.tar.gz
+```
+
+Examples:
+- `FRONTEND_VERSION=latest` → `/data/dist/frontend-latest.tar.gz`
+- `FRONTEND_VERSION=staging` → `/data/dist/frontend-staging.tar.gz`
+- `FRONTEND_VERSION=test` → `/data/dist/frontend-test.tar.gz`
+- `FRONTEND_VERSION=1.2.3` → `/data/dist/frontend-1.2.3.tar.gz`
+
+The script will:
+1. Try to download from GitHub (with 3 retries)
+2. If all retries fail, check for local fallback
+3. Use local fallback if available
+4. Fail with clear error if neither works
+
+**Pre-download Strategy for Air-Gapped Deployments**:
+
+For completely offline deployments:
 
 ```bash
-# Check resource usage
-podman stats swedeb-api-production
+# On internet-connected machine, download assets
+./download-assets.sh staging
 
-# Monitor systemd resource control
-systemctl --user show swedeb-api-production.service | grep -E "Memory|CPU"
+# Transfer to target machine
+rsync -avz data/dist/ target-machine:/path/to/data/dist/
 
-# Adjust limits in Quadlet file
-[Container]
-Memory=16G
-MemorySwap=16G
-CPUQuota=800%
-PidsLimit=4096
+# Deploy on target machine (will use local fallback)
+systemctl --user start swedeb-api-staging
 ```
 
 ---
 
-## Related Resources
+## Data Issues
 
-- [Deployment Guide](./DEPLOYMENT.md) - Complete deployment instructions
-- [Workflow Guide](./WORKFLOW_GUIDE.md) - Developer workflow
-- [Workflow Architecture](./WORKFLOW_ARCHITECTURE.md) - CI/CD architecture
+### Corpus Data Not Found
+
+**Symptom**: API returns errors about missing corpus data
+
+**Solution**: Verify data directory structure and mounts
+
+```bash
+# Check data directory structure
+ls -la ${SWEDEB_DATA_FOLDER}
+
+# Verify CWB corpus
+ls -la ${SWEDEB_DATA_FOLDER}/v1.4.1/cwb/
+
+# Check metadata database
+ls -la ${SWEDEB_DATA_FOLDER}/metadata/
+```
+
+### Metadata Database Errors
+
+**Symptom**: API fails to query metadata
+
+**Solution**: Verify metadata database file and permissions
+
+```bash
+# Check database file
+file ${SWEDEB_METADATA_FILENAME}
+
+# Test database
+sqlite3 ${SWEDEB_METADATA_FILENAME} "SELECT COUNT(*) FROM person;"
+
+# Check permissions
+chmod 644 ${SWEDEB_METADATA_FILENAME}
+```
 
 ---
 
-*For additional support, consult the main [README](../README.md) or open an issue on GitHub.*
+## Performance Issues
+
+### Slow KWIC Queries
+
+**Symptom**: Search queries take too long
+
+**Diagnosis**: Profile KWIC performance
+```bash
+make profile-kwic-pyinstrument
+```
+
+**Solutions**:
+- Reduce query complexity
+- Use more specific filters (dates, parties, etc.)
+- Check CWB index integrity
+- Monitor memory usage
+
+### High Memory Usage
+
+**Symptom**: Container uses excessive memory
+
+**Diagnosis**: Check memory usage
+```bash
+# Container memory stats
+podman stats swedeb-api-production
+
+# Inside container
+free -h
+```
+
+**Solutions**:
+- Set memory limits in container config
+- Optimize corpus loading
+- Check for memory leaks in logs
+
+---
+
+## Podman-Specific Issues
+
+### Permission Denied Errors
+
+**Symptom**: Volume mounts fail with permission errors, or "Read-only file system" errors
+
+**Cause**: UID/GID mismatch, SELinux, or filesystem mount options
+
+**Common Scenarios**:
+
+#### 1. Read-only /app/public directory
+
+**Error**:
+```
+tar: ./index.html: Cannot open: Read-only file system
+```
+
+**Diagnosis**:
+```bash
+# Check container filesystem
+podman exec -it <container> stat /app/public
+podman exec -it <container> mount | grep overlay
+
+# Check if container is running with read-only root
+podman inspect <container> | grep -i readonly
+```
+
+**Solutions**:
+
+**Option A**: Ensure /app/public is not mounted as read-only
+```bash
+# Check Quadlet file - ensure no :ro flag on /app or /app/public
+# Should NOT have:
+Volume=/app/public:/app/public:ro
+```
+
+**Option B**: Use SELinux volume labels
+```bash
+# Use :Z flag for SELinux context
+Volume=/data:/data:Z
+
+# Or use :U flag for UID/GID mapping (Podman 4.3+)
+Volume=/data:/data:U
+```
+
+**Option C**: Fix ownership in container
+```dockerfile
+# In Dockerfile, ensure proper ownership
+RUN mkdir -p /app/public && \
+    chown ${APP_USER}:${APP_USER} /app/public && \
+    chmod 755 /app/public
+```
+
+**Option D**: Use temporary extraction (automatic fallback)
+
+The download script now automatically tries to extract to /tmp first if /app/public is read-only, then copies the files. Check logs for:
+```
+Attempting workaround: extract to /tmp and copy...
+```
+
+#### 2. Volume mount permission issues
+```bash
+# Use :Z flag for SELinux context
+Volume=/data:/data:Z
+
+# Or use :U flag for UID/GID mapping
+Volume=/data:/data:U
+
+# Check ownership
+ls -lan /path/to/data
+```
+
+### Container Won't Start
+
+**Symptom**: `systemctl --user start` fails
+
+**Diagnosis**:
+```bash
+# Check status
+systemctl --user status swedeb-api-production
+
+# View logs
+journalctl --user -u swedeb-api-production -n 50
+
+# Check Quadlet file
+podman systemctl status swedeb-api-production
+```
+
+### Image Pull Failures
+
+**Symptom**: Cannot pull image from GHCR
+
+**Solution**:
+```bash
+# Re-authenticate
+echo $GITHUB_TOKEN | podman login ghcr.io -u $GITHUB_USERNAME --password-stdin
+
+# Test pull manually
+podman pull ghcr.io/humlab-swedeb/swedeb-api:latest
+
+# Check credentials
+cat ${XDG_RUNTIME_DIR}/containers/auth.json
+```
+
+---
+
+## Getting Help
+
+If you're still experiencing issues:
+
+1. **Collect diagnostic information**:
+   ```bash
+   # Network diagnostics
+   podman exec -it <container> /app/docker/test-network.sh > network-diag.txt
+   
+   # Container logs
+   journalctl --user -u <service-name> -n 200 > container-logs.txt
+   
+   # System info
+   podman info > podman-info.txt
+   podman version > podman-version.txt
+   ```
+
+2. **Check documentation**:
+   - [Deployment Guide](./DEPLOYMENT.md)
+   - [Podman Deployment](./DEPLOY_PODMAN.md)
+   - [Developer Guide](./DEVELOPER.md)
+
+3. **Report issues**:
+   - Include all diagnostic output
+   - Describe steps to reproduce
+   - Specify environment (OS, Podman version, etc.)
+   - Open issue at: https://github.com/humlab-swedeb/swedeb-api/issues
