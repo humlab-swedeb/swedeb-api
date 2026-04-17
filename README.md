@@ -17,7 +17,7 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 ## 📚 Documentation
 
 ### For Developers
-- **[Developer Guide](docs/DEVELOPER.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
+- **[Development Guide](docs/DEVELOPMENT.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
 - **[AI Coding Agent Instructions](.github/copilot-instructions.md)** - Essential guide for AI assistants working with this codebase
 
 ### For Deployment & Operations
@@ -150,7 +150,7 @@ Profile KWIC performance:
 make profile-kwic-pyinstrument
 ```
 
-See [DEVELOPER.md](docs/DEVELOPER.md) for testing best practices and patterns.
+See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for testing best practices and patterns.
 
 ## API Documentation
 
@@ -186,7 +186,7 @@ BREAKING CHANGE: All endpoints now use /v2/ prefix"
 
 **Workflow:** Create feature branch from `dev` → PR to `dev` → After merge: `dev` → `test` → `staging` → `main`
 
-See the [Developer Guide](docs/DEVELOPER.md) for complete workflow, branching strategy, and CI/CD details.
+See the [Development Guide](docs/DEVELOPMENT.md) for complete workflow, branching strategy, and CI/CD details.
 
 ## Deployment & Release
 
@@ -246,7 +246,7 @@ The enter swedeb_staging (as above) and restart ontinaer
 
 **Complete guides:**
 - [Operations Guide](docs/OPERATIONS.md) - Full deployment and operations instructions
-- [Developer Guide](docs/DEVELOPER.md) - Workflow and contribution guidelines
+- [Development Guide](docs/DEVELOPMENT.md) - Workflow and contribution guidelines
 
 ## Environment Variables
 
