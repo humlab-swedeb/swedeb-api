@@ -105,12 +105,15 @@ def configure_config_store():
 - Build Docker images solely through `.github/scripts/build-and-push-image.sh`; expect runtime frontend assets to be fetched by `download-frontend.sh` and push outputs to `ghcr.io/humlab-swedeb/swedeb-api` with environment-specific compose files (`compose.test.yml`, `compose.staging.yml`, `docker-compose.yml`).
 
 ## Documentation & Knowledge Base
-- Consult deployment docs (`docs/DEPLOYMENT.md`) and workflow guides before changing release processes or infrastructure.
+- Consult `docs/OPERATIONS.md` plus current workflow files, scripts, container definitions, and runtime configuration before changing release processes or infrastructure.
+- Keep `docs/OPERATIONS.md` focused on operations: environments, runtime configuration and secrets, operational assumptions, data layout, build artifacts, deployment flow, CI stages, CD triggers/release process, post-deployment verification, rollback, health/observability, and backup/recovery basics.
+- Do not put local development setup, contributor workflow, unit-test patterns, or general Git guidance into `docs/OPERATIONS.md`; keep those in `docs/DEVELOPER.md` or other developer-facing docs.
+- Treat `docs/archive/` as historical reference only, not the source of truth for current operational procedures.
 - Keep API contracts discoverable via `/docs` (Swagger) and `/redoc`; update schemas in `api_swedeb/schemas/` alongside endpoint changes.
 
 ## Common Implementation Tasks
 - When adding endpoints: define schemas under `api_swedeb/schemas/`, create/extend services in `api_swedeb/api/services/`, inject services via `Depends()` in routers, call service methods (not corpus methods), add tests in `tests/api_swedeb/api/` with mocked services
-- When changing configuration: edit `config/config.yml`, update `tests/config.yml` to mirror new keys, adjust `ConfigValue` usages, and refresh deployment docs if the change affects environments.
+- When changing configuration: edit `config/config.yml`, update `tests/config.yml` to mirror new keys, adjust `ConfigValue` usages, and refresh `docs/OPERATIONS.md` if the change affects runtime environments, secrets, deployment flow, or operational procedures.
 - When optimizing performance: profile first, inspect `load.py::_memory_usage()`, prefer feather storage, and refine CWB/CQP queries instead of bypassing caches.
 - When changing speech retrieval behavior: prefer `api_swedeb/core/speech_store.py`, `api_swedeb/core/speech_repository_fast.py`, and `api_swedeb/workflows/prebuilt_speech_index/`; touch `api_swedeb/legacy/` only when the task explicitly concerns the archived fallback path.
 
