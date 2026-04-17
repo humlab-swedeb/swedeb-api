@@ -8,19 +8,32 @@ It is not the deployment or runtime operations runbook. Environment rollout, rel
 
 ## Table of Contents
 
-- [Purpose](#purpose)
-- [Audience and Scope](#audience-and-scope)
-- [Prerequisites](#prerequisites)
-- [Local Setup](#local-setup)
-- [Local Configuration](#local-configuration)
-- [Project Structure](#project-structure)
-- [Common Development Commands](#common-development-commands)
-- [Code Quality Checks](#code-quality-checks)
-- [Development Workflow](#development-workflow)
-- [Database and Migration Workflow](#database-and-migration-workflow)
-- [Debugging and Troubleshooting](#debugging-and-troubleshooting)
-- [Development Best Practices](#development-best-practices)
-- [Related Documents](#related-documents)
+- [Development Guide](#development-guide)
+  - [Purpose](#purpose)
+  - [Table of Contents](#table-of-contents)
+  - [Audience and Scope](#audience-and-scope)
+  - [Prerequisites](#prerequisites)
+  - [Local Setup](#local-setup)
+  - [Local Configuration](#local-configuration)
+  - [Project Structure](#project-structure)
+  - [Common Development Commands](#common-development-commands)
+  - [Code Quality Checks](#code-quality-checks)
+  - [Development Workflow](#development-workflow)
+    - [Branch and PR flow](#branch-and-pr-flow)
+    - [Commit conventions](#commit-conventions)
+    - [Before opening a PR](#before-opening-a-pr)
+  - [Database and Migration Workflow](#database-and-migration-workflow)
+  - [Debugging and Troubleshooting](#debugging-and-troubleshooting)
+    - [Local Debug Modes](#local-debug-modes)
+    - [Mode 1 — Backend with a separate frontend dev server](#mode-1--backend-with-a-separate-frontend-dev-server)
+      - [Step 1 — Start the backend.](#step-1--start-the-backend)
+      - [Step 2 — Configure the frontend dev server to proxy API calls.](#step-2--configure-the-frontend-dev-server-to-proxy-api-calls)
+      - [Step 3 — Start the frontend dev server.](#step-3--start-the-frontend-dev-server)
+    - [Mode 2 — Backend serving a locally built frontend](#mode-2--backend-serving-a-locally-built-frontend)
+      - [Step 1 — Build the frontend.](#step-1--build-the-frontend)
+      - [Step 2 — Start the backend with static files.](#step-2--start-the-backend-with-static-files)
+  - [Development Best Practices](#development-best-practices)
+  - [Related Documents](#related-documents)
 
 ## Audience and Scope
 
@@ -266,6 +279,72 @@ Repository-specific troubleshooting notes:
 - if a change affects CWB or KWIC performance, profile it with `make profile-kwic-pyinstrument`
 - if a change affects test data or metadata-driven behavior, compare `config/config.yml`, `tests/config.yml`, and the generated test config path in `tests/output/`
 - use `/docs` and `/redoc` to confirm request/response contracts quickly during API work
+
+### Local Debug Modes
+
+Two non-Docker modes for running the backend with the VS Code debugger (F5 / **Run and Debug** panel), avoiding a separate `uvicorn` terminal command.
+
+`.vscode/launch.json` defines two named configurations:
+
+- **FastAPI: backend only** — API on `http://localhost:8000`, no static files served; pair with the frontend dev server
+- **FastAPI: backend + static frontend** — API + locally built frontend assets mounted at `/public`
+
+Both configs load `config/dev_swedeb.yml` via `SWEDEB_CONFIG_PATH`. `--reload` is intentionally omitted — uvicorn's file-watcher forks a child process that the debugger does not follow, so breakpoints would never be hit. Restart the debug session manually after code changes.
+
+------------------
+
+### Mode 1 — Backend with a separate frontend dev server
+
+Use when iterating on backend and frontend simultaneously and you want hot-reload on both sides.
+
+#### Step 1 — Start the backend.
+Select **FastAPI: backend only** and press F5. The API starts on `http://localhost:8000` with reload enabled.
+
+#### Step 2 — Configure the frontend dev server to proxy API calls.
+The Quasar dev server runs on port 8080. By default, `process.env.API` is `/v1` (same-origin), so API calls will not reach the backend. Add a proxy to the `devServer` block in `quasar.config.js`:
+
+```js
+devServer: {
+  // ...existing options...
+  proxy: {
+    '/v1': {
+      target: 'http://localhost:8000',
+      changeOrigin: true,
+    },
+  },
+},
+```
+
+This is a local convenience change. Do not commit the proxy config unless the project intentionally adopts it.
+
+#### Step 3 — Start the frontend dev server.
+
+```bash
+cd ../swedeb_frontend
+pnpm dev
+```
+
+The browser opens at `http://localhost:8080`. API requests are proxied to the backend.
+
+------------------
+
+### Mode 2 — Backend serving a locally built frontend
+
+Use when you want to test the complete app as a single origin without Docker.
+
+#### Step 1 — Build the frontend.
+
+```bash
+cd ../swedeb_frontend
+pnpm build
+```
+
+This produces `dist/spa/` inside the `swedeb_frontend` directory.
+
+#### Step 2 — Start the backend with static files.
+Select **FastAPI: backend + static frontend** and press F5. The launch config sets `STATIC_DIR` to `<workspace>/../swedeb_frontend/dist/spa`. `main.py` passes it to `create_app(static_dir=...)`, which mounts the assets at `/public`.
+
+Open `http://localhost:8000/public/index.html` in a browser. All API and frontend traffic is served from the same origin on port 8000.
 
 ## Development Best Practices
 
