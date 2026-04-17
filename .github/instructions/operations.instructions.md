@@ -39,7 +39,7 @@ Those topics belong in developer-facing documentation, design/architecture docum
 ## Scope boundaries
 
 - `docs/OPERATIONS.md`: runtime environments, release flow, deployment, verification, recovery, and operational dependencies
-- `docs/DEVELOPER.md`: contributor workflow, commit conventions, local commands, development and testing practices
+- `docs/DEVELOPMENT.md`: contributor workflow, commit conventions, local commands, development and testing practices
 - `README.md`: short overview and entry-point links, not the full runbook
 - `docs/archive/`: historical reference only; do not treat archived docs as the source of truth for current operations
 
@@ -90,6 +90,6 @@ Those topics belong in developer-facing documentation, design/architecture docum
 - `docker/`
 - `config/`
 - `AGENTS.md`
-- `docs/DEVELOPER.md`
+- `docs/DEVELOPMENT.md`
 
 Verify operational claims against current workflow files, scripts, and runtime configuration before documenting them.
