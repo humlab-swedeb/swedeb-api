@@ -105,7 +105,7 @@ def configure_config_store():
 - Build Docker images solely through `.github/scripts/build-and-push-image.sh`; expect runtime frontend assets to be fetched by `download-frontend.sh` and push outputs to `ghcr.io/humlab-swedeb/swedeb-api` with environment-specific compose files (`compose.test.yml`, `compose.staging.yml`, `docker-compose.yml`).
 
 ## Documentation & Knowledge Base
-- Consult deployment docs (`docs/DEPLOYMENT.md`, `docs/DEPLOY_DOCKER.md`, `docs/DEPLOY_PODMAN.md`), workflow guides, and troubleshooting references before changing release processes or infrastructure.
+- Consult deployment docs (`docs/DEPLOYMENT.md`) and workflow guides before changing release processes or infrastructure.
 - Keep API contracts discoverable via `/docs` (Swagger) and `/redoc`; update schemas in `api_swedeb/schemas/` alongside endpoint changes.
 
 ## Common Implementation Tasks

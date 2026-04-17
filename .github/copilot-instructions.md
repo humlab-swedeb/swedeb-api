@@ -5,7 +5,7 @@ This file should stay small and always-on. Put detailed backend guidance in `.gi
 ## Documentation scope
 
 - Trust current runtime and deployment docs in `docs/`.
-- Start with `docs/DESIGN.md`, `docs/DEPLOYMENT.md`, `docs/WORKFLOW_GUIDE.md`, `docs/WORKFLOW_ARCHITECTURE.md`, and `docs/TROUBLESHOOTING.md`.
+- Start with `docs/DESIGN.md`, `docs/DEPLOYMENT.md` and`docs/DEVELOPER.md`.
 - For proposal work, use `docs/PROPOSAL_WRITING_GUIDE.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
 - Treat `docs/change_requests/` as design and migration context, not source of truth for current behavior, unless the task is explicitly proposal-related.
 - Ignore `docs/archive/` for implementation decisions.
