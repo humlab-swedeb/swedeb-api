@@ -5,7 +5,7 @@
 - The container starts and serves both API and frontend
 - The image matches what GitHub Actions will produce
 
-**Not covered here:** Local development with `uvicorn` (see main README), production deployment (see DEPLOY_PODMAN.md), or CI/CD configuration (see CI-CD.md).
+**Not covered here:** Local development with `uvicorn` (see main README) or CI/CD configuration (see docs/OPERATIONS.md).
 
 ---
 
@@ -154,12 +154,9 @@ git add . && git commit -m "feat: your changes" && git push
 ## See Also
 
 - [README.md](README.md) - Docker build overview
-- [DEPLOY_PODMAN.md](../docs/DEPLOY_PODMAN.md) - Production deployment
 - [CI-CD.md](../CI-CD.md) - GitHub Actions workflows
 
 ## Questions?
 
 See also:
 - [../README.md](../README.md) - Main project documentation
-- [../docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md) - Deployment troubleshooting
-- [../docs/DEPLOY_PODMAN.md](../docs/DEPLOY_PODMAN.md) - Podman deployment guide
