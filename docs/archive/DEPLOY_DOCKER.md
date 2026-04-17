@@ -503,7 +503,7 @@ docker rmi ghcr.io/humlab-swedeb/swedeb-api:0.5.0
 
 ## Related Resources
 
-- [Main Deployment Guide](./DEPLOYMENT.md) - Overview and CI/CD information
+- [Main Operations Guide](../OPERATIONS.md) - Overview and CI/CD information
 - [Podman Deployment Guide](./DEPLOY_PODMAN.md) - Alternative deployment method
 - [Troubleshooting Guide](./TROUBLESHOOTING.md) - Common issues and solutions
 

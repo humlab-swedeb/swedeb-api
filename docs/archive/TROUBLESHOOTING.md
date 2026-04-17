@@ -415,7 +415,7 @@ If you're still experiencing issues:
    ```
 
 2. **Check documentation**:
-   - [Deployment Guide](./DEPLOYMENT.md)
+   - [Operations Guide](../OPERATIONS.md)
    - [Podman Deployment](./archive/DEPLOY_PODMAN.md) (archived)
    - [Developer Guide](./DEVELOPER.md)
 

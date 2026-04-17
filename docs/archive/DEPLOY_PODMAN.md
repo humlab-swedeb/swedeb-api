@@ -738,7 +738,7 @@ scp swedeb-quadlet-backup-*.tar.gz backup-server:/backups/
 
 ## Related Resources
 
-- [Main Deployment Guide](./DEPLOYMENT.md) - Overview and CI/CD information
+- [Main Operations Guide](../OPERATIONS.md) - Overview and CI/CD information
 - [Docker Compose Deployment](./DEPLOY_DOCKER.md) - Alternative deployment method
 - [Troubleshooting Guide](./TROUBLESHOOTING.md) - Common Podman-specific issues
 - [Quadlet Documentation](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
