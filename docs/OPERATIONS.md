@@ -117,7 +117,7 @@ The runtime deployment layer is expected to provide environment variables such a
 - `SWEDEB_HOST_PORT`
 - `SWEDEB_METADATA_FILENAME`
 
-See [ENVIRONMENT_VARIABLE.md](./ENVIRONMENT_VARIABLE.md) for the wider variable inventory.
+See the archived [ENVIRONMENT_VARIABLE.md](./archive/ENVIRONMENT_VARIABLE.md) for the older variable inventory reference.
 
 ### Secrets and credentials
 
@@ -338,7 +338,7 @@ The repository does not currently define an authoritative backup/recovery proced
 ## Related Resources
 
 - [DEVELOPMENT.md](./DEVELOPMENT.md) for contributor workflow and local development guidance
-- [ENVIRONMENT_VARIABLE.md](./ENVIRONMENT_VARIABLE.md) for variable inventory
+- [archive/ENVIRONMENT_VARIABLE.md](./archive/ENVIRONMENT_VARIABLE.md) as historical variable inventory reference only
 - [FAQ.md](./FAQ.md) for current operational command examples
 - [docker/README.md](../docker/README.md) for image-build details
 - [archive/DEPLOY_PODMAN.md](./archive/DEPLOY_PODMAN.md) and [archive/DEPLOY_DOCKER.md](./archive/DEPLOY_DOCKER.md) as historical references only

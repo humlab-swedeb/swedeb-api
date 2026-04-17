@@ -1,326 +1,303 @@
-# Swedeb API — Design Notes
+# Design Guide
 
-This document captures design decisions, invariants, and rules that govern the
-runtime speech retrieval system.  It is intended as a living reference — add a
-new section whenever a non-obvious invariant is discovered or a structural
-decision is made.
+## Purpose
 
----
+This guide describes the current design of the Swedeb API backend. It focuses on system structure, component boundaries, key runtime flows, data/persistence design, cross-cutting concerns, and the design decisions that shape how the codebase works today.
 
-## Prebuilt bootstrap_corpus — Creation, Storage, and Use
+It is not the main guide for local setup, contributor workflow, testing policy, or deployment operations. Those topics belong in [DEVELOPMENT.md](./DEVELOPMENT.md), [TESTING.md](./TESTING.md), and [OPERATIONS.md](./OPERATIONS.md).
 
-### Creation (`api_swedeb/workflows/prebuilt_speech_index/build.py`)
+## Table of Contents
 
-The corpus is built offline by `SpeechCorpusBuilder` (invoked via `make build-speech-corpus`
-or the `build_speech_corpus_cli` script).  The builder iterates every tagged-frames ZIP
-under the configured source folder using multiprocessing.
+- [Purpose](#purpose)
+- [Audience and Scope](#audience-and-scope)
+- [System Context and Boundaries](#system-context-and-boundaries)
+- [High-Level Architecture](#high-level-architecture)
+- [Components and Responsibilities](#components-and-responsibilities)
+- [Key Flows and Interactions](#key-flows-and-interactions)
+- [Data and Persistence Design](#data-and-persistence-design)
+- [Cross-Cutting Concerns](#cross-cutting-concerns)
+- [Constraints and Assumptions](#constraints-and-assumptions)
+- [Design Decisions and Tradeoffs](#design-decisions-and-tradeoffs)
+- [Known Limitations or Technical Debt](#known-limitations-or-technical-debt)
+- [Related Documents](#related-documents)
 
-**Per-protocol build steps** (`_process_zip`):
+## Audience and Scope
 
-1. Load `metadata.json` and the utterances JSON from the ZIP.
-2. Merge utterances into speeches using the **chain** strategy via `merge_protocol_utterances`.
-3. Build a `full_rows` list — one dict per speech — with:
-   - Identity fields: `speech_id`, `document_name` (`protocol_name_N`), `protocol_name`, `date`, `year`, `speech_index`
-   - Speaker fields: `speaker_id`, `speaker_note_id`
-   - Counts: `num_tokens`, `num_words`, `page_number_start`, `page_number_end`
-   - Pre-computed full text: `text` = `fix_whitespace("\n".join(paragraphs))` — whitespace-normalised at build time to avoid runtime regex overhead
-4. Enrich rows with speaker metadata (name, gender, party, office type) via `enrich_speech_rows` (requires a `SpeakerLookups` instance from the metadata SQLite DB).
-5. Write one Feather file per protocol to `{output_root}/{year}/{protocol_stem}.feather` using `pa.Table.from_pylist` + `feather.write_feather`.
+This document is for developers and maintainers who need to understand how the backend is structured before changing it.
 
-**Aggregate index files** written at the root:
+It covers:
 
-| File                    | Content |
-|-------------------------|---|
-| `speech_lookup.feather` | Minimal 4-column key-to-location map.  Used exclusively by `SpeechStore` at startup. |
-| `speech_index.feather`  | Full index (same rows, all metadata columns).  Consumed by the DTM/search layer. |
-| `manifest.json`         | Build timestamp, corpus/metadata versions, per-protocol result counts, and quality metrics. |
+- the current FastAPI application shape
+- boundaries between routers, services, mappers, schemas, and core modules
+- how corpus, metadata, and speech data flow through the runtime
+- the offline/runtime split between corpus-building workflows and the live API
+- design-level constraints and tradeoffs that matter when evolving the system
 
-**`speech_lookup.feather` schema** — a validated subset of `speech_index.feather`:
+It does not cover:
 
-| Column          | PyArrow type | Description                                                                                   |
-|-----------------|--------------|-----------------------------------------------------------------------------------------------|
-| `speech_id`     | string       | XML-native stable ID (`i-…`).  Primary lookup key.                                            |
-| `document_name` | string       | `{protocol_name}_{speech_index}` (unpadded integer suffix).  Secondary lookup key.            |
-| `feather_file`  | string       | Relative path to the protocol Feather file (e.g. `1970/prot-1970--ak--029.feather`).          |
-| `feather_row`   | int64        | Zero-based row offset within that file.  Together with `feather_file` forms the O(1) address. |
+- step-by-step local development setup
+- deployment, rollback, observability, or incident procedures
+- endpoint-by-endpoint request and response reference
+- detailed unit-test catalogs or CI workflow commentary
+- archived designs unless they still explain an active constraint
 
-Both `speech_id` and `document_name` are validated at build time: any null or empty value raises an error before the file is written.
+Treat `docs/archive/` and `docs/change_requests/` as supporting context, not as the source of truth for the active runtime design.
 
-**`speech_index.feather` schema** — the full index, same rows as `speech_lookup.feather`:
+## System Context and Boundaries
 
-| Column               | PyArrow type | Description                                           |
-|----------------------|--------------|-------------------------------------------------------|
-| `speech_id`          | string       | XML-native stable ID                                  |
-| `document_name`      | string       | `{protocol_name}_{speech_index}`                      |
-| `protocol_name`      | string       | e.g. `prot-1970--ak--029`                             |
-| `date`               | string       | ISO date string                                       |
-| `year`               | int16        | Start year extracted from protocol name               |
-| `speaker_id`         | string       | Speaker URI from ParlaCLARIN                          |
-| `speaker_note_id`    | string       | Identifies the `<note>` element for this speaker turn |
-| `speech_index`       | int16        | Within-protocol sequence number (1-based, unpadded)   |
-| `page_number_start`  | int16        | First page of the speech                              |
-| `page_number_end`    | int16        | Last page of the speech                               |
-| `num_tokens`         | int16        | Token count from tagger                               |
-| `num_words`          | int16        | Word count (non-punctuation tokens)                   |
-| `name`               | string       | Full name of the speaker (enriched at build time)     |
-| `gender_id`          | int8         | Integer FK to gender table                            |
-| `gender`             | string       | e.g. `Man`, `Kvinna`                                  |
-| `gender_abbrev`      | string       | e.g. `M`, `K`                                         |
-| `party_id`           | int16        | Integer FK to party table                             |
-| `party_abbrev`       | string       | e.g. `S`, `M`, `FP`                                   |
-| `office_type_id`     | int8         | Integer FK to office-type table                       |
-| `office_type`        | string       | e.g. `Ledamot`, `Minister`                            |
-| `sub_office_type_id` | int8         | Integer FK to sub-office-type table                   |
-| `sub_office_type`    | string       | e.g. `Första kammaren`, `Andra kammaren`              |
-| `wiki_id`            | string       | Wikidata QID of the speaker                           |
-| `feather_file`       | string       | Relative path to the protocol Feather file            |
-| `feather_row`        | int64        | Zero-based row offset within that file                |
+Swedeb API is a FastAPI backend that exposes Swedish parliamentary debate data through a small set of metadata and analysis endpoints.
 
-Protocol Feather file naming always uses the **ZIP stem**, not any name inside `metadata.json`
-(the two can differ).
+At runtime, the backend depends on four main data sources:
 
----
+- a CWB corpus for KWIC and n-gram queries
+- a vectorized DTM corpus for word-trend and speech-index operations
+- a SQLite metadata database for speaker, party, office, and related codec data
+- a prebuilt `bootstrap_corpus` stored as Feather files for fast speech retrieval and metadata-enriched speech listings
 
-### Storage Layout
+The public API surface is currently organized into two routers:
 
-```
-bootstrap_corpus/
-├── speech_lookup.feather          # global lookup index (speech_id → file + row)
-├── speech_index.feather           # full speech index with all metadata fields
-├── manifest.json                  # build provenance
-├── 1867/
-│   ├── prot-1867--ak--001.feather
-│   └── ...
-├── 1868/
-│   └── ...
-└── {year}/
-    └── {protocol_stem}.feather    # per-protocol payload table
+- `/v1/tools` for analysis, retrieval, and download endpoints
+- `/v1/metadata` for metadata lists and speaker queries
+
+The backend can also mount static frontend assets at `/public` when `create_app()` is given a `static_dir`, but the primary responsibility of this repository remains the backend API and corpus-access layer.
+
+## High-Level Architecture
+
+The runtime follows a direct service-injection design.
+
+```text
+FastAPI app
+  -> routers
+  -> dependency factories
+  -> focused services
+  -> core corpus / config / storage modules
+  -> pandas / pyarrow / cwb-ccc / SQLite-backed data sources
 ```
 
-**Per-protocol Feather schema** (columns written by `_process_zip` + enrichment):
+`api_swedeb.app.create_app()` is the composition root. It:
 
-| Column                                                          | Type   | Description                                 |
-|-----------------------------------------------------------------|--------|---------------------------------------------|
-| `speech_id`                                                     | string | XML-native stable ID (`i-…`)                |
-| `document_name`                                                 | string | `{protocol_name}_{speech_index}` (unpadded) |
-| `protocol_name`                                                 | string |                                             |
-| `date`                                                          | string | ISO date                                    |
-| `year`                                                          | int16  | Start year from protocol name               |
-| `speaker_id`                                                    | string |                                             |
-| `speaker_note_id`                                               | string |                                             |
-| `speech_index`                                                  | int16  | Within-protocol sequence number             |
-| `page_number_start/end`                                         | int16  |                                             |
-| `num_tokens`, `num_words`                                       | int16  |                                             |
-| `text`                                                          | string | Pre-computed `fix_whitespace` plain text    |
-| `name`, `gender`, `gender_abbrev`                               | string | Materialised speaker metadata               |
-| `gender_id`, `party_id`, `office_type_id`, `sub_office_type_id` | int    |                                             |
-| `party_abbrev`, `office_type`, `sub_office_type`, `wiki_id`     | string |                                             |
+- initializes configuration from `SWEDEB_CONFIG_PATH` or `config/config.yml`
+- creates and manages the `ResultStore` through the FastAPI lifespan hook
+- configures CORS from `fastapi.origins`
+- mounts `/public` when static assets are supplied
+- registers the tools and metadata routers
 
-`paragraphs` and `annotation` are **not stored** — only the final `text` string is
-persisted to minimise file size and eliminate runtime parsing cost.
+The runtime does not use a large domain facade. Instead, routers depend directly on focused services through factories in `api_swedeb/api/dependencies.py`. Those factories keep long-lived service instances in module-level singletons so expensive loaders and metadata structures are reused across requests.
 
----
+The main architectural layers are:
 
-### Runtime Use (`api_swedeb/core/`)
+- routers: HTTP contract and request/response orchestration
+- services: use-case logic
+- mappers: DataFrame/domain result to API schema projection
+- schemas: Pydantic request and response models
+- core modules: configuration, CWB query compilation/execution, speech storage/retrieval, and data-loading utilities
+- workflows: offline corpus-building processes that produce runtime artifacts
 
-**`SpeechStore.__init__`** loads `speech_lookup.feather` once at startup and builds two
-in-memory dicts from it:
+## Components and Responsibilities
 
-```
-_sid_to_loc:   speech_id    → (feather_file, feather_row)
-_name_to_loc:  document_name → (feather_file, feather_row)
-```
+### App and API layer
 
-Protocol Feather tables are loaded lazily on first access and kept in an LRU cache
-(`max_cached_protocols`, default 128).  Reads are always batched via `pa.Table.take`
-rather than row-by-row slicing.
+The entry point is [main.py](../main.py), which builds the app through [api_swedeb/app.py](../api_swedeb/app.py). Routers live in:
 
-**Three read paths** exposed by `SpeechStore`:
+- [api_swedeb/api/v1/endpoints/tool_router.py](../api_swedeb/api/v1/endpoints/tool_router.py)
+- [api_swedeb/api/v1/endpoints/metadata_router.py](../api_swedeb/api/v1/endpoints/metadata_router.py)
 
-| Method                                 | Use case                                   |
-|----------------------------------------|--------------------------------------------|
-| `get_row(file, row)`                   | Single speech → Speech object              |
-| `get_rows_batch(file, rows)`           | Multiple speeches → list of dicts          |
-| `get_column_batch(file, rows, column)` | Single column (e.g. `"text"`) for download |
+`api_swedeb/api/params.py` defines shared query-parameter objects so filtering semantics are centralized rather than reimplemented per endpoint.
 
-**`SpeechRepository`** (built on top of `SpeechStore`) dispatches lookup by `speech_id`
-as the primary key.  `document_name` is a fallback only, handled via `_speech_id2id`
-(built lazily from the DTM document index on first miss).
+### Dependency and service layer
 
-The **text-only download path** (`speeches_text_batch`) uses `get_column_batch(..., "text")`
-— a single Arrow column read with no Python-level text processing, since `text` is already
-whitespace-normalised at build time.
+`api_swedeb/api/dependencies.py` wires the main services and a few lower-level objects:
 
----
+- `CorpusLoader`
+- `MetadataService`
+- `SearchService`
+- `WordTrendsService`
+- `NGramsService`
+- `KWICService`
+- `KWICTicketService`
+- `DownloadService`
+- `ResultStore`
+- CWB corpus creation helpers
 
----
+The key services are:
 
-## Key Identifier: `speech_id`
+- `CorpusLoader`: lazy access to DTM corpus, prebuilt speech index, metadata codecs, and speech repository
+- `MetadataService`: read-only metadata tables
+- `SearchService`: speech listing, speaker lookup, single-speech retrieval, and batch speech access
+- `WordTrendsService`: vocabulary filtering and time-series aggregation over the vectorized corpus
+- `NGramsService`: CWB-backed n-gram extraction
+- `KWICService`: synchronous KWIC query execution and metadata join
+- `KWICTicketService`: asynchronous/paged KWIC workflow and ticket handling
+- `DownloadService`: streamed archive generation for speech downloads
+- `ResultStore`: disk-backed storage for generated KWIC result artifacts
 
-`speech_id` is the XML-native stable identifier for a speech (e.g.
-`i-58be7218d46f7e4a-0`).  It is produced by the ParlaCLARIN-to-Feather
-pipeline and is present in every index.
+### Core runtime modules
 
-`document_name` is a *derived* field that encodes a sequential number
-(e.g. `prot-1970--ak--029_1`).  The numeric suffix reflects the
-position of the speech within the protocol *after* applying the merge
-strategy.  Because DTM builds may use different filtering options (e.g.
-`min_word_length`), the sequence number can differ between the DTM
-document index and the prebuilt bootstrap_corpus.
+The main core subsystems are:
 
-**Rule**: always route lookups through `speech_id`.  Use `document_name`
-only as a last-resort fallback, and log a WARNING when doing so.
+- `core/configuration/`: `Config`, `ConfigStore`, and `ConfigValue`
+- `core/load.py`: DTM and speech-index loading, Feather invalidation checks, and index slimming
+- `core/cwb/`: CQP expression compilation and CWB helpers
+- `core/kwic/`: single-process and multiprocessing KWIC execution
+- `core/speech_store.py`: low-level Feather storage access for prebuilt speech data
+- `core/speech_repository.py`: higher-level speech retrieval built on `SpeechStore`
+- `core/speech_utility.py`: formatting and URL/link derivation used by API mappers
+- `core/word_trends.py` and `core/speech_index.py`: DTM-driven analysis helpers
 
----
+### Offline workflow layer
 
-## Three-Index Alignment Invariant
+`api_swedeb/workflows/prebuilt_speech_index/` builds the precomputed `bootstrap_corpus` used by the runtime. This is intentionally separated from the live API: the runtime reads prebuilt artifacts; it does not reconstruct them on demand.
 
-Three independent indexes must contain the same set of `speech_id` values:
+### Legacy boundary
 
-| Index                     | File                                                                         | Key column  |
-|---------------------------|------------------------------------------------------------------------------|-------------|
-| VRT feather               | `v{ver}/speeches/tagged_frames_speeches_text.feather/document_index.feather` | `u_id`      |
-| DTM document index        | `v{ver}/dtm/text/text_document_index.feather`                                | `u_id`      |
-| Prebuilt bootstrap_corpus | `v{ver}/speeches/bootstrap_corpus/speech_lookup.feather`                     | `speech_id` |
+`api_swedeb/legacy/` contains archived fallback runtime code. It is preserved for rollback/forensics and matching legacy tests, but it is not the design center of the active application.
 
-All three are produced from the same ParlaCLARIN source corpus using the
-**chain** merge strategy with no speech filtering.  Any divergence indicates a
-pipeline inconsistency.
+## Key Flows and Interactions
 
-The integration test `tests/integration/test_index_diffs.py` enforces this as
-a regression guard.
+### 1. Application startup
 
----
+At startup, the app configures the active `ConfigStore` context, builds the FastAPI application, and starts a `ResultStore` rooted at `cache.root_dir`. This makes ticket artifacts and cleanup behavior part of application state rather than ad hoc global file handling.
 
-## Startup Alignment Check (`SpeechRepository._align_with_dtm`)
+### 2. Metadata and speech-listing flow
 
-At startup, `SpeechRepository` compares the `speech_id` sets of the DTM
-document index and the prebuilt `speech_lookup.feather` and logs:
+Metadata requests go from router -> service -> DataFrame -> Pydantic models. For speech listings, `SearchService` reads from the prebuilt speech index exposed by `CorpusLoader`, applies filter options, and then the mapper layer derives API-facing fields such as:
 
-* **INFO** — counts for both indexes and the overlap/diff sizes.
-* **WARNING** — `speech_id` values present in one index but not the other.
-* **INFO** — confirmation when all shared `speech_id` values map to the
-  same `document_name` in both indexes.
-* **WARNING** — list of `speech_id` values where `document_name` differs
-  between the two indexes.
+- formatted `speech_name`
+- Wikidata links
+- PDF links
 
-The check also builds `_doc_id_to_loc: dict[int, tuple[str, int]]`, an O(1)
-map from DTM `document_id` (integer) to `(feather_file, feather_row)`, so
-integer-key lookups never touch the DTM DataFrame at query time.
+This keeps HTTP formatting concerns out of the core storage and retrieval layer.
 
----
+### 3. Synchronous KWIC flow
 
-## `document_name` Normalisation
+The synchronous `/v1/tools/kwic/{search}` path:
 
-The legacy speech-index uses zero-padded numeric suffixes
-(`prot-1970--ak--029_001`), while the bootstrap_corpus uses unpadded integers
-(`prot-1970--ak--029_1`).  `_normalize_document_name()` in
-`speech_repository_fast.py` strips the leading zeros before any lookup so
-both forms resolve to the same entry.
+1. parses shared filter parameters
+2. builds a CWB corpus via dependency helpers
+3. turns request parameters into CQP options
+4. executes KWIC through `core.kwic`
+5. joins KWIC rows with the prebuilt speech index
+6. maps the result to the public KWIC schema
 
----
+The important design choice here is that speaker and speech metadata are joined from the prebuilt speech index rather than decoded on the fly from metadata codecs during every query.
 
-## Index Layers (Data Flow)
+### 4. Ticketed KWIC flow
 
-```
-ParlaCLARIN XML
-    │
-    ├─► riksprot2vrt ──► VRT feather / document_index.feather
-    │                        (u_id = speech_id)
-    │
-    ├─► riksprot2speech ──► tagged_frames_speeches_text.feather
-    │                           (u_id = speech_id)
-    │
-    ├─► vectorize-id ──► DTM corpus
-    │                        text_document_index.feather
-    │                        (u_id = speech_id, document_id = integer PK)
-    │
-    └─► build_bootstrap_corpus ──► bootstrap_corpus/
-                                       speech_lookup.feather
-                                       (speech_id, document_name, feather_file, feather_row)
-                                       *.feather  (one per protocol)
-```
+The paged KWIC path is designed for larger or slower queries:
 
----
+1. the client submits a `KWICQueryRequest`
+2. `KWICTicketService` creates a ticket through `ResultStore`
+3. FastAPI `BackgroundTasks` executes the query
+4. the resulting DataFrame is serialized to Feather in the result-store directory
+5. clients poll ticket status and fetch paged results later
 
-## Archived Legacy Runtime
+This flow trades simplicity for scale: it avoids introducing an external queue or worker system, but it assumes a local filesystem-backed artifact store and in-process task execution.
 
-Files under `api_swedeb/legacy/` are **read-only forensic references**.
-Rules:
+### 5. Speech download flow
 
-* Do not move legacy runtime code into `api_swedeb/workflows/` (that
-  package is for offline/build-time pipeline code only).
-* Do not add new feature work, new dependencies, or new production entry
-  points to the archived modules.
-* Legacy unit tests live in `tests/legacy/`; active production tests live
-  in `tests/api_swedeb/` and `tests/integration/`.
+Speech download requests either:
 
----
+- derive speech IDs from current filter selections, or
+- reuse the speech IDs already captured in a KWIC ticket manifest
 
-## KWIC Frontend Field Usage
+`DownloadService` then batches text retrieval through `SearchService` and `SpeechRepository`, and streams the result as ZIP by default. The service also supports tar.gz and jsonl.gz strategies, but the public route currently serves ZIP responses.
 
-The current frontend lives in the sibling repo `swedeb_frontend/`.  The
-`KeywordInContextItem` API schema is defined in
-`api_swedeb/schemas/kwic_schema.py`, but not every field is consumed by the
-frontend.
+## Data and Persistence Design
 
-This section records the **current** frontend usage observed in:
+### Configuration
 
-* `src/components/kwicDataTable.vue`
-* `src/components/expandingTableRow.vue`
-* `src/pages/PdfPage.vue`
-* `src/stores/kwicDataStore.js`
-* `src/stores/downloadDataStore.js`
-* `src/stores/feedbackDataStore.js`
+Configuration is runtime-resolved through `ConfigValue(...).resolve()` against the active `ConfigStore`. The default app context comes from `SWEDEB_CONFIG_PATH` or `config/config.yml`.
 
-### Fields actively used by the frontend
+This makes configuration a first-class runtime dependency rather than a loose collection of environment variables spread across modules.
 
-These fields are used in the visible KWIC table, the expanded detail row, PDF
-view, or speech download actions:
+### Read-only runtime data
 
-* `left_word`
-* `node_word`
-* `right_word`
-* `year`
-* `name`
-* `party_abbrev`
-* `party`
-* `gender`
-* `link`
-* `speech_name`
-* `speech_link`
-* `speech_id`
+The runtime is built around read-mostly analytical data:
 
-### Fields used only for export
+- DTM/document index files loaded through `penelope.corpus.VectorizedCorpus`
+- CWB registry and data directories
+- metadata tables from SQLite
+- prebuilt Feather artifacts under `speech.bootstrap_corpus_folder`
 
-`document_name` is not rendered in the main KWIC UI, but it is still included
-in the frontend CSV/XLSX export path via `src/stores/kwicDataStore.js`.
+The prebuilt speech corpus is especially important. It consists of:
 
-### Fields currently not used by the frontend
+- one Feather file per protocol
+- `speech_lookup.feather` for lookup locations
+- `speech_index.feather` for the full metadata-enriched speech index
+- `manifest.json` for build provenance
 
-These fields were not found in any active KWIC frontend read path:
+The canonical identifier is `speech_id`. `document_name` remains an important historical/public identifier, but the active repository design treats `speech_id` as the stable lookup key for batch retrieval and ticket manifests.
 
-* `gender_abbrev`
-* `chamber_abbrev`
-* `wiki_id`
+### Writable runtime state
 
-`person_id` is copied once into the mapped row object in
-`src/components/kwicDataTable.vue`, but there is no downstream read of that
-value in the current KWIC UI, report flow, PDF view, or download flow.
+The main writable runtime persistence is `ResultStore`, which writes ticket artifacts as Feather files under `cache.root_dir`. This is ephemeral application state, not a long-lived source dataset.
 
-`document_id` was previously part of `KeywordInContextItem`, but it was removed
-from the public KWIC API contract after confirming that the frontend did not
-consume it.
+## Cross-Cutting Concerns
 
-### Practical trim guidance
+### Validation and API contracts
 
-If the goal is to shrink `KeywordInContextItem` without changing current
-frontend behaviour, the safest trim candidates are:
+Pydantic schemas define the public request and response contracts, and FastAPI exposes generated API documentation at `/docs` and `/redoc`.
 
-* `gender_abbrev`
-* `chamber_abbrev`
-* `wiki_id`
-* likely `person_id`
+### Error handling
 
-`document_name` is a special case: it is not needed for rendering, but it is
-still part of the frontend export contract.
+Routers translate service and store failures into HTTP errors such as:
+
+- `400` for bad pagination or invalid parameter combinations
+- `404` for missing tickets or resources
+- `409` for ticket conflicts or failed async jobs
+- `429` when the pending-ticket limit is exceeded
+
+Lower-level storage and retrieval code often returns degraded results or logs errors instead of crashing the whole request path, especially in speech-retrieval code.
+
+### Logging
+
+The codebase uses Loguru for structured runtime logging. Logging appears in configuration-sensitive, storage-sensitive, and performance-sensitive areas such as CWB access, speech storage, and result-store behavior.
+
+### Performance
+
+Performance-related design choices are visible throughout the runtime:
+
+- lazy loading in `CorpusLoader`
+- singleton reuse of expensive services
+- Feather/Arrow storage for fast columnar access
+- precomputed speech metadata in the bootstrap corpus
+- batched protocol reads in `SpeechStore`
+- optional multiprocessing for KWIC
+- ticketed/paged KWIC to avoid forcing every large query into one synchronous response
+
+### Security and access model
+
+The app currently configures CORS, but it does not implement built-in authentication or authorization. The current design assumes a trusted deployment boundary around the API rather than an internal auth subsystem in this repository.
+
+## Constraints and Assumptions
+
+- Runtime configuration and mounted data paths must agree; the application does not dynamically discover corpus layout.
+- The active runtime assumes the offline bootstrap-corpus workflow has already been run for the configured corpus version.
+- CWB registry and data directories must be valid for query endpoints to work.
+- `speech_id` must remain stable across the prebuilt speech index and any batch retrieval or ticket-manifest workflow.
+- The filesystem-backed `ResultStore` is local to the running deployment unit; it is not a distributed job/result system.
+- The active backend design centers on the prebuilt repository path, not the archived ZIP-based legacy runtime.
+
+## Design Decisions and Tradeoffs
+
+- Direct service injection instead of a monolithic facade: simpler routing and clearer ownership, but dependency lifecycle is still handled through module-level caches rather than a more formal container.
+- Prebuilt speech corpus instead of runtime ZIP parsing: much faster speech retrieval and cleaner batch access, but it adds a required offline build artifact and version-alignment constraint.
+- DataFrame-centric service boundaries: efficient for analytical operations and mapper projection, but it keeps much of the domain logic tied to pandas and Arrow-style structures.
+- Disk-backed ticket artifacts instead of an external queue/cache: straightforward to reason about and easy to inspect, but not naturally suited to distributed workers or multi-node shared state.
+- Archived legacy runtime kept in-repo: useful for compatibility and rollback analysis, but it creates a second code path that must be clearly excluded from new feature work.
+
+## Known Limitations or Technical Debt
+
+- Service singletons are implemented with module-level globals in `api_swedeb/api/dependencies.py`, not with a more explicit app-scoped dependency lifecycle.
+- `ResultStore` is host-local and filesystem-backed, so ticket execution and artifact lookup are not designed for horizontally distributed execution.
+- There is no built-in authentication/authorization layer in the backend.
+- The `/v1/tools/topics` endpoint is still a stub.
+- The repository still carries compatibility-oriented code and archived legacy modules that contributors must consciously avoid when working on active runtime behavior.
+
+## Related Documents
+
+- [DEVELOPMENT.md](./DEVELOPMENT.md)
+- [TESTING.md](./TESTING.md)
+- [OPERATIONS.md](./OPERATIONS.md)
+- [README.md](../README.md)
+- generated FastAPI docs at `/docs` and `/redoc`

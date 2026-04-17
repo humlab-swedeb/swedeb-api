@@ -1,6 +1,10 @@
+---
+description: "Use when writing or updating design proposals and change-request documents for swedeb-api."
+name: "Proposal Writing Guide"
+---
 # Proposal Writing Guide
 
-Use this guide when writing or updating design proposals for this repository.
+Use this instruction when writing or updating design proposals for this repository.
 
 ## Style
 
@@ -44,7 +48,7 @@ Use this guide when writing or updating design proposals for this repository.
 
 ## Structure
 
-Use the template in [templates/PROPOSAL_TEMPLATE.md](templates/PROPOSAL_TEMPLATE.md) by default.
+Use `docs/templates/PROPOSAL_TEMPLATE.md` by default.
 
 Not every section must be used. The default expectation is that proposals are organized around a small core:
 
@@ -74,7 +78,7 @@ The default shape should feel lean, not exhaustive.
 
 ## Working With Copilot
 
-- If you want strict adherence, explicitly reference this guide and the proposal template when asking for a new proposal.
+- If you want strict adherence, explicitly reference this instruction and the proposal template when asking for a new proposal.
 - If proposal-writing rules are also captured in repo instructions, you do not need to repeat them every time.
 
 ## Practical Rule Of Thumb

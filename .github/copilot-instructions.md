@@ -6,7 +6,7 @@ This file should stay small and always-on. Put detailed backend guidance in `.gi
 
 - Trust current runtime and deployment docs in `docs/`.
 - Start with `docs/DESIGN.md`, `docs/OPERATIONS.md`, and `docs/DEVELOPMENT.md`.
-- For proposal work, use `docs/PROPOSAL_WRITING_GUIDE.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
+- For proposal work, use `.github/instructions/proposal-writing-guide.instructions.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
 - Treat `docs/change_requests/` as design and migration context, not source of truth for current behavior, unless the task is explicitly proposal-related.
 - Ignore `docs/archive/` for implementation decisions.
 
@@ -91,3 +91,4 @@ Use the targeted files under `.github/instructions/` instead of expanding this f
 - `python.instructions.md`: backend architecture, config, CWB, testing, and Python change patterns
 - `github-workflow.instructions.md`: issue creation, staging discipline, and commit message rules
 - `operations.instructions.md`: operations-doc scope, environments, runtime config, CI/CD, observability, and recovery documentation
+- `proposal-writing-guide.instructions.md`: proposal-writing style, scope, and default structure for design/change proposals

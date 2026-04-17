@@ -65,7 +65,7 @@ name: "Python Backend"
 - New endpoint: schema → service method → dependency (if needed) → router → tests.
 - Config change: config files → `ConfigValue` usage → tests.
 - Performance change: profile first, then change query or load path, then re-test.
-- Proposal/doc change: follow `docs/PROPOSAL_WRITING_GUIDE.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
+- Proposal/doc change: follow `.github/instructions/proposal-writing-guide.instructions.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
 
 ## Commands
 
