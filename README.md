@@ -22,8 +22,6 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 
 ### For Deployment & Operations
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment guide covering all environments (test, staging, production)
-- **[Podman Quadlet Deployment](docs/DEPLOY_PODMAN.md)** - Detailed Podman systemd deployment procedures (recommended for production)
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions for deployment problems
 
 ## Technology Stack
 
