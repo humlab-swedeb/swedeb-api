@@ -6,7 +6,7 @@ name: "Python Backend"
 
 ## Trust first
 
-- Start with `docs/DESIGN.md`, `docs/DEPLOYMENT.md`, `docs/WORKFLOW_GUIDE.md`, and `docs/TROUBLESHOOTING.md`.
+- Start with `docs/DESIGN.md`, `docs/DEPLOYMENT.md`, and `docs/DEVELOPER.md`.
 - Treat `docs/change_requests/` as proposal and migration context, not authoritative runtime behavior, unless the user is working on proposal work.
 - Ignore `docs/archive/` for implementation decisions.
 
