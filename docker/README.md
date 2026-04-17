@@ -16,12 +16,15 @@ The build process does this:
 2. Writes that wheel to the temporary `docker/wheels/` directory.
 3. Builds the image from [Dockerfile](Dockerfile).
 4. Copies the built wheel plus the runtime files in this directory into the image.
+5. **Downloads and bakes frontend assets into the image** at `/app/public` during build.
 
 At runtime:
 
-- [entrypoint.sh](entrypoint.sh) starts the container.
-- [download-frontend.sh](download-frontend.sh) fetches frontend assets from GitHub releases when needed.
+- [entrypoint.sh](entrypoint.sh) starts the container
 - [main.py](main.py) exposes the FastAPI app for `uvicorn`.
+
+
+**Note:** Frontend is bundled into the image during build. This eliminates runtime download complexity, works with ReadOnly containers, and ensures consistent deployments. Frontend version is controlled via the `FRONTEND_VERSION` build argument (defaults to `staging`).
 
 ## GitHub Actions Workflow
 
@@ -61,6 +64,22 @@ bash docker/build-local-image.sh staging
 ```
 
 This uses the same Dockerfile and the same wheel-first build pattern as CI, but it tags the image locally as `swedeb-api`.
+
+### Quick Local Test
+
+To build and test the image locally:
+
+```bash
+cd docker
+make test-local
+```
+
+Once running, access:
+- **Frontend UI**: http://localhost:8092/public/index.html#/
+- **API Docs**: http://localhost:8092/docs
+- **API Endpoints**: http://localhost:8092/v1/
+
+For more testing options, see [DOCKER_BUILD_TESTING.md](DOCKER_BUILD_TESTING.md).
 
 ### Run The Shared CI Build Script Without Pushing
 
