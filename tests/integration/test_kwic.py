@@ -1,8 +1,9 @@
 import pytest
 from fastapi import status
 
-from api_swedeb.api.dependencies import get_corpus_loader, get_cwb_corpus
+from api_swedeb.api.dependencies import get_cwb_corpus
 from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.mappers.kwic import kwic_to_api_model
 
@@ -67,12 +68,11 @@ def test_kwic_speech_id_in_search_results(fastapi_client):
 
 
 @pytest.mark.asyncio
-async def test_bug_kwic_fails_when_lemmatized_is_true():
+async def test_bug_kwic_fails_when_lemmatized_is_true(corpus_loader: CorpusLoader):
 
     corpus = get_cwb_corpus()
-    loader = get_corpus_loader()
     lemmatized = True
-    kwic_service = KWICService(loader)
+    kwic_service = KWICService(corpus_loader)
 
     common_opts = {
         'office_types': None,

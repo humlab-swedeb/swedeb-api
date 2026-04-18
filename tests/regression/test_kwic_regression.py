@@ -7,8 +7,9 @@ import ccc
 import dotenv
 import pytest
 
-from api_swedeb.api.dependencies import get_corpus_loader, get_cwb_corpus
+from api_swedeb.api.dependencies import get_cwb_corpus
 from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.core.configuration import Config, ConfigStore
 from api_swedeb.mappers.kwic import kwic_to_api_model
@@ -52,8 +53,8 @@ def test_get_kwic_results(config_store):
     words_after: int = 5
     cut_off: int = 1000000
     corpus: ccc.Corpus = get_cwb_corpus()
-    loader = get_corpus_loader()
-    kwic_service: KWICService = KWICService(loader)
+    corpus_loader = CorpusLoader()
+    kwic_service: KWICService = KWICService(corpus_loader)
 
     data = kwic_service.get_kwic(
         corpus=corpus,
