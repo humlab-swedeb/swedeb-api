@@ -7,4 +7,3 @@ from .dtm import (
     load_metadata,
     store_metadata,
 )
-from .token2id import ClosedVocabularyError, Token2Id, id2token2token2id
