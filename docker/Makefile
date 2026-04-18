@@ -42,14 +42,12 @@ help:
 	@echo "  bash              - Open a shell in the running container"
 	@echo ""
 	@echo "Local testing targets:"
-	@echo "  test-local        - Build and test container locally (full test)"
-	@echo "  test-local-podman - Test with Podman instead of Docker"
+	@echo "  test-local          - Build and test container locally (full test)"
+	@echo "  test-local-podman   - Test with Podman instead of Docker"
 	@echo "  test-local-skip-build - Test existing image without rebuilding"
-	@echo "  test-local-fallback - Test with local fallback tarball"
-	@echo "  test-local-mount-public - Test with writable /app/public mount"
-	@echo "  test-local-podman-fallback - Test Podman with fallback"
-	@echo "  test-help         - Show test script help"
-	@echo "  test-clean        - Clean up test artifacts and images"
+	@echo "  test-local-repl     - Quick test with local frontend mount (for REPL)"
+	@echo "  test-help           - Show test script help"
+	@echo "  test-clean          - Clean up test artifacts and images"
 	@echo ""
 	@echo "Current values:"
 	@echo "  ENVIRONMENT=$(ENVIRONMENT)"
@@ -144,20 +142,17 @@ test-local-skip-build:
 	@echo "Testing existing local image..."
 	@./test-local.sh --skip-build
 
-.PHONY: test-local-fallback
-test-local-fallback:
-	@echo "Testing with local fallback tarball..."
-	@./test-local.sh --use-fallback
-
-.PHONY: test-local-mount-public
-test-local-mount-public:
-	@echo "Testing with writable /app/public mount..."
-	@./test-local.sh --mount-public
-
-.PHONY: test-local-podman-fallback
-test-local-podman-fallback:
-	@echo "Testing Podman with fallback..."
-	@CONTAINER_TOOL=podman ./test-local.sh --use-fallback
+.PHONY: test-local-repl
+test-local-repl:
+	@echo "Testing with local frontend mount (REPL mode)..."
+	@if [ -d "../../swedeb_frontend/dist" ]; then \
+		./test-local.sh --skip-build --frontend-dir ../../swedeb_frontend/dist; \
+	else \
+		echo "Error: Frontend directory not found at ../../swedeb_frontend/dist"; \
+		echo "Build the frontend first or specify directory with:"; \
+		echo "  ./test-local.sh --frontend-dir /path/to/frontend/dist"; \
+		exit 1; \
+	fi
 
 .PHONY: test-help
 test-help:
