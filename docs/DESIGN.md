@@ -97,12 +97,13 @@ FastAPI app
 `api_swedeb.app.create_app()` is the composition root. It:
 
 - initializes configuration from `SWEDEB_CONFIG_PATH` or `config/config.yml`
+- builds the app-scoped `AppContainer` through the FastAPI lifespan hook
 - creates and manages the `ResultStore` through the FastAPI lifespan hook
 - configures CORS from `fastapi.origins`
 - mounts `/public` when static assets are supplied
 - registers the tools and metadata routers
 
-The runtime does not use a large domain facade. Instead, routers depend directly on focused services through factories in `api_swedeb/api/dependencies.py`. Those factories keep long-lived service instances in module-level singletons so expensive loaders and metadata structures are reused across requests.
+The runtime does not use a large domain facade. Instead, routers depend directly on focused services through factories in `api_swedeb/api/dependencies.py`. Those factories read from an app-scoped `AppContainer` stored on `app.state`, so expensive loaders and metadata structures are reused across requests without relying on module-global singletons.
 
 The main architectural layers are:
 
@@ -176,7 +177,7 @@ The main core subsystems are:
 
 ### 1. Application startup
 
-At startup, the app configures the active `ConfigStore` context, builds the FastAPI application, and starts a `ResultStore` rooted at `cache.root_dir`. This makes ticket artifacts and cleanup behavior part of application state rather than ad hoc global file handling.
+At startup, the app configures the active `ConfigStore` context, builds the FastAPI application, creates an app-scoped `AppContainer`, and starts a `ResultStore` rooted at `cache.root_dir`. This makes service wiring and ticket artifact cleanup part of application state rather than ad hoc global handling.
 
 ### 2. Metadata and speech-listing flow
 
@@ -300,7 +301,7 @@ The app currently configures CORS, but it does not implement built-in authentica
 
 ## Design Decisions and Tradeoffs
 
-- Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through module-level caches (i.e. global variables) rather than a more formal DI container.
+- Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through an explicit app-scoped container built during FastAPI lifespan.
 - Prebuilt speech corpus instead of runtime ZIP parsing: much faster speech retrieval and cleaner batch access, but it adds a required offline build artifact and version-alignment constraint.
 - DataFrame-centric service boundaries: efficient for analytical operations and mapper projection, but it keeps much of the domain logic tied to pandas and Arrow-style structures.
 - Disk-backed ticket artifacts instead of an external queue/cache: straightforward to reason about and easy to inspect, but not naturally suited to distributed workers or multi-node shared state.
@@ -308,11 +309,10 @@ The app currently configures CORS, but it does not implement built-in authentica
 
 ## Known Limitations or Technical Debt
 
-- Service singletons are implemented with module-level globals in `api_swedeb/api/dependencies.py`, not with a more explicit app-scoped dependency lifecycle.
 - `ResultStore` is host-local and filesystem-backed, so ticket execution and artifact lookup are not designed for horizontally distributed execution.
 - There is no built-in authentication/authorization layer in the backend.
 - The `/v1/tools/topics` endpoint is still a stub.
-- The repository still carries compatibility-oriented code and archived legacy modules that contributors must consciously avoid when working on active runtime behavior.
+- The repository still carries compatibility-oriented code and archived legacy modules. Please avoid using them when working on core logic.
 
 ## Related Documents
 
