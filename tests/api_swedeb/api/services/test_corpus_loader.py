@@ -1,6 +1,6 @@
 """Unit tests for CorpusLoader service."""
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pandas as pd
 import pytest
@@ -394,7 +394,6 @@ class TestCorpusLoaderAdditionalBranches:
         with patch.object(type(loader), 'prebuilt_speech_index', new_callable=PropertyMock) as mock_value:
             mock_value.return_value = si
             assert loader.protocol_page_range("prot-1") == (5, 15)
-
 
     def test_protocol_page_range_returns_fallback_on_error(self):
         loader = CorpusLoader(

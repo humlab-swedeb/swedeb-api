@@ -369,7 +369,8 @@ class PersonCodecs(Codecs):
 
         speech_index["link"] = resolve_wiki_url_for_speaker(speech_index.wiki_id)
         speech_index["speech_link"] = resolve_pdf_links_for_speeches(
-            speech_index.document_name, page_nr=speech_index.page_number_start if "page_number_start" in speech_index.columns else 1
+            speech_index.document_name,
+            page_nr=speech_index.page_number_start if "page_number_start" in speech_index.columns else 1,
         )
 
         if sort_values:
