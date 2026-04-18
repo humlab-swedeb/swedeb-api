@@ -8,18 +8,38 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
 
 ## Table of Contents
 
-- [Purpose](#purpose)
-- [Audience and Scope](#audience-and-scope)
-- [System Context and Boundaries](#system-context-and-boundaries)
-- [High-Level Architecture](#high-level-architecture)
-- [Components and Responsibilities](#components-and-responsibilities)
-- [Key Flows and Interactions](#key-flows-and-interactions)
-- [Data and Persistence Design](#data-and-persistence-design)
-- [Cross-Cutting Concerns](#cross-cutting-concerns)
-- [Constraints and Assumptions](#constraints-and-assumptions)
-- [Design Decisions and Tradeoffs](#design-decisions-and-tradeoffs)
-- [Known Limitations or Technical Debt](#known-limitations-or-technical-debt)
-- [Related Documents](#related-documents)
+- [Design Guide](#design-guide)
+  - [Purpose](#purpose)
+  - [Table of Contents](#table-of-contents)
+  - [Audience and Scope](#audience-and-scope)
+  - [System Context and Boundaries](#system-context-and-boundaries)
+  - [High-Level Architecture](#high-level-architecture)
+  - [Components and Responsibilities](#components-and-responsibilities)
+    - [App and API layer](#app-and-api-layer)
+    - [Dependency and service layer](#dependency-and-service-layer)
+    - [Core runtime modules](#core-runtime-modules)
+    - [Offline workflow layer](#offline-workflow-layer)
+    - [Legacy boundary](#legacy-boundary)
+  - [Key Flows and Interactions](#key-flows-and-interactions)
+    - [1. Application startup](#1-application-startup)
+    - [2. Metadata and speech-listing flow](#2-metadata-and-speech-listing-flow)
+    - [3. Synchronous KWIC flow](#3-synchronous-kwic-flow)
+    - [4. Ticketed KWIC flow](#4-ticketed-kwic-flow)
+    - [5. Speech download flow](#5-speech-download-flow)
+  - [Data and Persistence Design](#data-and-persistence-design)
+    - [Configuration](#configuration)
+    - [Read-only runtime data](#read-only-runtime-data)
+    - [Writable runtime state](#writable-runtime-state)
+  - [Cross-Cutting Concerns](#cross-cutting-concerns)
+    - [Validation and API contracts](#validation-and-api-contracts)
+    - [Error handling](#error-handling)
+    - [Logging](#logging)
+    - [Performance](#performance)
+    - [Security and access model](#security-and-access-model)
+  - [Constraints and Assumptions](#constraints-and-assumptions)
+  - [Design Decisions and Tradeoffs](#design-decisions-and-tradeoffs)
+  - [Known Limitations or Technical Debt](#known-limitations-or-technical-debt)
+  - [Related Documents](#related-documents)
 
 ## Audience and Scope
 
@@ -280,7 +300,7 @@ The app currently configures CORS, but it does not implement built-in authentica
 
 ## Design Decisions and Tradeoffs
 
-- Direct service injection instead of a monolithic facade: simpler routing and clearer ownership, but dependency lifecycle is still handled through module-level caches rather than a more formal container.
+- Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through module-level caches (i.e. global variables) rather than a more formal DI container.
 - Prebuilt speech corpus instead of runtime ZIP parsing: much faster speech retrieval and cleaner batch access, but it adds a required offline build artifact and version-alignment constraint.
 - DataFrame-centric service boundaries: efficient for analytical operations and mapper projection, but it keeps much of the domain logic tied to pandas and Arrow-style structures.
 - Disk-backed ticket artifacts instead of an external queue/cache: straightforward to reason about and easy to inspect, but not naturally suited to distributed workers or multi-node shared state.
