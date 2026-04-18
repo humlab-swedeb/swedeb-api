@@ -35,6 +35,7 @@ SKIP_BUILD=false
 SKIP_FRONTEND=false
 USE_FALLBACK=false
 MOUNT_PUBLIC=false
+FRONTEND_DIR=""
 CONTAINER_TOOL="${CONTAINER_TOOL:-docker}"
 
 while [[ $# -gt 0 ]]; do
@@ -55,6 +56,10 @@ while [[ $# -gt 0 ]]; do
             MOUNT_PUBLIC=true
             shift
             ;;
+        --frontend-dir)
+            FRONTEND_DIR="$2"
+            shift 2
+            ;;
         --podman)
             CONTAINER_TOOL=podman
             shift
@@ -67,20 +72,24 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [options]"
             echo ""
             echo "Options:"
-            echo "  --skip-build      Skip building the image"
-            echo "  --skip-frontend   Skip frontend asset download (for testing other issues)"
-            echo "  --use-fallback    Pre-populate fallback tarball for testing"
-            echo "  --mount-public    Mount /app/public as writable volume"
-            echo "  --podman          Use podman instead of docker"
-            echo "  --docker          Use docker (default)"
-            echo "  -h, --help        Show this help"
+            echo "  --skip-build       Skip building the image"
+            echo "  --skip-frontend    Skip frontend asset download (for testing other issues)"
+            echo "  --use-fallback     Pre-populate fallback tarball for testing (deprecated)"
+            echo "  --mount-public     Mount /app/public as writable volume (deprecated)"
+            echo "  --frontend-dir DIR Mount local frontend build directory (for REPL)"
+            echo "  --podman           Use podman instead of docker"
+            echo "  --docker           Use docker (default)"
+            echo "  -h, --help         Show this help"
             echo ""
             echo "Examples:"
-            echo "  $0                                    # Full build and test"
-            echo "  $0 --skip-build                       # Just run existing image"
-            echo "  $0 --use-fallback                     # Test fallback mechanism"
-            echo "  $0 --mount-public                     # Test with writable /app/public"
-            echo "  $0 --podman --use-fallback            # Test fallback with Podman"
+            echo "  $0                                          # Full build with baked-in frontend"
+            echo "  $0 --skip-build                             # Just run existing image"
+            echo "  $0 --frontend-dir ../swedeb_frontend/dist   # Mount local frontend (REPL)"
+            echo "  $0 --podman --skip-build                    # Quick test with Podman"
+            echo ""
+            echo "Note: --use-fallback and --mount-public are deprecated since frontend"
+            echo "      is now baked into the image during build. Use --frontend-dir for"
+            echo "      local development with hot-reload of frontend changes."
             exit 0
             ;;
         *)
@@ -138,48 +147,45 @@ fi
 
 echo ""
 
-# Setup test data directories
+# Setup test data directories (for sample data, not frontend)
 log "Setting up test data directories..."
-mkdir -p test-data/dist test-data/public
-
-# Download fallback tarball if requested
-if [ "$USE_FALLBACK" = true ]; then
-    FALLBACK_FILE="test-data/dist/frontend-staging.tar.gz"
-    if [ ! -f "$FALLBACK_FILE" ]; then
-        log "Downloading frontend tarball for fallback testing..."
-        if curl -L --fail --progress-bar \
-            "https://github.com/humlab-swedeb/swedeb_frontend/releases/download/staging/frontend-staging.tar.gz" \
-            -o "$FALLBACK_FILE"; then
-            log_success "Fallback tarball downloaded: $FALLBACK_FILE"
-        else
-            log_error "Failed to download fallback tarball"
-            log_error "You can manually download it to: $FALLBACK_FILE"
-            log_error "Or skip fallback with: make test-local-podman"
-            exit 1
-        fi
-    else
-        log_success "Using existing fallback tarball: $FALLBACK_FILE"
-    fi
-fi
+mkdir -p test-data
 
 # Prepare volume mounts
 VOLUME_ARGS=()
-VOLUME_ARGS+=(-v "$(pwd)/test-data/dist:/data/dist:Z,ro")
+
+# Mount local frontend directory if specified (for REPL development)
+if [ -n "$FRONTEND_DIR" ]; then
+    if [ ! -d "$FRONTEND_DIR" ]; then
+        log_error "Frontend directory not found: $FRONTEND_DIR"
+        exit 1
+    fi
+    if [ ! -f "$FRONTEND_DIR/index.html" ]; then
+        log_warning "Frontend directory exists but index.html not found"
+        log_warning "Make sure to build the frontend first!"
+    fi
+    log "Mounting local frontend directory: $FRONTEND_DIR"
+    VOLUME_ARGS+=(-v "$(realpath "$FRONTEND_DIR"):/app/public:Z")
+fi
+
+# Legacy fallback support (deprecated)
+if [ "$USE_FALLBACK" = true ]; then
+    log_warning "--use-fallback is deprecated (frontend now baked into image)"
+fi
 
 if [ "$MOUNT_PUBLIC" = true ]; then
-    log "Mounting /app/public as writable volume"
-    chmod 755 test-data/public
-    VOLUME_ARGS+=(-v "$(pwd)/test-data/public:/app/public:Z")
+    log_warning "--mount-public is deprecated (use --frontend-dir instead)"
+    if [ -z "$FRONTEND_DIR" ]; then
+        chmod 755 test-data/public 2>/dev/null || true
+        VOLUME_ARGS+=(-v "$(pwd)/test-data/public:/app/public:Z")
+    fi
 fi
 
 # Prepare environment variables
 ENV_ARGS=()
-ENV_ARGS+=(-e "FRONTEND_VERSION=staging")
 ENV_ARGS+=(-e "CORPUS_REGISTRY=/data/registry")
 
-if [ "$SKIP_FRONTEND" = true ]; then
-    log_warning "Frontend download will be skipped (not implemented yet)"
-fi
+# Note: FRONTEND_VERSION no longer needed since frontend is baked into image
 
 echo ""
 log "Starting container..."

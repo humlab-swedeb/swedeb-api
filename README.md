@@ -17,13 +17,11 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 ## 📚 Documentation
 
 ### For Developers
-- **[Developer Guide](docs/DEVELOPER.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
+- **[Development Guide](docs/DEVELOPMENT.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
 - **[AI Coding Agent Instructions](.github/copilot-instructions.md)** - Essential guide for AI assistants working with this codebase
 
 ### For Deployment & Operations
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment guide covering all environments (test, staging, production)
-- **[Podman Quadlet Deployment](docs/DEPLOY_PODMAN.md)** - Detailed Podman systemd deployment procedures (recommended for production)
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions for deployment problems
+- **[Operations Guide](docs/OPERATIONS.md)** - Complete deployment and operations guide covering all environments (test, staging, production)
 
 ## Technology Stack
 
@@ -152,7 +150,7 @@ Profile KWIC performance:
 make profile-kwic-pyinstrument
 ```
 
-See [DEVELOPER.md](docs/DEVELOPER.md) for testing best practices and patterns.
+See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for testing best practices and patterns.
 
 ## API Documentation
 
@@ -188,7 +186,7 @@ BREAKING CHANGE: All endpoints now use /v2/ prefix"
 
 **Workflow:** Create feature branch from `dev` → PR to `dev` → After merge: `dev` → `test` → `staging` → `main`
 
-See the [Developer Guide](docs/DEVELOPER.md) for complete workflow, branching strategy, and CI/CD details.
+See the [Development Guide](docs/DEVELOPMENT.md) for complete workflow, branching strategy, and CI/CD details.
 
 ## Deployment & Release
 
@@ -247,8 +245,8 @@ The enter swedeb_staging (as above) and restart ontinaer
 ```
 
 **Complete guides:**
-- [Deployment Guide](docs/DEPLOYMENT.md) - Full deployment instructions
-- [Developer Guide](docs/DEVELOPER.md) - Workflow and contribution guidelines
+- [Operations Guide](docs/OPERATIONS.md) - Full deployment and operations instructions
+- [Development Guide](docs/DEVELOPMENT.md) - Workflow and contribution guidelines
 
 ## Environment Variables
 
@@ -264,7 +262,7 @@ Key environment variables for build and runtime configuration:
 | `METADATA_VERSION`   | Metadata version                      | Runtime         |
 | `CORPUS_VERSION`     | Corpus version                        | Runtime         |
 
-See [Deployment Guide](docs/DEPLOYMENT.md) for complete variable reference.
+See [Operations Guide](docs/OPERATIONS.md) for complete variable reference.
 
 ## Acknowledgments
 
