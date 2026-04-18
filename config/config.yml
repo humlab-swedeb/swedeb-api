@@ -1,4 +1,3 @@
-
 # NOTE: The following folder structure is assumed:
 # local /data corresponds to hosts corpus version 1.4.1 and metadata version 1.1.3
 # data
@@ -49,7 +48,7 @@
 
 metadata:
   version: v1.1.3
-  filename: /data/swedeb/metadata/riksprot_metadata.v1.1.3.db
+  filename: ./data/metadata/riksprot_metadata.v1.1.3.db
   github:
     user: swerik-project
     repository: riksdagen-persons
@@ -60,15 +59,15 @@ cwb:
   corpus_name: RIKSPROT_CORPUS
 
 dtm:
-  folder: /data/swedeb/v1.4.1/dtm/text
+  folder: ./data/v1.4.1/dtm/text
   tag: text
 
 vrt:
-  folder: /data/swedeb/v1.4.1/tagged_frames
+  folder: ./data/v1.4.1/tagged_frames
   tag: text
 
 speech:
-  bootstrap_corpus_folder: /data/swedeb/v1.4.1/speeches/bootstrap_corpus
+  bootstrap_corpus_folder: ./data/v1.4.1/speeches/bootstrap_corpus
 
 kwic:
   use_multiprocessing: true

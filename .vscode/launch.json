@@ -49,7 +49,8 @@
             "jinja": true,
             "cwd": "${workspaceFolder}",
             "env": {
-                "SWEDEB_CONFIG_PATH": "config/dev_swedeb.yml"
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml"
             }
         },
         {
@@ -61,7 +62,8 @@
             "jinja": true,
             "cwd": "${workspaceFolder}",
             "env": {
-                "SWEDEB_CONFIG_PATH": "config/dev_swedeb.yml",
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml",
                 "STATIC_DIR": "${workspaceFolder}/../swedeb_frontend/dist/spa"
             }
         },
@@ -74,7 +76,8 @@
             "jinja": true,
             "cwd": "${workspaceFolder}",
             "env": {
-                "SWEDEB_CONFIG_PATH": "config/dev_swedeb.yml"
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml"
             }
         },
         {
@@ -86,7 +89,8 @@
             "jinja": true,
             "cwd": "${workspaceFolder}",
             "env": {
-                "SWEDEB_CONFIG_PATH": "config/dev_swedeb.yml",
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml",
                 "STATIC_DIR": "${workspaceFolder}/../swedeb_frontend/dist/spa"
             }
         }

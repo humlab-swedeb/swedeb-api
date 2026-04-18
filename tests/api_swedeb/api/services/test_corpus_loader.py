@@ -438,7 +438,7 @@ class TestIntegrationFullCorpus:
     def test_full_corpus_properties(self):
         """Integration test to verify CorpusLoader with actual data files."""
 
-        get_config_store().configure_context(source='config/dev_swedeb.yml')
+        get_config_store().configure_context(source='config/config.yml')
         loader = CorpusLoader(
             dtm_tag="text",
             dtm_folder="./data/v1.4.1/dtm/text",

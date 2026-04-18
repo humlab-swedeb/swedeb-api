@@ -100,13 +100,13 @@ The application reads configuration from `SWEDEB_CONFIG_PATH`, defaulting to `co
 Relevant config files:
 
 - `config/config.yml`: default checked-in runtime config
-- `config/dev_swedeb.yml`: alternate checked-in config for development use
+- `config/debug.config.yml`: alternate checked-in config for development use
 - `tests/config.yml`: test config
 
 Useful patterns:
 
 ```bash
-export SWEDEB_CONFIG_PATH=config/dev_swedeb.yml
+export SWEDEB_CONFIG_PATH=config/debug.config.yml
 uv run uvicorn main:app --reload
 ```
 
@@ -289,7 +289,7 @@ Two non-Docker modes for running the backend with the VS Code debugger (F5 / **R
 - **FastAPI: backend only** — API on `http://localhost:8000`, no static files served; pair with the frontend dev server
 - **FastAPI: backend + static frontend** — API + locally built frontend assets mounted at `/public`
 
-Both configs load `config/dev_swedeb.yml` via `SWEDEB_CONFIG_PATH`. `--reload` is intentionally omitted — uvicorn's file-watcher forks a child process that the debugger does not follow, so breakpoints would never be hit. Restart the debug session manually after code changes.
+Both configs load `config/debug.config.yml` via `SWEDEB_CONFIG_PATH`. `--reload` is intentionally omitted — uvicorn's file-watcher forks a child process that the debugger does not follow, so breakpoints would never be hit. Restart the debug session manually after code changes.
 
 ------------------
 

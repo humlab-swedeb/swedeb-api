@@ -14,7 +14,7 @@ Usage examples
     uv run download-speeches --who Q1234567 --who Q7654321 --output speakers.zip
 
 # Use a non-default config file
-    uv run download-speeches --config config/dev_swedeb.yml --output speeches.zip
+    uv run download-speeches --config config/abc.yml --output speeches.zip
 """
 
 from __future__ import annotations
