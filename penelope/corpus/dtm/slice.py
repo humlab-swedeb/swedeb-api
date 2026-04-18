@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Mapping, Sequence, Tuple, Union
+from typing import Any, List, Mapping, Sequence, Tuple, Union
 
 import numpy as np
 import scipy.sparse as sp
@@ -186,7 +186,7 @@ class SliceMixIn(ISlicedCorpusProtocol):
         """Translates corpus to new vocabulary. Tokens not found in target vocabulary are removed."""
 
         common_tokens: list[str] = sorted(list(set(id2token.values()).intersection(self.token2id.keys())))
-        token2id: Mapping[str, int] = id2token2token2id(id2token)  # type: ignore
+        token2id: dict[str, int] = id2token2token2id(id2token)  # type: ignore
         og = self.token2id.get
         ng = token2id.get
 
