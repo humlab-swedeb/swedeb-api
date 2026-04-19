@@ -62,7 +62,7 @@ corpus:
     path: data
 
 cwb:
-  registry_dir: /data/registry
+  registry_dir: ./data/v1.4.1/registry
   corpus_name: RIKSPROT_CORPUS
 
 dtm:
@@ -77,7 +77,7 @@ speech:
   bootstrap_corpus_folder: ./data/v1.4.1/speeches/bootstrap_corpus
 
 kwic:
-  use_multiprocessing: true
+  use_multiprocessing: false  # Disabled: multiprocessing hangs in FastAPI BackgroundTasks
   num_processes: 8
 
 cache:
