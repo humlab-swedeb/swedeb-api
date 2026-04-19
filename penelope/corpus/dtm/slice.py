@@ -10,6 +10,7 @@ from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol
 
 # pylint: disable=no-member, attribute-defined-outside-init, access-member-before-definition, unused-argument
 
+
 def id2token2token2id(id2token: dict[int, str] | Any) -> dict[str, int] | None:
     """Invert an ``id -> token`` mapping into ``token -> id``.
 
