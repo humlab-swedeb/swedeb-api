@@ -38,7 +38,7 @@ def config_store() -> Generator[ConfigStore, None, None]:
         yield store
 
 
-##@pytest.mark.skip(reason="SSlow regression test. Protocol IDs are zeropadded in the refactored version.")
+@pytest.mark.skip(reason="SSlow regression test. Protocol IDs are zeropadded in the refactored version.")
 def test_compute_protocol_ranges(config_store):
 
     corpus_loader: CorpusLoader = CorpusLoader()
