@@ -2,7 +2,7 @@
 
 import abc
 from numbers import Number
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Self, Sequence, Tuple
+from typing import Any, Iterable, List, Optional, Protocol, Self, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -105,7 +105,7 @@ class IVectorizedCorpus(abc.ABC):
     def normalize_by_raw_counts(self) -> "IVectorizedCorpus": ...
 
     @abc.abstractmethod
-    def pick_top_tf_map(self, n_top: int) -> Dict[str, int]: ...
+    def pick_top_tf_map(self, n_top: int) -> dict[str, int]: ...
 
     @abc.abstractmethod
     def slice_by_tf(self, tf_threshold: int | None) -> "IVectorizedCorpus": ...
@@ -180,7 +180,7 @@ class IVectorizedCorpus(abc.ABC):
     @abc.abstractmethod
     def create(
         bag_term_matrix: scipy.sparse.csr_matrix,
-        token2id: Dict[str, int],
+        token2id: dict[str, int],
         document_index: pd.DataFrame,
         overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
     ) -> "IVectorizedCorpus": ...
@@ -190,7 +190,7 @@ class IVectorizedCorpusProtocol(Protocol):
     @staticmethod
     def create(
         bag_term_matrix: scipy.sparse.csr_matrix,
-        token2id: Dict[str, int],
+        token2id: dict[str, int],
         document_index: pd.DataFrame,
         overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
         **kwargs,
@@ -243,6 +243,6 @@ class IVectorizedCorpusProtocol(Protocol):
         keep_empty: bool = False,
     ) -> dict: ...
 
-    def pick_top_tf_map(self, n_top: int) -> Dict[str, int]: ...
+    def pick_top_tf_map(self, n_top: int) -> dict[str, int]: ...
 
     def slice_by_n_top(self, n_top: int) -> IVectorizedCorpus: ...

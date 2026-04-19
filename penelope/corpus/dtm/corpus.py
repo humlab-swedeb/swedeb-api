@@ -193,21 +193,6 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         """Retrieves item from payload"""
         return self.payload.get(key)
 
-    @utility.deprecated
-    def todense(self) -> VectorizedCorpus:
-        """Returns dense BoW matrix DO NOT USE IF LARGE CORPUS!"""
-        dtm = self._bag_term_matrix
-
-        if scipy.sparse.issparse(dtm):
-            dtm = dtm.todense()
-
-        if isinstance(dtm, np.matrix):
-            dtm = np.asarray(dtm)
-
-        self._bag_term_matrix = dtm
-
-        return self
-
     def get_word_vector(self, word: str):
         """Extracts vector (i.e. BoW matrix column for word's id) for word `word`
 
@@ -221,27 +206,6 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             BoW matrix column values found in column `token2id[word]`
         """
         return self._bag_term_matrix[:, self.token2id[word]].todense().A1  # x.A1 == np.asarray(x).ravel()
-
-    # def __iter__(self) -> Iterable[Tuple[int,int|float]]:
-    #     """Return rows as a list of (token_id, count)
-    #     Kudos: https://stackoverflow.com/a/52299730/12383895
-    #     """
-    #     indptr, indices, data = self._bag_term_matrix.indptr, self._bag_term_matrix.indices, self._bag_term_matrix.data
-    #     for k, l in zip(indptr, indptr[1:]):
-    #         yield list(zip(indices[k:l], data[k:l]))
-
-    # def __len__(self) -> int:
-    #     """n_docs"""
-    #     return self._bag_term_matrix.shape[0]
-
-    # def __getitem__(self, i: int) -> Sequence[Tuple[int,int|float]]:
-    #     """Return i:th row as a list of (token_id, count)
-    #     Kudos: https://stackoverflow.com/a/52299730/12383895
-    #     """
-    #     indptr, indices, data = self._bag_term_matrix.indptr, self._bag_term_matrix.indices, self._bag_term_matrix.data
-    #     """[j,k) is index for row i's slice in indices (columns) and data (values)"""
-    #     k, l = indptr[i], indptr[i + 1]
-    #     return list(zip(indices[k:l], data[k:l]))
 
     def filter(self, px: Callable[[Any], bool] | utility.PropertyValueMaskingOpts | dict) -> VectorizedCorpus:
         """Returns a new corpus that only contains docs for which `px` is true.
@@ -490,14 +454,6 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             return (self.data.data.nbytes + self.data.indptr.nbytes + self.data.indices.nbytes) / pow(1024, k)
         return None
 
-    # def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]:
-    #     """Clears (inplace) tokens (columns) having a TF-value (column sum) less than threshold
-    #     Does not change shape."""
-    #     indices = np.argwhere(self.term_frequency < tf_threshold).ravel()
-    #     if len(indices) > 0:
-    #         self.zero_out_by_indices(indices)
-    #     return indices
-
     def zero_out_by_others_zeros(self, other: VectorizedCorpus) -> VectorizedCorpus:
         """Zeroes out elements in `self` where corresponding element in `other` is zero
         Doe's not change shape."""
@@ -527,14 +483,6 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
 
         self._bag_term_matrix = data
         return indices
-
-    # def zero_out_by_indices(self, indices: Sequence[int]) -> None:
-    #     """Zeros out columns for indicies"""
-    #     if indices is None or len(indices) == 0:
-    #         return
-
-    #     self.data[:, indices] = 0
-    #     self.data.eliminate_zeros()
 
 
 def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Collection[str]) -> set[str]:
