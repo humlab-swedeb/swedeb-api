@@ -8,7 +8,7 @@ import scipy
 from scipy import sparse as sp
 
 from penelope import utility as pu
-from penelope.corpus.document_index import create_temporal_key_categorizer
+from penelope.utility.utils import dict_of_key_values_inverted_to_dict_of_value_key
 
 from .interface import IVectorizedCorpus
 
@@ -118,7 +118,7 @@ class GroupByMixIn:
         if document_namer is None:
             document_namer = default_document_namer
 
-        di: pd.DataFrame = self.document_index  #  type: ignore
+        di: pd.DataFrame = self.document_index
         gdi: pd.DataFrame = di if not pivot_keys or len(filter_opts or []) == 0 else di[filter_opts.mask(di)]
 
         if "document_id" in gdi.columns:
