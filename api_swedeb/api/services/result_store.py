@@ -250,9 +250,10 @@ class ResultStore:
                 self._delete_ticket_locked(ticket_id)
 
     async def _cleanup_loop(self) -> None:
-        while True:
-            await asyncio.sleep(self.cleanup_interval_seconds)
-            self.cleanup_expired()
+        with contextlib.suppress(asyncio.CancelledError):
+            while True:
+                await asyncio.sleep(self.cleanup_interval_seconds)
+                self.cleanup_expired()
 
     def _artifact_path(self, ticket_id: str) -> Path:
         return self.root_dir / f"{ticket_id}{self.ARTIFACT_SUFFIX}"
