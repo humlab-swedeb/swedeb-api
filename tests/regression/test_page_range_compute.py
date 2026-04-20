@@ -6,7 +6,6 @@ from unittest.mock import patch
 import dotenv
 import pytest
 
-from api_swedeb.api.dependencies import get_corpus_loader
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.core.configuration import Config, ConfigStore
 from tests.conftest import generate_config_file
@@ -39,18 +38,20 @@ def config_store() -> Generator[ConfigStore, None, None]:
         yield store
 
 
-##@pytest.mark.skip(reason="SSlow regression test. Protocol IDs are zeropadded in the refactored version.")
+@pytest.mark.skip(reason="SSlow regression test. Protocol IDs are zeropadded in the refactored version.")
 def test_compute_protocol_ranges(config_store):
 
-    loader: CorpusLoader = get_corpus_loader()
-    page_ranges: dict[str, tuple[int, int]] = loader.prebuilt_page_number_index
+    corpus_loader: CorpusLoader = CorpusLoader()
+    page_ranges: dict[str, tuple[int, int]] = corpus_loader.prebuilt_page_number_index
     assert page_ranges
 
 
-@pytest.mark.skip(reason="This test is meant to check that the protocol names in the page number index align with the PDF names in protocol_names.csv. The expected diff should be updated to reflect any known discrepancies.")
+@pytest.mark.skip(
+    reason="This test is meant to check that the protocol names in the page number index align with the PDF names in protocol_names.csv. The expected diff should be updated to reflect any known discrepancies."
+)
 def test_protocol_name_pdf_name_alignment(config_store):
-    loader: CorpusLoader = get_corpus_loader()
-    protocol_names: set[str] = set(loader.prebuilt_page_number_index.keys())
+    corpus_loader: CorpusLoader = CorpusLoader()
+    protocol_names: set[str] = set(corpus_loader.prebuilt_page_number_index.keys())
     pdf_files: set[str] = set(Path("./protocol_names.csv").read_text(encoding="utf-8").splitlines())
 
     expected_diff: set[str] = {

@@ -41,15 +41,58 @@
             
         },
         {
-            "name": "Python Debugger: FastAPI",
+            "name": "FastAPI: backend only",
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
-            "args": [
-                "main:app",
-                "--reload"
-            ],
-            "jinja": true
+            "args": ["main:app", "--port", "8000"],
+            "jinja": true,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml"
+            }
+        },
+        {
+            "name": "FastAPI: backend + static frontend",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["main:app", "--port", "8000"],
+            "jinja": true,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml",
+                "STATIC_DIR": "${workspaceFolder}/../swedeb_frontend/dist/spa"
+            }
+        },
+        {
+            "name": "FastAPI: backend only with HMR",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["main:app", "--port", "8000", "--reload"],
+            "jinja": true,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml"
+            }
+        },
+        {
+            "name": "FastAPI: backend + static frontend with HMR",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["main:app", "--port", "8000", "--reload"],
+            "jinja": true,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "SWEDEB_CONFIG_PATH": "config/debug.config.yml",
+                "STATIC_DIR": "${workspaceFolder}/../swedeb_frontend/dist/spa"
+            }
         }
     ]
 }

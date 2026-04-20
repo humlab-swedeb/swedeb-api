@@ -48,7 +48,7 @@
 
 metadata:
   version: v1.1.3
-  filename: /data/riksprot_metadata.v1.1.3.db
+  filename: ./data/metadata/riksprot_metadata.v1.1.3.db
   github:
     user: swerik-project
     repository: riksdagen-persons
@@ -62,20 +62,40 @@ corpus:
     path: data
 
 cwb:
-  registry_dir: /data/registry
+  registry_dir: ./data/v1.4.1/registry
   corpus_name: RIKSPROT_CORPUS
 
 dtm:
-  folder: /data/dtm/text
+  folder: ./data/v1.4.1/dtm/text
   tag: text
 
 vrt:
-  folder: /data/tagged_frames
+  folder: ./data/v1.4.1/tagged_frames
   tag: text
 
+speech:
+  bootstrap_corpus_folder: ./data/v1.4.1/speeches/bootstrap_corpus
+
 kwic:
-  use_multiprocessing: true
+  use_multiprocessing: false  # Keep disabled for dev; BackgroundTasks cannot use multiprocessing
   num_processes: 8
+
+celery:
+  broker_url: redis://localhost:6379/0
+  result_backend: redis://localhost:6379/0
+  worker_concurrency: 4
+  result_expires: 3600
+
+development:
+  celery_enabled: false  # Use BackgroundTasks for local debugging; no Redis required
+
+cache:
+  result_ttl_seconds: 600
+  cleanup_interval_seconds: 60
+  max_artifact_bytes: 2147483648
+  max_pending_jobs: 2
+  root_dir: /tmp/swedeb-kwic-cache
+  max_page_size: 200
 
 fastapi:
   origins:

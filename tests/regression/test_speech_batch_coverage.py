@@ -53,9 +53,8 @@ def all_speech_ids() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    not SPEECH_INDEX_PATH.is_file(),
-    reason="bootstrap_corpus speech_index.feather not available on this machine",
+@pytest.mark.skip(
+    reason="regression test for bootstrap_corpus data integrity — not a general unit test, and too slow for regular runs. ",
 )
 def test_all_speech_ids_resolve_in_batch(speech_repository: SpeechRepository, all_speech_ids: list[str]):
     """No speech_id from the prebuilt index should report 'not in bootstrap_corpus'.

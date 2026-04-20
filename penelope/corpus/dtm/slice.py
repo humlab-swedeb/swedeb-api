@@ -1,16 +1,29 @@
 from __future__ import annotations
 
-from typing import List, Mapping, Sequence, Tuple, Union
+from typing import Any, List, Mapping, Sequence, Tuple, Union
 
 import numpy as np
 import scipy.sparse as sp
 from loguru import logger
 
-from penelope.corpus.token2id import id2token2token2id
-
 from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol
 
 # pylint: disable=no-member, attribute-defined-outside-init, access-member-before-definition, unused-argument
+
+
+def id2token2token2id(id2token: dict[int, str] | Any) -> dict[str, int] | None:
+    """Invert an ``id -> token`` mapping into ``token -> id``.
+
+    The active runtime only needs this helper during vocabulary translation in
+    ``penelope.corpus.dtm.slice``. A few compatibility checks are kept so older
+    mapping-like objects still work if they expose a ``token2id`` attribute.
+    """
+
+    if id2token is None:
+        return None
+    if hasattr(id2token, "token2id"):
+        return getattr(id2token, "token2id")
+    return {token: int(token_id) for token_id, token in id2token.items()}
 
 
 class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
@@ -174,7 +187,7 @@ class SliceMixIn(ISlicedCorpusProtocol):
         """Translates corpus to new vocabulary. Tokens not found in target vocabulary are removed."""
 
         common_tokens: list[str] = sorted(list(set(id2token.values()).intersection(self.token2id.keys())))
-        token2id: Mapping[str, int] = id2token2token2id(id2token)  # type: ignore
+        token2id: dict[str, int] = id2token2token2id(id2token)  # type: ignore
         og = self.token2id.get
         ng = token2id.get
 

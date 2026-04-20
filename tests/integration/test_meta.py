@@ -2,7 +2,6 @@ import pandas as pd
 import pytest
 from fastapi import status
 
-from api_swedeb.api.dependencies import get_corpus_loader
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.search_service import SearchService
@@ -24,8 +23,8 @@ version = "v1"
 
 
 @pytest.fixture(scope="module")
-def corpus() -> CorpusLoader:
-    return get_corpus_loader()
+def corpus(corpus_loader: CorpusLoader) -> CorpusLoader:
+    return corpus_loader
 
 
 @pytest.fixture(scope="module")

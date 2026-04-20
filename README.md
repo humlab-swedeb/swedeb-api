@@ -17,13 +17,11 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 ## 📚 Documentation
 
 ### For Developers
-- **[Developer Guide](docs/DEVELOPER.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
+- **[Development Guide](docs/DEVELOPMENT.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
 - **[AI Coding Agent Instructions](.github/copilot-instructions.md)** - Essential guide for AI assistants working with this codebase
 
 ### For Deployment & Operations
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment guide covering all environments (test, staging, production)
-- **[Podman Quadlet Deployment](docs/DEPLOY_PODMAN.md)** - Detailed Podman systemd deployment procedures (recommended for production)
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions for deployment problems
+- **[Operations Guide](docs/OPERATIONS.md)** - Complete deployment and operations guide covering all environments (test, staging, production)
 
 ## Technology Stack
 
@@ -37,12 +35,45 @@ The backend is built on a containerized architecture, leveraging modern Python t
 
 ## Architecture
 
+```mermaid
+graph TD
+    Browser["Browser / Frontend\n(Vue + Quasar)"]
+
+    subgraph API["API Container (FastAPI)"]
+        Router["Routers\n/v1/tools, /v1/metadata"]
+        Services["Services\nKWICService · WordTrendsService\nNGramsService · SearchService\nMetadataService"]
+        Router --> Services
+    end
+
+    subgraph Storage["Persistent Storage (shared volume)"]
+        CWB["CWB Corpus\n(VRT / registry)"]
+        Feather["Speech Index\n(Feather / Arrow)"]
+        SQLite["Metadata DB\n(SQLite)"]
+        ResultStore["Result Store\n(disk cache)"]
+    end
+
+    subgraph Background["Background Processing (production)"]
+        Redis["Redis\n(broker + result backend)"]
+        Worker["Celery Worker\nexecute_kwic_ticket\n(multiprocessing.Pool)"]
+        Redis -->|dequeue task| Worker
+        Worker -->|write results| ResultStore
+    end
+
+    Browser -->|HTTP| Router
+    Services -->|CQP queries| CWB
+    Services -->|read| Feather
+    Services -->|read| SQLite
+    Services -->|KWIC submit\n(send_task)| Redis
+    Services -->|poll status / fetch results| ResultStore
+```
+
 - **FastAPI** - Modern async web framework for API endpoints with automatic OpenAPI docs
 - **CWB (Corpus Workbench)** - High-performance corpus queries via cwb-ccc Python wrapper
 - **Service Layer** - Business logic in dedicated services (SearchService, KWICService, WordTrendsService, etc.)
 - **Direct Injection** - Services injected via FastAPI `Depends()` for clean separation of concerns
 - **Pydantic** - Request/response validation with type safety and automatic serialization
 - **Feather/Arrow Storage** - Fast columnar storage for speech indexes and metadata
+- **Celery + Redis** - Production background task execution for KWIC queries; enables `multiprocessing.Pool` in a separate worker process without deadlocking FastAPI. Disabled in local development (`debug.config.yml`).
 - **Docker + Auto-detection** - Containerized deployment with automatic frontend version detection
 
 ## Related Repositories
@@ -67,6 +98,7 @@ See [pyproject.toml](pyproject.toml) for the complete dependency list.
 - **Docker** (optional, for containerized development)
 - **CWB data** - Corpus files from [sample-data repository](https://github.com/humlab-swedeb/sample-data)
 - **Metadata database** - SQLite database with speaker/party information
+- **Redis** (production only) - Required when `development.celery_enabled: true` for KWIC multiprocessing. Not needed for local development with `config/debug.config.yml`.
 
 ### Local Development Setup
 
@@ -85,6 +117,10 @@ See [pyproject.toml](pyproject.toml) for the complete dependency list.
     ```bash
     cp config/config_example.yml config/config.yml
     # Edit config.yml with your data paths and versions
+    ```
+    For local development without Redis, use the debug config:
+    ```bash
+    export SWEDEB_CONFIG_PATH=config/debug.config.yml
     ```
 
 4.  **Run the development server:**
@@ -133,7 +169,13 @@ make coverage                    # Run tests with coverage report
 
 # Performance profiling
 make profile-kwic-pyinstrument   # Profile KWIC queries
+
+# Production-mode KWIC background workers (requires Redis)
+docker run --rm -p 6379:6379 redis:7-alpine                          # Start Redis
+uv run celery -A api_swedeb.celery_tasks worker --loglevel=info      # Start Celery worker
 ```
+
+See [Background Task Execution (KWIC)](docs/DEVELOPMENT.md#background-task-execution-kwic) for full details on development vs production modes.
 
 ## Testing
 
@@ -152,7 +194,7 @@ Profile KWIC performance:
 make profile-kwic-pyinstrument
 ```
 
-See [DEVELOPER.md](docs/DEVELOPER.md) for testing best practices and patterns.
+See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for testing best practices and patterns.
 
 ## API Documentation
 
@@ -188,7 +230,7 @@ BREAKING CHANGE: All endpoints now use /v2/ prefix"
 
 **Workflow:** Create feature branch from `dev` → PR to `dev` → After merge: `dev` → `test` → `staging` → `main`
 
-See the [Developer Guide](docs/DEVELOPER.md) for complete workflow, branching strategy, and CI/CD details.
+See the [Development Guide](docs/DEVELOPMENT.md) for complete workflow, branching strategy, and CI/CD details.
 
 ## Deployment & Release
 
@@ -247,8 +289,8 @@ The enter swedeb_staging (as above) and restart ontinaer
 ```
 
 **Complete guides:**
-- [Deployment Guide](docs/DEPLOYMENT.md) - Full deployment instructions
-- [Developer Guide](docs/DEVELOPER.md) - Workflow and contribution guidelines
+- [Operations Guide](docs/OPERATIONS.md) - Full deployment and operations instructions
+- [Development Guide](docs/DEVELOPMENT.md) - Workflow and contribution guidelines
 
 ## Environment Variables
 
@@ -264,7 +306,7 @@ Key environment variables for build and runtime configuration:
 | `METADATA_VERSION`   | Metadata version                      | Runtime         |
 | `CORPUS_VERSION`     | Corpus version                        | Runtime         |
 
-See [Deployment Guide](docs/DEPLOYMENT.md) for complete variable reference.
+See [Operations Guide](docs/OPERATIONS.md) for complete variable reference.
 
 ## Acknowledgments
 

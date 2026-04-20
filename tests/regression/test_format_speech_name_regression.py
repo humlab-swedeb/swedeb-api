@@ -69,7 +69,7 @@ def test_resolve_pdf_links_for_speeches_regression():
     speeches: pd.DataFrame = pd.read_feather(BOOTSTRAP_SPEECH_INDEX)  # , columns=["document_name", "page_start"])
     legacy = create_pdf_links(speeches["document_name"], speeches["page_number_start"])
     actual: pd.Series = cast(
-        pd.Series, resolve_pdf_links_for_speeches(speeches["document_name"], speeches["page_number_start"])
+        pd.Series, resolve_pdf_links_for_speeches(speeches["document_name"], page_nr=speeches["page_number_start"])
     )
     pd.testing.assert_series_equal(legacy.astype("string"), actual.astype("string"))
 

@@ -138,42 +138,49 @@ def party_id_map(config_store, corpus_loader: CorpusLoader) -> dict[str, int]:
 # ---------------------------------------------------------------------------
 
 
-class TestGetAnforanden:
+class TestGetSpeeches:
     """Correctness and performance tests for SearchService.get_speeches."""
 
+    @pytest.mark.benchmark
     def test_no_filter_returns_all(self, search_service: SearchService, benchmark):
         df = benchmark(search_service.get_speeches, selections={})
         assert len(df) > 0
         assert "speech_id" in df.columns
         assert "name" in df.columns
 
+    @pytest.mark.benchmark
     def test_year_range_filter(self, search_service: SearchService, benchmark):
         df = benchmark(search_service.get_speeches, selections={"year": (1970, 1975)})
         assert len(df) > 0
         assert df["year"].between(1970, 1975).all()
 
+    @pytest.mark.benchmark
     def test_party_filter(self, search_service: SearchService, party_id_map: dict[str, int], benchmark):
         party_ids = [p for p in [party_id_map.get("S"), party_id_map.get("M")] if p is not None]
         df = benchmark(search_service.get_speeches, selections={"party_id": party_ids, "year": (1970, 1990)})
         assert len(df) > 0
         assert set(df["party_abbrev"].unique()).issubset({"S", "M", "?"})
 
+    @pytest.mark.benchmark
     def test_gender_filter(self, search_service: SearchService, benchmark):
         df = benchmark(search_service.get_speeches, selections={"gender_id": [2], "year": (1970, 1990)})
         assert len(df) > 0
 
+    @pytest.mark.benchmark
     def test_combined_filter(self, search_service: SearchService, party_id_map: dict[str, int], benchmark):
         party_ids = [p for p in [party_id_map.get("S")] if p is not None]
         selections = {"party_id": party_ids, "gender_id": [1, 2], "year": (1960, 1970)}
         df = benchmark(search_service.get_speeches, selections=selections)
         assert len(df) > 0
 
+    @pytest.mark.benchmark
     def test_result_has_required_columns(self, search_service: SearchService):
         df: pd.DataFrame = speeches_to_api_frame(search_service.get_speeches(selections={"year": (1970, 1971)}))
         required = {"speech_id", "document_name", "name", "year", "party_abbrev", "gender", "speech_link", "link"}
         missing = required - set(df.columns)
         assert not missing, f"Missing columns: {missing}"
 
+    @pytest.mark.benchmark
     def test_large_year_range(self, search_service: SearchService, benchmark):
         """Benchmark a broad query that returns a large result set."""
         df = benchmark(search_service.get_speeches, selections={"year": (1960, 2000)})
@@ -185,6 +192,7 @@ class TestGetAnforanden:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.benchmark
 class TestGetSpeechesBatch:
     """Correctness and performance tests for SearchService.get_speeches_batch."""
 
@@ -193,6 +201,7 @@ class TestGetSpeechesBatch:
         available = df["speech_id"].dropna()
         return available.sample(min(n, len(available)), random_state=42).tolist()
 
+    @pytest.mark.benchmark
     def test_small_batch(self, search_service: SearchService, benchmark):
         ids = self._sample_speech_ids(search_service, 10, (1970, 1975))
         results = benchmark(lambda: list(search_service.get_speeches_batch(ids)))
@@ -201,16 +210,19 @@ class TestGetSpeechesBatch:
             assert speech_id.startswith("i-")
             assert speech is not None
 
+    @pytest.mark.benchmark
     def test_medium_batch(self, search_service: SearchService, benchmark):
         ids = self._sample_speech_ids(search_service, 100, (1970, 1980))
         results = benchmark(lambda: list(search_service.get_speeches_batch(ids)))
         assert len(results) == 100
 
+    @pytest.mark.benchmark
     def test_large_batch(self, search_service: SearchService, benchmark):
         ids = self._sample_speech_ids(search_service, 500, (1970, 1990))
         results = benchmark(lambda: list(search_service.get_speeches_batch(ids)))
         assert len(results) == 500
 
+    @pytest.mark.benchmark
     def test_batch_yields_text(self, search_service: SearchService):
         ids = self._sample_speech_ids(search_service, 5, (1975, 1980))
         results = list(search_service.get_speeches_batch(ids))
@@ -218,12 +230,14 @@ class TestGetSpeechesBatch:
         texts = [speech.text for _, speech in results if speech.text]
         assert len(texts) > 0, "No speeches returned non-empty text"
 
+    @pytest.mark.benchmark
     def test_batch_returns_matching_ids(self, search_service: SearchService):
         ids = self._sample_speech_ids(search_service, 20, (1970, 1975))
         results = list(search_service.get_speeches_batch(ids))
         returned_ids = {sid for sid, _ in results}
         assert returned_ids == set(ids)
 
+    @pytest.mark.benchmark
     def test_batch_across_protocols(self, search_service: SearchService, benchmark):
         """IDs from many different protocols — tests feather file grouping path."""
         ids = self._sample_speech_ids(search_service, 200, (1960, 2000))
@@ -242,6 +256,7 @@ class TestCreateZipStream:
     def _selections_to_commons(self, selections: dict) -> MagicMock:
         return _make_commons(selections)
 
+    @pytest.mark.benchmark
     def test_small_zip(self, download_service: DownloadService, search_service: SearchService, benchmark):
         df = search_service.get_speeches(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
@@ -253,11 +268,13 @@ class TestCreateZipStream:
             assert name.endswith(".txt")
             assert "_i-" in name  # format: {speaker}_{speech_id}.txt
 
+    @pytest.mark.benchmark
     def test_zip_year_filter(self, download_service: DownloadService, search_service: SearchService, benchmark):
         commons = _make_commons({"year": (1970, 1971)})
         zip_bytes = benchmark(lambda: _collect_zip(download_service.create_stream(search_service, commons)))
         assert len(_zip_entry_names(zip_bytes)) > 0
 
+    @pytest.mark.benchmark
     def test_zip_party_and_gender_filter(
         self, download_service: DownloadService, search_service: SearchService, party_id_map: dict[str, int], benchmark
     ):
@@ -266,6 +283,7 @@ class TestCreateZipStream:
         benchmark(lambda: _collect_zip(download_service.create_stream(search_service, commons)))
         # no crash is sufficient for a narrow filter
 
+    @pytest.mark.benchmark
     def test_zip_is_valid(self, download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1972, 1973)})
         zip_bytes = _collect_zip(download_service.create_stream(search_service, commons))
@@ -273,7 +291,10 @@ class TestCreateZipStream:
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
             assert zf.testzip() is None, "ZIP contains corrupt entries"
 
-    def test_zip_filenames_include_speaker(self, download_service: DownloadService, search_service: SearchService):
+    @pytest.mark.benchmark
+    def test_zip_filenames_include_speaker(
+        self, download_service: DownloadService, search_service: SearchService, benchmark
+    ):
         commons = _make_commons({"year": (1970, 1971)})
         zip_bytes = _collect_zip(download_service.create_stream(search_service, commons))
         names = _zip_entry_names(zip_bytes)
@@ -284,6 +305,7 @@ class TestCreateZipStream:
             speaker_part = parts[0]
             assert speaker_part, f"Empty speaker in filename: {name!r}"
 
+    @pytest.mark.benchmark
     def test_zip_large_batch(self, download_service: DownloadService, search_service: SearchService, benchmark):
         """Benchmark a broad query to stress the streaming path."""
         commons = _make_commons({"year": (1970, 1980)})
@@ -299,6 +321,7 @@ class TestCreateZipStream:
 class TestTarGzCompressionStrategy:
     """Correctness and performance tests for TarGzCompressionStrategy."""
 
+    @pytest.mark.benchmark
     def test_small_batch(self, tar_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         df = search_service.get_speeches(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
@@ -309,11 +332,13 @@ class TestTarGzCompressionStrategy:
             assert name.endswith(".txt")
             assert "_i-" in name
 
+    @pytest.mark.benchmark
     def test_year_filter(self, tar_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         commons = _make_commons({"year": (1970, 1971)})
         entries = benchmark(lambda: _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons)))
         assert len(entries) > 0
 
+    @pytest.mark.benchmark
     def test_is_valid_tar_gz(self, tar_gz_download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1972, 1973)})
         raw = _collect(tar_gz_download_service.create_stream(search_service, commons))
@@ -323,6 +348,7 @@ class TestTarGzCompressionStrategy:
             members = tf.getmembers()
         assert len(members) > 0
 
+    @pytest.mark.benchmark
     def test_text_content_is_accessible(self, tar_gz_download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1972, 1972)})
         entries = _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons))
@@ -330,6 +356,7 @@ class TestTarGzCompressionStrategy:
         non_empty = [v for v in entries.values() if v.strip()]
         assert len(non_empty) > 0, "No non-empty speech texts in tar.gz"
 
+    @pytest.mark.benchmark
     def test_party_and_gender_filter(
         self,
         tar_gz_download_service: DownloadService,
@@ -341,6 +368,7 @@ class TestTarGzCompressionStrategy:
         commons = _make_commons({"party_id": party_ids, "gender_id": [2], "year": (1975, 1980)})
         benchmark(lambda: _collect_tar_gz(tar_gz_download_service.create_stream(search_service, commons)))
 
+    @pytest.mark.benchmark
     def test_large_batch(self, tar_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         """Benchmark a broad query to stress the tar.gz streaming path."""
         commons = _make_commons({"year": (1970, 1980)})
@@ -356,6 +384,7 @@ class TestTarGzCompressionStrategy:
 class TestJsonlGzCompressionStrategy:
     """Correctness and performance tests for JsonlGzCompressionStrategy."""
 
+    @pytest.mark.benchmark
     def test_small_batch(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         df = search_service.get_speeches(selections={"year": (1970, 1971)})
         speech_ids = df["speech_id"].dropna().sample(min(10, len(df)), random_state=1).tolist()
@@ -367,11 +396,13 @@ class TestJsonlGzCompressionStrategy:
             assert "speaker" in rec
             assert "text" in rec
 
+    @pytest.mark.benchmark
     def test_year_filter(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         commons = _make_commons({"year": (1970, 1971)})
         records = benchmark(lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons)))
         assert len(records) > 0
 
+    @pytest.mark.benchmark
     def test_is_valid_gzip(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1972, 1973)})
         raw = _collect(jsonl_gz_download_service.create_stream(search_service, commons))
@@ -380,6 +411,7 @@ class TestJsonlGzCompressionStrategy:
             lines = [x for x in fh if x.strip()]
         assert len(lines) > 0
 
+    @pytest.mark.benchmark
     def test_records_are_valid_json(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
         commons = _make_commons({"year": (1972, 1972)})
         records = _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons))
@@ -390,6 +422,7 @@ class TestJsonlGzCompressionStrategy:
             assert isinstance(rec["speaker"], str)
             assert isinstance(rec["text"], str)
 
+    @pytest.mark.benchmark
     def test_speech_ids_match_query(self, jsonl_gz_download_service: DownloadService, search_service: SearchService):
         """speech_id values in JSONL records match what get_speeches returns."""
         commons = _make_commons({"year": (1970, 1971)})
@@ -399,6 +432,7 @@ class TestJsonlGzCompressionStrategy:
         returned_ids = {r["speech_id"] for r in records}
         assert returned_ids == expected_ids
 
+    @pytest.mark.benchmark
     def test_party_and_gender_filter(
         self,
         jsonl_gz_download_service: DownloadService,
@@ -410,6 +444,7 @@ class TestJsonlGzCompressionStrategy:
         commons = _make_commons({"party_id": party_ids, "gender_id": [2], "year": (1975, 1980)})
         benchmark(lambda: _collect_jsonl_gz(jsonl_gz_download_service.create_stream(search_service, commons)))
 
+    @pytest.mark.benchmark
     def test_large_batch(self, jsonl_gz_download_service: DownloadService, search_service: SearchService, benchmark):
         """Benchmark a broad query to stress the jsonl.gz streaming path."""
         commons = _make_commons({"year": (1970, 1980)})
@@ -425,6 +460,7 @@ class TestJsonlGzCompressionStrategy:
 class TestStrategyComparison:
     """Head-to-head benchmarks of all three compression strategies on the same data."""
 
+    @pytest.mark.benchmark
     def test_zip_strategy(self, search_service: SearchService, benchmark):
         """Baseline ZIP performance."""
         svc = DownloadService(ZipCompressionStrategy())
@@ -432,6 +468,7 @@ class TestStrategyComparison:
         result = benchmark(lambda: _collect(svc.create_stream(search_service, commons)))
         assert len(result) > 0
 
+    @pytest.mark.benchmark
     def test_tar_gz_strategy(self, search_service: SearchService, benchmark):
         """Comparison: tar.gz performance on the same query."""
         svc = DownloadService(TarGzCompressionStrategy())
@@ -439,6 +476,7 @@ class TestStrategyComparison:
         result = benchmark(lambda: _collect(svc.create_stream(search_service, commons)))
         assert len(result) > 0
 
+    @pytest.mark.benchmark
     def test_jsonl_gz_strategy(self, search_service: SearchService, benchmark):
         """Comparison: jsonl.gz performance on the same query."""
         svc = DownloadService(JsonlGzCompressionStrategy())
@@ -446,6 +484,7 @@ class TestStrategyComparison:
         result = benchmark(lambda: _collect(svc.create_stream(search_service, commons)))
         assert len(result) > 0
 
+    @pytest.mark.benchmark
     def test_output_sizes(self, search_service: SearchService):
         """Compare compressed output sizes across strategies for the same dataset."""
         commons = _make_commons({"year": (1970, 1971)})

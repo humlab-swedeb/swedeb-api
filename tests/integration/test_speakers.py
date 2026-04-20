@@ -4,7 +4,6 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from api_swedeb.api.dependencies import get_corpus_loader
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.person_codecs import PersonCodecs
@@ -18,13 +17,13 @@ version = "v1"
 
 @pytest.fixture(scope="module")
 def client(fastapi_app):
-    client = TestClient(fastapi_app)
-    yield client
+    with TestClient(fastapi_app) as client:
+        yield client
 
 
 @pytest.fixture(scope="module")
-def corpus() -> CorpusLoader:
-    return get_corpus_loader()
+def corpus(corpus_loader: CorpusLoader) -> CorpusLoader:
+    return corpus_loader
 
 
 @pytest.fixture(scope="module")

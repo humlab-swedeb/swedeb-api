@@ -92,7 +92,7 @@ FRONTEND_VERSION=v1.2.3     # Pin to specific version
 ### 5. Comprehensive Documentation
 
 #### New Documentation Files:
-- **`docs/DEPLOYMENT.md`** - Complete deployment strategy overview
+- **`docs/OPERATIONS.md`** - Complete deployment strategy overview
 - **`docs/DEPLOY_DOCKER.md`** - Docker Compose deployment procedures (512 lines)
 - **`docs/DEPLOY_PODMAN.md`** - Podman Quadlet deployment for production (749 lines)
 - **`docs/WORKFLOW_GUIDE.md`** - Developer workflow and branching strategy (340 lines)
@@ -304,7 +304,7 @@ Frontend assets are cached based on version:
 ## 📚 Related Documentation
 
 - **Architecture:** `docs/README-DECOUPLED.md`
-- **Deployment:** `docs/DEPLOYMENT.md`
+- **Deployment:** `docs/OPERATIONS.md`
 - **Workflows:** `docs/WORKFLOW_GUIDE.md`
 - **Troubleshooting:** `docs/TROUBLESHOOTING.md`
 - **AI Agent Guide:** `.github/copilot-instructions.md`

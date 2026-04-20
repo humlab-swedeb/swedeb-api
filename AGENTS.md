@@ -105,12 +105,30 @@ def configure_config_store():
 - Build Docker images solely through `.github/scripts/build-and-push-image.sh`; expect runtime frontend assets to be fetched by `download-frontend.sh` and push outputs to `ghcr.io/humlab-swedeb/swedeb-api` with environment-specific compose files (`compose.test.yml`, `compose.staging.yml`, `docker-compose.yml`).
 
 ## Documentation & Knowledge Base
-- Consult deployment docs (`docs/DEPLOYMENT.md`, `docs/DEPLOY_DOCKER.md`, `docs/DEPLOY_PODMAN.md`), workflow guides, and troubleshooting references before changing release processes or infrastructure.
+- Consult `docs/DESIGN.md`, `api_swedeb/`, `tests/`, `README.md`, `config/`, and generated FastAPI/OpenAPI definitions before changing design-focused documentation or architecture guidance.
+- Keep `docs/DESIGN.md` focused on system structure, component responsibilities, key flows, external dependencies, data/persistence at a design level, cross-cutting concerns, constraints, major design decisions, and important tradeoffs or technical debt.
+- Do not put local setup instructions, deployment/runbook procedures, exhaustive endpoint-by-endpoint API reference, low-level code walkthroughs, or detailed unit-test/CI catalogs into `docs/DESIGN.md`; keep those in `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, generated API docs, or close to the code.
+- Consult `docs/DEVELOPMENT.md`, `README.md`, `pyproject.toml`, `Makefile`, `.github/scripts/`, `docker/`, and `config/` before changing developer-facing documentation or local workflow guidance.
+- Keep `docs/DEVELOPMENT.md` focused on developer-facing content: purpose and audience, prerequisites, local setup, local configuration, project structure, common commands, code quality checks, development workflow, debugging, and related documents.
+- Do not put production deployment procedures, rollback, backup/recovery, incident handling, or endpoint-by-endpoint API reference into `docs/DEVELOPMENT.md`; keep those in `docs/OPERATIONS.md`, `docs/DESIGN.md`, generated API docs, or other specialized documentation.
+- Consult `docs/TESTING.md`, `tests/`, `pyproject.toml`, `.github/workflows/`, `.github/scripts/`, `Makefile`, `docker/`, and `config/` before changing testing-focused documentation or validation guidance.
+- Keep `docs/TESTING.md` focused on testing strategy, quality expectations, test levels and responsibilities, test environment assumptions, fixture and mocking policy, supported test commands, validation before merge, CI test execution, and testing troubleshooting.
+- Do not put local bootstrap instructions, runtime operations procedures, high-level architecture rationale, exhaustive API reference, or line-by-line inventories of individual test files into `docs/TESTING.md`; keep those in `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/DESIGN.md`, generated API docs, or close to the tests themselves.
+- For proposal work, consult `.github/instructions/proposal-writing-guide.instructions.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
+- Keep proposals focused on the decision to be made: problem, scope, recommendation, tradeoffs, risks, and validation expectations. Do not expand proposals into general documentation or full implementation specs unless that level of detail is required.
+- Treat `docs/change_requests/` as design and migration context for proposal work, not as the source of truth for current runtime, development, testing, or operational behavior.
+- Consult `docs/OPERATIONS.md` plus current workflow files, scripts, container definitions, and runtime configuration before changing release processes or infrastructure.
+- Keep `docs/OPERATIONS.md` focused on operations: environments, runtime configuration and secrets, operational assumptions, data layout, build artifacts, deployment flow, CI stages, CD triggers/release process, post-deployment verification, rollback, health/observability, and backup/recovery basics.
+- Do not put local development setup, contributor workflow, unit-test patterns, or general Git guidance into `docs/OPERATIONS.md`; keep those in `docs/DEVELOPMENT.md` or other developer-facing docs.
+- Treat `docs/archive/` as historical reference only, not the source of truth for current design, development, testing, or operational procedures.
 - Keep API contracts discoverable via `/docs` (Swagger) and `/redoc`; update schemas in `api_swedeb/schemas/` alongside endpoint changes.
 
 ## Common Implementation Tasks
 - When adding endpoints: define schemas under `api_swedeb/schemas/`, create/extend services in `api_swedeb/api/services/`, inject services via `Depends()` in routers, call service methods (not corpus methods), add tests in `tests/api_swedeb/api/` with mocked services
-- When changing configuration: edit `config/config.yml`, update `tests/config.yml` to mirror new keys, adjust `ConfigValue` usages, and refresh deployment docs if the change affects environments.
+- When changing architecture, component boundaries, external integrations, cross-cutting behavior, or major runtime flows: refresh `docs/DESIGN.md` if the system structure, responsibilities, constraints, or design tradeoffs have changed.
+- When changing configuration: edit `config/config.yml`, update `tests/config.yml` to mirror new keys, adjust `ConfigValue` usages, refresh `docs/DEVELOPMENT.md` if local setup or local configuration guidance changes, and refresh `docs/OPERATIONS.md` if runtime environments, secrets, deployment flow, or operational procedures change.
+- When changing developer tooling or local workflow: refresh `docs/DEVELOPMENT.md` if prerequisites, setup steps, common commands, validation steps, or repository-specific development conventions change.
+- When changing tests, test fixtures, pytest configuration in `pyproject.toml`, CI validation workflows, or repository-specific testing conventions: refresh `docs/TESTING.md` if test levels, supported commands, environment expectations, validation-before-merge guidance, or CI test behavior changes.
 - When optimizing performance: profile first, inspect `load.py::_memory_usage()`, prefer feather storage, and refine CWB/CQP queries instead of bypassing caches.
 - When changing speech retrieval behavior: prefer `api_swedeb/core/speech_store.py`, `api_swedeb/core/speech_repository_fast.py`, and `api_swedeb/workflows/prebuilt_speech_index/`; touch `api_swedeb/legacy/` only when the task explicitly concerns the archived fallback path.
 

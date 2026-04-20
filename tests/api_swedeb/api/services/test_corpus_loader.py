@@ -1,6 +1,6 @@
 """Unit tests for CorpusLoader service."""
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pandas as pd
 import pytest
@@ -395,7 +395,6 @@ class TestCorpusLoaderAdditionalBranches:
             mock_value.return_value = si
             assert loader.protocol_page_range("prot-1") == (5, 15)
 
-
     def test_protocol_page_range_returns_fallback_on_error(self):
         loader = CorpusLoader(
             dtm_tag="tag",
@@ -439,7 +438,7 @@ class TestIntegrationFullCorpus:
     def test_full_corpus_properties(self):
         """Integration test to verify CorpusLoader with actual data files."""
 
-        get_config_store().configure_context(source='config/dev_swedeb.yml')
+        get_config_store().configure_context(source='config/config.yml')
         loader = CorpusLoader(
             dtm_tag="text",
             dtm_folder="./data/v1.4.1/dtm/text",

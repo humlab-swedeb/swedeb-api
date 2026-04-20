@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import multiprocessing as mp
 import os
 import tempfile
@@ -109,9 +110,14 @@ def execute_kwic_multiprocess(
     # Create year chunks
     year_chunks: list[tuple[int, int]] = create_year_chunks(min_year, max_year, num_processes)
 
+    # Divide cut_off across shards so each worker retrieves only its share of rows.
+    # Without this, each worker retrieves the full cut_off independently (e.g. 8 × 500k = 4M
+    # rows retrieved and pickled through IPC, then discarded after merge).
+    shard_cut_off: int | None = math.ceil(cut_off / num_processes) if cut_off is not None else None
+
     # Prepare worker arguments
     worker_args: list[tuple[Any, ...]] = [
-        (corpus_opts, opts, year_range, words_before, words_after, p_show, cut_off) for year_range in year_chunks
+        (corpus_opts, opts, year_range, words_before, words_after, p_show, shard_cut_off) for year_range in year_chunks
     ]
 
     # Run queries in parallel
