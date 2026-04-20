@@ -18,6 +18,7 @@ Redis broker or Celery worker.  Three complementary strategies are used:
    Celery's Redis result backend relies on, making it a safe substitute for
    Redis in any future backend-level Celery tests.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -184,9 +185,7 @@ def test_get_status_routes_to_celery_path_when_celery_enabled(result_store: Resu
     ticket = result_store.create_ticket(query_meta={})
 
     with (
-        patch(
-            "api_swedeb.api.services.kwic_ticket_service.ConfigValue"
-        ) as mock_cv,
+        patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue") as mock_cv,
         patch("api_swedeb.celery_app.celery_app") as mock_celery_app,
     ):
         mock_cv.return_value.resolve.return_value = True  # celery_enabled=True
@@ -213,7 +212,7 @@ def test_execute_ticket_celery_task_run_calls_delegate_and_returns_dict() -> Non
         patch.object(celery_tasks.execute_ticket_celery_task, "update_state") as update_state,
         patch("api_swedeb.celery_tasks._execute_ticket_task", return_value=expected) as delegate,
     ):
-        result = celery_tasks.execute_ticket_celery_task.run(TICKET_ID, REQUEST_DATA, CWB_OPTS)
+        result = celery_tasks.execute_ticket_celery_task.run(TICKET_ID, REQUEST_DATA, CWB_OPTS)  # type: ignore[attr-defined]
 
     update_state.assert_called_once_with(state="PROGRESS", meta={"ticket_id": TICKET_ID})
     delegate.assert_called_once_with(TICKET_ID, REQUEST_DATA, CWB_OPTS)
@@ -232,7 +231,7 @@ def test_apply_async_eager_returns_success_state(celery_app_eager) -> None:
     expected = {"ticket_id": TICKET_ID, "row_count": 3}
 
     with patch("api_swedeb.celery_tasks._execute_ticket_task", return_value=expected):
-        async_result = celery_tasks.execute_ticket_celery_task.apply_async(
+        async_result = celery_tasks.execute_ticket_celery_task.apply_async(  # type: ignore[attr-defined]
             args=[TICKET_ID, REQUEST_DATA, CWB_OPTS],
             task_id=TICKET_ID,
         )
@@ -249,7 +248,7 @@ def test_apply_async_eager_row_count_accessible(celery_app_eager) -> None:
         "api_swedeb.celery_tasks._execute_ticket_task",
         return_value={"ticket_id": "t-2", "row_count": 12},
     ):
-        result = celery_tasks.execute_ticket_celery_task.apply_async(
+        result = celery_tasks.execute_ticket_celery_task.apply_async(  # type: ignore[attr-defined]
             args=["t-2", REQUEST_DATA, CWB_OPTS],
             task_id="t-2",
         )
@@ -265,7 +264,7 @@ def test_apply_async_eager_update_state_called(celery_app_eager) -> None:
         patch("api_swedeb.celery_tasks._execute_ticket_task", return_value={"ticket_id": "t-3", "row_count": 0}),
         patch.object(celery_tasks.execute_ticket_celery_task, "update_state") as update_state,
     ):
-        celery_tasks.execute_ticket_celery_task.apply_async(
+        celery_tasks.execute_ticket_celery_task.apply_async(  # type: ignore[attr-defined]
             args=["t-3", REQUEST_DATA, CWB_OPTS],
             task_id="t-3",
         )
@@ -298,7 +297,7 @@ def test_full_lifecycle_submit_execute_verify_success(celery_app_eager, result_s
         "api_swedeb.celery_tasks._execute_ticket_task",
         return_value={"ticket_id": task_ticket_id, "row_count": expected_row_count},
     ):
-        eager_result = celery_tasks.execute_ticket_celery_task.apply_async(
+        eager_result = celery_tasks.execute_ticket_celery_task.apply_async(  # type: ignore[attr-defined]
             args=[task_ticket_id, REQUEST_DATA, CWB_OPTS],
             task_id=task_ticket_id,
         )
@@ -334,19 +333,21 @@ def test_fakeredis_set_get_round_trip() -> None:
 
     task_id = "fakeredis-smoke-001"
     key = f"celery-task-meta-{task_id}"
-    payload = json.dumps({
-        "status": "SUCCESS",
-        "result": {"ticket_id": task_id, "row_count": 6},
-        "traceback": None,
-        "children": [],
-        "task_id": task_id,
-    })
+    payload = json.dumps(
+        {
+            "status": "SUCCESS",
+            "result": {"ticket_id": task_id, "row_count": 6},
+            "traceback": None,
+            "children": [],
+            "task_id": task_id,
+        }
+    )
 
     fake.set(key, payload)
     raw = fake.get(key)
 
     assert raw is not None
-    retrieved = json.loads(raw)
+    retrieved = json.loads(raw)  # type: ignore[assignment]
     assert retrieved["status"] == "SUCCESS"
     assert retrieved["result"]["row_count"] == 6
 
@@ -360,7 +361,7 @@ def test_fakeredis_ttl_is_set_correctly() -> None:
     ttl = fake.ttl("celery-task-meta-ttl-test")
 
     # TTL should be between 1 and 60 seconds
-    assert 0 < ttl <= 60
+    assert 0 < ttl <= 60  # type: ignore[comparison-overlap]
 
 
 def test_fakeredis_multiple_clients_share_same_server() -> None:

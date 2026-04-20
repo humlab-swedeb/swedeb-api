@@ -1,12 +1,14 @@
 from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api_swedeb.api.container import AppContainer
 from api_swedeb.api.services.result_store import ResultStore
 from api_swedeb.app import create_app
 from api_swedeb.core.configuration import ConfigValue, get_config_store
+from api_swedeb.core.configuration.config import Config
 
 
 def test_create_app_initializes_result_store() -> None:
@@ -32,13 +34,14 @@ def test_create_app_configures_context_when_source_provided() -> None:
 
 
 def test_create_app_configures_celery_in_lifespan_when_enabled(tmp_path) -> None:
-    config_store = get_config_store().config()
+    config_store: Config | None = get_config_store().config()
+    assert config_store is not None, "Config store should not be None"
     original_data = deepcopy(config_store.data)
     original_resolve = ConfigValue.resolve
 
     try:
         config_store.update(("development.celery_enabled", True))
-        app = create_app(config_source=None, static_dir=str(tmp_path))
+        app: FastAPI = create_app(config_source=None, static_dir=str(tmp_path))
 
         with (
             patch("api_swedeb.celery_app.configure_celery") as configure_celery,
@@ -51,7 +54,7 @@ def test_create_app_configures_celery_in_lifespan_when_enabled(tmp_path) -> None
             ),
         ):
             with TestClient(app):
-                assert any(route.path == "/public" for route in app.routes)
+                assert any(route.path == "/public" for route in app.routes)  # type: ignore
                 configure_celery.assert_called_once_with()
     finally:
         config_store.data = original_data
