@@ -52,7 +52,7 @@ RUN set -ex; \
     chown -R ${APP_USER}:${APP_USER} /data; \
     chown -R ${APP_USER}:${APP_USER} /app/public; \
     chmod +x entrypoint.sh; \
-    chmod +x docker/test-network.sh
+    chmod +x test-network.sh
 
 USER ${APP_USER}
 
