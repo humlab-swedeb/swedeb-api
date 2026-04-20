@@ -3,7 +3,6 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 ROOT_DIR := $(abspath ..)
-LOCAL_BUILD_SCRIPT := ./build-local-image.sh
 CI_BUILD_SCRIPT := ../.github/scripts/build-and-push-image.sh
 COMPOSE_FILE := ./compose.yml
 
@@ -41,14 +40,6 @@ help:
 	@echo "  logs              - Follow container logs"
 	@echo "  bash              - Open a shell in the running container"
 	@echo ""
-	@echo "Local testing targets:"
-	@echo "  test-local          - Build and test container locally (full test)"
-	@echo "  test-local-podman   - Test with Podman instead of Docker"
-	@echo "  test-local-skip-build - Test existing image without rebuilding"
-	@echo "  test-local-repl     - Quick test with local frontend mount (for REPL)"
-	@echo "  test-help           - Show test script help"
-	@echo "  test-clean          - Clean up test artifacts and images"
-	@echo ""
 	@echo "Current values:"
 	@echo "  ENVIRONMENT=$(ENVIRONMENT)"
 	@echo "  VERSION=$(VERSION)"
@@ -66,13 +57,9 @@ validate-environment:
 
 .PHONY: image
 image: validate-environment
-	@if [ "$(ENVIRONMENT)" = "production" ]; then \
-		echo "Production builds use the shared CI script in no-push mode."; \
-		SKIP_PUSH=1 IMAGE_NAME_OVERRIDE="$(IMAGE_NAME)" GITHUB_REPOSITORY="$(GITHUB_REPOSITORY)" \
-			bash "$(CI_BUILD_SCRIPT)" "$(VERSION)" "$(ENVIRONMENT)"; \
-	else \
-		IMAGE_NAME_OVERRIDE="$(IMAGE_NAME)" bash "$(LOCAL_BUILD_SCRIPT)" "$(ENVIRONMENT)"; \
-	fi
+	@echo "Building image using the shared CI script in no-push mode."; \
+	SKIP_PUSH=1 IMAGE_NAME_OVERRIDE="$(IMAGE_NAME)" GITHUB_REPOSITORY="$(GITHUB_REPOSITORY)" \
+		bash "$(CI_BUILD_SCRIPT)" "$(VERSION)" "$(ENVIRONMENT)"; \
 
 .PHONY: image-test
 image-test:
@@ -123,44 +110,3 @@ logs:
 bash:
 	@docker exec -it "$(CONTAINER_NAME)" /bin/bash
 
-# ====================
-# Local Testing Targets
-# ====================
-
-.PHONY: test-local
-test-local:
-	@echo "Building and testing container locally..."
-	@./test-local.sh
-
-.PHONY: test-local-podman
-test-local-podman:
-	@echo "Building and testing container with Podman..."
-	@CONTAINER_TOOL=podman ./test-local.sh
-
-.PHONY: test-local-skip-build
-test-local-skip-build:
-	@echo "Testing existing local image..."
-	@./test-local.sh --skip-build
-
-.PHONY: test-local-repl
-test-local-repl:
-	@echo "Testing with local frontend mount (REPL mode)..."
-	@if [ -d "../../swedeb_frontend/dist" ]; then \
-		./test-local.sh --skip-build --frontend-dir ../../swedeb_frontend/dist; \
-	else \
-		echo "Error: Frontend directory not found at ../../swedeb_frontend/dist"; \
-		echo "Build the frontend first or specify directory with:"; \
-		echo "  ./test-local.sh --frontend-dir /path/to/frontend/dist"; \
-		exit 1; \
-	fi
-
-.PHONY: test-help
-test-help:
-	@./test-local.sh --help
-
-.PHONY: test-clean
-test-clean:
-	@echo "Cleaning up test artifacts..."
-	@rm -rf test-data/
-	@docker rmi -f swedeb-api:local-test 2>/dev/null || true
-	@echo "Test cleanup complete"

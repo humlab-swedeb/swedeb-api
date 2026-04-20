@@ -4,9 +4,26 @@ This directory contains the runtime files that are copied into the API image.
 
 The image build is driven by:
 
-- [Dockerfile](Dockerfile)
-- [build-local-image.sh](build-local-image.sh)
-- [.github/scripts/build-and-push-image.sh](../.github/scripts/build-and-push-image.sh)
+- [Dockerfile](Dockerfile) - Multi-stage container build definition
+- [.github/scripts/build-and-push-image.sh](../.github/scripts/build-and-push-image.sh) - Shared build script used by CI/CD
+
+## Directory Structure
+
+```
+docker/
+├── Dockerfile              # Container build definition
+├── README.md               # This file
+├── .dockerignore           # Files excluded from build context
+├── compose.yml             # Production Docker Compose configuration
+├── main.py                 # FastAPI app entry point (copied into image)
+├── entrypoint.sh           # Container startup script (copied into image)
+├── test-network.sh         # Network diagnostics script (copied into image)
+├── .env                    # Environment variables for compose.yml
+├── wheels/                 # Temporary directory for Python wheels (build artifact)
+└── quadlets/               # Podman quadlet definitions for production deployment
+```
+
+**Build Context:** All Docker builds use this `docker/` directory as the build context, not the repository root. This means `COPY` commands in the Dockerfile reference paths relative to this directory.
 
 ## What The Image Contains
 
@@ -49,53 +66,68 @@ That script:
 
 ### Prerequisites
 
-- Docker
-- `uv`
-- `act` if you want to run the workflows locally
-- a GitHub token if you want `act` to fetch actions or log in to GHCR
+- Docker or Podman
+- `uv` for Python package management
+- `act` if you want to run GitHub Actions workflows locally
+- A GitHub token for `act` to fetch actions or log in to GHCR
 
-### Fastest Local Build Test
+### CI/CD Build Script (Recommended)
 
-This is the simplest local check and does not push anything:
-
-```bash
-bash docker/build-local-image.sh test
-bash docker/build-local-image.sh staging
-```
-
-This uses the same Dockerfile and the same wheel-first build pattern as CI, but it tags the image locally as `swedeb-api`.
-
-### Quick Local Test
-
-To build and test the image locally:
+The most reliable way to test the build locally is to run the same script that GitHub Actions uses:
 
 ```bash
-cd docker
-make test-local
-```
-
-Once running, access:
-- **Frontend UI**: http://localhost:8092/public/index.html#/
-- **API Docs**: http://localhost:8092/docs
-- **API Endpoints**: http://localhost:8092/v1/
-
-For more testing options, see [DOCKER_BUILD_TESTING.md](DOCKER_BUILD_TESTING.md).
-
-### Run The Shared CI Build Script Without Pushing
-
-If you want to test the same script that GitHub Actions uses, run it with `SKIP_PUSH=1`:
-
-```bash
+# Build without pushing to registry
 SKIP_PUSH=1 \
 GITHUB_REPOSITORY=humlab-swedeb/swedeb-api \
 ./.github/scripts/build-and-push-image.sh "$(uv version | awk '{print $NF}')" staging
 ```
 
-Notes:
+This script:
+- Builds the Python wheel from the repo root
+- Downloads frontend assets for the specified environment
+- Builds the Docker image from the `docker/` directory
+- Tags the image locally (does not push when `SKIP_PUSH=1`)
 
-- `SKIP_PUSH=1` skips both registry push and registry login inside the shared script.
-- `GITHUB_REPOSITORY` keeps the local tags aligned with CI tag names.
-- You can replace `staging` with `test` or `production`.
+You can replace `staging` with `test` or `production` to test different frontend versions.
+
+### Manual Build
+
+If you prefer to build manually:
+
+```bash
+cd docker
+
+# Build the wheel
+(cd .. && uv build --wheel --out-dir docker/wheels)
+
+# Build the image
+docker build \
+  --build-arg FRONTEND_VERSION=staging \
+  -t swedeb-api:local \
+  .
+```
+
+**Note:** This requires manually managing frontend download and wheel building.
+
+### Running the Image Locally
+
+After building, you can run the container locally:
+
+```bash
+docker run --rm -p 8092:8000 \
+  -v /path/to/data:/data:ro \
+  -v /path/to/config.yml:/config/config.yml:ro \
+  swedeb-api:local
+```
+
+Then access:
+- **Frontend UI**: http://localhost:8092/public/index.html#/
+- **API Docs**: http://localhost:8092/docs
+- **API Endpoints**: http://localhost:8092/v1/
+
+### Deprecated Local Testing Workflow
+
+Previous comprehensive local testing scripts (`test-local.sh`, `build-local-image.sh`, etc.) have been removed pending redesign. See [../docs/proposals/local-container-testing-workflow.md](../docs/proposals/local-container-testing-workflow.md) for the intent and future considerations.
 
 ## Testing With `act`
 

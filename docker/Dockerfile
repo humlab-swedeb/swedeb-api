@@ -22,10 +22,9 @@ RUN set -ex; \
     rm -rf /tmp/*.whl
 
 # Copy runtime files
-COPY --chown=${APP_USER}:${APP_USER} docker/main.py .
-COPY --chown=${APP_USER}:${APP_USER} docker/entrypoint.sh .
-COPY --chown=${APP_USER}:${APP_USER} docker/test-network.sh docker/
-COPY --chown=${APP_USER}:${APP_USER} config ./config/
+COPY --chown=${APP_USER}:${APP_USER} main.py .
+COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh .
+COPY --chown=${APP_USER}:${APP_USER} test-network.sh .
 
 # Create public directory for frontend assets
 RUN mkdir -p public && \
@@ -53,7 +52,7 @@ RUN set -ex; \
     chown -R ${APP_USER}:${APP_USER} /data; \
     chown -R ${APP_USER}:${APP_USER} /app/public; \
     chmod +x entrypoint.sh; \
-    chmod +x docker/test-network.sh
+    chmod +x test-network.sh
 
 USER ${APP_USER}
 
