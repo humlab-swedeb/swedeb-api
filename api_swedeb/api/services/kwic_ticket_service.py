@@ -3,11 +3,13 @@ from __future__ import annotations
 import hashlib
 import math
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from typing import Any
 
 import ccc
 import pandas as pd
+from loguru import logger
 
 from api_swedeb.api.params import CommonQueryParams, build_common_query_params, build_filter_opts
 from api_swedeb.api.services.kwic_service import KWICService
@@ -18,6 +20,7 @@ from api_swedeb.api.services.result_store import (
     TicketMeta,
     TicketStatus,
 )
+from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.mappers.kwic import kwic_api_frame_to_model, kwic_to_api_frame
 from api_swedeb.schemas.kwic_schema import (
     KWICPageResult,
@@ -30,6 +33,62 @@ from api_swedeb.schemas.sort_order import SortOrder
 
 DEFAULT_PAGE_SIZE = 50
 TICKET_ROW_ID = "_ticket_row_id"
+
+# pylint: disable=import-outside-toplevel
+# ---------------------------------------------------------------------------
+# Per-worker singleton helpers (Celery workers only)
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def _get_worker_kwic_service() -> KWICService:
+    """Return a KWICService initialised once per Celery worker process."""
+    from api_swedeb.api.services.corpus_loader import CorpusLoader  # type: ignore[import]
+
+    return KWICService(CorpusLoader())
+
+
+@lru_cache(maxsize=1)
+def _get_worker_result_store() -> ResultStore:
+    """Return a ResultStore initialised once per Celery worker process."""
+    store = ResultStore.from_config()
+    store.startup_sync()
+    return store
+
+
+# ---------------------------------------------------------------------------
+# Celery task (module-level so Celery can discover it)
+# ---------------------------------------------------------------------------
+
+
+def execute_ticket_task(ticket_id: str, request_data: dict, cwb_opts: dict) -> dict:
+    """Execute a KWIC ticket in a Celery worker process.
+
+    This function is registered as a Celery task by ``_make_celery_task()`` at
+    import time of the celery worker module.  It is intentionally kept as a plain
+    function here so that importing ``kwic_ticket_service`` in the FastAPI process
+    does *not* require a live Celery / Redis connection.
+
+    The ``celery_tasks`` module (imported only by the worker entry-point) wraps this
+    function with ``@celery_app.task``.
+    """
+    kwic_service = _get_worker_kwic_service()
+    result_store = _get_worker_result_store()
+    result_store.adopt_ticket(ticket_id)
+
+    request = KWICQueryRequest.model_validate(request_data)
+    _service = KWICTicketService()
+    _service.execute_ticket(
+        ticket_id=ticket_id,
+        request=request,
+        cwb_opts=cwb_opts,
+        kwic_service=kwic_service,
+        result_store=result_store,
+    )
+    # Return a small summary so Celery / Redis can report row_count
+    ticket = result_store.get_ticket(ticket_id)
+    row_count = ticket.total_hits if ticket is not None else 0
+    return {"ticket_id": ticket_id, "row_count": row_count}
 
 
 class KWICTicketService:
@@ -50,7 +109,9 @@ class KWICTicketService:
         kwic_service: KWICService,
         result_store: ResultStore,
     ) -> None:
+        logger.info(f"Starting execute_ticket for {ticket_id}")
         try:
+            logger.debug(f"Creating corpus for ticket {ticket_id}")
             corpus: ccc.Corpus = self._create_corpus(cwb_opts)
             commons: CommonQueryParams = build_common_query_params(
                 from_year=request.filters.from_year,
@@ -62,6 +123,7 @@ class KWICTicketService:
                 speech_id=request.filters.speech_id,
             )
             keywords: str | list[str] = self._keywords(request.search)
+            logger.debug(f"Calling get_kwic for ticket {ticket_id}")
             data: pd.DataFrame = kwic_service.get_kwic(
                 corpus=corpus,
                 commons=commons,
@@ -72,8 +134,11 @@ class KWICTicketService:
                 cut_off=request.cut_off,
                 p_show="word",
             )
+            logger.info(f"KWIC query completed for ticket {ticket_id}, found {len(data)} rows")
+            logger.debug(f"Converting to API frame for ticket {ticket_id}")
             api_frame: pd.DataFrame = kwic_to_api_frame(data).reset_index(drop=True)
             api_frame[TICKET_ROW_ID] = range(len(api_frame.index))
+            logger.debug(f"Storing results for ticket {ticket_id}")
             result_store.store_ready(
                 ticket_id,
                 df=api_frame,
@@ -81,18 +146,135 @@ class KWICTicketService:
                 speech_ids=self._speech_ids(api_frame),
                 manifest_meta=self._manifest_meta(ticket_id, request, api_frame),
             )
+            logger.info(f"Successfully stored results for ticket {ticket_id}")
         except ResultStoreCapacityError:
+            logger.warning(f"Result store capacity error for ticket {ticket_id}")
             return
         except ResultStoreNotFound:
+            logger.warning(f"Result store not found for ticket {ticket_id}")
             return
-        except Exception:  # pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.exception(f"Error executing ticket {ticket_id}: {exc}")
             result_store.store_error(ticket_id, message="Failed to generate KWIC results")
 
     def get_status(self, ticket_id: str, result_store: ResultStore) -> KWICTicketStatus:
+        if ConfigValue("development.celery_enabled", default=False).resolve():
+            return self._get_celery_status(ticket_id, result_store)
         ticket: TicketMeta = result_store.require_ticket(ticket_id)
         return self._status_model(ticket)
 
+    def _get_celery_status(self, ticket_id: str, result_store: ResultStore) -> KWICTicketStatus:
+        from api_swedeb.celery_app import celery_app  # type: ignore[import]
+
+        celery_result = celery_app.AsyncResult(ticket_id)
+        celery_to_status = {
+            "PENDING": TicketStatus.PENDING,
+            "STARTED": TicketStatus.PENDING,
+            "PROGRESS": TicketStatus.PENDING,
+            "SUCCESS": TicketStatus.READY,
+            "FAILURE": TicketStatus.ERROR,
+        }
+        status = celery_to_status.get(celery_result.state, TicketStatus.PENDING)
+        ticket = result_store.get_ticket(ticket_id)
+        expires_at = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
+        error: str | None = None
+        if status == TicketStatus.ERROR:
+            error = str(celery_result.info) if celery_result.info else "Task failed"
+        total_hits: int | None = None
+        if status == TicketStatus.READY and isinstance(celery_result.result, dict):
+            total_hits = celery_result.result.get("row_count")
+        return KWICTicketStatus(
+            ticket_id=ticket_id,
+            status=status.value,
+            total_hits=total_hits,
+            error=error,
+            expires_at=expires_at,
+        )
+
     def get_page_result(
+        self,
+        *,
+        ticket_id: str,
+        result_store: ResultStore,
+        page: int,
+        page_size: int,
+        sort_by: KWICTicketSortBy | None,
+        sort_order: SortOrder,
+    ) -> KWICPageResult | KWICTicketStatus:
+        if ConfigValue("development.celery_enabled", default=False).resolve():
+            return self._get_celery_page_result(
+                ticket_id=ticket_id,
+                result_store=result_store,
+                page=page,
+                page_size=page_size,
+                sort_by=sort_by,
+                sort_order=sort_order,
+            )
+        return self._get_page_result_local(
+            ticket_id=ticket_id,
+            result_store=result_store,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+
+    def _get_celery_page_result(
+        self,
+        *,
+        ticket_id: str,
+        result_store: ResultStore,
+        page: int,
+        page_size: int,
+        sort_by: KWICTicketSortBy | None,
+        sort_order: SortOrder,
+    ) -> KWICPageResult | KWICTicketStatus:
+        status_model = self._get_celery_status(ticket_id, result_store)
+        if status_model.status != TicketStatus.READY.value:
+            return status_model
+
+        if page < 1:
+            raise ValueError("Page must be greater than or equal to 1")
+        if page_size < 1 or page_size > result_store.max_page_size:
+            raise ValueError(f"page_size must be between 1 and {result_store.max_page_size}")
+
+        artifact_path = result_store.artifact_path(ticket_id)
+        if not artifact_path.exists():
+            raise ResultStoreNotFound("Ticket artifact not found or expired")
+        try:
+            data = pd.read_feather(artifact_path)
+        except Exception as exc:
+            raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
+
+        total_hits: int = len(data.index)
+        total_pages: int = math.ceil(total_hits / page_size) if total_hits else 0
+        ticket = result_store.get_ticket(ticket_id)
+        expires_at = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
+
+        if total_pages == 0:
+            if page != 1:
+                raise ValueError("Requested page is out of range")
+            page_frame = data.iloc[0:0].drop(columns=[TICKET_ROW_ID], errors="ignore")
+        else:
+            if page > total_pages:
+                raise ValueError("Requested page is out of range")
+            sorted_frame = self._sort_frame(data, sort_by=sort_by, sort_order=sort_order)
+            start = (page - 1) * page_size
+            end = start + page_size
+            page_frame = sorted_frame.iloc[start:end].drop(columns=[TICKET_ROW_ID], errors="ignore")
+
+        return KWICPageResult(
+            ticket_id=ticket_id,
+            status="ready",
+            page=page,
+            page_size=page_size,
+            total_hits=total_hits,
+            total_pages=total_pages,
+            expires_at=expires_at,
+            kwic_list=kwic_api_frame_to_model(page_frame).kwic_list,
+        )
+
+    def _get_page_result_local(
         self,
         *,
         ticket_id: str,

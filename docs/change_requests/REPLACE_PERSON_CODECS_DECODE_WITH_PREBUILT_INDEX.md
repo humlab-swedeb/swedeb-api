@@ -26,12 +26,12 @@ materialised speaker metadata at build time:
 
 ## What the prebuilt index **can** replace
 
-| Current use | File | Replaceable? | Notes |
-|---|---|---|---|
-| `decode_speech_index()` on KWIC results | `core/kwic/simple.py` | ✅ Done | Migrated in #253 |
-| `decode_speech_index()` on search results | `SearchService.get_anforanden` | ✅ Yes | Join on `speech_id` |
-| `decode_speech_index()` on word-trend speeches | `WordTrendsService.get_anforanden_for_word_trends` | ✅ Yes | Same join |
-| `person_codecs[person_id]` for speaker name | `SearchService.get_speaker` | ✅ Yes | Lookup in prebuilt index by `speaker_id` |
+| Current use                                    | File                                             | Replaceable? | Notes                                    |
+|------------------------------------------------|--------------------------------------------------|--------------|------------------------------------------|
+| `decode_speech_index()` on KWIC results        | `core/kwic/simple.py`                            | ✅ Done       | Migrated in #253                         |
+| `decode_speech_index()` on search results      | `SearchService.get_anforanden`                   | ✅ Yes        | Join on `speech_id`                      |
+| `decode_speech_index()` on word-trend speeches | `WordTrendsService.get_speeches_for_word_trends` | ✅ Yes        | Same join                                |
+| `person_codecs[person_id]` for speaker name    | `SearchService.get_speaker`                      | ✅ Yes        | Lookup in prebuilt index by `speaker_id` |
 
 For all of these, the result is the same: replace a runtime codec translate-step with a
 `DataFrame.join(prebuilt_speech_index, on='speech_id', how='left')`.

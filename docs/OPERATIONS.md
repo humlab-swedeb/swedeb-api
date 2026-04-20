@@ -26,6 +26,7 @@ It is not the primary guide for local development, contributor workflow, or unit
     - [Test and staging workflows](#test-and-staging-workflows)
     - [Production workflow](#production-workflow)
   - [CD Trigger and Release Process](#cd-trigger-and-release-process)
+  - [Celery Worker Deployment](#celery-worker-deployment)
   - [Post-Deployment Verification](#post-deployment-verification)
   - [Rollback Procedure](#rollback-procedure)
   - [Health Checks, Observability, and Alerting](#health-checks-observability-and-alerting)
@@ -88,6 +89,7 @@ Operationally, `test`, `staging`, and `production` are the environments that mat
 - Frontend assets are currently baked into the container image at build time through the Docker build argument `FRONTEND_VERSION`. The runtime image is expected to contain `/app/public/index.html` and `/app/public/.frontend_version`.
 - The current shared build script does not pass `FRONTEND_VERSION` to `docker build`. Unless another build path overrides it, the Dockerfile default applies.
 - Runtime paths inside the container must match the mounted configuration file. If host mounts or directory layouts change, the mounted `config.yml` must change with them.
+- In production, Redis and the Celery worker container must share the same `cache.root_dir` volume as the API container so that ticket artifacts written by the worker are readable by the API.
 
 ## Configuration and Secrets Model
 
@@ -171,6 +173,8 @@ Versioning matters operationally:
 - metadata version is tracked under `metadata.version`
 - corpus assets are stored under versioned directories
 - deployment should not silently mix incompatible corpus and metadata versions
+
+Redis is treated as ephemeral runtime state. Task queue entries and task execution state are stored in Redis by the Celery integration, but these are short-lived and do not require persistent backup. Redis persistence (`appendonly yes`) is enabled in `docker/redis.container` as a convenience for crash recovery of in-flight tasks, not as a primary data store.
 
 ## Build Artifacts
 
@@ -274,6 +278,35 @@ Operationally, this means:
 - Use the same release mechanics as normal production releases: a valid Conventional Commit history, semantic-release on `main`, and a pinned production image tag for rollout.
 - Manual `workflow_dispatch` remains available for `test`, `staging`, and `release.yml` when an operator needs to rebuild or publish from the workflow UI rather than waiting for the next branch push.
 
+## Celery Worker Deployment
+
+In production (`development.celery_enabled: true`), KWIC ticket queries are executed by a separate Celery worker process. The worker is deployed as a sibling container to the API.
+
+Quadlet files:
+
+- `docker/redis.container`: Redis 7 service; uses `appendonly yes` for AOF persistence
+- `docker/celery-worker.container`: Celery worker running against the same image as the API container
+
+The worker starts with:
+
+```
+celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4
+```
+
+The worker reads its configuration from `SWEDEB_CONFIG_PATH` (injected via `EnvironmentFile` in the Quadlet) during the `worker_init` signal, then calls `configure_celery()` to apply broker and backend URLs.
+
+Service dependency order: `redis.service` must be running before `celery-worker.service` and `app.service`. The `Requires=` and `After=` directives in all three Quadlet files enforce this.
+
+The API container, Celery worker container, and Redis container must all be on the same Podman network (`swedeb-*-app.network`). The API and worker must share a common writable volume mounted at `cache.root_dir` (default: `/tmp/swedeb-kwic-cache`) so that ticket artifacts written by the worker are visible to the API when a client polls for results.
+
+To restart the worker after a deployment:
+
+```bash
+systemctl --user restart celery-worker.service
+systemctl --user status celery-worker.service
+journalctl --user -u celery-worker.service -n 100
+```
+
 ## Post-Deployment Verification
 
 Use verification steps that confirm the running container, the API surface, and the bundled frontend assets.
@@ -292,6 +325,8 @@ Short operator checklist:
 - Confirm `http://localhost:<port>/docs` responds from the target environment.
 - Confirm `/app/public/.frontend_version` exists in the running container and matches expectations.
 - Confirm `/app/public/index.html` exists in the running container.
+- Confirm Redis is running and accepting connections.
+- Confirm the Celery worker started and shows as `READY` in its logs.
 - Review recent service logs for startup, configuration, or asset errors before declaring the rollout complete.
 
 Useful commands in current operational material:
@@ -299,8 +334,12 @@ Useful commands in current operational material:
 ```bash
 curl http://localhost:<port>/docs
 journalctl --user -u <service-name> -n 200
+journalctl --user -u redis.service -n 50
+journalctl --user -u celery-worker.service -n 100
 podman exec <container> cat /app/public/.frontend_version
 podman exec <container> test -f /app/public/index.html && echo ok
+# Confirm Redis accepts connections:
+podman exec <redis-container> redis-cli ping
 ```
 
 The current runtime image does not define a checked-in Docker `HEALTHCHECK`, and this repository does not document a supported `/health` or `/version` endpoint as an operational contract. Use `/docs` plus representative endpoint checks and service logs as the baseline smoke test unless a deployment-specific runbook defines more.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
@@ -99,6 +100,16 @@ class ResultStore:
         if self.cleanup_interval_seconds > 0:
             self._cleanup_task = asyncio.create_task(self._cleanup_loop())
 
+    def startup_sync(self) -> None:
+        """Initialize the store synchronously without starting async background cleanup.
+
+        Use this in Celery worker processes which do not have an asyncio event loop.
+        """
+        with self._lock:
+            self.root_dir.mkdir(parents=True, exist_ok=True)
+            self._cleanup_startup_files_locked()
+            self._started = True
+
     async def shutdown(self) -> None:
         cleanup_task = self._cleanup_task
         self._cleanup_task = None
@@ -154,6 +165,33 @@ class ResultStore:
         if ticket is None:
             raise ResultStoreNotFound("Ticket not found or expired")
         return ticket
+
+    def adopt_ticket(self, ticket_id: str) -> None:
+        """Register an externally-created ticket so a worker process can update its state.
+
+        Called by Celery workers that receive a ``ticket_id`` originating from the API
+        process.  The worker's ``ResultStore`` instance has no knowledge of tickets
+        created by the API, so this method inserts a minimal ``TicketMeta`` entry so
+        that subsequent ``store_ready`` / ``store_error`` calls succeed.
+        """
+        with self._lock:
+            self._ensure_started_locked()
+            if ticket_id not in self._tickets:
+                now = datetime.now(UTC)
+                self._tickets[ticket_id] = TicketMeta(
+                    ticket_id=ticket_id,
+                    status=TicketStatus.PENDING,
+                    created_at=now,
+                    expires_at=now + timedelta(seconds=self.result_ttl_seconds),
+                )
+
+    def artifact_path(self, ticket_id: str) -> Path:
+        """Return the filesystem path where the artifact for *ticket_id* is stored.
+
+        Exposed publicly so the API process can load an artifact written by a Celery
+        worker without relying on in-memory ticket state.
+        """
+        return self._artifact_path(ticket_id)
 
     def load_artifact(self, ticket_id: str) -> pd.DataFrame:
         ticket = self.require_ticket(ticket_id)
@@ -250,9 +288,10 @@ class ResultStore:
                 self._delete_ticket_locked(ticket_id)
 
     async def _cleanup_loop(self) -> None:
-        while True:
-            await asyncio.sleep(self.cleanup_interval_seconds)
-            self.cleanup_expired()
+        with contextlib.suppress(asyncio.CancelledError):
+            while True:
+                await asyncio.sleep(self.cleanup_interval_seconds)
+                self.cleanup_expired()
 
     def _artifact_path(self, ticket_id: str) -> Path:
         return self.root_dir / f"{ticket_id}{self.ARTIFACT_SUFFIX}"

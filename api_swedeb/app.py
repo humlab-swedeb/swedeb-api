@@ -10,6 +10,7 @@ from api_swedeb.api.services.result_store import ResultStore
 from api_swedeb.api.v1.endpoints import metadata_router, tool_router
 from api_swedeb.core.configuration import ConfigValue, get_config_store
 
+# pylint: disable=import-outside-toplevel
 DEFAULT_CONFIG_SOURCE = os.environ.get("SWEDEB_CONFIG_PATH", "config/config.yml")
 
 
@@ -19,6 +20,10 @@ def create_app(*, config_source: str | None = DEFAULT_CONFIG_SOURCE, static_dir:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        if ConfigValue("development.celery_enabled", default=False).resolve():
+            from api_swedeb.celery_app import configure_celery  # type: ignore[import]
+
+            configure_celery()
         app.state.container = AppContainer.build()
         result_store = ResultStore.from_config()
         await result_store.startup()
