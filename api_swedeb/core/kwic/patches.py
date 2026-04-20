@@ -36,7 +36,8 @@ logger = logging.getLogger(__name__)
 _APPLIED = False
 
 
-# pylint disable=unused-argument,global-statement
+# pylint: disable=unused-argument,global-statement
+
 # ---------------------------------------------------------------------------
 # B2 – Cache no-ops
 # ---------------------------------------------------------------------------
