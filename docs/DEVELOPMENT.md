@@ -24,8 +24,8 @@ It is not the deployment or runtime operations runbook. Environment rollout, rel
     - [Before opening a PR](#before-opening-a-pr)
   - [Database and Migration Workflow](#database-and-migration-workflow)
   - [Debugging and Troubleshooting](#debugging-and-troubleshooting)
-    - [Local Debug Modes](#local-debug-modes)
-    - [Mode 1 — Backend with a separate frontend dev server](#mode-1--backend-with-a-separate-frontend-dev-server)
+    - [Background Task Execution (KWIC)](#background-task-execution-kwic)
+  - [Local Debug Modes](#local-debug-modes)
       - [Step 1 — Start the backend.](#step-1--start-the-backend)
       - [Step 2 — Configure the frontend dev server to proxy API calls.](#step-2--configure-the-frontend-dev-server-to-proxy-api-calls)
       - [Step 3 — Start the frontend dev server.](#step-3--start-the-frontend-dev-server)
@@ -116,6 +116,7 @@ Development rules for config work:
 - use `ConfigValue("...").resolve()` for config reads
 - when adding config keys, update both `config/config.yml` and `tests/config.yml`
 - in tests, patch `api_swedeb.core.configuration.inject.get_config_store` rather than relying on the module-level alias
+- `config/debug.config.yml` sets `development.celery_enabled: false` and `kwic.use_multiprocessing: false`; this keeps local development free of a Redis dependency and allows the VS Code debugger to attach directly to KWIC execution
 
 Test configuration is also managed dynamically in [tests/conftest.py](../tests/conftest.py), which generates session-scoped test config and registry files for some test paths.
 
@@ -161,6 +162,20 @@ make test
 make coverage
 make clean-dev
 make profile-kwic-pyinstrument
+```
+
+To start a Celery worker for production-mode KWIC testing (requires a running Redis):
+
+```bash
+celery -A api_swedeb.celery_tasks worker --loglevel=info
+# or via uv:
+uv run celery -A api_swedeb.celery_tasks worker --loglevel=info
+```
+
+To start Redis locally:
+
+```bash
+docker run --rm -p 6379:6379 redis:7-alpine
 ```
 
 Additional useful commands:
@@ -263,6 +278,21 @@ Developer implications:
 - when changing config keys or expected config structure, update both `config/config.yml` and `tests/config.yml`
 
 If your change affects speech corpus build outputs, use the speech-corpus build targets in the `Makefile` and validate the affected tests.
+
+## Background Task Execution (KWIC)
+
+KWIC ticket queries use one of two execution paths, controlled by `development.celery_enabled` in the active config file.
+
+| Mode | Config | Execution | Multiprocessing | Redis required |
+|------|--------|-----------|-----------------|----------------|
+| Development | `debug.config.yml` (`celery_enabled: false`) | FastAPI `BackgroundTasks` | No | No |
+| Production | `config.yml` (`celery_enabled: true`) | Celery worker process | Yes (`num_processes: 8`) | Yes |
+
+**Development mode** is the default for local work. No Redis or Celery worker is needed; KWIC queries run inline in the FastAPI process. The VS Code debugger works normally — set breakpoints in `kwic_ticket_service.py` and they will be hit.
+
+**Production mode** requires Redis and at least one running Celery worker. The API process enqueues a task via `celery_app.send_task("api_swedeb.execute_kwic_ticket", ...)` and returns immediately. The worker picks up the task and runs the query with multiprocessing enabled. Task state is read back through `celery_app.AsyncResult(ticket_id)`.
+
+Debugging in production mode: attach the debugger to the Celery worker process instead of the FastAPI process, or switch to development mode temporarily.
 
 ## Debugging and Troubleshooting
 

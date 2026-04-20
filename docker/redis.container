@@ -1,0 +1,24 @@
+# Podman Quadlet: Redis for Swedeb Celery task broker
+# Deploy to ~/.config/containers/systemd/ (rootless) or /etc/containers/systemd/ (root)
+
+[Unit]
+Description=Redis broker for Swedeb Celery workers
+Requires=swedeb-staging-app.network
+After=swedeb-staging-app.network
+
+[Container]
+Image=docker.io/redis:7-alpine
+ContainerName=swedeb-redis-staging
+Network=swedeb-staging-app.network
+PublishPort=127.0.0.1:6379:6379
+Volume=%h/data/redis:/data:rw
+
+# Persist data across restarts
+Exec=redis-server --appendonly yes
+
+[Service]
+Restart=always
+TimeoutStartSec=30
+
+[Install]
+WantedBy=default.target

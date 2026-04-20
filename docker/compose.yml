@@ -22,6 +22,38 @@ services:
       # Optional: For offline deployment or network issues, place frontend tarball at:
       #   ${SWEDEB_DATA_FOLDER}/dist/frontend-${FRONTEND_VERSION}.tar.gz
       # The download script will use it as fallback if GitHub is unreachable
+    depends_on:
+      - redis
+    networks:
+      - swedeb_app_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: "swedeb-redis-${SWEDEB_ENVIRONMENT}"
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - swedeb_app_network
+
+  celery_worker:
+    image: "${SWEDEB_IMAGE_NAME}:${SWEDEB_IMAGE_TAG}"
+    container_name: "swedeb-celery-worker-${SWEDEB_ENVIRONMENT}"
+    restart: always
+    command: celery -A api_swedeb.celery_tasks worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - SWEDEB_CONFIG_PATH=${SWEDEB_CONFIG_PATH}
+      - SWEDEB_DATA_FOLDER=${SWEDEB_DATA_FOLDER}
+    volumes:
+      - "${SWEDEB_DATA_FOLDER}:/data"
+      - "${SWEDEB_METADATA_FILENAME}:/data/riksprot_metadata.${METADATA_VERSION}.db"
+      - kwic_cache:/tmp/swedeb-kwic-cache
+    depends_on:
+      - redis
     networks:
       - swedeb_app_network
 
@@ -29,3 +61,7 @@ networks:
   swedeb_app_network:
     name: "swedeb_${SWEDEB_ENVIRONMENT}_network"
     driver: bridge
+
+volumes:
+  redis_data:
+  kwic_cache:

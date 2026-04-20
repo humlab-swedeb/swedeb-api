@@ -200,3 +200,53 @@ def test_result_store_marks_ticket_error_when_artifact_exceeds_capacity(tmp_path
         assert failed.artifact_path is None
     finally:
         asyncio.run(store.shutdown())
+
+
+def test_result_store_startup_sync_and_adopt_ticket_support_worker_flow(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+
+    try:
+        store.startup_sync()
+        store.adopt_ticket("external-ticket")
+
+        ticket = store.require_ticket("external-ticket")
+
+        assert store.started is True
+        assert ticket.status == TicketStatus.PENDING
+        assert store.artifact_path("external-ticket") == Path(tmp_path) / "external-ticket.feather"
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_store_error_removes_artifact_and_marks_ticket_failed(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+        ready = store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "demokrati"}]))
+        assert ready.artifact_path is not None
+        assert ready.artifact_path.exists() is True
+
+        failed = store.store_error(ticket.ticket_id, message="Task failed")
+
+        assert failed.status == TicketStatus.ERROR
+        assert failed.error == "Task failed"
+        assert failed.artifact_path is None
+        assert ready.artifact_path.exists() is False
+    finally:
+        asyncio.run(store.shutdown())

@@ -101,6 +101,26 @@ profile-kwic-pyinstrument:
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_kwic.html \
 			tests/profile_kwic.py
 
+# Benchmark: singleprocess vs. multiprocess KWIC on the full corpus.
+# Override defaults via env vars, e.g.:
+#   make benchmark-kwic BENCH_WORD=och BENCH_RUNS=1 BENCH_PROCS="4 8"
+BENCH_WORD    ?= att
+BENCH_RUNS    ?= 3
+BENCH_PROCS   ?= 4 8
+BENCH_CUTOFF  ?= 500000
+BENCH_OUTPUT  ?= tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_benchmark_kwic.json
+
+benchmark-kwic:
+	@echo "Benchmarking KWIC (word='$(BENCH_WORD)', runs=$(BENCH_RUNS), procs=$(BENCH_PROCS))..."
+	@mkdir -p tests/output
+	@uv run python scripts/benchmark_kwic.py \
+		--config config/debug.config.yml \
+		--word $(BENCH_WORD) \
+		--runs $(BENCH_RUNS) \
+		--processes $(BENCH_PROCS) \
+		--cut-off $(BENCH_CUTOFF) \
+		--output $(BENCH_OUTPUT)
+
 profile-zip-pyinstrument:
 	@echo "Profiling create_zip_stream(1970-1975)..."
 	@mkdir -p tests/output

@@ -30,6 +30,7 @@ from api_swedeb.api.services.result_store import (
 )
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
+from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.mappers.kwic import kwic_to_api_model
 from api_swedeb.mappers.speeches import speeches_to_api_model
 from api_swedeb.mappers.word_trends import (
@@ -51,6 +52,7 @@ from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
 
+# pylint: disable=import-outside-toplevel
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
 
@@ -75,14 +77,27 @@ async def submit_kwic_query(
             headers={"Retry-After": str(result_store.cleanup_interval_seconds)},
         ) from exc
 
-    background_tasks.add_task(
-        kwic_ticket_service.execute_ticket,
-        ticket_id=accepted.ticket_id,
-        request=request,
-        cwb_opts=dict(cwb_opts),
-        kwic_service=kwic_service,
-        result_store=result_store,
-    )
+    if ConfigValue("development.celery_enabled", default=False).resolve():
+        # Production mode: delegate to Celery worker (supports multiprocessing).
+        # Use send_task() by name so this module never imports celery_tasks at startup,
+        # keeping the FastAPI process free of a Redis dependency.
+        from api_swedeb.celery_app import celery_app  # type: ignore[import]
+
+        celery_app.send_task(
+            "api_swedeb.execute_kwic_ticket",
+            args=[accepted.ticket_id, request.model_dump(mode="json"), dict(cwb_opts)],
+            task_id=accepted.ticket_id,
+        )
+    else:
+        # Development mode: run inline via BackgroundTasks (no Redis required)
+        background_tasks.add_task(
+            kwic_ticket_service.execute_ticket,
+            ticket_id=accepted.ticket_id,
+            request=request,
+            cwb_opts=dict(cwb_opts),
+            kwic_service=kwic_service,
+            result_store=result_store,
+        )
     return accepted
 
 
