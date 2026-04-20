@@ -127,8 +127,8 @@ class GroupByMixIn:
         gdi: pd.DataFrame = di if not pivot_keys or len(filter_opts or []) == 0 else di[filter_opts.mask(di)]
 
         if "document_id" in gdi.columns:
-            gdi = gdi.copy()
-            gdi["_document_id_np"] = pd.Series(gdi["document_id"].to_numpy(dtype=np.int64, copy=False), index=gdi.index)
+            # Avoid full DataFrame copy - just add column directly with astype
+            gdi["_document_id_np"] = gdi["document_id"].astype(np.int64)
 
         if temporal_key not in gdi.columns:
             gdi[temporal_key] = gdi["year"].apply(create_temporal_key_categorizer(temporal_key))
