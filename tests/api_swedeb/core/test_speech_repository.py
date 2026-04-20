@@ -28,7 +28,7 @@ from api_swedeb.workflows.prebuilt_speech_index.build import SpeechCorpusBuilder
 # Configuration
 # ---------------------------------------------------------------------------
 
-# ConfigStore.configure_context(source="tests/config.yml")
+# get_config_store().configure_context(source=args.config)
 
 # pylint: disable=redefined-outer-name, protected-access
 # ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@ def test_execute_ticket_celery_task_updates_state_and_delegates():
         patch.object(celery_tasks.execute_ticket_celery_task, "update_state") as update_state,
         patch("api_swedeb.celery_tasks._execute_ticket_task", return_value=expected) as execute_ticket_task,
     ):
-        result = celery_tasks.execute_ticket_celery_task.run(
+        result = celery_tasks.execute_ticket_celery_task.run(  # type: ignore[attr-defined]
             "ticket-1",
             {"search": "demokrati"},
             {"registry_dir": "/tmp/registry", "corpus_name": "CORPUS"},

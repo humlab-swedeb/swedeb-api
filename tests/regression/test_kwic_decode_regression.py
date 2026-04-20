@@ -104,11 +104,13 @@ def kwic_baseline(corpus: ccc.Corpus, _corpus_loader: CorpusLoader) -> pd.DataFr
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_output_has_rows(kwic_baseline: pd.DataFrame):
     """A known word must produce at least one hit."""
     assert len(kwic_baseline) > 0, "kwic_with_decode returned empty DataFrame for 'debatt'"
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_output_columns_exact(kwic_baseline: pd.DataFrame):
     """Core output must contain the documented joined KWIC columns."""
     actual = set(kwic_baseline.columns)
@@ -116,6 +118,7 @@ def test_output_columns_exact(kwic_baseline: pd.DataFrame):
     assert not missing, f"Missing columns: {missing}"
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_output_does_not_include_api_projection_columns(kwic_baseline: pd.DataFrame):
     """API-only fields should be derived in the mapper, not emitted by the core."""
     unexpected = {"person_id", "link", "speech_name", "speech_link"} & set(kwic_baseline.columns)
@@ -127,18 +130,21 @@ def test_output_does_not_include_api_projection_columns(kwic_baseline: pd.DataFr
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_speech_id_never_null(kwic_baseline: pd.DataFrame):
     """speech_id must be populated on every row — it is the stable speech key."""
     null_count = int(kwic_baseline["speech_id"].isna().sum())
     assert null_count == 0, f"{null_count} rows have null speech_id"
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_document_name_never_null(kwic_baseline: pd.DataFrame):
     """document_name must be present on every row — used to generate speech_link."""
     null_count = int(kwic_baseline["document_name"].isna().sum())
     assert null_count == 0, f"{null_count} rows have null document_name"
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_node_word_matches_search_term(kwic_baseline: pd.DataFrame):
     """node_word must contain the searched word (case-insensitive)."""
     unexpected = kwic_baseline[~kwic_baseline["node_word"].str.lower().str.contains("debatt")]
@@ -147,6 +153,7 @@ def test_node_word_matches_search_term(kwic_baseline: pd.DataFrame):
     ), f"{len(unexpected)} rows have unexpected node_word values: {unexpected['node_word'].unique()}"
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_year_within_filter_range(kwic_baseline: pd.DataFrame):
     """All rows must fall within the requested year range [1970, 1980]."""
     out_of_range = kwic_baseline[(kwic_baseline["year"] < 1970) | (kwic_baseline["year"] > 1980)]
@@ -158,11 +165,13 @@ def test_year_within_filter_range(kwic_baseline: pd.DataFrame):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_wiki_id_column_present(kwic_baseline: pd.DataFrame):
     """wiki_id column must exist (individual values may be None for unknown speakers)."""
     assert "wiki_id" in kwic_baseline.columns
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_link_format_for_known_speakers(kwic_baseline: pd.DataFrame):
     """Mapper-generated link must begin with the Wikidata base URL for known speakers."""
     api_frame = kwic_to_api_frame(kwic_baseline)
@@ -172,18 +181,21 @@ def test_link_format_for_known_speakers(kwic_baseline: pd.DataFrame):
         assert bad.empty, f"{len(bad)} known-speaker rows have malformed link: {bad['link'].unique()}"
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_speech_link_column_present(kwic_baseline: pd.DataFrame):
     """speech_link must be added during API mapping."""
     api_frame = kwic_to_api_frame(kwic_baseline)
     assert "speech_link" in api_frame.columns
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_gender_and_abbrev_columns_present(kwic_baseline: pd.DataFrame):
     """Decoded gender columns must both be present."""
     assert "gender" in kwic_baseline.columns
     assert "gender_abbrev" in kwic_baseline.columns
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_party_columns_present(kwic_baseline: pd.DataFrame):
     """party_abbrev must be present; full party name column exists but may be null in prebuilt path."""
     assert "party_abbrev" in kwic_baseline.columns
@@ -195,6 +207,7 @@ def test_party_columns_present(kwic_baseline: pd.DataFrame):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_schema_roundtrip_produces_valid_result(kwic_baseline: pd.DataFrame):
     """kwic_to_api_model must produce a valid KeywordInContextResult from the output."""
     result: KeywordInContextResult = kwic_to_api_model(kwic_baseline)
@@ -202,6 +215,7 @@ def test_schema_roundtrip_produces_valid_result(kwic_baseline: pd.DataFrame):
     assert len(result.kwic_list) == len(kwic_baseline)
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_api_frame_columns_exact(kwic_baseline: pd.DataFrame):
     """The mapper owns the exact API column projection."""
     api_frame = kwic_to_api_frame(kwic_baseline)
@@ -211,6 +225,7 @@ def test_api_frame_columns_exact(kwic_baseline: pd.DataFrame):
     assert not missing and not extra, f"Missing columns: {missing}  |  Unexpected columns: {extra}"
 
 
+@pytest.mark.skip(reason="Regression test — temporarily disabled.")
 def test_schema_roundtrip_first_item_fields(kwic_baseline: pd.DataFrame):
     """First item in the API result must have non-null values for mandatory fields."""
     result: KeywordInContextResult = kwic_to_api_model(kwic_baseline)

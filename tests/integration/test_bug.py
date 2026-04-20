@@ -90,7 +90,7 @@ def test_bug_with_get_word_trends_even_deeper(corpus_loader: CorpusLoader):
     search_terms = word_trends_service.filter_search_terms(search_terms)
 
     trends: pd.DataFrame = compute_word_trends(
-        corpus_loader.vectorized_corpus,
+        corpus_loader.vectorized_corpus,  # type: ignore
         corpus_loader.person_codecs,
         search_terms,
         filter_opts,
