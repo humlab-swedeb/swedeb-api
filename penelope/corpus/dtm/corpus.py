@@ -7,7 +7,7 @@ from numbers import Number
 import re
 import warnings
 from collections.abc import Collection
-from typing import Any, Callable, Iterable, Optional, Sequence, Tuple, cast
+from typing import Any, Callable, Iterable, Literal, Optional, Sequence, Tuple, cast
 
 import numpy as np
 import pandas as pd
@@ -18,8 +18,8 @@ from loguru import logger
 from scipy.sparse import SparseEfficiencyWarning, lil_matrix
 
 from penelope import utility
+from penelope.utility.utils import dict_of_key_values_inverted_to_dict_of_value_key
 
-from .group import GroupByMixIn
 from .interface import IVectorizedCorpus, VectorizedCorpusError
 from .store import StoreMixIn
 
@@ -35,7 +35,112 @@ warnings.simplefilter('ignore', SparseEfficiencyWarning)
 # pylint: disable=super-init-not-called
 
 
-class VectorizedCorpus(StoreMixIn, GroupByMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
+KNOWN_TIME_PERIODS: dict[str, int] = {"year": 1, "lustrum": 5, "decade": 10}
+
+
+def create_temporal_key_categorizer(temporal_key_specifier: str | dict | Callable[[Any], Any]) -> Callable[[Any], Any]:
+    if callable(temporal_key_specifier):
+        return temporal_key_specifier
+
+    if isinstance(temporal_key_specifier, str):
+        if temporal_key_specifier not in KNOWN_TIME_PERIODS:
+            raise ValueError(f"{temporal_key_specifier} is not a known period specifier")
+        return lambda year: year - int(year % KNOWN_TIME_PERIODS[temporal_key_specifier])
+
+    year_group_mapping = dict_of_key_values_inverted_to_dict_of_value_key(temporal_key_specifier)
+    return lambda value: year_group_mapping.get(value, np.nan)
+
+
+def optimize_index_types(gdi: pd.DataFrame, temporal_key: str) -> pd.DataFrame:
+    """Optimize DataFrame types for memory efficiency."""
+
+    type_conversions: dict[str, type] = {
+        col: np.int32 for col in ["n_documents", "n_tokens", "n_raw_tokens", "tokens"] if col in gdi.columns
+    }
+    type_conversions.update({col: np.int16 for col in ["year", temporal_key] if col in gdi.columns})
+    if type_conversions:
+        gdi = gdi.astype(type_conversions)
+    return gdi
+
+
+def temporal_key_values_with_no_gaps(series: pd.Series, temporal_key: str):
+    """Return sorted temporal key values, filling expected gaps."""
+    step = {"lustrum": 5, "decade": 10}.get(temporal_key, 1)
+    return list(range(series.min(), series.max() + 1, step))
+
+
+def fill_temporal_gaps_in_group_document_index(
+    di: pd.DataFrame,
+    temporal_key: str,
+    pivot_keys: list[str],
+    aggs: dict,
+) -> pd.DataFrame:
+    """Fill missing temporal values with empty documents."""
+    sep = "_" if pivot_keys else ""
+
+    values_with_no_gaps = set(temporal_key_values_with_no_gaps(di[temporal_key], temporal_key=temporal_key))
+    missing_values = sorted(values_with_no_gaps - set(di[temporal_key]))
+
+    if not missing_values:
+        return di
+
+    n_missing = len(missing_values)
+    missing_data = {
+        temporal_key: missing_values,
+        'document_ids': [[] for _ in range(n_missing)],
+        'document_name': [f'{val}{sep}{sep.join(["0"] * len(pivot_keys))}' for val in missing_values],
+    }
+
+    for key in aggs.keys():
+        if key != "document_ids":
+            missing_data[key] = [0] * n_missing
+
+    di_missing = pd.DataFrame(missing_data)
+
+    di = pd.concat([di, di_missing], ignore_index=True)
+    di.sort_values(by=[temporal_key] + pivot_keys, inplace=True, ascending=True)
+    di.reset_index(inplace=True, drop=True)
+    di["document_id"] = di.index
+    di["filename"] = di.document_name
+
+    return di
+
+
+def group_DTM_by_indices_mapping(
+    dtm: scipy.sparse.csr_matrix,
+    n_docs: int,
+    category_indices: dict[int, list[int]],
+    aggregate: str = "sum",
+    dtype: np.dtype | None = None,
+):
+    """Group document-term matrix by category indices using sparse matrix multiplication."""
+    assert dtm.shape is not None
+
+    n_original_docs = dtm.shape[0]
+    dtype_y = dtype or (np.int32 if np.issubdtype(dtm.dtype, np.integer) and aggregate == "sum" else np.float64)
+
+    row_indices = []
+    col_indices = []
+    data = []
+
+    for target_doc_id, source_doc_ids in category_indices.items():
+        if len(source_doc_ids) > 0:
+            weight = 1.0 / len(source_doc_ids) if aggregate == "mean" else 1.0
+            row_indices.extend([target_doc_id] * len(source_doc_ids))
+            col_indices.extend(source_doc_ids)
+            data.extend([weight] * len(source_doc_ids))
+
+    mapping_matrix = scipy.sparse.csr_matrix(
+        (data, (row_indices, col_indices)),
+        shape=(n_docs, n_original_docs),
+        dtype=dtype_y,
+    )
+
+    matrix = mapping_matrix @ dtm
+    return matrix.tocsr()
+
+
+class VectorizedCorpus(StoreMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
     @staticmethod
     def _ensure_csr_matrix(bag_term_matrix: scipy.sparse.spmatrix | scipy.sparse.csr_matrix) -> scipy.sparse.csr_matrix:
         if not scipy.sparse.issparse(bag_term_matrix):
@@ -457,6 +562,103 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, IVectorizedCorpus):  # type: ig
 
         df = pd.DataFrame(data=data)
         return df[sorted(df.columns.tolist())]
+
+    def group_by_indices_mapping(
+        self,
+        document_index: pd.DataFrame,
+        category_indices: dict[int, list[int]],
+        aggregate: str = "sum",
+        dtype: np.dtype | None = None,
+    ) -> IVectorizedCorpus:
+        matrix: scipy.sparse.csr_matrix = group_DTM_by_indices_mapping(
+            dtm=self.bag_term_matrix,
+            n_docs=len(document_index),
+            category_indices=category_indices,
+            aggregate=aggregate,
+            dtype=dtype,
+        )
+        return self.create(
+            matrix.tocsr(),
+            token2id=self.token2id,
+            document_index=document_index,
+            overridden_term_frequency=self.overridden_term_frequency,
+            **self.payload,
+        )
+
+    def group_by_pivot_keys(  # pylint: disable=too-many-arguments
+        self,
+        temporal_key: Literal["year", "decade", "lustrum"],
+        pivot_keys: list[str],
+        filter_opts: utility.PropertyValueMaskingOpts,
+        document_namer: Callable[[pd.DataFrame], pd.Series] | None,
+        aggregate: str = "sum",
+        fill_gaps: bool = False,
+        drop_group_ids: bool = True,
+        dtype: np.dtype | None = None,
+    ):
+        """Group corpus by a temporal key and zero to many pivot keys."""
+
+        def default_document_namer(df: pd.DataFrame) -> pd.Series:
+            cols = [temporal_key] + pivot_keys
+            result = df[cols[0]].astype(str)
+            for col in cols[1:]:
+                result = result + "_" + df[col].astype(str)
+            return result
+
+        def document_index_aggregates(df: pd.DataFrame, grouping_keys: list[str]) -> dict:
+            document_id_column = "_document_id_np" if "_document_id_np" in df.columns else "document_id"
+
+            aggs: dict = {"document_ids": (document_id_column, list)}
+
+            for count_column in {"n_tokens", "n_raw_tokens", "tokens"}.intersection(set(df.columns)):
+                aggs[count_column] = (count_column, "sum")
+
+            if "year" in df.columns and "year" not in grouping_keys:
+                aggs["year"] = ("year", min)
+
+            if "n_documents" not in df.columns:
+                aggs["n_documents"] = (document_id_column, "nunique")
+            else:
+                aggs["n_documents"] = ("n_documents", "sum")
+
+            return aggs
+
+        if document_namer is None:
+            document_namer = default_document_namer
+
+        di: pd.DataFrame = self.document_index
+        gdi: pd.DataFrame = di if not pivot_keys or len(filter_opts or []) == 0 else di[filter_opts.mask(di)]
+
+        if "document_id" in gdi.columns:
+            gdi["_document_id_np"] = gdi["document_id"].astype(np.int64)
+
+        if temporal_key not in gdi.columns:
+            gdi[temporal_key] = gdi["year"].apply(create_temporal_key_categorizer(temporal_key))
+
+        aggs: dict = document_index_aggregates(gdi, [temporal_key] + pivot_keys)
+
+        gdi = gdi.groupby([temporal_key] + pivot_keys, as_index=False).agg(**aggs)
+        gdi["document_name"] = document_namer(gdi)
+        gdi["filename"] = gdi.document_name
+
+        if fill_gaps:
+            gdi = fill_temporal_gaps_in_group_document_index(gdi, temporal_key, pivot_keys, aggs)
+
+        gdi["document_id"] = gdi.index.astype(np.int32)
+        gdi = optimize_index_types(gdi, temporal_key)
+        gdi["time_period"] = gdi[temporal_key]
+
+        category_indices: dict[int, list[int]] = gdi["document_ids"].to_dict()  # type: ignore[assignment]
+
+        if drop_group_ids:
+            gdi.drop(columns="document_ids", inplace=True, errors="ignore")
+
+        return self.group_by_indices_mapping(
+            document_index=gdi,
+            category_indices=category_indices,
+            aggregate=aggregate,
+            dtype=dtype,
+        )
 
     def tf_idf(self, norm: str = 'l2', use_idf: bool = True, smooth_idf: bool = True) -> IVectorizedCorpus:
         """Returns a (normalized) TF-IDF transformed version of the corpus
