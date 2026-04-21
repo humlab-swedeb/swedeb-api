@@ -12,6 +12,11 @@ class VectorizedCorpusError(ValueError): ...
 
 # pylint: disable=too-many-public-methods
 class IVectorizedCorpus(abc.ABC):
+
+    @property
+    @abc.abstractmethod
+    def shape(self) -> tuple[int, int]: ...
+
     @property
     @abc.abstractmethod
     def token2id(self) -> dict[str, int]: ...
