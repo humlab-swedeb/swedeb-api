@@ -145,18 +145,7 @@ class GroupByMixIn:
         gdi["document_id"] = gdi.index.astype(np.int32)
         
         # Single-pass type conversion - 2x faster than multiple as_slim_types calls
-        type_conversions = {
-            col: np.int32 
-            for col in ["n_documents", "n_tokens", "n_raw_tokens", "tokens"] 
-            if col in gdi.columns
-        }
-        type_conversions.update({
-            col: np.int16 
-            for col in ["year", temporal_key] 
-            if col in gdi.columns
-        })
-        if type_conversions:
-            gdi = gdi.astype(type_conversions)
+        gdi = optimize_index_types(gdi, temporal_key)
         
         gdi["time_period"] = gdi[temporal_key]
 
@@ -171,6 +160,23 @@ class GroupByMixIn:
             aggregate=aggregate,
             dtype=dtype,
         )
+
+def optimize_index_types(gdi: pd.DataFrame, temporal_key: str) -> pd.DataFrame:
+    """Optimize DataFrame types for memory efficiency."""
+
+    type_conversions: dict[str, type] = {
+        col: np.int32 
+        for col in ["n_documents", "n_tokens", "n_raw_tokens", "tokens"] 
+        if col in gdi.columns
+    }
+    type_conversions.update({
+        col: np.int16 
+        for col in ["year", temporal_key] 
+        if col in gdi.columns
+    })
+    if type_conversions:
+        gdi = gdi.astype(type_conversions)
+    return gdi
 
 
 def temporal_key_values_with_no_gaps(series: pd.Series, temporal_key: str):
