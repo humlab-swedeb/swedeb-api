@@ -352,7 +352,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, StatsMixIn, IVectorizedCorpus):
         """
         return [self.token2id[token] for token in tokens if token in self.token2id]
 
-    def pick_n_top_words(
+    def _pick_n_top_words(
         self,
         words: Collection[str],
         n_top: int | None = None,
@@ -443,7 +443,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, StatsMixIn, IVectorizedCorpus):
         self, word_or_regexp: Collection[str], n_max_count: int | None, descending: bool = False
     ) -> list[str]:
         """Returns words in corpus that matches candidate tokens"""
-        words = self.pick_n_top_words(
+        words = self._pick_n_top_words(
             find_matching_words_in_vocabulary(
                 self.token2id,
                 word_or_regexp,

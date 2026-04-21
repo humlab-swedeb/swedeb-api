@@ -1,9 +1,8 @@
 from numbers import Number
-from typing import Collection, Dict, List, Self, Sequence, Tuple
+from typing import Sequence, Tuple
 
 import numpy as np
 import pandas as pd
-from loguru import logger
 
 from .interface import IVectorizedCorpusProtocol
 
@@ -27,17 +26,6 @@ class StatsMixIn:
         ]
 
         return largest_tokens  # type: ignore
-
-    def nlargest(self: Self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray:
-        """Return indices for the `n_top` most frequent terms in DTM
-        Note: indices are sorted by TF count as default."""
-        n_top = min(n_top, len(self.term_frequency))  # type: ignore
-        indices: np.ndarray = np.argpartition(self.term_frequency if not override else self.term_frequency0, -n_top)[  # type: ignore
-            -n_top:
-        ]
-        if sort_indices:
-            indices.sort()
-        return indices
 
     def get_partitioned_top_n_words(
         self: IVectorizedCorpusProtocol,
@@ -124,44 +112,3 @@ class StatsMixIn:
         df = pd.DataFrame(data=data)
         df = df[sorted(df.columns.tolist())]
         return df
-
-    def pick_top_tf_map(self: IVectorizedCorpusProtocol, n_top: int) -> Dict[str, int]:
-        """Returns `n_top` largest tokens and TF as a dict"""
-        tokens = {self.id2token[i]: self.term_frequency[i] for i in self.nlargest(n_top)}  # type: ignore
-        return tokens  # type: ignore
-
-    def stats(self: IVectorizedCorpusProtocol):
-        """Returns (and prints) some corpus status
-        Returns
-        -------
-        dict
-            Corpus stats
-        """
-        stats_data = {
-            'bags': self.bag_term_matrix.shape[0],
-            'vocabulay_size': self.bag_term_matrix.shape[1],
-            'sum_over_bags': self.bag_term_matrix.sum(),
-            '10_top_tokens': ' '.join(self.pick_top_tf_map(10).keys()),
-        }
-        for key, value in stats_data.items():
-            logger.info(f'   {key}: {value}')
-        return stats_data
-
-    def pick_n_top_words(
-        self: IVectorizedCorpusProtocol,
-        words: Collection[str],
-        n_top: int | None = None,
-        descending: bool = False,
-    ) -> List[str]:
-        """Returns the `n_top` globally most frequent word in `tokens`"""
-        words = list(words)  # type: ignore
-        n_top = n_top or len(words)
-        if len(words) < n_top:
-            return words
-        fg = self.token2id.get
-        tf = self.term_frequency
-        token_counts = [tf[fg(w)] for w in words]  # type: ignore
-        most_frequent_words = [words[x] for x in np.argsort(token_counts)[-n_top:]]  # type: ignore
-        if descending:
-            most_frequent_words = list(sorted(most_frequent_words, reverse=descending))
-        return most_frequent_words
