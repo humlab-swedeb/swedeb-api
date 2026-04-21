@@ -80,7 +80,7 @@ requirements.txt: pyproject.toml
 # 		&& git commit -m "📌 updated requirements.txt" \
 # 			&& git push
 
-.PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument profile-zip-pyinstrument
+.PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument profile-zip-pyinstrument profile-word-trends-pyinstrument benchmark-storage-formats
 
 build-utils:
 	@echo "Building lib..."
@@ -127,6 +127,27 @@ profile-zip-pyinstrument:
 	@PYTHONPATH=. uv run pyinstrument --color --show-all \
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_zip_stream.html \
 			tests/profiling/profile_zip_stream.py
+
+# Override defaults via env vars, e.g.:
+#   make profile-word-trends-pyinstrument WORD=skola START_YEAR=1867 END_YEAR=2022
+WORD        ?= skola
+START_YEAR  ?= 1867
+END_YEAR    ?= 2022
+
+profile-word-trends-pyinstrument:
+	@echo "Profiling word trends for '$(WORD)' ($(START_YEAR)-$(END_YEAR))..."
+	@mkdir -p tests/output
+	@PYTHONPATH=. uv run pyinstrument --color --show-all \
+		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_word_trends.html \
+			tests/profiling/profile_word_trends.py \
+			--word $(WORD) --start-year $(START_YEAR) --end-year $(END_YEAR)
+
+# Benchmark different storage formats for DTM sparse matrices
+# Tests NPZ, memory-mapped NPZ, HDF5, and Feather formats
+benchmark-storage-formats:
+	@echo "Benchmarking DTM storage formats..."
+	@mkdir -p tests/output
+	@uv run --with h5py python tests/profiling/benchmark_storage_formats.py 2>&1 | tee tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_storage_benchmark.log
 
 # --- Bootstrap corpus build ---------------------------------------------------
 # Required environment variables (set in .env or export before running):
