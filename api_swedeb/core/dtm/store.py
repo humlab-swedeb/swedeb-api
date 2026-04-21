@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import scipy
 
-from penelope.utility import read_json, strip_paths, write_json
+from api_swedeb.core.common.utility import read_json, strip_paths, write_json
 
 from .interface import IVectorizedCorpus
 
@@ -34,7 +34,7 @@ def create_corpus_instance(
     overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
 ) -> "IVectorizedCorpus":
     """Creates a corpus instance using importlib to avoid cyclic references"""
-    module = importlib.import_module(name="penelope.corpus.dtm.corpus")
+    module = importlib.import_module(name="api_swedeb.core.dtm.corpus")
     cls = getattr(module, "VectorizedCorpus")
     return cls(
         bag_term_matrix=bag_term_matrix,
@@ -80,17 +80,17 @@ def _smallest_int_dtype(data: pd.Series) -> type:
         # Unsigned
         if max_val < 256:
             return np.uint8
-        elif max_val < 65536:
+        if max_val < 65536:
             return np.uint16
-        elif max_val < 4294967296:
+        if max_val < 4294967296:
             return np.uint32
     else:
         # Signed
         if -128 <= min_val and max_val < 127:
             return np.int8
-        elif -32768 <= min_val and max_val < 32767:
+        if -32768 <= min_val and max_val < 32767:
             return np.int16
-        elif -2147483648 <= min_val and max_val < 2147483647:
+        if -2147483648 <= min_val and max_val < 2147483647:
             return np.int32
 
     return np.int64

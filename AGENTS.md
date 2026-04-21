@@ -78,7 +78,7 @@ def configure_config_store():
 - Use `api_swedeb/core/load.py` helpers to load speech indexes and DTMs; check the feather cache via `is_invalidated(source, target)` before falling back to CSV.gz.
 - Treat `api_swedeb/core/load.py` as the home for active shared load helpers only; the archived ZIP loader now lives in `api_swedeb/legacy/load.py`.
 - Honor `USED_COLUMNS` and `SKIP_COLUMNS` to minimize memory and keep load times acceptable.
-- Keep document-term matrices based on `penelope.corpus.VectorizedCorpus` and manage token vocabularies through the provided token2id mappings.
+- Keep document-term matrices based on `api_swedeb.core.dtm.VectorizedCorpus` and manage token vocabularies through the provided token2id mappings.
 
 ## API Design (`api_swedeb/api/`)
 - Register routes only in `api_swedeb/api/v1/endpoints/tool_router.py` (`/v1/tools`) or `metadata_router.py` (`/v1/metadata`)

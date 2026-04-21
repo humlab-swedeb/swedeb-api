@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
+from api_swedeb.core.common.keyness import KeynessMetric
 from api_swedeb.core.word_trends import (
     SweDebComputeOpts,
     SweDebTrendsData,
@@ -12,7 +13,6 @@ from api_swedeb.core.word_trends import (
     get_words_per_year,
     normalize_word_per_year,
 )
-from penelope.common.keyness import KeynessMetric
 
 
 class TestSweDebComputeOpts:

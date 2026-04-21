@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse
 
-from penelope.corpus import VectorizedCorpus, find_matching_words_in_vocabulary
+from api_swedeb.core.dtm import VectorizedCorpus, find_matching_words_in_vocabulary
 
 
 def _create_corpus(*, bag_term_matrix, token2id, document_index) -> VectorizedCorpus:

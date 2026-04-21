@@ -17,8 +17,8 @@ from loguru import logger
 # pylint: disable=logging-format-interpolation, too-many-public-methods, too-many-ancestors
 from scipy.sparse import SparseEfficiencyWarning
 
-from penelope import utility
-from penelope.utility.utils import dict_of_key_values_inverted_to_dict_of_value_key
+from api_swedeb.core.common import utility
+from api_swedeb.core.common.utility.utils import dict_of_key_values_inverted_to_dict_of_value_key
 
 from . import store as dtm_store
 from .interface import IVectorizedCorpus, VectorizedCorpusError
@@ -172,7 +172,7 @@ class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=sup
             overridden_term_frequency (np.ndarray, optional): Supplied if source TF differs from corpus TF
             optimize_dtypes (bool, optional): Apply dtype optimizations to document_index
         """
-        self._class_name: str = "penelope.corpus.dtm.corpus.VectorizedCorpus"
+        self._class_name: str = "api_swedeb.core.dtm.corpus.VectorizedCorpus"
 
         self._bag_term_matrix: scipy.sparse.csr_matrix = self._ensure_csr_matrix(bag_term_matrix)
         self._token2id: dict[str, int] = self._normalize_token2id(token2id)
@@ -182,9 +182,7 @@ class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=sup
 
         # Apply dtype optimization if requested (safety net for already-loaded data)
         if optimize_dtypes:
-            from .store import _optimize_document_index_dtypes
-
-            document_index = _optimize_document_index_dtypes(document_index)
+            document_index = dtm_store._optimize_document_index_dtypes(document_index)
 
         self._document_index: pd.DataFrame = self._ingest_document_index(document_index=document_index)
         self._overridden_term_frequency: np.ndarray | dict[str, int] | None = overridden_term_frequency

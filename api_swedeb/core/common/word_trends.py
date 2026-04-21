@@ -1,13 +1,13 @@
 import abc
 from dataclasses import dataclass, field
-from typing import Generic, Sequence, TypeVar, overload
+from typing import Generic, Literal, Sequence, TypeVar, cast, overload
 
 import pandas as pd
 
+from api_swedeb.core import dtm as pc
+from api_swedeb.core.common import keyness as pk
+from api_swedeb.core.common import utility as pu
 from api_swedeb.core.utility import deep_clone
-from penelope import corpus as pc
-from penelope import utility as pu
-from penelope.common import keyness as pk
 
 T = TypeVar("T", bound="TrendsComputeOpts")
 
@@ -292,9 +292,9 @@ class TrendsService(TrendsServiceBase):
         )
 
         corpus = corpus.group_by_pivot_keys(  # type: ignore
-            temporal_key=opts.temporal_key,
+            temporal_key=cast(Literal["year", "decade", "lustrum"], opts.temporal_key),
             pivot_keys=list(opts.pivot_keys_id_names),
-            filter_opts=opts.filter_opts,
+            filter_opts=opts.filter_opts or pu.PropertyValueMaskingOpts(),
             document_namer=None,
             fill_gaps=opts.fill_gaps,
             aggregate='sum',

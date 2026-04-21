@@ -4,8 +4,8 @@ SHELL := /bin/bash
 CORPUS_VERSION		  ?= v1.4.1
 METADATA_VERSION      ?= v1.1.3
 
-SOURCE_FOLDERS=api_swedeb penelope tests
-PACKAGE_FOLDER=api_swedeb penelope 
+SOURCE_FOLDERS=api_swedeb tests
+PACKAGE_FOLDER=api_swedeb
 PYTEST_ARGS=--durations=0 tests 
 
 sqlite-db: 
@@ -70,7 +70,7 @@ ruff:
 
 .PHONY: vulture
 vulture:
-	@uv run vulture api_swedeb penelope --min-confidence 80
+	@uv run vulture api_swedeb --min-confidence 80
 
 requirements.txt: pyproject.toml
 	@uv pip compile pyproject.toml -o requirements.txt

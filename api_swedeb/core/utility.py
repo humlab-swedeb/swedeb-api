@@ -15,7 +15,7 @@ import pandas as pd
 import requests
 from loguru import logger
 
-from penelope.utility import PropertyValueMaskingOpts
+from api_swedeb.core.common.utility import PropertyValueMaskingOpts
 
 # try:
 #     import github as gh  # type: ignore

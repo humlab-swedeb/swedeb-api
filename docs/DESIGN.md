@@ -249,7 +249,7 @@ This makes configuration a first-class runtime dependency rather than a loose co
 
 The runtime is built around read-mostly analytical data:
 
-- DTM/document index files loaded through `penelope.corpus.VectorizedCorpus`
+- DTM/document index files loaded through `api_swedeb.core.dtm.VectorizedCorpus`
 - CWB registry and data directories
 - metadata tables from SQLite
 - prebuilt Feather artifacts under `speech.bootstrap_corpus_folder`

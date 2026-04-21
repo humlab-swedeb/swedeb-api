@@ -3,10 +3,10 @@ from typing import Any
 
 import pandas as pd
 
-import penelope.utility as pu
-from penelope import corpus as pc  # type: ignore
-from penelope.common import word_trends as wt  # type: ignore
-from penelope.common.keyness import KeynessMetric
+from api_swedeb.core import dtm as pc
+from api_swedeb.core.common import utility as pu
+from api_swedeb.core.common import word_trends as wt
+from api_swedeb.core.common.keyness import KeynessMetric
 
 from .. import person_codecs as md
 

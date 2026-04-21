@@ -4,7 +4,7 @@ from os.path import isfile, join
 import pandas as pd
 from loguru import logger
 
-from penelope.corpus import VectorizedCorpus
+from api_swedeb.core.dtm import VectorizedCorpus
 
 RENAME_COLUMNS: dict[str, str] = {'who': 'person_id', 'u_id': 'speech_id'}
 
