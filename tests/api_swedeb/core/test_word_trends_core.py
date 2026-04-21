@@ -236,7 +236,7 @@ class TestNormalizeWordPerYear:
         # Input data with word counts per year
         data = pd.DataFrame({"word_count": [100, 200]}, index=["2020", "2021"])
 
-        with patch('api_swedeb.core.word_trends.get_words_per_year', return_value=year_totals):
+        with patch('api_swedeb.core.word_trends.compute.get_words_per_year', return_value=year_totals):
             result = normalize_word_per_year(mock_corpus, data)
 
         # Should divide word_count by n_raw_tokens
@@ -248,7 +248,7 @@ class TestNormalizeWordPerYear:
 class TestComputeWordTrends:
     """Tests for compute_word_trends function."""
 
-    @patch('api_swedeb.core.word_trends.SweDebTrendsData')
+    @patch('api_swedeb.core.word_trends.compute.SweDebTrendsData')
     def test_compute_word_trends_basic(self, mock_trends_class):
         """Test compute_word_trends basic execution."""
         mock_corpus = Mock()
@@ -275,7 +275,7 @@ class TestComputeWordTrends:
         assert isinstance(result, pd.DataFrame)
         mock_trends_instance.transform.assert_called_once()
 
-    @patch('api_swedeb.core.word_trends.SweDebTrendsData')
+    @patch('api_swedeb.core.word_trends.compute.SweDebTrendsData')
     def test_compute_word_trends_with_year_filter(self, mock_trends_class):
         """Test compute_word_trends filters by year range."""
         mock_corpus = Mock()
@@ -309,8 +309,8 @@ class TestComputeWordTrends:
         assert "2018" not in result.index
         assert "2022" not in result.index
 
-    @patch('api_swedeb.core.word_trends.SweDebTrendsData')
-    @patch('api_swedeb.core.word_trends.pu.unstack_data')
+    @patch('api_swedeb.core.word_trends.compute.SweDebTrendsData')
+    @patch('api_swedeb.core.word_trends.compute.pu.unstack_data')
     def test_compute_word_trends_with_pivot_keys(self, mock_unstack, mock_trends_class):
         """Test compute_word_trends with pivot keys."""
         mock_corpus = Mock()
@@ -343,7 +343,7 @@ class TestComputeWordTrends:
         assert "Totalt" in result.columns
         assert result.loc["2020", "Totalt"] == 25
 
-    @patch('api_swedeb.core.word_trends.SweDebTrendsData')
+    @patch('api_swedeb.core.word_trends.compute.SweDebTrendsData')
     def test_compute_word_trends_normalized(self, mock_trends_class):
         """Test compute_word_trends with normalization enabled."""
         mock_corpus = Mock()
@@ -370,7 +370,7 @@ class TestComputeWordTrends:
         call_args = mock_trends_class.call_args
         assert call_args is not None
 
-    @patch('api_swedeb.core.word_trends.SweDebTrendsData')
+    @patch('api_swedeb.core.word_trends.compute.SweDebTrendsData')
     def test_compute_word_trends_renames_who_column(self, mock_trends_class):
         """Test compute_word_trends renames 'who' to 'person_id'."""
         mock_corpus = Mock()

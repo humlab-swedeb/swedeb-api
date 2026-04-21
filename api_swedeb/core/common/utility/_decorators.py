@@ -72,26 +72,6 @@ def _raise_invalidated_function(f):
     return _invalid
 
 
-# def try_catch(func, exceptions=None, suppress=False, nice=False):
-#     """
-#     Surrounds the function with a try-except block
-#     """
-
-#     @functools.wraps(func)
-#     def wrapper(*args, **kwargs):
-#         try:
-#             func(*args, **kwargs)
-#         except exceptions as e:
-#             if nice:
-#                 logging.error(str(e))
-#             else:
-#                 logging.exception(f'[{e}]')
-#             if not suppress:
-#                 raise
-
-#     return wrapper
-
-
 @deprecated
 def suppress_error(func, exceptions=(Exception,), suppress=True, nice=True):
     @functools.wraps(func)

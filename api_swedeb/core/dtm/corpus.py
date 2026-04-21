@@ -698,7 +698,9 @@ class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=sup
             document_namer = default_document_namer
 
         di: pd.DataFrame = self.document_index
-        gdi: pd.DataFrame = di if not pivot_keys or len(filter_opts or []) == 0 else di[filter_opts.mask(di)]
+        gdi: pd.DataFrame = (
+            di.copy() if not pivot_keys or len(filter_opts or []) == 0 else di.loc[filter_opts.mask(di)].copy()
+        )
 
         if "document_id" in gdi.columns:
             gdi["_document_id_np"] = gdi["document_id"].astype(np.int64)
@@ -708,7 +710,7 @@ class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=sup
 
         aggs: dict = document_index_aggregates(gdi, [temporal_key] + pivot_keys)
 
-        gdi = gdi.groupby([temporal_key] + pivot_keys, as_index=False).agg(**aggs)
+        gdi = gdi.groupby([temporal_key] + pivot_keys, as_index=False, observed=True).agg(**aggs)
         gdi["document_name"] = document_namer(gdi)
         gdi["filename"] = gdi.document_name
 
