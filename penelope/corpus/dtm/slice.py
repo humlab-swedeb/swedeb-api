@@ -11,10 +11,6 @@ from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol
 
 
 class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
-    def slice_by_tf(self, tf_threshold: int) -> IVectorizedCorpus: ...
-
-    def slice_by_n_top(self, n_top: int | None, inplace: bool = False) -> IVectorizedCorpus: ...
-
     def slice_by_indices(self, indices: Sequence[int], inplace=False) -> IVectorizedCorpus: ...
 
     @property
@@ -42,36 +38,6 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
 
 
 class SliceMixIn(ISlicedCorpusProtocol):
-    def slice_by_tf(
-        self: ISlicedCorpusProtocol, tf_threshold: Union[int, float], inplace: bool = False
-    ) -> IVectorizedCorpus:
-        """Returns subset corpus where low frequent words are filtered out"""
-        if tf_threshold is None:
-            return self
-        tf = self.term_frequency
-        assert isinstance(tf, np.ndarray), "term_frequency should be ndarray"
-        indices: np.ndarray = np.argwhere(tf >= tf_threshold).ravel()
-        if len(indices) == self.shape[1]:
-            return self  # type: ignore[returnValue]
-        return self.slice_by_indices(indices.tolist(), inplace=inplace)
-
-    def slice_by_n_top(self: ISlicedCorpusProtocol, n_top: int | None, inplace: bool = False) -> IVectorizedCorpus:
-        """Create a subset corpus that only contains most frequent `n_top` words
-
-        Parameters
-        ----------
-        n_top : int
-            Specifies specifies number of top words to keep.
-
-        Returns
-        -------
-        VectorizedCorpus
-            Subset of self where words having a count less than 'tf_threshold' are removed
-        """
-        if n_top is None:
-            return self  # type: ignore[returnValue]
-        return self.slice_by_indices(self.nlargest(n_top=n_top).tolist(), inplace=inplace)
-
     # @autojit
     def slice_by_indices(self: ISlicedCorpusProtocol, indices: Sequence[int], inplace=False) -> IVectorizedCorpus:
         """Create (or modifies inplace) a subset corpus from given `indices`"""

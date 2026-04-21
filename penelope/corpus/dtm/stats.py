@@ -147,28 +147,6 @@ class StatsMixIn:
             logger.info(f'   {key}: {value}')
         return stats_data
 
-    def to_n_top_dataframe(self: IVectorizedCorpusProtocol, n_top: int) -> pd.DataFrame:
-        """Returns BoW as a Pandas dataframe with the `n_top` most common words.
-
-        Parameters
-        ----------
-        n_top : int
-            Number of top words to return.
-
-        Returns
-        -------
-        DataFrame
-            BoW for top `n_top` words
-        """
-        v_n_corpus = self.slice_by_n_top(n_top)
-        data = v_n_corpus.bag_term_matrix.T
-        df = pd.DataFrame(
-            data=data.todense(),
-            index=[v_n_corpus.id2token[i] for i in range(0, n_top)],
-            columns=range(0, v_n_corpus.n_docs),
-        )
-        return df
-
     def pick_n_top_words(
         self: IVectorizedCorpusProtocol,
         words: Container[str],

@@ -466,34 +466,6 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             **kwargs,
         )
 
-    @staticmethod
-    def from_token_id_stream(
-        stream: Iterable[Tuple[int, Iterable[int]]],
-        token2id: dict[str, int],
-        document_index: pd.DataFrame,
-        min_tf: int = 1,
-        max_tokens: int | None = None,
-    ) -> IVectorizedCorpus:
-        """Convert a stream of (document_id, Iterable[token_id]) into a VectorizedCorpus"""
-
-        D, T = document_index.document_id.max() + 1, max(token2id.values()) + 1
-
-        M: lil_matrix = lil_matrix((D, T), dtype=int)
-
-        for document_id, document_token_ids in stream:
-            token_ids, counts = np.unique(document_token_ids, return_counts=True)  # type: ignore
-            M[document_id, token_ids] = counts
-
-        corpus = VectorizedCorpus(M.tocsr(), token2id=token2id, document_index=document_index)  # type: ignore[reportAbstractUsage]
-
-        if min_tf:
-            corpus = corpus.slice_by_tf(min_tf, inplace=True)
-
-        if max_tokens:
-            corpus = corpus.slice_by_n_top(max_tokens, inplace=True)
-
-        return corpus
-
     def nbytes(self, kind="bytes") -> float | None:
         k = {'bytes': 0, 'kb': 1, 'mb': 2, 'gb': 3}.get(kind.lower(), 0)
         with contextlib.suppress(Exception):
