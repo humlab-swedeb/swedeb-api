@@ -3,10 +3,11 @@ from __future__ import annotations
 from bisect import bisect_left
 import contextlib
 import fnmatch
+from numbers import Number
 import re
 import warnings
 from collections.abc import Collection
-from typing import Any, Callable, Iterable, Optional, Sequence, Tuple
+from typing import Any, Callable, Iterable, Optional, Sequence, Tuple, cast
 
 import numpy as np
 import pandas as pd
@@ -20,7 +21,6 @@ from penelope import utility
 
 from .group import GroupByMixIn
 from .interface import IVectorizedCorpus, VectorizedCorpusError
-from .stats import StatsMixIn
 from .store import StoreMixIn
 
 try:
@@ -35,7 +35,7 @@ warnings.simplefilter('ignore', SparseEfficiencyWarning)
 # pylint: disable=super-init-not-called
 
 
-class VectorizedCorpus(StoreMixIn, GroupByMixIn, StatsMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
+class VectorizedCorpus(StoreMixIn, GroupByMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
     @staticmethod
     def _ensure_csr_matrix(bag_term_matrix: scipy.sparse.spmatrix | scipy.sparse.csr_matrix) -> scipy.sparse.csr_matrix:
         if not scipy.sparse.issparse(bag_term_matrix):
@@ -368,6 +368,95 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, StatsMixIn, IVectorizedCorpus):
         if descending:
             most_frequent_words = list(sorted(most_frequent_words, reverse=descending))
         return most_frequent_words
+
+    def get_top_n_words(
+        self,
+        n: int = 1000,
+        indices: Sequence[int] | None = None,
+    ) -> Sequence[Tuple[str, Number]]:
+        """Return the top `n` words in the selected document subset."""
+
+        sum_of_token_counts: np.ndarray = (self.data if indices is None else self.data[indices, :]).sum(axis=0).A1
+        largest_token_indices = (-sum_of_token_counts).argsort()[:n]
+
+        largest_tokens = [
+            (self.id2token[index], int(sum_of_token_counts[index]))
+            for index in largest_token_indices
+            if sum_of_token_counts[index] > 0
+        ]
+
+        return cast(Sequence[Tuple[str, Number]], largest_tokens)
+
+    def get_partitioned_top_n_words(
+        self,
+        category_column: str = 'category',
+        n_top: int = 100,
+        pad: str | None = None,
+        keep_empty: bool = False,
+    ) -> dict:
+        """Return top `n_top` terms per category as a mapping of category to token counts."""
+
+        categories = sorted(self.document_index[category_column].unique().tolist())
+        indices_groups = {
+            category: self.document_index[(self.document_index[category_column] == category)].index
+            for category in categories
+        }
+        data: dict[str, list[Tuple[str, Number]]] = {
+            str(category): list(self.get_top_n_words(n=n_top, indices=indices_groups[category]))
+            for category in indices_groups
+        }
+
+        if keep_empty is False:
+            data = {category: data[category] for category in data if len(data[category]) > 0}
+
+        if pad is not None:
+            if (n_max := max(len(data[category]) for category in data)) != min(len(data[category]) for category in data):
+                data = cast(
+                    dict[str, list[Tuple[str, Number]]],
+                    {
+                    category: data[category]
+                    if len(data[category]) == n_max
+                    else data[category] + [(pad, 0)] * (n_max - len(data[category]))
+                    for category in data
+                    },
+                )
+
+        return data
+
+    def get_top_terms(
+        self,
+        category_column: str = 'category',
+        n_top: int = 100,
+        kind: str = 'token',
+    ) -> pd.DataFrame:
+        """Return top terms per category as a dataframe."""
+
+        partitioned_top_n_words = self.get_partitioned_top_n_words(
+            category_column=category_column,
+            n_top=n_top,
+            pad='*',
+            keep_empty=False,
+        )
+
+        categories = sorted(partitioned_top_n_words.keys())
+        if kind == 'token/count':
+            data = {
+                category: [f'{token}/{count}' for token, count in partitioned_top_n_words[category]]
+                for category in categories
+            }
+        else:
+            data = {category: [token for token, _ in partitioned_top_n_words[category]] for category in categories}
+            if kind == 'token+count':
+                data = {
+                    **data,
+                    **{
+                        f'{category}/Count': [count for _, count in partitioned_top_n_words[category]]
+                        for category in categories
+                    },
+                }
+
+        df = pd.DataFrame(data=data)
+        return df[sorted(df.columns.tolist())]
 
     def tf_idf(self, norm: str = 'l2', use_idf: bool = True, smooth_idf: bool = True) -> IVectorizedCorpus:
         """Returns a (normalized) TF-IDF transformed version of the corpus
