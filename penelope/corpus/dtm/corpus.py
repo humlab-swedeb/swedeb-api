@@ -43,6 +43,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         token2id: dict[str, int],
         document_index: pd.DataFrame,
         overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
+        optimize_dtypes: bool = False,
         **kwargs,
     ):
         """Class that encapsulates a bag-of-word matrix
@@ -52,6 +53,7 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             token2id (dict[str, int]): Token to token/column index translation
             document_index (pd.DataFrame): Corpus document/row metadata
             overridden_term_frequency (np.ndarray, optional): Supplied if source TF differs from corpus TF
+            optimize_dtypes (bool, optional): Apply dtype optimizations to document_index
         """
         self._class_name: str = "penelope.corpus.dtm.corpus.VectorizedCorpus"
 
@@ -68,6 +70,12 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             else token2id.data if hasattr(token2id, 'data') else token2id
         )
         self._id2token: Optional[dict[int, str]] = None
+        
+        # Apply dtype optimization if requested (safety net for already-loaded data)
+        if optimize_dtypes:
+            from .store import _optimize_document_index_dtypes
+            document_index = _optimize_document_index_dtypes(document_index)
+        
         self._document_index: pd.DataFrame = self._ingest_document_index(document_index=document_index)
         self._overridden_term_frequency: np.ndarray | dict[str, int] | None = overridden_term_frequency
         self._payload: dict = {**kwargs}

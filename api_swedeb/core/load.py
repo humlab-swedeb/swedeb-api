@@ -83,7 +83,6 @@ def is_invalidated(source_path: str, target_path: str) -> bool:
     return os.path.getmtime(source_path) > os.path.getmtime(target_path)
 
 
-@time_call
 def load_speech_index(folder: str, tag: str, write_feather: bool = True) -> pd.DataFrame:
     """Load speech index dataframe."""
     document_index: pd.DataFrame | None = None
@@ -114,7 +113,6 @@ def load_speech_index(folder: str, tag: str, write_feather: bool = True) -> pd.D
     raise FileNotFoundError(f"Speech index with tag {tag} not found in folder {folder}")
 
 
-@time_call
 def load_dtm_corpus(folder: str, tag: str, prepped_document_index: pd.DataFrame | None = None) -> VectorizedCorpus:
     """Load DTM corpus.
 

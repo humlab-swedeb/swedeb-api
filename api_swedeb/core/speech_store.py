@@ -1,10 +1,10 @@
-"""Low-level Feather-based storage layer for the pre-built speech corpus.
+"""Low-level Feather-based storage for the pre-built speech corpus.
 
 Loads the ``speech_lookup.feather`` index at startup and keeps a bounded LRU
-cache of protocol-level Feather tables so each data file is read from disk at
-most once per eviction cycle.
+cache of the protocol-level Feather tables so each data file is read from disk at
+most once as long as it remains in the cache.
 
-Designed to be safe for shared use across multiple workers: lookups are
+Thread-safe for use across multiple workers: lookups are
 read-only after construction, and the protocol cache is per-instance.
 """
 
@@ -59,9 +59,9 @@ class SpeechStore:
 
         logger.debug(f"SpeechStore loaded: {len(self._name_to_loc)} speeches from {bootstrap_root}")
 
-    # ------------------------------------------------------------------
-    # Lookups
-    # ------------------------------------------------------------------
+    #####################################################################
+    # Public Lookups
+    #####################################################################
 
     def location_for_speech_id(self, speech_id: str) -> tuple[str, int] | None:
         """Return (feather_file, feather_row) for a speech_id, or None."""
@@ -100,9 +100,9 @@ class SpeechStore:
         table = self._load_protocol(feather_file)
         return table.take(feather_rows).column(column).to_pylist()
 
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
+    #####################################################################
+    # Private methods
+    #####################################################################
 
     def _load_protocol(self, feather_file_rel: str) -> pa.Table:
         if feather_file_rel in self._protocol_cache:
