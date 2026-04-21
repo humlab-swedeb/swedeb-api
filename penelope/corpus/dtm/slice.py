@@ -58,7 +58,21 @@ class ISlicedCorpusProtocol(IVectorizedCorpusProtocol):
     _bag_term_matrix: sp.csr_matrix
     _token2id: dict[str, int]
     _id2token: dict[int, str] | None
+    _sorted_vocabulary: list[str] | None
+    _term_frequency: np.ndarray | None
     _overridden_term_frequency: np.ndarray | dict[str, int] | None
+
+    def _replace_bag_term_matrix(self, bag_term_matrix: sp.spmatrix | sp.csr_matrix) -> None: ...
+
+    def _replace_token2id(self, token2id: dict[str, int]) -> None: ...
+
+    def _replace_vector_space(
+        self,
+        *,
+        bag_term_matrix: sp.spmatrix | sp.csr_matrix,
+        token2id: dict[str, int],
+        overridden_term_frequency: np.ndarray | dict[str, int] | None,
+    ) -> None: ...
 
 
 class SliceMixIn(ISlicedCorpusProtocol):
@@ -174,10 +188,11 @@ class SliceMixIn(ISlicedCorpusProtocol):
             corpus = self.create(bag_term_matrix, token2id, self.document_index, overridden_term_frequency)
             return corpus
 
-        self._bag_term_matrix = bag_term_matrix
-        self._token2id = token2id
-        self._id2token = None
-        self._overridden_term_frequency = overridden_term_frequency
+        self._replace_vector_space(
+            bag_term_matrix=bag_term_matrix,
+            token2id=token2id,
+            overridden_term_frequency=overridden_term_frequency,
+        )
 
         return self  # type: ignore[returnValue]
 
@@ -221,10 +236,11 @@ class SliceMixIn(ISlicedCorpusProtocol):
             )
             return corpus
 
-        self._bag_term_matrix = new_dtm  # type: ignore
-        self._token2id = token2id
-        self._id2token = None
-        self._overridden_term_frequency = o_tf
+        self._replace_vector_space(
+            bag_term_matrix=new_dtm,
+            token2id=token2id,
+            overridden_term_frequency=o_tf,
+        )
 
         return self  # type: ignore[returnValue]
 

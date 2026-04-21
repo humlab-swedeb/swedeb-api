@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bisect import bisect_left
 import contextlib
 import fnmatch
 import re
@@ -36,6 +37,18 @@ warnings.simplefilter('ignore', SparseEfficiencyWarning)
 
 
 class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
+    @staticmethod
+    def _ensure_csr_matrix(bag_term_matrix: scipy.sparse.spmatrix | scipy.sparse.csr_matrix) -> scipy.sparse.csr_matrix:
+        if not scipy.sparse.issparse(bag_term_matrix):
+            return scipy.sparse.csr_matrix(bag_term_matrix)
+        if not scipy.sparse.isspmatrix_csr(bag_term_matrix):
+            return bag_term_matrix.tocsr()
+        return bag_term_matrix
+
+    @staticmethod
+    def _normalize_token2id(token2id: dict[str, int] | Any) -> dict[str, int]:
+        return token2id if isinstance(token2id, dict) else token2id.data if hasattr(token2id, 'data') else token2id
+
     def __init__(
         self,
         bag_term_matrix: scipy.sparse.csr_matrix,
@@ -57,25 +70,18 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         """
         self._class_name: str = "penelope.corpus.dtm.corpus.VectorizedCorpus"
 
-        # Ensure that we have a sparse matrix (CSR)
-        if not scipy.sparse.issparse(bag_term_matrix):
-            bag_term_matrix = scipy.sparse.csr_matrix(bag_term_matrix)
-        elif not scipy.sparse.isspmatrix_csr(bag_term_matrix):
-            bag_term_matrix = bag_term_matrix.tocsr()
-
-        self._bag_term_matrix: scipy.sparse.csr_matrix = bag_term_matrix
-        self._token2id: dict[str, int] = (
-            token2id
-            if isinstance(token2id, (dict, type(None)))
-            else token2id.data if hasattr(token2id, 'data') else token2id
-        )
+        self._bag_term_matrix: scipy.sparse.csr_matrix = self._ensure_csr_matrix(bag_term_matrix)
+        self._token2id: dict[str, int] = self._normalize_token2id(token2id)
         self._id2token: Optional[dict[int, str]] = None
-        
+        self._sorted_vocabulary: Optional[list[str]] = None
+        self._term_frequency: np.ndarray | None = None
+
         # Apply dtype optimization if requested (safety net for already-loaded data)
         if optimize_dtypes:
             from .store import _optimize_document_index_dtypes
+
             document_index = _optimize_document_index_dtypes(document_index)
-        
+
         self._document_index: pd.DataFrame = self._ingest_document_index(document_index=document_index)
         self._overridden_term_frequency: np.ndarray | dict[str, int] | None = overridden_term_frequency
         self._payload: dict = {**kwargs}
@@ -119,6 +125,12 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         vocab = [self.id2token[i] for i in range(0, self.data.shape[1])]
         return vocab
 
+    @property
+    def sorted_vocabulary(self) -> list[str]:
+        if self._sorted_vocabulary is None:
+            self._sorted_vocabulary = sorted(self.token2id)
+        return self._sorted_vocabulary
+
     def word_exists(self, word: str, ignore_case: bool = True) -> bool:
         return self.token2id.get(word.lower() if ignore_case else word) is not None
 
@@ -137,7 +149,9 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     @property
     def term_frequency(self) -> np.ndarray | dict[str, int] | None:
         """Global TF (absolute term count)"""
-        return self._bag_term_matrix.sum(axis=0).A1.ravel()
+        if self._term_frequency is None:
+            self._term_frequency = self._bag_term_matrix.sum(axis=0).A1.ravel()
+        return self._term_frequency
 
     @property
     def overridden_term_frequency(self) -> np.ndarray | dict[str, int] | None:
@@ -187,6 +201,26 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     def replace_document_index(self, value: pd.DataFrame) -> None:
         """Special case: replace existing document index, use with care"""
         self._document_index = value
+
+    def _replace_bag_term_matrix(self, bag_term_matrix: scipy.sparse.spmatrix | scipy.sparse.csr_matrix) -> None:
+        self._bag_term_matrix = self._ensure_csr_matrix(bag_term_matrix)
+        self._term_frequency = None
+
+    def _replace_token2id(self, token2id: dict[str, int] | Any) -> None:
+        self._token2id = self._normalize_token2id(token2id)
+        self._id2token = None
+        self._sorted_vocabulary = None
+
+    def _replace_vector_space(
+        self,
+        *,
+        bag_term_matrix: scipy.sparse.spmatrix | scipy.sparse.csr_matrix,
+        token2id: dict[str, int] | Any,
+        overridden_term_frequency: np.ndarray | dict[str, int] | None,
+    ) -> None:
+        self._replace_bag_term_matrix(bag_term_matrix)
+        self._replace_token2id(token2id)
+        self._overridden_term_frequency = overridden_term_frequency
 
     @property
     def payload(self) -> dict[Any, Any]:
@@ -394,7 +428,11 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
     ) -> list[str]:
         """Returns words in corpus that matches candidate tokens"""
         words = self.pick_n_top_words(
-            find_matching_words_in_vocabulary(self.token2id, word_or_regexp),
+            find_matching_words_in_vocabulary(
+                self.token2id,
+                word_or_regexp,
+                sorted_vocabulary=self.sorted_vocabulary,
+            ),
             n_max_count,
             descending=descending,
         )
@@ -477,34 +515,71 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         if indices is None or len(indices) == 0:
             return indices
 
-        term_frequency = self.term_frequency or {}
+        term_frequency = self.term_frequency
+        assert isinstance(term_frequency, np.ndarray), "term_frequency should always return ndarray"
 
-        indices = [i for i in indices if term_frequency[i] > 0]  # type: ignore
+        indices_array = np.unique(np.asarray(indices, dtype=np.intp))
+        indices = indices_array[term_frequency[indices_array] > 0].tolist()
 
         if len(indices) == 0:
             return indices
 
-        data = self._bag_term_matrix.tolil()
-        data[:, indices] = 0
-        data = data.tocsr()
+        column_mask = np.ones(self._bag_term_matrix.shape[1], dtype=self._bag_term_matrix.dtype)
+        column_mask[indices] = 0
+
+        data = self._bag_term_matrix.multiply(column_mask).tocsr()
         data.eliminate_zeros()
 
-        self._bag_term_matrix = data
+        self._replace_bag_term_matrix(data)
         return indices
 
 
-def find_matching_words_in_vocabulary(token2id: dict[str, int], candidate_words: Collection[str]) -> set[str]:
+def _is_simple_prefix_glob(expr: str) -> bool:
+    return (
+        expr.endswith("*") and expr.count("*") == 1 and not expr.startswith("|") and "?" not in expr and "[" not in expr
+    )
+
+
+def _iter_prefix_matches(sorted_vocabulary: Sequence[str], prefix: str) -> Iterable[str]:
+    start = bisect_left(sorted_vocabulary, prefix)
+    for token in sorted_vocabulary[start:]:
+        if not token.startswith(prefix):
+            break
+        yield token
+
+
+def find_matching_words_in_vocabulary(
+    token2id: dict[str, int],
+    candidate_words: Collection[str],
+    *,
+    sorted_vocabulary: Sequence[str] | None = None,
+) -> set[str]:
     words = {w for w in candidate_words if w in token2id}
 
     remaining_words = [w for w in candidate_words if w not in words and len(w) > 0]
 
-    word_exprs = [x for x in remaining_words if "*" in x or (x.startswith("|") and x.endswith("|"))]
+    prefix_exprs: list[str] = []
+    compiled_matchers: list[Callable[[str], re.Match[str] | None]] = []
 
-    for expr in word_exprs:
+    for expr in remaining_words:
         if expr.startswith("|") and expr.endswith("|"):
-            pattern = re.compile(expr.strip('|'))  # "^.*tion$"
-            words |= {x for x in token2id if x not in words and pattern.match(x)}
-        else:
-            words |= {x for x in token2id if x not in words and fnmatch.fnmatch(x, expr)}
+            compiled_matchers.append(re.compile(expr.strip('|')).match)
+        elif _is_simple_prefix_glob(expr):
+            prefix_exprs.append(expr[:-1])
+        elif "*" in expr or "?" in expr or "[" in expr:
+            compiled_matchers.append(re.compile(fnmatch.translate(expr)).match)
+
+    if prefix_exprs:
+        if sorted_vocabulary is None:
+            sorted_vocabulary = sorted(token2id)
+        for prefix in prefix_exprs:
+            words.update(_iter_prefix_matches(sorted_vocabulary, prefix))
+
+    if compiled_matchers:
+        for token in token2id:
+            if token in words:
+                continue
+            if any(matcher(token) for matcher in compiled_matchers):
+                words.add(token)
 
     return words
