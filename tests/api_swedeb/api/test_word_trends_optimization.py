@@ -1,9 +1,13 @@
 """Test suite for word trends optimization."""
 
+from unittest.mock import patch
+
 import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.word_trends_service import WordTrendsService
+from api_swedeb.core.common.keyness import KeynessMetric
+from api_swedeb.core.common.word_trends import TrendsComputeOpts, TrendsService
 from api_swedeb.core.configuration import get_config_store
 
 # pylint: disable=unused-argument, redefined-outer-name
@@ -54,18 +58,45 @@ def test_very_common_word(word_trends_service):
 
 def test_optimization_threshold(word_trends_service):
     """Test that optimization is only applied for < 100 words."""
+    corpus = word_trends_service.loader.vectorized_corpus
+    search_terms = list(corpus.token2id)[:101]
+    words_99 = search_terms[:99]
+    words_101 = search_terms[:101]
 
-    # Test with exactly 99 words (should use optimization)
-    words_99 = [f"word{i}" for i in range(99)]
-    valid_words_99 = word_trends_service.filter_search_terms(words_99)
-    # Should find at least some valid words
-    assert len(valid_words_99) > 0
+    assert word_trends_service.filter_search_terms(words_99) == words_99
+    assert word_trends_service.filter_search_terms(words_101) == words_101
 
-    # Test with 101 words (should not use optimization, but still work)
-    words_101 = [f"word{i}" for i in range(101)]
-    valid_words_101 = word_trends_service.filter_search_terms(words_101)
-    assert len(valid_words_101) > 0
-    # Both should work, just potentially different code paths
+    no_op_group_by = lambda self, *args, **kwargs: self
+
+    with (
+        patch.object(type(corpus), "group_by_pivot_keys", autospec=True, side_effect=no_op_group_by),
+        patch.object(corpus, "slice_by_indices", wraps=corpus.slice_by_indices) as slice_by_indices_99,
+    ):
+        TrendsService(corpus=corpus)._transform_corpus(
+            TrendsComputeOpts(
+                normalize=False,
+                keyness=KeynessMetric.TF,
+                temporal_key="year",
+                words=words_99,
+            )
+        )
+
+    assert slice_by_indices_99.call_count == 1
+
+    with (
+        patch.object(type(corpus), "group_by_pivot_keys", autospec=True, side_effect=no_op_group_by),
+        patch.object(corpus, "slice_by_indices", wraps=corpus.slice_by_indices) as slice_by_indices_101,
+    ):
+        TrendsService(corpus=corpus)._transform_corpus(
+            TrendsComputeOpts(
+                normalize=False,
+                keyness=KeynessMetric.TF,
+                temporal_key="year",
+                words=words_101,
+            )
+        )
+
+    assert slice_by_indices_101.call_count == 0
 
 
 def test_nonexistent_word(word_trends_service):
