@@ -143,10 +143,10 @@ class GroupByMixIn:
             gdi = fill_temporal_gaps_in_group_document_index(gdi, temporal_key, pivot_keys, aggs)
 
         gdi["document_id"] = gdi.index.astype(np.int32)
-        
+
         # Single-pass type conversion - 2x faster than multiple as_slim_types calls
         gdi = optimize_index_types(gdi, temporal_key)
-        
+
         gdi["time_period"] = gdi[temporal_key]
 
         category_indices: Mapping[int, List[int]] = gdi["document_ids"].to_dict()  # type: ignore[assignment]
@@ -161,19 +161,14 @@ class GroupByMixIn:
             dtype=dtype,
         )
 
+
 def optimize_index_types(gdi: pd.DataFrame, temporal_key: str) -> pd.DataFrame:
     """Optimize DataFrame types for memory efficiency."""
 
     type_conversions: dict[str, type] = {
-        col: np.int32 
-        for col in ["n_documents", "n_tokens", "n_raw_tokens", "tokens"] 
-        if col in gdi.columns
+        col: np.int32 for col in ["n_documents", "n_tokens", "n_raw_tokens", "tokens"] if col in gdi.columns
     }
-    type_conversions.update({
-        col: np.int16 
-        for col in ["year", temporal_key] 
-        if col in gdi.columns
-    })
+    type_conversions.update({col: np.int16 for col in ["year", temporal_key] if col in gdi.columns})
     if type_conversions:
         gdi = gdi.astype(type_conversions)
     return gdi
@@ -192,35 +187,32 @@ def fill_temporal_gaps_in_group_document_index(
     aggs: dict,
 ) -> pd.DataFrame:
     """Fill missing temporal values with empty documents.
-    
+
     Optimized to use dict of arrays instead of list of dicts for 2-3x speedup.
     """
     sep = "_" if pivot_keys else ""
 
     values_with_no_gaps = set(temporal_key_values_with_no_gaps(di[temporal_key], temporal_key=temporal_key))
     missing_values = sorted(values_with_no_gaps - set(di[temporal_key]))
-    
+
     if not missing_values:
         # No gaps to fill - early return
         return di
-    
+
     n_missing = len(missing_values)
-    
+
     # Create dict of arrays instead of list of dicts - 2-3x faster
     missing_data = {
         temporal_key: missing_values,
         'document_ids': [[] for _ in range(n_missing)],
-        'document_name': [
-            f'{val}{sep}{sep.join(["0"] * len(pivot_keys))}' 
-            for val in missing_values
-        ],
+        'document_name': [f'{val}{sep}{sep.join(["0"] * len(pivot_keys))}' for val in missing_values],
     }
-    
+
     # Add zero columns for all aggregates (already zeros, no fillna needed)
     for k in aggs.keys():
         if k != "document_ids":
             missing_data[k] = [0] * n_missing
-    
+
     di_missing = pd.DataFrame(missing_data)
 
     di = pd.concat([di, di_missing], ignore_index=True)
@@ -240,17 +232,17 @@ def group_DTM_by_indices_mapping(
     dtype: np.dtype | None = None,
 ):
     """Group document-term matrix by category indices using efficient sparse matrix multiplication.
-    
+
     This optimized version builds a sparse mapping matrix and uses matrix multiplication
     instead of row-by-row iteration, providing 10-100x speedup for large matrices.
-    
+
     Args:
         dtm: Document-term matrix to group (n_original_docs x n_terms)
         n_docs: Number of output documents (categories)
         category_indices: Mapping from target document ID to list of source document IDs
         aggregate: Aggregation method - "sum" or "mean"
         dtype: Output dtype (auto-detected if None)
-    
+
     Returns:
         Grouped sparse matrix (n_docs x n_terms)
     """
@@ -258,29 +250,25 @@ def group_DTM_by_indices_mapping(
 
     n_original_docs = dtm.shape[0]
     dtype_y = dtype or (np.int32 if np.issubdtype(dtm.dtype, np.integer) and aggregate == "sum" else np.float64)
-    
+
     # Build sparse mapping matrix: (n_docs x n_original_docs)
     # Each row represents a target document, each column an original document
     # Values are 1 for sum, or 1/count for mean
     row_indices = []
     col_indices = []
     data = []
-    
+
     for target_doc_id, source_doc_ids in category_indices.items():
         if len(source_doc_ids) > 0:
             weight = 1.0 / len(source_doc_ids) if aggregate == "mean" else 1.0
             row_indices.extend([target_doc_id] * len(source_doc_ids))
             col_indices.extend(source_doc_ids)
             data.extend([weight] * len(source_doc_ids))
-    
+
     # Create sparse mapping matrix
-    mapping_matrix = sp.csr_matrix(
-        (data, (row_indices, col_indices)),
-        shape=(n_docs, n_original_docs),
-        dtype=dtype_y
-    )
-    
+    mapping_matrix = sp.csr_matrix((data, (row_indices, col_indices)), shape=(n_docs, n_original_docs), dtype=dtype_y)
+
     # Single matrix multiplication - much faster than row-by-row iteration!
     matrix = mapping_matrix @ dtm
-    
+
     return matrix.tocsr()
