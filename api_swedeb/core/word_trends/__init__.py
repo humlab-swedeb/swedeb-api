@@ -8,7 +8,7 @@ from penelope import corpus as pc  # type: ignore
 from penelope.common import word_trends as wt  # type: ignore
 from penelope.common.keyness import KeynessMetric
 
-from . import person_codecs as md
+from .. import person_codecs as md
 
 # These two class are currently identical to the ones in welfare_state_analytics.notebookd...word_trends.py
 

@@ -167,7 +167,7 @@ The main core subsystems are:
 - `core/speech_store.py`: low-level Feather storage access for prebuilt speech data
 - `core/speech_repository.py`: higher-level speech retrieval built on `SpeechStore`
 - `core/speech_utility.py`: formatting and URL/link derivation used by API mappers
-- `core/word_trends.py` and `core/speech_index.py`: DTM-driven analysis helpers
+- `core/word_trends/` and `core/speech_index.py`: DTM-driven analysis helpers
 
 ### Offline workflow layer
 
