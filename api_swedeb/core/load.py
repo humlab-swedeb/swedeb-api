@@ -6,8 +6,6 @@ from loguru import logger
 
 from penelope.corpus import VectorizedCorpus
 
-from .utility import time_call
-
 RENAME_COLUMNS: dict[str, str] = {'who': 'person_id', 'u_id': 'speech_id'}
 
 FEATHER_COLUMNS: list[str] = [

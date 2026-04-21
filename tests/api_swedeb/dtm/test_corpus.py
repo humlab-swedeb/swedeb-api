@@ -209,5 +209,3 @@ def test_term_frequency_cache_is_invalidated_on_inplace_slice():
     assert original.tolist() == [1, 2, 1]
     assert sliced.tolist() == [1]
     assert sliced is not original
-
-

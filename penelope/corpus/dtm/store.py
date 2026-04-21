@@ -6,7 +6,7 @@ import json
 import os
 from collections import defaultdict
 from os.path import join as jj
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal
 
 import numpy as np
 import pandas as pd

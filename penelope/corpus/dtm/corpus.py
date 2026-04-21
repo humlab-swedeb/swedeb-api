@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from bisect import bisect_left
 import contextlib
 import fnmatch
-from numbers import Number
 import re
 import warnings
+from bisect import bisect_left
 from collections.abc import Collection
+from numbers import Number
 from typing import Any, Callable, Iterable, Literal, Optional, Sequence, Tuple, cast
 
 import numpy as np
@@ -15,13 +15,13 @@ import scipy
 from loguru import logger
 
 # pylint: disable=logging-format-interpolation, too-many-public-methods, too-many-ancestors
-from scipy.sparse import SparseEfficiencyWarning, lil_matrix
+from scipy.sparse import SparseEfficiencyWarning
 
 from penelope import utility
 from penelope.utility.utils import dict_of_key_values_inverted_to_dict_of_value_key
 
-from .interface import IVectorizedCorpus, VectorizedCorpusError
 from . import store as dtm_store
+from .interface import IVectorizedCorpus, VectorizedCorpusError
 
 try:
     import sklearn.preprocessing  # type: ignore
@@ -584,14 +584,18 @@ class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=sup
             data = {category: data[category] for category in data if len(data[category]) > 0}
 
         if pad is not None:
-            if (n_max := max(len(data[category]) for category in data)) != min(len(data[category]) for category in data):
+            if (n_max := max(len(data[category]) for category in data)) != min(
+                len(data[category]) for category in data
+            ):
                 data = cast(
                     dict[str, list[Tuple[str, Number]]],
                     {
-                    category: data[category]
-                    if len(data[category]) == n_max
-                    else data[category] + [(pad, 0)] * (n_max - len(data[category]))
-                    for category in data
+                        category: (
+                            data[category]
+                            if len(data[category]) == n_max
+                            else data[category] + [(pad, 0)] * (n_max - len(data[category]))
+                        )
+                        for category in data
                     },
                 )
 
