@@ -4,10 +4,9 @@ import gzip
 import importlib
 import json
 import os
-import time
 from collections import defaultdict
 from os.path import join as jj
-from typing import Callable, Literal, Optional
+from typing import Any, Callable, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -15,7 +14,7 @@ import scipy
 
 from penelope.utility import read_json, strip_paths, write_json
 
-from .interface import IVectorizedCorpus, IVectorizedCorpusProtocol
+from .interface import IVectorizedCorpus
 
 DATA_SUFFIXES: list[str] = ['_vector_data.npz', '_vector_data.npy', '_vectorizer_data.pickle']
 
@@ -237,200 +236,132 @@ def store_metadata(*, tag: str, folder: str, mode: Literal['bundle', 'files'] = 
     raise ValueError(f"Invalid mode {mode}")
 
 
-# pylint: disable=no-member
+def corpus_metadata(corpus: Any) -> dict:
+    return {
+        'token2id': corpus.token2id,
+        'overridden_term_frequency': corpus.overridden_term_frequency,
+        'document_index': corpus.document_index,
+    }
 
 
-class StoreMixIn:
-    def dump(
-        self: IVectorizedCorpusProtocol,
-        *,
-        tag: str,
-        folder: str,
-        compressed: bool = True,
-        mode: Literal['bundle', 'files'] = 'files',
-    ) -> IVectorizedCorpus:
-        """Store corpus to disk.
+def dump_corpus(
+    corpus: Any,
+    *,
+    tag: str,
+    folder: str,
+    compressed: bool = True,
+    mode: Literal['bundle', 'files'] = 'files',
+) -> IVectorizedCorpus:
+    store_metadata(tag=tag, folder=folder, mode=mode, **corpus_metadata(corpus))
 
-        The DTM is stored in `folder` with files prefixed with tag `tag`:
+    if compressed:
+        assert scipy.sparse.issparse(corpus.bag_term_matrix)
+        scipy.sparse.save_npz(jj(folder, f"{tag}_vector_data"), corpus.bag_term_matrix, compressed=True)
+    else:
+        np.save(jj(folder, f"{tag}_vector_data.npy"), corpus.bag_term_matrix, allow_pickle=True)
 
-            {tag}_vectorizer_data.pickle         Bundle with `token2id`, `document_index` and `overridden_term_frequency`
-            {tag}_document_index.csv.gz          Document index as compressed CSV (if mode is `files`)
-            {tag}_token2id.json.gz               Vocabulary as compressed JSON (if mode is `files`)
-            {tag}_term_frequency.npy             Term frequency to use, overrides TF sums in DTM (if mode is `files`)
-            {tag}_vector_data.[npz|npy]          The document-term matrix (numpy or sparse format)
+    return corpus  # type: ignore[return-value]
 
 
-        Parameters
-        ----------
-        tag : str, optional
-            String to be prepended to file name, set to timestamp if None
-        folder : str, optional
-            Target folder, by default './output'
-        compressed : bool, optional
-            Specifies if matrix is stored as .npz or .npy, by default .npz
-        mode : str, optional, values 'bundle' or 'files'
-            Specifies if metadata should be bundled in a pickle file or stored as individual compressed files.
+def dump_exists(*, tag: str, folder: str) -> bool:
+    """Checks if corpus with tag `tag` exists in folder `folder`."""
+    return any(os.path.isfile(jj(folder, f"{tag}{suffix}")) for suffix in DATA_SUFFIXES)
 
-        """
-        tag = tag or time.strftime("%Y%m%d_%H%M%S")
 
-        store_metadata(tag=tag, folder=folder, mode=mode, **self.metadata)
+def is_dump(filename: str | None) -> bool:
+    return bool(filename) and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
 
-        if compressed:
-            assert scipy.sparse.issparse(self.bag_term_matrix)
-            scipy.sparse.save_npz(jj(folder, f"{tag}_vector_data"), self.bag_term_matrix, compressed=True)
-        else:
-            np.save(jj(folder, f"{tag}_vector_data.npy"), self.bag_term_matrix, allow_pickle=True)
 
-        return self  # type: ignore
-
-    @property
-    def metadata(self: IVectorizedCorpusProtocol) -> dict:
-        return {
-            'token2id': self.token2id,
-            'overridden_term_frequency': self.overridden_term_frequency,
-            'document_index': self.document_index,
+def find_tags(folder: str) -> list[str]:
+    """Return dump tags in specified folder."""
+    return list(
+        {
+            x[0 : len(x) - len(suffix)]
+            for suffix in DATA_SUFFIXES
+            for x in strip_paths(glob.glob(jj(folder, f'*{suffix}')))
         }
-
-    @staticmethod
-    def dump_exists(*, tag: str, folder: str) -> bool:
-        """Checks if corpus with tag `tag` exists in folder `folder`"""
-        return any(os.path.isfile(jj(folder, f"{tag}{suffix}")) for suffix in DATA_SUFFIXES)
-
-    @staticmethod
-    def is_dump(filename: str | None) -> bool:
-        return (
-            bool(filename) and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
-        )
-
-    @staticmethod
-    def find_tags(folder: str) -> list[str]:
-        """Return dump tags in specified folder."""
-        tags: list[str] = list(
-            {
-                x[0 : len(x) - len(suffix)]
-                for suffix in DATA_SUFFIXES
-                for x in strip_paths(glob.glob(jj(folder, f'*{suffix}')))
-            }
-        )
-        return tags
-
-    @staticmethod
-    def split(filename: str) -> tuple[str, str]:
-        """Return (folder, tag) for given filename."""
-        basename = os.path.basename(filename)
-        for suffix in DATA_SUFFIXES:
-            if os.path.basename(filename).endswith(suffix):
-                return (os.path.dirname(filename), basename[0 : len(basename) - len(suffix)])
-        raise ValueError(f"Invalid dump filename {filename}")
-
-    @staticmethod
-    def remove(*, tag: str, folder: str):
-        for suffix in BASENAMES:
-            for filename in glob.glob(jj(folder, f"{tag}_{suffix}.*")):
-                with contextlib.suppress(Exception):
-                    os.unlink(filename)
-
-    @staticmethod
-    def load(*, tag: str | None = None, folder: str | None = None, filename: str | None = None) -> IVectorizedCorpus:
-        """Loads corpus with tag `tag` in folder `folder`
-
-        Raises `FileNotFoundError` if any of the two files containing metadata and matrix doesn't exist.
-
-        Two files are loaded based on specified `tag`:
-
-            {tag}_vectorizer_data.pickle         Contains metadata `token2id`, `document_index` and `overridden_term_frequency`
-            {tag}_vector_data.[npz|npy]          Contains the document-term matrix (numpy or sparse format)
+    )
 
 
-        Parameters
-        ----------
-        tag : str
-            Corpus identifier (prefixed to filename)
-        folder : str, optional
-            Corpus folder to look in, by default './output'
+def split(filename: str) -> tuple[str, str]:
+    """Return (folder, tag) for given filename."""
+    basename = os.path.basename(filename)
+    for suffix in DATA_SUFFIXES:
+        if os.path.basename(filename).endswith(suffix):
+            return (os.path.dirname(filename), basename[0 : len(basename) - len(suffix)])
+    raise ValueError(f"Invalid dump filename {filename}")
 
-        Returns
-        -------
-        VectorizedCorpus
-            Loaded corpus
-        """
 
-        if not (filename or (tag and folder)):
-            raise ValueError("Either tag and folder or filename must be specified.")
+def remove(*, tag: str, folder: str):
+    for suffix in BASENAMES:
+        for filename in glob.glob(jj(folder, f"{tag}_{suffix}.*")):
+            with contextlib.suppress(Exception):
+                os.unlink(filename)
 
-        if isinstance(filename, IVectorizedCorpus):
-            return filename
 
-        if filename:
-            folder, tag = StoreMixIn.split(filename)
+def load(*, tag: str | None = None, folder: str | None = None, filename: str | None = None) -> IVectorizedCorpus:
+    if not (filename or (tag and folder)):
+        raise ValueError("Either tag and folder or filename must be specified.")
 
-        assert tag is not None
-        assert folder is not None
+    if isinstance(filename, IVectorizedCorpus):
+        return filename
 
-        if not StoreMixIn.dump_exists(tag=tag, folder=folder):
-            raise FileNotFoundError(f"DTM file with tag {tag} not found in folder {folder}")
+    if filename:
+        folder, tag = split(filename)
 
-        data: dict = load_metadata(tag=tag, folder=folder)
+    assert tag is not None
+    assert folder is not None
 
-        token2id: dict[str, int] = data.get("token2id") or {}
+    if not dump_exists(tag=tag, folder=folder):
+        raise FileNotFoundError(f"DTM file with tag {tag} not found in folder {folder}")
 
-        """Load TF override, convert if in older (dict) format"""
-        overridden_term_frequency: np.ndarray | dict[str, int] | None = (
-            data.get("term_frequency", None)
-            or data.get("overridden_term_frequency", None)
-            or data.get("term_frequency_mapping", None)
-            or data.get("token_counter", None)
-        )
-        if isinstance(overridden_term_frequency, dict):
-            fg = {v: k for k, v in token2id.items()}.get
-            overridden_term_frequency = np.array([overridden_term_frequency[fg(i)] for i in range(0, len(token2id))])
+    data: dict = load_metadata(tag=tag, folder=folder)
+    token2id: dict[str, int] = data.get("token2id") or {}
 
-        """Document-term-matrix"""
-        if os.path.isfile(jj(folder, f"{tag}_vector_data.npz")):
-            bag_term_matrix = scipy.sparse.load_npz(jj(folder, f"{tag}_vector_data.npz"))
-        else:
-            bag_term_matrix = np.load(jj(folder, f"{tag}_vector_data.npy"), allow_pickle=True).item()
+    overridden_term_frequency: np.ndarray | dict[str, int] | None = (
+        data.get("term_frequency", None)
+        or data.get("overridden_term_frequency", None)
+        or data.get("term_frequency_mapping", None)
+        or data.get("token_counter", None)
+    )
+    if isinstance(overridden_term_frequency, dict):
+        fg = {v: k for k, v in token2id.items()}.get
+        overridden_term_frequency = np.array([overridden_term_frequency[fg(i)] for i in range(0, len(token2id))])
 
-        return create_corpus_instance(
-            bag_term_matrix,
-            token2id=token2id,
-            document_index=data.get("document_index"),  # type: ignore
-            overridden_term_frequency=overridden_term_frequency,
-        )
+    if os.path.isfile(jj(folder, f"{tag}_vector_data.npz")):
+        bag_term_matrix = scipy.sparse.load_npz(jj(folder, f"{tag}_vector_data.npz"))
+    else:
+        bag_term_matrix = np.load(jj(folder, f"{tag}_vector_data.npy"), allow_pickle=True).item()
 
-    @staticmethod
-    def dump_options(*, tag: str, folder: str, options: dict):
-        json_filename = jj(folder, f"{tag}_vectorizer_data.json")
-        write_json(json_filename, options, default=lambda _: "<not serializable>")
+    return create_corpus_instance(
+        bag_term_matrix,
+        token2id=token2id,
+        document_index=data.get("document_index"),  # type: ignore[arg-type]
+        overridden_term_frequency=overridden_term_frequency,
+    )
 
-    @staticmethod
-    def load_options(*, tag: str, folder: str) -> dict:
-        """Loads vectrize options if they exists"""
-        json_filename = jj(folder, f"{tag}_vectorizer_data.json")
-        if os.path.isfile(json_filename):
-            return read_json(json_filename)
-        return {}
 
-    @staticmethod
-    def load_metadata(*, tag: str, folder: str) -> dict:
-        return load_metadata(tag=tag, folder=folder)
+def dump_options(*, tag: str, folder: str, options: dict):
+    json_filename = jj(folder, f"{tag}_vectorizer_data.json")
+    write_json(json_filename, options, default=lambda _: "<not serializable>")
 
-    def store_metadata(
-        self: IVectorizedCorpusProtocol, *, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files'
-    ) -> None:
-        return store_metadata(tag=tag, folder=folder, mode=mode, **self.metadata)
 
-    @staticmethod
-    def load_document_index(folder: str) -> pd.DataFrame:
-        if not os.path.isdir(folder):
-            raise FileNotFoundError("no DTM in selected folder")
+def load_options(*, tag: str, folder: str) -> dict:
+    """Loads vectrize options if they exists."""
+    json_filename = jj(folder, f"{tag}_vectorizer_data.json")
+    if os.path.isfile(json_filename):
+        return read_json(json_filename)
+    return {}
 
-        tags: list[str] = StoreMixIn.find_tags(folder)
 
-        if len(tags) != 1:
-            raise FileNotFoundError("no (unique) DTM in selected folder")
+def load_unique_document_index(folder: str) -> pd.DataFrame:
+    if not os.path.isdir(folder):
+        raise FileNotFoundError("no DTM in selected folder")
 
-        md: dict = StoreMixIn.load_metadata(tag=tags[0], folder=folder)
-        di: pd.DataFrame = md.get('document_index')  # type: ignore
-        return di
+    tags = find_tags(folder)
+    if len(tags) != 1:
+        raise FileNotFoundError("no (unique) DTM in selected folder")
+
+    md: dict = load_metadata(tag=tags[0], folder=folder)
+    di: pd.DataFrame = md.get('document_index')  # type: ignore[assignment]
+    return di

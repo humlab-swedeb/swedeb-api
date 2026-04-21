@@ -21,7 +21,7 @@ from penelope import utility
 from penelope.utility.utils import dict_of_key_values_inverted_to_dict_of_value_key
 
 from .interface import IVectorizedCorpus, VectorizedCorpusError
-from .store import StoreMixIn
+from . import store as dtm_store
 
 try:
     import sklearn.preprocessing  # type: ignore
@@ -140,7 +140,7 @@ def group_DTM_by_indices_mapping(
     return matrix.tocsr()
 
 
-class VectorizedCorpus(StoreMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
+class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
     @staticmethod
     def _ensure_csr_matrix(bag_term_matrix: scipy.sparse.spmatrix | scipy.sparse.csr_matrix) -> scipy.sparse.csr_matrix:
         if not scipy.sparse.issparse(bag_term_matrix):
@@ -329,6 +329,75 @@ class VectorizedCorpus(StoreMixIn, IVectorizedCorpus):  # type: ignore ; pylint:
     @property
     def payload(self) -> dict[Any, Any]:
         return self._payload
+
+    @property
+    def metadata(self) -> dict:
+        return dtm_store.corpus_metadata(cast(IVectorizedCorpus, self))
+
+    def dump(
+        self,
+        *,
+        tag: str,
+        folder: str,
+        compressed: bool = True,
+        mode: Literal['bundle', 'files'] = 'files',
+    ) -> IVectorizedCorpus:
+        return dtm_store.dump_corpus(
+            cast(IVectorizedCorpus, self),
+            tag=tag,
+            folder=folder,
+            compressed=compressed,
+            mode=mode,
+        )
+
+    @staticmethod
+    def dump_exists(*, tag: str, folder: str) -> bool:
+        return dtm_store.dump_exists(tag=tag, folder=folder)
+
+    @staticmethod
+    def is_dump(filename: str | None) -> bool:
+        return dtm_store.is_dump(filename)
+
+    @staticmethod
+    def find_tags(folder: str) -> list[str]:
+        return dtm_store.find_tags(folder)
+
+    @staticmethod
+    def split(filename: str) -> tuple[str, str]:
+        return dtm_store.split(filename)
+
+    @staticmethod
+    def remove(*, tag: str, folder: str):
+        return dtm_store.remove(tag=tag, folder=folder)
+
+    @staticmethod
+    def load(*, tag: str | None = None, folder: str | None = None, filename: str | None = None) -> IVectorizedCorpus:
+        return dtm_store.load(tag=tag, folder=folder, filename=filename)
+
+    @staticmethod
+    def dump_options(*, tag: str, folder: str, options: dict):
+        return dtm_store.dump_options(tag=tag, folder=folder, options=options)
+
+    @staticmethod
+    def load_options(*, tag: str, folder: str) -> dict:
+        return dtm_store.load_options(tag=tag, folder=folder)
+
+    @staticmethod
+    def load_metadata(*, tag: str, folder: str) -> dict:
+        return dtm_store.load_metadata(tag=tag, folder=folder)
+
+    def store_metadata(
+        self,
+        *,
+        tag: str,
+        folder: str,
+        mode: Literal['bundle', 'files'] = 'files',
+    ) -> None:
+        return dtm_store.store_metadata(tag=tag, folder=folder, mode=mode, **self.metadata)
+
+    @staticmethod
+    def load_document_index(folder: str) -> pd.DataFrame:
+        return dtm_store.load_unique_document_index(folder)
 
     def remember(self, **kwargs) -> VectorizedCorpus:
         """Stores items in payload"""
