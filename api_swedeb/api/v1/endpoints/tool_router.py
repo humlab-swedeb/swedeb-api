@@ -346,3 +346,10 @@ async def get_topics() -> dict[str, str]:
 @router.get("/year_range", response_model=tuple[int, int])
 async def get_year_range(corpus_loader: CorpusLoader = Depends(get_corpus_loader)) -> tuple[int, int]:
     return corpus_loader.year_range
+
+
+@router.get("/protocol/page_range", response_model=tuple[int, int])
+async def get_protocol_page_range(
+    protocol_name: str, corpus_loader: CorpusLoader = Depends(get_corpus_loader)
+) -> tuple[int, int]:
+    return corpus_loader.protocol_page_range(protocol_name)
