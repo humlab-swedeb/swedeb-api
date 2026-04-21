@@ -3,7 +3,7 @@
 Implements the same public interface as :class:`~api_swedeb.legacy.speech_lookup.SpeechTextRepository`
 but reads from pre-built Feather files instead of re-parsing tagged-frame ZIP archives.
 
-All speaker metadata (name, gender, party, office type) is already materialised in the
+All speaker metadata (name, gender, party, office type) is already decoded in the
 Feather rows at build time, so no runtime codec lookups are required beyond resolving
 document keys against the legacy document index.
 """
@@ -48,9 +48,9 @@ class SpeechRepository:
         # doesn't pay the SQLite round-trip cost mid-stream.
         _ = self.speaker_note_id2note
 
-    # ------------------------------------------------------------------
-    # speaker_note lookup (optional, lazy)
-    # ------------------------------------------------------------------
+    #############################################################################
+    # Speaker note lookup (optional, lazy)
+    #############################################################################
 
     @cached_property
     def speaker_note_id2note(self) -> dict[str, str | None]:
@@ -64,9 +64,9 @@ class SpeechRepository:
             logger.error(f"unable to read speaker_notes: {ex}")
             return {}
 
-    # ------------------------------------------------------------------
-    # Public interface (matches SpeechTextRepository)
-    # ------------------------------------------------------------------
+    #####################################################################
+    # Public interface (matches legacy SpeechTextRepository)
+    #####################################################################
 
     def speech(self, speech_id: str) -> Speech:
         """Load a single speech by canonical speech_id (i-* format)."""
@@ -147,9 +147,9 @@ class SpeechRepository:
         paragraphs: list[str] = speech.get("paragraphs", [])
         return fix_whitespace("\n".join(paragraphs))
 
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
+    #####################################################################
+    # Private methods
+    #####################################################################
 
     def _row_to_speech(self, row: dict[str, Any]) -> Speech:
         """Build a :class:`Speech` from a pre-built Feather row dict."""
@@ -170,7 +170,7 @@ class SpeechRepository:
             "num_tokens": int(rg("num_tokens") or 0),
             "num_words": int(rg("num_words") or 0),
             "text": rg("text") or "",
-            # Enriched speaker fields (materialised at build time)
+            # Enriched speaker fields (decoded at build time)
             "name": rg("name") or "unknown",
             "gender_id": int(rg("gender_id") or 0),
             "gender": rg("gender") or "Okänt",
