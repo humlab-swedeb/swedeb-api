@@ -18,7 +18,6 @@ from loguru import logger
 from scipy.sparse import SparseEfficiencyWarning
 
 from api_swedeb.core.common import utility
-from api_swedeb.core.common.utility.utils import dict_of_key_values_inverted_to_dict_of_value_key
 
 from . import store as dtm_store
 from .interface import IVectorizedCorpus, VectorizedCorpusError
@@ -38,6 +37,10 @@ warnings.simplefilter('ignore', SparseEfficiencyWarning)
 KNOWN_TIME_PERIODS: dict[str, int] = {"year": 1, "lustrum": 5, "decade": 10}
 
 
+# def dict_of_key_values_inverted_to_dict_of_value_key(d: dict) -> dict:
+#     return {value: key for key in d for value in d[key]}
+
+
 def create_temporal_key_categorizer(temporal_key_specifier: str | dict | Callable[[Any], Any]) -> Callable[[Any], Any]:
     if callable(temporal_key_specifier):
         return temporal_key_specifier
@@ -47,7 +50,8 @@ def create_temporal_key_categorizer(temporal_key_specifier: str | dict | Callabl
             raise ValueError(f"{temporal_key_specifier} is not a known period specifier")
         return lambda year: year - int(year % KNOWN_TIME_PERIODS[temporal_key_specifier])
 
-    year_group_mapping = dict_of_key_values_inverted_to_dict_of_value_key(temporal_key_specifier)
+    year_group_mapping = {value: key for key in temporal_key_specifier for value in temporal_key_specifier[key]}
+    # dict_of_key_values_inverted_to_dict_of_value_key(temporal_key_specifier)
     return lambda value: year_group_mapping.get(value, np.nan)
 
 
@@ -114,7 +118,7 @@ def group_DTM_by_indices_mapping(
     dtype: np.dtype | None = None,
 ):
     """Group document-term matrix by category indices using sparse matrix multiplication.
-    
+
     Optimized implementation using pre-allocated NumPy arrays for 1.3-2.4x speedup
     on production-scale groupings (100K-1M documents).
     """
@@ -137,15 +141,15 @@ def group_DTM_by_indices_mapping(
         n_sources = len(source_doc_ids)
         if n_sources > 0:
             end_offset = offset + n_sources
-            
+
             # Vectorized assignment (faster than list operations)
             row_indices[offset:end_offset] = target_doc_id
             col_indices[offset:end_offset] = source_doc_ids
-            
+
             # Compute weight once per group, not per element
             weight = 1.0 / n_sources if aggregate == "mean" else 1.0
             data[offset:end_offset] = weight
-            
+
             offset = end_offset
 
     mapping_matrix = scipy.sparse.csr_matrix(

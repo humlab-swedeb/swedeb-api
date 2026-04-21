@@ -56,9 +56,7 @@ def main() -> None:
 
     # This is the hot path we're profiling
     start_time = time.time()
-    df = word_trends_service.get_speeches_for_word_trends(
-        selected_terms=search_terms, filter_opts=filter_opts
-    )
+    df = word_trends_service.get_speeches_for_word_trends(selected_terms=search_terms, filter_opts=filter_opts)
     elapsed = time.time() - start_time
 
     print("=" * 80)
@@ -69,7 +67,7 @@ def main() -> None:
     print(f"Total cells: {len(df) * len(df.columns):,}")
     print(f"Memory usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
     print()
-    
+
     if not df.empty:
         print("DataFrame info:")
         print(f"  Columns: {list(df.columns)}")
@@ -77,9 +75,9 @@ def main() -> None:
         print("First 3 speeches:")
         print(df.head(3).to_string())
         print()
-        
+
         # Estimate JSON payload size
-        import json
+
         sample_rows = min(100, len(df))
         sample_json = df.head(sample_rows).to_json(orient='records')
         estimated_full_size = len(sample_json) * len(df) / sample_rows / (1024**2)

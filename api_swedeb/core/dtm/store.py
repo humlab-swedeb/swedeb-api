@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import scipy
 
-from api_swedeb.core.common.utility import read_json, strip_paths, write_json
+from api_swedeb.core.utility import read_json, strip_paths, write_json
 
 from .interface import IVectorizedCorpus
 

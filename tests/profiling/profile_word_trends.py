@@ -66,9 +66,7 @@ def main() -> None:
         search_terms=search_terms, filter_opts=filter_opts, normalize=args.normalize
     )
 
-    print(
-        f"Done! Result: {len(df)} rows × {len(df.columns)} columns = {df.shape[0] * df.shape[1]:,} cells", flush=True
-    )
+    print(f"Done! Result: {len(df)} rows × {len(df.columns)} columns = {df.shape[0] * df.shape[1]:,} cells", flush=True)
     print(f"Memory usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB", flush=True)
 
     if not df.empty:
