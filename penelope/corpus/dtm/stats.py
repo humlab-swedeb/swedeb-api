@@ -1,5 +1,5 @@
 from numbers import Number
-from typing import Container, Dict, List, Self, Sequence, Tuple
+from typing import Collection, Dict, List, Self, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -149,7 +149,7 @@ class StatsMixIn:
 
     def pick_n_top_words(
         self: IVectorizedCorpusProtocol,
-        words: Container[str],
+        words: Collection[str],
         n_top: int | None = None,
         descending: bool = False,
     ) -> List[str]:

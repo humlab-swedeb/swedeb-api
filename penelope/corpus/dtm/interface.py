@@ -1,6 +1,7 @@
 # type: ignore
 
 import abc
+from collections.abc import Collection
 from numbers import Number
 from typing import Any, Iterable, List, Optional, Protocol, Self, Sequence, Tuple
 
@@ -108,6 +109,9 @@ class IVectorizedCorpus(abc.ABC):
     def pick_top_tf_map(self, n_top: int) -> dict[str, int]: ...
 
     @abc.abstractmethod
+    def slice_by_indices(self, indices: Sequence[int], inplace: bool = False) -> "IVectorizedCorpus": ...
+
+    @abc.abstractmethod
     def stats(self): ...
 
     @abc.abstractmethod
@@ -150,7 +154,7 @@ class IVectorizedCorpus(abc.ABC):
     ) -> List[int]: ...
 
     @abc.abstractmethod
-    def pick_n_top_words(self, words: List[str], n_top: int, descending: bool) -> List[str]: ...
+    def pick_n_top_words(self, words: Collection[str], n_top: int | None, descending: bool) -> List[str]: ...
 
     # @abc.abstractmethod
     # def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]: ...
@@ -226,4 +230,6 @@ class IVectorizedCorpusProtocol(Protocol):
     ) -> dict: ...
 
     def pick_top_tf_map(self, n_top: int) -> dict[str, int]: ...
+
+    def slice_by_indices(self, indices: Sequence[int], inplace: bool = False) -> IVectorizedCorpus: ...
 

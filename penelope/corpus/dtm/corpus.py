@@ -20,7 +20,6 @@ from penelope import utility
 
 from .group import GroupByMixIn
 from .interface import IVectorizedCorpus, VectorizedCorpusError
-from .slice import SliceMixIn
 from .stats import StatsMixIn
 from .store import StoreMixIn
 
@@ -36,7 +35,7 @@ warnings.simplefilter('ignore', SparseEfficiencyWarning)
 # pylint: disable=super-init-not-called
 
 
-class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
+class VectorizedCorpus(StoreMixIn, GroupByMixIn, StatsMixIn, IVectorizedCorpus):  # type: ignore ; pylint: disable=super-init-not-called
     @staticmethod
     def _ensure_csr_matrix(bag_term_matrix: scipy.sparse.spmatrix | scipy.sparse.csr_matrix) -> scipy.sparse.csr_matrix:
         if not scipy.sparse.issparse(bag_term_matrix):
@@ -353,6 +352,23 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
         """
         return [self.token2id[token] for token in tokens if token in self.token2id]
 
+    def pick_n_top_words(
+        self,
+        words: Collection[str],
+        n_top: int | None = None,
+        descending: bool = False,
+    ) -> list[str]:
+        """Returns the `n_top` globally most frequent words in `words`."""
+        words = list(words)
+        n_top = n_top or len(words)
+        if len(words) < n_top:
+            return words
+        token_counts = [self.term_frequency[self.token2id[word]] for word in words]  # type: ignore[index]
+        most_frequent_words = [words[index] for index in np.argsort(token_counts)[-n_top:]]
+        if descending:
+            most_frequent_words = list(sorted(most_frequent_words, reverse=descending))
+        return most_frequent_words
+
     def tf_idf(self, norm: str = 'l2', use_idf: bool = True, smooth_idf: bool = True) -> IVectorizedCorpus:
         """Returns a (normalized) TF-IDF transformed version of the corpus
 
@@ -465,6 +481,39 @@ class VectorizedCorpus(StoreMixIn, GroupByMixIn, SliceMixIn, StatsMixIn, IVector
             overridden_term_frequency=overridden_term_frequency,
             **kwargs,
         )
+
+    def slice_by_indices(self, indices: Sequence[int], inplace: bool = False) -> IVectorizedCorpus:
+        """Create (or modify inplace) a subset corpus from given token indices."""
+
+        if indices is None:
+            indices = []
+        else:
+            indices = list(indices)
+
+        if len(indices) == self.bag_term_matrix.shape[1]:
+            return self
+
+        indices.sort()
+
+        bag_term_matrix = self.bag_term_matrix[:, indices]
+        token2id: dict[str, int] = {self.id2token[indices[i]]: i for i in range(0, len(indices))}
+
+        overridden_term_frequency = (
+            self._overridden_term_frequency[indices]
+            if isinstance(self._overridden_term_frequency, np.ndarray)
+            else self._overridden_term_frequency
+        )
+
+        if not inplace:
+            return self.create(bag_term_matrix, token2id, self.document_index, overridden_term_frequency)
+
+        self._replace_vector_space(
+            bag_term_matrix=bag_term_matrix,
+            token2id=token2id,
+            overridden_term_frequency=overridden_term_frequency,
+        )
+
+        return self
 
     def nbytes(self, kind="bytes") -> float | None:
         k = {'bytes': 0, 'kb': 1, 'mb': 2, 'gb': 3}.get(kind.lower(), 0)
