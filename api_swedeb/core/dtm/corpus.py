@@ -520,7 +520,7 @@ class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=sup
             raise VectorizedCorpusError("raw count normalize attempted but no n_raw_tokens in document index")
 
         token_counts = self.document_index.n_raw_tokens.values
-        btm = utility.normalize_sparse_matrix_by_vector(self._bag_term_matrix, token_counts)  # type: ignore
+        btm = normalize_sparse_matrix_by_vector(self._bag_term_matrix, token_counts)  # type: ignore
         corpus = VectorizedCorpus(  # type: ignore[reportAbstractUsage]
             bag_term_matrix=btm,
             token2id=self.token2id,
@@ -939,6 +939,17 @@ class VectorizedCorpus(IVectorizedCorpus):  # type: ignore ; pylint: disable=sup
 
         self._replace_bag_term_matrix(data)
         return indices
+
+
+def normalize_sparse_matrix_by_vector(
+    spm: scipy.sparse.spmatrix, vector: np.ndarray | None = None
+) -> scipy.sparse.spmatrix:
+    # https://stackoverflow.com/questions/42225269/scipy-sparse-matrix-division
+    # diagonal matrix from the reciprocals of vector x sparse matrix
+    vector = vector if vector is not None else spm.sum(axis=1).A1
+    nspm = scipy.sparse.diags(1.0 / vector) @ spm  # type: ignore
+    nspm.data[(np.isnan(nspm.data) | np.isposinf(nspm.data))] = 0.0
+    return nspm
 
 
 def _is_simple_prefix_glob(expr: str) -> bool:
