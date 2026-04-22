@@ -10,8 +10,8 @@ from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import Config, ConfigStore
 
 
-@pytest.fixture(scope="module", autouse=True)
-def config_store() -> Generator[ConfigStore, None, None]:
+@pytest.fixture(scope="module", autouse=True, name="config_store")
+def _config_store() -> Generator[ConfigStore, None, None]:
     """Fixture to provide a clean ConfigStore instance for tests.
     Automatically patches get_config_store() to return this store for the duration of the test.
     """

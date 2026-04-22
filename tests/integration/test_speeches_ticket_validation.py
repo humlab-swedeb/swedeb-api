@@ -15,6 +15,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api_swedeb.api.services.result_store import TicketMeta, TicketStatus
+from api_swedeb.app import create_app
+
 # pylint: disable=redefined-outer-name, unused-argument
 
 VERSION = "/v1/tools"
@@ -50,7 +53,6 @@ EXPECTED_SPEECH_COLUMNS = {
 @pytest.fixture(scope="module")
 def fastapi_app() -> FastAPI:
     """Module-scoped app to ensure ResultStore persists across requests."""
-    from api_swedeb.app import create_app
 
     return create_app(config_source=None)
 
@@ -337,8 +339,6 @@ def test_download_returns_409_for_pending_ticket(speeches_ticket_client: TestCli
     """Test that download returns 409 for pending ticket (edge case if background task is slow)."""
     # This test is mainly for documentation - in TestClient, background tasks run synchronously
     # so tickets are always ready by the time we check. But the endpoint should handle it.
-
-    from api_swedeb.api.services.result_store import TicketMeta, TicketStatus
 
     # Create a ticket
     ticket_id = _submit_ready_ticket(speeches_ticket_client)

@@ -17,6 +17,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api_swedeb.app import create_app
+
 # pylint: disable=redefined-outer-name, unused-argument
 
 VERSION = "/v1/tools"
@@ -56,7 +58,6 @@ EXPECTED_SPEECH_COLUMNS = {
 @pytest.fixture(scope="module")
 def fastapi_app() -> FastAPI:
     """Module-scoped app to ensure ResultStore persists across requests."""
-    from api_swedeb.app import create_app
 
     return create_app(config_source=None)
 
