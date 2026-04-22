@@ -173,7 +173,7 @@ def test_store_metadata_rejects_invalid_modes(tmp_path):
         dtm_store.store_metadata(
             tag="sample",
             folder=str(tmp_path),
-            mode="invalid",
+            mode="invalid",  # type: ignore[reportLiteralComparison],
             document_index=document_index,
             token2id={"budget": 0},
         )
