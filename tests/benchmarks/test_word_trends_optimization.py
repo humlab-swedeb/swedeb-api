@@ -7,7 +7,7 @@ import pytest
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.core.configuration import Config, ConfigStore, get_config_store
+from api_swedeb.core.configuration import Config, ConfigStore
 
 
 @pytest.fixture(scope="module", autouse=True)
