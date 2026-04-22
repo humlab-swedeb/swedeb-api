@@ -5,6 +5,8 @@
 Description=Swedeb Celery Worker
 Requires=swedeb-staging-app.network redis.service
 After=swedeb-staging-app.network redis.service
+BindsTo=redis.service
+PartOf=redis.service
 
 [Container]
 Image=ghcr.io/humlab-swedeb/swedeb-api:staging

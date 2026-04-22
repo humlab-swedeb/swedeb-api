@@ -328,8 +328,9 @@ In production (`development.celery_enabled: true`), KWIC ticket queries are exec
 
 Quadlet files:
 
-- `docker/redis.container`: Redis 7 service; uses `appendonly yes` for AOF persistence
-- `docker/celery-worker.container`: Celery worker running against the same image as the API container
+- `docker/quadlets/redis.container`: Redis 7 service; uses `appendonly yes` for AOF persistence
+- `docker/quadlets/celery-worker.container`: Celery worker running against the same image as the API container
+- `docker/quadlets/swedeb-staging-app.container`: API container for the staging environment
 
 The worker starts with:
 
@@ -339,7 +340,9 @@ celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4
 
 The worker reads its configuration from `SWEDEB_CONFIG_PATH` (injected via `EnvironmentFile` in the Quadlet) during the `worker_init` signal, then calls `configure_celery()` to apply broker and backend URLs.
 
-Service dependency order: `redis.service` must be running before `celery-worker.service` and `app.service`. The `Requires=` and `After=` directives in all three Quadlet files enforce this.
+The shared image entrypoint executes any explicit container command before falling back to the default Uvicorn startup. This allows the worker Quadlet to run `celery ... worker` while the API container continues to boot the web app by default.
+
+Service dependency order: `redis.service` must be running before `celery-worker.service` and the API service. The `Requires=` and `After=` directives enforce startup order, and `BindsTo=` plus `PartOf=` ensure the API and worker are restarted when Redis is restarted so their Celery clients reconnect cleanly.
 
 The API container, Celery worker container, and Redis container must all be on the same Podman network (`swedeb-*-app.network`). The API and worker must share a common writable volume mounted at `cache.root_dir` (default: `/tmp/swedeb-kwic-cache`) so that ticket artifacts written by the worker are visible to the API when a client polls for results.
 

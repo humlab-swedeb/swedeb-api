@@ -22,5 +22,10 @@ fi
 FILE_COUNT=$(ls -1 /app/public | wc -l)
 log "Frontend assets present: ${FILE_COUNT} files"
 
+if [ "$#" -gt 0 ]; then
+    log "Starting container command: $*"
+    exec "$@"
+fi
+
 log "Starting application server on port ${SWEDEB_PORT}"
 exec uvicorn main:app --host 0.0.0.0 --port ${SWEDEB_PORT}

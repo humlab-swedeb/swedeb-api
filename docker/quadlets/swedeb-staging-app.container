@@ -4,6 +4,8 @@
 Description=Swedeb Staging API Service
 Requires=swedeb-staging-app.network redis.service
 After=swedeb-staging-app.network redis.service
+BindsTo=redis.service
+PartOf=redis.service
 
 [Container]
 # --- Static Structural Configuration ---
@@ -38,7 +40,7 @@ DropCapability=all
 
 # Tempfs for tmp and KWIC cache, read-only file system
 Tmpfs=/tmp:rw,nosuid,nodev,exec,size=1G
-Tmpfs=/tmp/swedeb-kwic-cache:rw,nosuid,nodev,noexec,size=6G
+Volume=swedeb-kwic-cache:/tmp/swedeb-kwic-cache:rw
 ReadOnly=true
 
 [Service]
