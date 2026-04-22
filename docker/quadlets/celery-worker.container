@@ -3,8 +3,8 @@
 
 [Unit]
 Description=Swedeb Celery Worker
-Requires=swedeb-staging-app.network redis.service
-After=swedeb-staging-app.network redis.service
+Requires=redis.service
+After=redis.service
 BindsTo=redis.service
 PartOf=redis.service
 
@@ -24,6 +24,7 @@ Volume=swedeb-kwic-cache:/tmp/swedeb-kwic-cache:rw
 # Worker command; concurrency matches config.yml celery.worker_concurrency
 Exec=celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4
 
+Environment=SWEDEB_CONFIG_PATH=/app/config/config.yml
 EnvironmentFile=%h/configuration/secrets/.env
 
 # Security hardening — mirrors app.container settings

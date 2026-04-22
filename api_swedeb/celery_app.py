@@ -11,8 +11,8 @@ from celery import Celery
 celery_app = Celery("swedeb")
 
 celery_app.conf.update(
-    broker_url="redis://localhost:6379/0",
-    result_backend="redis://localhost:6379/0",
+    broker_url="redis://redis:6379/0",
+    result_backend="redis://redis:6379/0",
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
@@ -30,8 +30,8 @@ def configure_celery() -> None:
     from api_swedeb.core.configuration import ConfigValue
 
     celery_app.conf.update(
-        broker_url=ConfigValue("celery.broker_url", default="redis://localhost:6379/0").resolve(),
-        result_backend=ConfigValue("celery.result_backend", default="redis://localhost:6379/0").resolve(),
+        broker_url=ConfigValue("celery.broker_url", default="redis://redis:6379/0").resolve(),
+        result_backend=ConfigValue("celery.result_backend", default="redis://redis:6379/0").resolve(),
         result_expires=ConfigValue("celery.result_expires", default=3600).resolve(),
         worker_concurrency=ConfigValue("celery.worker_concurrency", default=4).resolve(),
     )
