@@ -54,6 +54,14 @@ EXPECTED_SPEECH_COLUMNS = {
 
 
 @pytest.fixture(scope="module")
+def fastapi_app() -> FastAPI:
+    """Module-scoped app to ensure ResultStore persists across requests."""
+    from api_swedeb.app import create_app
+
+    return create_app(config_source=None)
+
+
+@pytest.fixture(scope="module")
 def wt_ticket_client(fastapi_app: FastAPI):
     with TestClient(fastapi_app) as client:
         yield client
