@@ -23,8 +23,8 @@ def _config_store() -> Generator[ConfigStore, None, None]:
         yield store
 
 
-@pytest.fixture(scope="module")
-def word_trends_service(config_store):
+@pytest.fixture(scope="module", name="word_trends_service")
+def _word_trends_service(config_store):
     """Fixture providing WordTrendsService instance."""
     config_store.configure_context(source="config/config.yml")
     loader = CorpusLoader()
