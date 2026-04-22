@@ -1,0 +1,15 @@
+# configuration/quadlets/swedeb-staging-app.network
+
+[Unit]
+Description=Private network for the Swedeb Staging application
+After=network-online.target
+Wants=network-online.target
+
+[Network]
+# This creates a standard bridge network
+Driver=bridge
+
+# CRITICAL: This is the key to security. It prevents all outbound
+# traffic from this network to the internet. Containers can only
+# talk to each other and the host.
+Internal=true
