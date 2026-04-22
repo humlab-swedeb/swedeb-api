@@ -13,6 +13,9 @@ import os
 from celery.signals import worker_init
 
 from api_swedeb.api.services.kwic_ticket_service import execute_ticket_task as _execute_ticket_task
+from api_swedeb.api.services.word_trend_speeches_ticket_service import (
+    execute_word_trend_speeches_ticket_task as _execute_wt_speeches_ticket_task,
+)
 from api_swedeb.celery_app import celery_app, configure_celery
 
 # pylint: disable=import-outside-toplevel
@@ -37,3 +40,14 @@ def execute_ticket_celery_task(self, ticket_id: str, request_data: dict, cwb_opt
     """
     self.update_state(state="PROGRESS", meta={"ticket_id": ticket_id})
     return _execute_ticket_task(ticket_id, request_data, cwb_opts)
+
+
+@celery_app.task(bind=True, name="api_swedeb.execute_word_trend_speeches_ticket")
+def execute_word_trend_speeches_ticket_celery_task(self, ticket_id: str, request_data: dict) -> dict:
+    """Celery-wrapped word trend speeches ticket execution.
+
+    Delegates to ``execute_word_trend_speeches_ticket_task`` which initialises per-worker
+    singletons (CorpusLoader, WordTrendsService, ResultStore) and runs the full ticket pipeline.
+    """
+    self.update_state(state="PROGRESS", meta={"ticket_id": ticket_id})
+    return _execute_wt_speeches_ticket_task(ticket_id, request_data)

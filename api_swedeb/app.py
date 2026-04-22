@@ -20,11 +20,28 @@ def create_app(*, config_source: str | None = DEFAULT_CONFIG_SOURCE, static_dir:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        from loguru import logger  # type: ignore[import]
+
         if ConfigValue("development.celery_enabled", default=False).resolve():
             from api_swedeb.celery_app import configure_celery  # type: ignore[import]
 
             configure_celery()
+
+        logger.info("Building AppContainer and pre-loading corpus resources...")
+        import time
+
+        start = time.perf_counter()
         app.state.container = AppContainer.build()
+
+        # Eager-load expensive corpus resources at startup instead of on first request
+        # This moves the ~71s cold-cache load from first request to app startup
+        _ = app.state.container.corpus_loader.vectorized_corpus  # ~3.8s warm, ~71s cold
+        _ = app.state.container.corpus_loader.person_codecs  # Fast
+        _ = app.state.container.corpus_loader.document_index  # Fast (already loaded with corpus)
+
+        elapsed = time.perf_counter() - start
+        logger.info(f"Corpus resources loaded in {elapsed:.2f}s")
+
         result_store = ResultStore.from_config()
         await result_store.startup()
         app.state.result_store = result_store

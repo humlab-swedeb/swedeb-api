@@ -1,0 +1,367 @@
+import contextlib
+import glob
+import gzip
+import importlib
+import json
+import os
+from collections import defaultdict
+from os.path import join as jj
+from typing import Any, Callable, Literal
+
+import numpy as np
+import pandas as pd
+import scipy
+
+from api_swedeb.core.utility import read_json, strip_paths, write_json
+
+from .interface import IVectorizedCorpus
+
+DATA_SUFFIXES: list[str] = ['_vector_data.npz', '_vector_data.npy', '_vectorizer_data.pickle']
+
+BASENAMES: list[str] = [
+    'vector_data',
+    'vectorizer_data',
+    'document_index',
+    'token2id',
+    'overridden_term_frequency',
+]
+
+
+def create_corpus_instance(
+    bag_term_matrix: scipy.sparse.csr_matrix,
+    token2id: dict[str, int],
+    document_index: pd.DataFrame,
+    overridden_term_frequency: np.ndarray | dict[str, int] | None = None,
+) -> "IVectorizedCorpus":
+    """Creates a corpus instance using importlib to avoid cyclic references"""
+    module = importlib.import_module(name="api_swedeb.core.dtm.corpus")
+    cls = getattr(module, "VectorizedCorpus")
+    return cls(
+        bag_term_matrix=bag_term_matrix,
+        token2id=token2id,
+        document_index=document_index,
+        overridden_term_frequency=overridden_term_frequency,
+    )
+
+
+def load_metadata(*, tag: str, folder: str) -> dict:
+    """Loads metadata from disk."""
+
+    document_index: pd.DataFrame = load_document_index(tag, folder)
+
+    with gzip.open(jj(folder, f"{tag}_token2id.json.gz"), 'r') as fp:
+        token2id: dict = json.loads(fp.read().decode('utf-8'))
+
+    term_frequency = (
+        np.load(jj(folder, f"{tag}_overridden_term_frequency.npy"), allow_pickle=True)
+        if os.path.isfile(jj(folder, f"{tag}_overridden_term_frequency.npy"))
+        else None
+    )
+
+    return {
+        'token2id': token2id,
+        'document_index': document_index,
+        'overridden_term_frequency': term_frequency,
+    }
+
+
+PROBES: list[tuple[str, Callable[[str], pd.DataFrame]]] = [
+    ("prepped.feather", lambda f: pd.read_feather(f, dtype_backend="pyarrow")),
+    ("feather", lambda f: pd.read_feather(f, dtype_backend="pyarrow")),
+    ("csv.gz", lambda f: pd.read_csv(f, sep=';', compression="gzip", index_col=0)),
+]
+
+
+def _smallest_int_dtype(data: pd.Series) -> type:
+    """Return smallest integer dtype that can hold the data."""
+    min_val, max_val = data.min(), data.max()
+
+    if min_val >= 0:
+        # Unsigned
+        if max_val < 256:
+            return np.uint8
+        if max_val < 65536:
+            return np.uint16
+        if max_val < 4294967296:
+            return np.uint32
+    else:
+        # Signed
+        if -128 <= min_val and max_val < 127:
+            return np.int8
+        if -32768 <= min_val and max_val < 32767:
+            return np.int16
+        if -2147483648 <= min_val and max_val < 2147483647:
+            return np.int32
+
+    return np.int64
+
+
+def _should_be_categorical(col: str, data: pd.Series, n_unique: int, threshold: int) -> bool:
+    """Determine if column should be categorical."""
+    # Skip if already categorical
+    if isinstance(data.dtype, pd.CategoricalDtype):
+        return False
+
+    # Low cardinality strings or objects
+    if pd.api.types.is_object_dtype(data) or pd.api.types.is_string_dtype(data):
+        return n_unique < threshold
+
+    # Low cardinality integer IDs (gender_id, chamber_id, party_id, etc.)
+    if col.endswith('_id') and pd.api.types.is_integer_dtype(data):
+        return n_unique < threshold
+
+    # Document names if repeated (common in grouped data)
+    if col in ['document_name', 'filename'] and n_unique < len(data) / 2:
+        return True
+
+    return False
+
+
+def _optimize_document_index_dtypes(
+    df: pd.DataFrame, categorical_threshold: int = 50, dtype_overrides: dict[str, type] | None = None
+) -> pd.DataFrame:
+    """Apply dtype optimizations using heuristics and explicit overrides.
+
+    Heuristics:
+    - Columns ending in '_id' with <threshold unique values → categorical
+    - year columns → int16
+    - count columns (n_tokens, n_documents, etc.) → int32
+    - String columns with <threshold unique values → categorical
+
+    Args:
+        df: DataFrame to optimize
+        categorical_threshold: Max unique values for auto-categorical conversion
+        dtype_overrides: Explicit dtype mappings (overrides auto-detection)
+
+    Returns:
+        DataFrame with optimized dtypes
+    """
+    dtype_overrides = dtype_overrides or {}
+
+    # Apply explicit overrides first
+    if dtype_overrides:
+        df = df.astype({col: dtype for col, dtype in dtype_overrides.items() if col in df.columns})
+
+    # Auto-optimize columns not in overrides
+    type_conversions = {}
+
+    for col in df.columns:
+        if col in dtype_overrides:
+            continue  # Already handled
+
+        col_data = df[col]
+        n_unique = col_data.nunique()
+
+        # Categorical candidates
+        if _should_be_categorical(col, col_data, n_unique, categorical_threshold):
+            type_conversions[col] = 'category'
+
+        # Numeric optimizations
+        elif col in ['year', 'decade', 'lustrum']:
+            type_conversions[col] = np.int16
+        elif col in ['n_documents', 'n_tokens', 'n_raw_tokens', 'tokens', 'document_id']:
+            type_conversions[col] = np.int32
+        elif col.endswith('_id') and pd.api.types.is_integer_dtype(col_data):
+            # ID columns - use smallest int that fits
+            type_conversions[col] = _smallest_int_dtype(col_data)
+
+    if type_conversions:
+        df = df.astype(type_conversions)
+
+    return df
+
+
+def load_document_index(
+    tag: str,
+    folder: str,
+    optimize_dtypes: bool = True,
+    categorical_threshold: int = 50,
+    dtype_overrides: dict[str, type] | None = None,
+) -> pd.DataFrame:
+    """Load document index with automatic dtype optimization.
+
+    Args:
+        tag: File tag prefix
+        folder: Data folder
+        optimize_dtypes: Auto-optimize dtypes for memory efficiency
+        categorical_threshold: Max unique values for auto-categorical conversion
+        dtype_overrides: Explicit dtype mappings (overrides auto-detection)
+
+    Returns:
+        DataFrame with document index, optionally optimized
+    """
+    for ext, fx in PROBES:
+        filename: str = jj(folder, f"{tag}_document_index.{ext}")
+        if os.path.isfile(filename):
+            df = fx(filename)
+
+            if optimize_dtypes:
+                df = _optimize_document_index_dtypes(
+                    df, categorical_threshold=categorical_threshold, dtype_overrides=dtype_overrides
+                )
+
+            return df
+
+    raise FileNotFoundError(f"Document index with tag {tag} not found in folder {folder}")
+
+
+def store_metadata(*, tag: str, folder: str, mode: Literal['bundle', 'files'] = 'files', **data) -> None:
+    """Stores metadata to disk."""
+    if isinstance(data.get('token2id'), defaultdict):
+        data['token2id'] = dict(data.get('token2id', {}))
+
+    if mode.startswith('bundle'):
+        raise DeprecationWarning("Bundle mode not supported")
+        # pickle_filename: str = jj(folder, f"{tag}_vectorizer_data.pickle")
+        # with open(pickle_filename, 'wb') as f:
+        #     pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+
+        # return
+
+    if mode.startswith('files'):
+        di: pd.DataFrame | None = data.get('document_index')
+        assert di is not None
+        di.to_csv(jj(folder, f"{tag}_document_index.csv.gz"), sep=';', compression="gzip")
+        di.to_feather(jj(folder, f"{tag}_document_index.feather"), version=2, compression="lz4")
+
+        with gzip.open(jj(folder, f"{tag}_token2id.json.gz"), 'w') as fp:  # 4. fewer bytes (i.e. gzip)
+            fp.write(json.dumps(data.get('token2id')).encode('utf-8'))
+
+        term_frequency: np.ndarray | dict[str, int] | None = data.get('overridden_term_frequency')
+        if term_frequency is not None:
+            np.save(jj(folder, f"{tag}_overridden_term_frequency.npy"), term_frequency, allow_pickle=True)
+
+        return
+
+    raise ValueError(f"Invalid mode {mode}")
+
+
+def corpus_metadata(corpus: Any) -> dict:
+    return {
+        'token2id': corpus.token2id,
+        'overridden_term_frequency': corpus.overridden_term_frequency,
+        'document_index': corpus.document_index,
+    }
+
+
+def dump_corpus(
+    corpus: Any,
+    *,
+    tag: str,
+    folder: str,
+    compressed: bool = True,
+    mode: Literal['bundle', 'files'] = 'files',
+) -> IVectorizedCorpus:
+    store_metadata(tag=tag, folder=folder, mode=mode, **corpus_metadata(corpus))
+
+    if compressed:
+        assert scipy.sparse.issparse(corpus.bag_term_matrix)
+        scipy.sparse.save_npz(jj(folder, f"{tag}_vector_data"), corpus.bag_term_matrix, compressed=True)
+    else:
+        np.save(jj(folder, f"{tag}_vector_data.npy"), corpus.bag_term_matrix, allow_pickle=True)
+
+    return corpus  # type: ignore[return-value]
+
+
+def dump_exists(*, tag: str, folder: str) -> bool:
+    """Checks if corpus with tag `tag` exists in folder `folder`."""
+    return any(os.path.isfile(jj(folder, f"{tag}{suffix}")) for suffix in DATA_SUFFIXES)
+
+
+def is_dump(filename: str | None) -> bool:
+    return bool(filename) and os.path.isfile(filename) and any(filename.endswith(suffix) for suffix in DATA_SUFFIXES)
+
+
+def find_tags(folder: str) -> list[str]:
+    """Return dump tags in specified folder."""
+    return list(
+        {
+            x[0 : len(x) - len(suffix)]
+            for suffix in DATA_SUFFIXES
+            for x in strip_paths(glob.glob(jj(folder, f'*{suffix}')))
+        }
+    )
+
+
+def split(filename: str) -> tuple[str, str]:
+    """Return (folder, tag) for given filename."""
+    basename = os.path.basename(filename)
+    for suffix in DATA_SUFFIXES:
+        if os.path.basename(filename).endswith(suffix):
+            return (os.path.dirname(filename), basename[0 : len(basename) - len(suffix)])
+    raise ValueError(f"Invalid dump filename {filename}")
+
+
+def remove(*, tag: str, folder: str):
+    for suffix in BASENAMES:
+        for filename in glob.glob(jj(folder, f"{tag}_{suffix}.*")):
+            with contextlib.suppress(Exception):
+                os.unlink(filename)
+
+
+def load(*, tag: str | None = None, folder: str | None = None, filename: str | None = None) -> IVectorizedCorpus:
+    if not (filename or (tag and folder)):
+        raise ValueError("Either tag and folder or filename must be specified.")
+
+    if isinstance(filename, IVectorizedCorpus):
+        return filename
+
+    if filename:
+        folder, tag = split(filename)
+
+    assert tag is not None
+    assert folder is not None
+
+    if not dump_exists(tag=tag, folder=folder):
+        raise FileNotFoundError(f"DTM file with tag {tag} not found in folder {folder}")
+
+    data: dict = load_metadata(tag=tag, folder=folder)
+    token2id: dict[str, int] = data.get("token2id") or {}
+
+    overridden_term_frequency: np.ndarray | dict[str, int] | None = (
+        data.get("term_frequency", None)
+        or data.get("overridden_term_frequency", None)
+        or data.get("term_frequency_mapping", None)
+        or data.get("token_counter", None)
+    )
+    if isinstance(overridden_term_frequency, dict):
+        fg = {v: k for k, v in token2id.items()}.get
+        overridden_term_frequency = np.array([overridden_term_frequency[fg(i)] for i in range(0, len(token2id))])
+
+    if os.path.isfile(jj(folder, f"{tag}_vector_data.npz")):
+        bag_term_matrix = scipy.sparse.load_npz(jj(folder, f"{tag}_vector_data.npz"))
+    else:
+        bag_term_matrix = np.load(jj(folder, f"{tag}_vector_data.npy"), allow_pickle=True).item()
+
+    return create_corpus_instance(
+        bag_term_matrix,
+        token2id=token2id,
+        document_index=data.get("document_index"),  # type: ignore[arg-type]
+        overridden_term_frequency=overridden_term_frequency,
+    )
+
+
+def dump_options(*, tag: str, folder: str, options: dict):
+    json_filename = jj(folder, f"{tag}_vectorizer_data.json")
+    write_json(json_filename, options, default=lambda _: "<not serializable>")
+
+
+def load_options(*, tag: str, folder: str) -> dict:
+    """Loads vectrize options if they exists."""
+    json_filename = jj(folder, f"{tag}_vectorizer_data.json")
+    if os.path.isfile(json_filename):
+        return read_json(json_filename)
+    return {}
+
+
+def load_unique_document_index(folder: str) -> pd.DataFrame:
+    if not os.path.isdir(folder):
+        raise FileNotFoundError("no DTM in selected folder")
+
+    tags = find_tags(folder)
+    if len(tags) != 1:
+        raise FileNotFoundError("no (unique) DTM in selected folder")
+
+    md: dict = load_metadata(tag=tags[0], folder=folder)
+    di: pd.DataFrame = md.get('document_index')  # type: ignore[assignment]
+    return di

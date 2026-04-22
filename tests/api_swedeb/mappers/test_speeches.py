@@ -53,9 +53,14 @@ def test_speeches_to_api_frame_projects_expected_columns(speeches_df: pd.DataFra
     assert result["speech_id"].tolist() == ["i-1", "i-2"]
     assert result["speech_name"].tolist() == ["Andra kammaren 1970:029 001", "1975:001 002"]
     assert result["speech_link"].tolist() == [
-        "https://pdf.swedeb.se/riksdagen-records-pdf/1970/prot-1970--ak--029.pdf#page=1",
-        "https://pdf.swedeb.se/riksdagen-records-pdf/1975/prot-1975--001.pdf#page=2",
+        'https://pdf.swedeb.se/riksdagen-records-pdf/1970/prot-1970--ak--029/prot-1970--ak--029_001.pdf',
+        'https://pdf.swedeb.se/riksdagen-records-pdf/1975/prot-1975--001/prot-1975--001_002.pdf',
     ]
+
+    # assert result["speech_link"].tolist() == [
+    #     "https://pdf.swedeb.se/riksdagen-records-pdf/1970/prot-1970--ak--029.pdf#page=1",
+    #     "https://pdf.swedeb.se/riksdagen-records-pdf/1975/prot-1975--001.pdf#page=2",
+    # ]
     assert result["link"].tolist() == ["https://www.wikidata.org/wiki/Q1", "Unknown"]
     assert result["name"].tolist() == ["Alice", "Unknown"]
 

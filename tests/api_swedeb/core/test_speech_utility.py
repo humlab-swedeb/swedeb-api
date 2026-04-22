@@ -164,24 +164,53 @@ def test_person_wiki_link_categorical_series():
 
 
 @patch('api_swedeb.core.speech_utility.ConfigValue')
-def test_speech_link_single_document(mock_config_value):
-    """Test speech_link with single document."""
+def test_speech_link_single_document_page_pdf(mock_config_value):
+    """Test speech_link defaults to a per-page PDF URL for a single document."""
     mock_config_value.return_value.resolve.return_value = "https://example.com/"
 
     result = resolve_pdf_links_for_speeches("prot-1970--ak--029_001", page_nr=5)
+    expected = "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_005.pdf"
+    assert isinstance(result, str)
+    assert result == expected
+
+
+@patch('api_swedeb.core.speech_utility.ConfigValue')
+def test_speech_link_single_document_full_pdf(mock_config_value):
+    """Test speech_link can target the full protocol PDF for a single document."""
+    mock_config_value.return_value.resolve.return_value = "https://example.com/"
+
+    result = resolve_pdf_links_for_speeches("prot-1970--ak--029_001", page_nr=5, target="full-pdf")
     expected = "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
     assert isinstance(result, str)
     assert result == expected
 
 
-def test_speech_link_series():
-    """Test speech_link with pandas Series."""
+def test_speech_link_series_page_pdf():
+    """Test speech_link builds per-page PDF URLs for a pandas Series."""
     base_url: str = "https://example.com/"
 
     documents = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'])
     pages = pd.Series([1, 2])
 
     result = resolve_pdf_links_for_speeches(documents, page_nr=pages, base_url=base_url)
+    expected = pd.Series(
+        [
+            "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_001.pdf",
+            "https://example.com/1980/prot-1980--ak--029/prot-1980--ak--029_002.pdf",
+        ]
+    )
+    assert isinstance(result, pd.Series)
+    pd.testing.assert_series_equal(result, expected)
+
+
+def test_speech_link_series_full_pdf():
+    """Test speech_link can build full-protocol PDF URLs for a pandas Series."""
+    base_url: str = "https://example.com/"
+
+    documents = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'])
+    pages = pd.Series([1, 2])
+
+    result = resolve_pdf_links_for_speeches(documents, page_nr=pages, base_url=base_url, target="full-pdf")
     expected = pd.Series(
         [
             "https://example.com/1970/prot-1970--ak--029.pdf#page=1",
@@ -192,12 +221,31 @@ def test_speech_link_series():
     pd.testing.assert_series_equal(result, expected)
 
 
-def test_speech_link_series_with_scalar_page_number():
-    """Test speech_link applies a scalar page number to every document in a Series."""
+def test_speech_link_series_with_scalar_page_number_page_pdf():
+    """Test speech_link applies a scalar page number to every Series row for per-page PDFs."""
     base_url: str = "https://example.com/"
     documents: pd.Series = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'], index=[10, 20])
 
     result = resolve_pdf_links_for_speeches(documents, page_nr="12", base_url=base_url)
+
+    assert isinstance(result, pd.Series)
+
+    expected: pd.Series = pd.Series(
+        [
+            "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_012.pdf",
+            "https://example.com/1980/prot-1980--ak--029/prot-1980--ak--029_012.pdf",
+        ],
+        index=documents.index,
+    )
+    pd.testing.assert_series_equal(result, expected)
+
+
+def test_speech_link_series_with_scalar_page_number_full_pdf():
+    """Test speech_link applies a scalar page number to every Series row for full PDFs."""
+    base_url: str = "https://example.com/"
+    documents: pd.Series = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'], index=[10, 20])
+
+    result = resolve_pdf_links_for_speeches(documents, page_nr="12", base_url=base_url, target="full-pdf")
 
     assert isinstance(result, pd.Series)
 
@@ -257,6 +305,21 @@ def test_pdf_link():
         print(f"Link {test_link} is available.")
 
 
+def test_full_pdf_link():
+    """
+    Test that the full protocol PDF link points to an available pdf"""
+
+    protocol_ids = [
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links = [resolve_pdf_links_for_speeches(protocol_id, target="full-pdf") for protocol_id in protocol_ids]
+    for test_link in test_links:
+        assert check_url_availability(test_link)
+        print(f"Link {test_link} is available.")
+
+
 def test_pdf_link_with_series():
     """
     Test that the pdf link points to available pdf"""
@@ -268,6 +331,22 @@ def test_pdf_link_with_series():
     ]
     test_links_series = pd.Series(protocol_ids)
     test_links = resolve_pdf_links_for_speeches(test_links_series)
+    for test_link in test_links:
+        assert check_url_availability(test_link)
+        print(f"Link {test_link} is available.")
+
+
+def test_full_pdf_link_with_series():
+    """
+    Test that the full protocol PDF link points to available pdf"""
+    protocol_ids = [
+        "prot-1867--ak--0118_001",
+        "prot-1867--ak--0118_001",
+        "prot-19992000--001_001",
+        "prot-201011--084_160",
+    ]
+    test_links_series = pd.Series(protocol_ids)
+    test_links = resolve_pdf_links_for_speeches(test_links_series, target="full-pdf")
     for test_link in test_links:
         assert check_url_availability(test_link)
         print(f"Link {test_link} is available.")

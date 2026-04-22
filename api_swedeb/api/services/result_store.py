@@ -223,7 +223,14 @@ class ResultStore:
     ) -> TicketMeta:
         artifact_path = self._artifact_path(ticket_id)
         partial_path = self._partial_path(ticket_id)
-        df.to_feather(partial_path, compression="lz4")
+
+        # Convert pyarrow string columns to object dtype to avoid dictionary encoding issues
+        df_to_save = df.copy()
+        for col in df_to_save.columns:
+            if hasattr(df_to_save[col].dtype, 'pyarrow_dtype'):
+                df_to_save[col] = df_to_save[col].astype('object')
+
+        df_to_save.to_feather(partial_path, compression="lz4")
         artifact_bytes = partial_path.stat().st_size
 
         with self._lock:
@@ -283,7 +290,7 @@ class ResultStore:
                 return
 
             now = datetime.now(UTC)
-            expired_ticket_ids = [ticket_id for ticket_id, ticket in self._tickets.items() if ticket.expires_at <= now]
+            expired_ticket_ids = [ticket_id for ticket_id, ticket in self._tickets.items() if ticket.expires_at < now]
             for ticket_id in expired_ticket_ids:
                 self._delete_ticket_locked(ticket_id)
 

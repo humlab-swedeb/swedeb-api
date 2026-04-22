@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -7,7 +7,7 @@ from api_swedeb.core.utility import deprecated
 
 
 def format_speech_name(speech_name: str) -> str:
-    """Fast scalar formatter used by both the scalar and batch protocol-id APIs."""
+    """Scalar formatter used by both the scalar and batch protocol-id APIs."""
     try:
         parts: list[str] = speech_name.split("_")
 
@@ -38,6 +38,7 @@ def format_speech_name(speech_name: str) -> str:
 
 
 def format_speech_names(speech_name: pd.Series) -> pd.Series:
+    """Vectorised formatter for protocol ids, applied to the document_name column."""
     # `chamber_abbrev` is kept for API compatibility, but the canonical logic
     # is derived from the protocol id string itself to match `format_speech_name`.
 
@@ -105,32 +106,48 @@ def resolve_wiki_url_for_speaker(wiki_id: str | pd.Series) -> str | pd.Series:
     return unknown if wiki_id == "unknown" else prefix + wiki_id
 
 
-def resolve_pdf_link_for_speech(speech_name: str, base_url: str, page_nr: Any) -> str:
+def resolve_pdf_link_for_speech(
+    speech_name: str, base_url: str, page_nr: Any, target: Literal["full-pdf", "page-pdf"] = "page-pdf"
+) -> str:
     year: str = speech_name.split('-')[1]
-    base_filename: str = speech_name.split('_')[0] + ".pdf"
-    return f"{base_url}{year}/{base_filename}#page={page_nr}"
+    protocol_name: str = speech_name.split('_')[0]
+    if target == "full-pdf":
+        return f"{base_url}{year}/{protocol_name}.pdf#page={page_nr}"
+    return f"{base_url}{year}/{protocol_name}/{protocol_name}_{page_nr:03}.pdf"
 
 
 def _resolve_pdf_links_for_speeches(
-    speech_names: pd.Series, base_url: str, page_nrs: int | str | pd.Series = 1
+    speech_names: pd.Series,
+    base_url: str,
+    page_nrs: int | str | pd.Series = 1,
+    target: Literal["full-pdf", "page-pdf"] = "page-pdf",
 ) -> pd.Series:
     """Create a series of speech links from document names and page numbers.
 
-    Expected document format:
-        'prot-YYYY--KK--NNN_MMM'
+    Expected speech name formats:
+        'prot-YYYY--KK--NNN_MMM' => "https://{base_url}/YYYY/prot-YYYY--KK--NNN.pdf#page={page_nrs}" (for "full-pdf")
+        'prot-YYYY--KK--NNN_MMM' => "https://{base_url}/YYYY/prot-YYYY--KK--NNN/prot-YYYY--KK--NNN_{page_nrs:03}.pdf" (for "page-pdf")
     where YYYY is between 4 and 8 digits (e.g. "1999", "199900", "19992000"),
-    zero-padded protocol number, and MMM is the zero-padded page number.
+    zero-padded protocol number, and MMM is ignored (a sequence number).
     """
     parts: pd.DataFrame = speech_names.str.extract(r"^(?P<base>[^-]+-(?P<year>[0-9]{4,8})[^_]+)_", expand=True)
-    base_filename: pd.Series = parts["base"] + ".pdf"
+    protocol_name: pd.Series = parts["base"]
     year: pd.Series = parts["year"]
 
     if isinstance(page_nrs, pd.Series):
         page_str = page_nrs.astype(str)
+        if target == "page-pdf":
+            # We need to zero-pad the page number to match the API contract and the PDF server's expected format.
+            page_str = page_str.str.zfill(3)
     else:
         page_str = str(page_nrs)
+        if target == "page-pdf":
+            page_str = page_str.zfill(3)
 
-    return base_url + year + "/" + base_filename + "#page=" + page_str
+    if target == "full-pdf":
+        return base_url + year + "/" + protocol_name + ".pdf#page=" + page_str
+
+    return base_url + year + "/" + protocol_name + "/" + protocol_name + "_" + page_str + ".pdf"
 
 
 def resolve_pdf_links_for_speeches(
@@ -138,14 +155,15 @@ def resolve_pdf_links_for_speeches(
     *,
     page_nr: str | int | pd.Series = 1,
     base_url: str | None = None,
+    target: Literal["full-pdf", "page-pdf"] = "page-pdf",
 ) -> str | pd.Series:
     if base_url is None:
         base_url = ConfigValue("pdf_server.base_url").resolve()
     if base_url is None:
         raise ValueError("base_url must be provided either as an argument or in configuration")
     if isinstance(speech_names, pd.Series):
-        return _resolve_pdf_links_for_speeches(speech_names, base_url, page_nr)
-    return resolve_pdf_link_for_speech(speech_names, base_url, page_nr)
+        return _resolve_pdf_links_for_speeches(speech_names, base_url, page_nr, target)
+    return resolve_pdf_link_for_speech(speech_names, base_url, page_nr, target)
 
 
 #####################################################################################################

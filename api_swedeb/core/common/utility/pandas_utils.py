@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import fnmatch
+import datetime
 import operator
-import zipfile
-from io import StringIO
 from numbers import Number
 from typing import Any, Callable, Literal, Sequence
 
@@ -11,10 +9,39 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from .filename_utils import replace_extension
-from .utils import now_timestamp
-
 DataFrameFilenameTuple = tuple[pd.DataFrame, str]
+
+
+def now_timestamp() -> str:
+    return datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+
+def is_strictly_increasing(
+    series: pd.Series | pd.Index, by_value=1, start_value: int = 0, sort_values: bool = True
+) -> bool:
+    if len(series) == 0:
+        return True
+
+    if not pd.api.types.is_integer_dtype(series.dtype):
+        return False
+
+    if sort_values:
+        series = series.sort_values()
+
+    values = series.to_numpy(dtype=np.int64, copy=False)
+
+    if start_value is not None:
+        if values[0] != start_value:
+            return False
+
+    if not series.is_monotonic_increasing:
+        return False
+
+    if by_value is not None:
+        if not np.all(np.diff(values) == by_value):
+            return False
+
+    return True
 
 
 def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
@@ -262,38 +289,6 @@ def try_split_column(
         df.drop(columns=source_name, inplace=True)
 
     return df
-
-
-def pandas_to_csv_zip(
-    zip_filename: str, dfs: DataFrameFilenameTuple | list[DataFrameFilenameTuple], extension='csv', **to_csv_opts
-):
-    if not isinstance(dfs, (list, tuple)):
-        raise ValueError("expected tuple or list of tuples")
-
-    if isinstance(dfs, (tuple,)):
-        dfs = [dfs]
-
-    with zipfile.ZipFile(zip_filename, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
-        for df, filename in dfs:
-            if not isinstance(df, pd.DataFrame) or not isinstance(filename, str):
-                raise ValueError(
-                    f"Expected tuple[pd.DateFrame, filename: str], found tuple[{type(df)}, {type(filename)}]"
-                )
-            filename = replace_extension(filename=filename, extension=extension)
-            data_str = df.to_csv(**to_csv_opts)
-            zf.writestr(str(filename), data=data_str)
-
-
-def pandas_read_csv_zip(zip_filename: str, pattern='*.csv', **read_csv_opts) -> dict:
-    data = {}
-    with zipfile.ZipFile(zip_filename, mode='r') as zf:
-        for filename in zf.namelist():
-            if not fnmatch.fnmatch(filename, pattern):
-                logger.info(f"skipping {filename} down't match {pattern} ")
-                continue
-            df = pd.read_csv(StringIO(zf.read(filename).decode(encoding='utf-8')), **read_csv_opts)
-            data[filename] = df
-    return data
 
 
 def ts_store(

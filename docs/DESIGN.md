@@ -25,7 +25,8 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
     - [2. Metadata and speech-listing flow](#2-metadata-and-speech-listing-flow)
     - [3. Synchronous KWIC flow](#3-synchronous-kwic-flow)
     - [4. Ticketed KWIC flow](#4-ticketed-kwic-flow)
-    - [5. Speech download flow](#5-speech-download-flow)
+    - [5. Ticketed word-trend speeches flow](#5-ticketed-word-trend-speeches-flow)
+    - [6. Speech download flow](#6-speech-download-flow)
   - [Data and Persistence Design](#data-and-persistence-design)
     - [Configuration](#configuration)
     - [Read-only runtime data](#read-only-runtime-data)
@@ -140,6 +141,7 @@ The entry point is [main.py](../main.py), which builds the app through [api_swed
 - `NGramsService`
 - `KWICService`
 - `KWICTicketService`
+- `WordTrendSpeechesTicketService`
 - `DownloadService`
 - `ResultStore`
 - CWB corpus creation helpers
@@ -153,6 +155,7 @@ The key services are:
 - `NGramsService`: CWB-backed n-gram extraction
 - `KWICService`: synchronous KWIC query execution and metadata join
 - `KWICTicketService`: paged KWIC ticket lifecycle; dispatches to Celery (production, multiprocessing) or FastAPI `BackgroundTasks` (development, singleprocessing) based on `development.celery_enabled`
+- `WordTrendSpeechesTicketService`: paged word-trend speeches ticket lifecycle; same dispatch model as `KWICTicketService`, storing results as Feather artifacts in `ResultStore`
 - `DownloadService`: streamed archive generation for speech downloads
 - `ResultStore`: disk-backed storage for generated KWIC result artifacts
 
@@ -167,7 +170,7 @@ The main core subsystems are:
 - `core/speech_store.py`: low-level Feather storage access for prebuilt speech data
 - `core/speech_repository.py`: higher-level speech retrieval built on `SpeechStore`
 - `core/speech_utility.py`: formatting and URL/link derivation used by API mappers
-- `core/word_trends.py` and `core/speech_index.py`: DTM-driven analysis helpers
+- `core/word_trends/` and `core/speech_index.py`: DTM-driven analysis helpers
 
 ### Offline workflow layer
 
@@ -228,7 +231,20 @@ The paged KWIC path is designed for larger or slower queries and operates in one
 
 The important design constraint is that `multiprocessing.Pool().map()` deadlocks when called from FastAPI's thread-pool-backed `BackgroundTasks`. Production mode avoids this by moving the query into a true separate process (Celery worker). Development mode disables multiprocessing and relies on `BackgroundTasks`, which enables native debugger support without a Redis dependency.
 
-### 5. Speech download flow
+### 5. Ticketed word-trend speeches flow
+
+The paged word-trend speeches path mirrors the ticketed KWIC flow and uses the same `ResultStore`-backed artifact model.
+
+1. the client POSTs a `WordTrendSpeechesQueryRequest` (search terms + optional metadata filters)
+2. `WordTrendSpeechesTicketService` creates a ticket through `ResultStore`
+3. the query is dispatched to Celery (production) or `BackgroundTasks` (development), executing `execute_word_trend_speeches_ticket`
+4. the worker calls `WordTrendsService` to resolve matching speech IDs, then `SearchService` to join speaker and speech metadata, and stores the result as Feather in `ResultStore`
+5. clients poll `/v1/tools/word_trend_speeches/status/{ticket_id}` and fetch pages from `/v1/tools/word_trend_speeches/page/{ticket_id}`
+6. the `/v1/tools/word_trend_speeches/download/{ticket_id}` endpoint streams the full artifact as CSV or JSON
+
+The frontend fires the word-trend speeches ticket request in parallel with the synchronous word-trend chart request, so the chart and count-table tabs become interactive immediately while the speeches tab resolves asynchronously.
+
+### 6. Speech download flow
 
 Speech download requests either:
 
@@ -249,7 +265,7 @@ This makes configuration a first-class runtime dependency rather than a loose co
 
 The runtime is built around read-mostly analytical data:
 
-- DTM/document index files loaded through `penelope.corpus.VectorizedCorpus`
+- DTM/document index files loaded through `api_swedeb.core.dtm.VectorizedCorpus`
 - CWB registry and data directories
 - metadata tables from SQLite
 - prebuilt Feather artifacts under `speech.bootstrap_corpus_folder`
