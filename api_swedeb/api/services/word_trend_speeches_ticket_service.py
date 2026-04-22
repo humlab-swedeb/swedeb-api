@@ -323,7 +323,7 @@ class WordTrendSpeechesTicketService:
         )
 
     def _frame_to_speeches(self, frame: pd.DataFrame) -> list[SpeechesResultItemWT]:
-        rows: list[dict[str, Any]] = frame.to_dict(orient="records")
+        rows: list[dict[str, Any]] = frame.to_dict(orient="records")  # type: ignore[no-untyped-call]
         return [SpeechesResultItemWT(**row) for row in rows]
 
     def _query_meta(self, request: WordTrendSpeechesQueryRequest) -> dict[str, Any]:
