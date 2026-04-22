@@ -10,7 +10,7 @@ After=swedeb-staging-app.network
 Image=docker.io/redis:7-alpine
 ContainerName=swedeb-redis-staging
 Network=swedeb-staging-app.network
-Volume=redis_data/redis:/data
+Volume=redis_data:/data
 
 # Persist data across restarts
 Exec=redis-server --appendonly yes
