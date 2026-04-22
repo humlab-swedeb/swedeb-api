@@ -16,6 +16,7 @@ It is not the primary guide for local development, contributor workflow, or unit
   - [Operational Assumptions and Invariants](#operational-assumptions-and-invariants)
   - [Configuration and Secrets Model](#configuration-and-secrets-model)
     - [Runtime configuration](#runtime-configuration)
+      - [Key configuration sections](#key-configuration-sections)
     - [Runtime environment variables](#runtime-environment-variables)
     - [Secrets and credentials](#secrets-and-credentials)
     - [Build-time versus runtime configuration](#build-time-versus-runtime-configuration)
@@ -26,6 +27,7 @@ It is not the primary guide for local development, contributor workflow, or unit
     - [Test and staging workflows](#test-and-staging-workflows)
     - [Production workflow](#production-workflow)
   - [CD Trigger and Release Process](#cd-trigger-and-release-process)
+    - [Hotfix and emergency release notes](#hotfix-and-emergency-release-notes)
   - [Celery Worker Deployment](#celery-worker-deployment)
   - [Post-Deployment Verification](#post-deployment-verification)
   - [Rollback Procedure](#rollback-procedure)
@@ -70,12 +72,12 @@ This project uses a **four-branch workflow** for controlled progression through 
     └─────────┘
 ```
 
-| Scope | Branch | Build trigger | Primary image tags | Operational role |
-|------|--------|---------------|--------------------|------------------|
-| Integration | `dev` | None | N/A | Integration branch only; not an automatically deployed environment |
-| Test | `test` | Push or manual workflow dispatch | `{version}-test`, `test`, `test-latest` | QA and integration validation |
-| Staging | `staging` | Push or manual workflow dispatch | `{version}-staging`, `staging` | Pre-production validation |
-| Production | `main` | Push or manual workflow dispatch | `{version}`, `{major}`, `{minor}`, `latest`, `production` | Release and live service |
+| Scope       | Branch    | Build trigger                    | Primary image tags                                        | Operational role                                                   |
+|-------------|-----------|----------------------------------|-----------------------------------------------------------|--------------------------------------------------------------------|
+| Integration | `dev`     | None                             | N/A                                                       | Integration branch only; not an automatically deployed environment |
+| Test        | `test`    | Push or manual workflow dispatch | `{version}-test`, `test`, `test-latest`                   | QA and integration validation                                      |
+| Staging     | `staging` | Push or manual workflow dispatch | `{version}-staging`, `staging`                            | Pre-production validation                                          |
+| Production  | `main`    | Push or manual workflow dispatch | `{version}`, `{major}`, `{minor}`, `latest`, `production` | Release and live service                                           |
 
 Operationally, `test`, `staging`, and `production` are the environments that matter. `dev` remains part of the promotion path, but it is not a deployment target in the current workflow.
 
@@ -107,6 +109,48 @@ The checked-in `config/config.yml` defines the main runtime settings, including:
 - FastAPI allowed origins
 
 In deployed environments, the supported pattern is to mount a configuration file into the container and point `SWEDEB_CONFIG_PATH` at that file. The example Quadlet file under [docker/app.container](../docker/app.container) mounts a read-only `config.yml` into `/app/config/config.yml`.
+
+#### Key configuration sections
+
+The `config.yml` structure includes the following operational sections:
+
+**`metadata`** - Corpus metadata configuration
+- `version` - Metadata schema version (e.g., `v1.1.3`)
+- `database.folder` - Path to metadata database directory
+- `database.name` - SQLite database filename
+
+**`cwb`** - IMS Open Corpus Workbench configuration
+- `registry_dir` - CWB registry directory path
+- `corpus_name` - Target corpus name for KWIC queries
+
+**`corpus`** - Corpus data locations
+- `version` - Corpus version tag (e.g., `v1.4.1`)
+- `dtm.folder` - Document-term matrix data directory
+- `tagged_frames.folder` - Tagged frame input data
+- `bootstrap_corpus_folder` - Prebuilt speech corpus location
+
+**`cache`** - Shared ticket-based paging configuration (used by both KWIC and word trends paging)
+- `result_ttl_seconds` - Ticket lifetime before expiration (default: `600`)
+- `cleanup_interval_seconds` - Frequency of automatic cleanup (default: `60`)
+- `max_artifact_bytes` - Maximum total storage for all ticket artifacts in bytes (default: `2147483648` = 2GB)
+- `max_pending_jobs` - Maximum concurrent pending tickets (default: `2`)
+- `root_dir` - Filesystem path for ticket artifact storage (e.g., `/tmp/swedeb-kwic-cache`)
+- `max_page_size` - Maximum page size for paginated results (default: `200`)
+
+**`celery`** - Background task queue configuration (required for KWIC paging)
+- `broker_url` - Redis connection URL for task queue
+- `result_backend` - Redis connection URL for result storage
+- `worker_concurrency` - Number of concurrent Celery worker processes
+- `result_expires` - Task result expiration time in seconds
+
+**`fastapi`** - Web API configuration
+- `origins` - CORS allowed origins list
+
+**Operational notes:**
+- The `cache.root_dir` volume must be shared between API and Celery worker containers so ticket artifacts are accessible across processes
+- Cache settings apply globally to all ticket-based endpoints (KWIC and word trends speeches)
+- Ticket artifacts are stored as feather files under `cache.root_dir`
+- Cleanup runs automatically at `cleanup_interval_seconds` frequency to remove expired tickets
 
 ### Runtime environment variables
 
@@ -180,13 +224,13 @@ Redis is treated as ephemeral runtime state. Task queue entries and task executi
 
 The current build/release process produces these operational artifacts:
 
-| Artifact | Produced by | Location | Operational use |
-|---------|-------------|----------|-----------------|
-| Backend container image | `.github/scripts/build-and-push-image.sh` | `ghcr.io/humlab-swedeb/swedeb-api` | Deployed runtime artifact |
-| Python wheel | `prepare-release-assets.sh` and `uv build` | `dist/` and GitHub release assets | Release artifact, packaging output |
-| GitHub release notes | semantic-release | GitHub Releases | Production release record |
-| Git tags | semantic-release | Git repository | Production version tracking |
-| Bundled frontend assets | `docker/Dockerfile` during image build | `/app/public` inside the image | Frontend served by the API image |
+| Artifact                | Produced by                                | Location                           | Operational use                    |
+|-------------------------|--------------------------------------------|------------------------------------|------------------------------------|
+| Backend container image | `.github/scripts/build-and-push-image.sh`  | `ghcr.io/humlab-swedeb/swedeb-api` | Deployed runtime artifact          |
+| Python wheel            | `prepare-release-assets.sh` and `uv build` | `dist/` and GitHub release assets  | Release artifact, packaging output |
+| GitHub release notes    | semantic-release                           | GitHub Releases                    | Production release record          |
+| Git tags                | semantic-release                           | Git repository                     | Production version tracking        |
+| Bundled frontend assets | `docker/Dockerfile` during image build     | `/app/public` inside the image     | Frontend served by the API image   |
 
 Environment tag policy is:
 
