@@ -3,13 +3,12 @@
 
 [Unit]
 Description=Redis broker for Swedeb Celery workers
-Requires=swedeb-staging-app.network
-After=swedeb-staging-app.network
 
 [Container]
 Image=docker.io/redis:7-alpine
 ContainerName=swedeb-redis-staging
 Network=swedeb-staging-app.network
+PodmanArgs=--network-alias redis
 Volume=redis_data:/data
 
 # Persist data across restarts

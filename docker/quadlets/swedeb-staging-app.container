@@ -2,8 +2,8 @@
 
 [Unit]
 Description=Swedeb Staging API Service
-Requires=swedeb-staging-app.network redis.service
-After=swedeb-staging-app.network redis.service
+Requires=redis.service
+After=redis.service
 BindsTo=redis.service
 PartOf=redis.service
 
@@ -34,6 +34,10 @@ Volume=%h/data/v1.4.1:/data:ro
 Volume=%h/configuration/secrets/config.yml:/app/config/config.yml:ro
 Volume=/data/swedeb/container_data/www/riksdagen-records-pdf:/app/public/pdfs:ro
 
+# Pass the mounted config path and the rest of the runtime environment into the container.
+Environment=SWEDEB_CONFIG_PATH=/app/config/config.yml
+EnvironmentFile=%h/configuration/secrets/.env
+
 # --- Security Hardening ---
 NoNewPrivileges=true
 DropCapability=all
@@ -46,11 +50,6 @@ ReadOnly=true
 [Service]
 Restart=always
 TimeoutStartSec=300
-
-# --- Dynamic Runtime Configuration ---
-# This is the key: it loads your entire .env file into the container's
-# environment for your application to use at runtime.
-EnvironmentFile=%h/configuration/secrets/.env
 
 [Install]
 WantedBy=default.target

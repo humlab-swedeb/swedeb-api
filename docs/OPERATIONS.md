@@ -338,11 +338,15 @@ The worker starts with:
 celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4
 ```
 
-The worker reads its configuration from `SWEDEB_CONFIG_PATH` (injected via `EnvironmentFile` in the Quadlet) during the `worker_init` signal, then calls `configure_celery()` to apply broker and backend URLs.
+The worker reads its configuration from `SWEDEB_CONFIG_PATH` during the `worker_init` signal, then calls `configure_celery()` to apply broker and backend URLs. In the staging Quadlets, `SWEDEB_CONFIG_PATH` is set explicitly to `/app/config/config.yml`, which matches the mounted runtime config path.
 
 The shared image entrypoint executes any explicit container command before falling back to the default Uvicorn startup. This allows the worker Quadlet to run `celery ... worker` while the API container continues to boot the web app by default.
 
-Service dependency order: `redis.service` must be running before `celery-worker.service` and the API service. The `Requires=` and `After=` directives enforce startup order, and `BindsTo=` plus `PartOf=` ensure the API and worker are restarted when Redis is restarted so their Celery clients reconnect cleanly.
+The deployed Celery broker/backend URL must target the Redis container on the shared Podman network, not `localhost`. The checked-in production config uses `redis://redis:6379/0`, and the Redis Quadlet publishes a stable in-network alias `redis` for that purpose.
+
+Service dependency order: `redis.service` must be running before `celery-worker.service` and the API service. The API and worker units declare that relationship explicitly, and `BindsTo=` plus `PartOf=` ensure they are restarted when Redis is restarted so their Celery clients reconnect cleanly.
+
+The `Network=swedeb-staging-app.network` setting already makes Quadlet generate the required network dependency. Do not add manual `Requires=` or `After=` lines that reference `swedeb-staging-app.network` directly; that is a Quadlet file name, not a valid systemd unit name.
 
 The API container, Celery worker container, and Redis container must all be on the same Podman network (`swedeb-*-app.network`). The API and worker must share a common writable volume mounted at `cache.root_dir` (default: `/tmp/swedeb-kwic-cache`) so that ticket artifacts written by the worker are visible to the API when a client polls for results.
 
