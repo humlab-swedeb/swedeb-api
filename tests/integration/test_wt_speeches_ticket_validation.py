@@ -17,9 +17,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
+# pylint: disable=redefined-outer-name, unused-argument
 
 VERSION = "/v1/tools"
 

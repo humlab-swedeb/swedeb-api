@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from api_swedeb.api.services.result_store import ResultStore, TicketStatus
+from api_swedeb.api.services.result_store import ResultStore, ResultStoreNotFound, TicketStatus
 from api_swedeb.api.services.word_trend_speeches_ticket_service import (
     TICKET_ROW_ID,
     WordTrendSpeechesTicketService,
@@ -422,7 +422,7 @@ def test_get_page_result_sorts_by_name(tmp_path):
             result_store=store,
             page=1,
             page_size=50,
-            sort_by=WordTrendSpeechesTicketSortBy.name,
+            sort_by=WordTrendSpeechesTicketSortBy.name,  # type: ignore[call-arg]
             sort_order=SortOrder.asc,
         )
 
@@ -533,7 +533,6 @@ def test_get_page_result_rejects_page_zero(tmp_path):
 
 
 def test_get_page_result_raises_for_unknown_ticket(tmp_path):
-    from api_swedeb.api.services.result_store import ResultStoreNotFound
 
     store = make_result_store(tmp_path)
     service = WordTrendSpeechesTicketService()
@@ -554,7 +553,6 @@ def test_get_page_result_raises_for_unknown_ticket(tmp_path):
 
 
 def test_get_status_raises_for_unknown_ticket(tmp_path):
-    from api_swedeb.api.services.result_store import ResultStoreNotFound
 
     store = make_result_store(tmp_path)
     service = WordTrendSpeechesTicketService()
@@ -622,7 +620,6 @@ def test_get_full_artifact_returns_frame_without_row_id(tmp_path):
 
 
 def test_get_full_artifact_raises_for_pending_ticket(tmp_path):
-    from api_swedeb.api.services.result_store import ResultStoreNotFound
 
     store = make_result_store(tmp_path)
     service = WordTrendSpeechesTicketService()
