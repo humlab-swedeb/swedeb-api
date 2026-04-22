@@ -1,0 +1,37 @@
+# Podman Quadlet: Celery worker for Swedeb background KWIC tasks
+# Deploy to ~/.config/containers/systemd/ (rootless) or /etc/containers/systemd/ (root)
+
+[Unit]
+Description=Swedeb Celery Worker
+Requires=swedeb-staging-app.network redis.service
+After=swedeb-staging-app.network redis.service
+
+[Container]
+Image=ghcr.io/humlab-swedeb/swedeb-api:staging
+ContainerName=swedeb-celery-worker-staging
+Network=swedeb-staging-app.network
+
+# Mount same data volumes as the API container
+Volume=%h/data/v1.4.1:/data:ro
+Volume=%h/configuration/secrets/config.yml:/app/config/config.yml:ro
+
+# Share the KWIC result cache with the API container so results are visible to both
+Tmpfs=/tmp:rw,nosuid,nodev,exec,size=1G
+Volume=swedeb-kwic-cache:/tmp/swedeb-kwic-cache:rw
+
+# Worker command; concurrency matches config.yml celery.worker_concurrency
+Exec=celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4
+
+EnvironmentFile=%h/configuration/secrets/.env
+
+# Security hardening — mirrors app.container settings
+NoNewPrivileges=true
+DropCapability=all
+ReadOnly=true
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

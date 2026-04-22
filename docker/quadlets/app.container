@@ -1,0 +1,54 @@
+# configuration/quadlets/swedeb-staging-app.container
+
+[Unit]
+Description=Swedeb Staging API Service
+Requires=swedeb-staging-app.network redis.service
+After=swedeb-staging-app.network redis.service
+
+[Container]
+# --- Static Structural Configuration ---
+
+# Image and tag are hard-coded for reliability.
+Image=ghcr.io/humlab-swedeb/swedeb-api:staging
+
+# Container name is static. The dynamic name from .env is for the app's internal use.
+ContainerName=swedeb-api-staging
+
+# Connect to the isolated network.
+Network=swedeb-staging-app.network
+
+# Ports MUST be hard-coded. This maps host port 8098 to container port 8098.
+PublishPort=127.0.0.1:8098:8092
+
+# Volume paths MUST be hard-coded and absolute.
+# We use the %h specifier to correctly point to /srv/swedeb_staging.
+#
+# 1. Maps the main data folder.
+Volume=%h/data/v1.4.1:/data:ro
+#
+# 2. Maps the specific metadata database file.
+# Volume=%h/data/metadata/riksprot_metadata.v1.1.3.db:/data/metadata/riksprot_metadata.v1.1.3.db
+
+Volume=%h/configuration/secrets/config.yml:/app/config/config.yml:ro
+Volume=/data/swedeb/container_data/www/riksdagen-records-pdf:/app/public/pdfs:ro
+
+# --- Security Hardening ---
+NoNewPrivileges=true
+DropCapability=all
+
+# Tempfs for tmp and KWIC cache, read-only file system
+Tmpfs=/tmp:rw,nosuid,nodev,exec,size=1G
+Tmpfs=/tmp/swedeb-kwic-cache:rw,nosuid,nodev,noexec,size=6G
+ReadOnly=true
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+# --- Dynamic Runtime Configuration ---
+# This is the key: it loads your entire .env file into the container's
+# environment for your application to use at runtime.
+EnvironmentFile=%h/configuration/secrets/.env
+
+[Install]
+WantedBy=default.target
