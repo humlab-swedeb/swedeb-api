@@ -167,7 +167,7 @@ The main core subsystems are:
 - `core/speech_store.py`: low-level Feather storage access for prebuilt speech data
 - `core/speech_repository.py`: higher-level speech retrieval built on `SpeechStore`
 - `core/speech_utility.py`: formatting and URL/link derivation used by API mappers
-- `core/word_trends.py` and `core/speech_index.py`: DTM-driven analysis helpers
+- `core/word_trends/` and `core/speech_index.py`: DTM-driven analysis helpers
 
 ### Offline workflow layer
 
@@ -249,7 +249,7 @@ This makes configuration a first-class runtime dependency rather than a loose co
 
 The runtime is built around read-mostly analytical data:
 
-- DTM/document index files loaded through `penelope.corpus.VectorizedCorpus`
+- DTM/document index files loaded through `api_swedeb.core.dtm.VectorizedCorpus`
 - CWB registry and data directories
 - metadata tables from SQLite
 - prebuilt Feather artifacts under `speech.bootstrap_corpus_folder`

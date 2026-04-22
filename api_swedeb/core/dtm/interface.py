@@ -1,5 +1,3 @@
-# type: ignore
-
 import abc
 from numbers import Number
 from typing import Any, Iterable, List, Optional, Protocol, Self, Sequence, Tuple
@@ -14,6 +12,11 @@ class VectorizedCorpusError(ValueError): ...
 
 # pylint: disable=too-many-public-methods
 class IVectorizedCorpus(abc.ABC):
+
+    @property
+    @abc.abstractmethod
+    def shape(self) -> tuple[int, int]: ...
+
     @property
     @abc.abstractmethod
     def token2id(self) -> dict[str, int]: ...
@@ -29,9 +32,6 @@ class IVectorizedCorpus(abc.ABC):
     @property
     @abc.abstractmethod
     def vocabulary(self) -> List[str]: ...
-
-    @abc.abstractmethod
-    def nlargest(self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: ...
 
     @property
     @abc.abstractmethod
@@ -105,28 +105,7 @@ class IVectorizedCorpus(abc.ABC):
     def normalize_by_raw_counts(self) -> "IVectorizedCorpus": ...
 
     @abc.abstractmethod
-    def pick_top_tf_map(self, n_top: int) -> dict[str, int]: ...
-
-    @abc.abstractmethod
-    def slice_by_tf(self, tf_threshold: int | None) -> "IVectorizedCorpus": ...
-
-    @abc.abstractmethod
-    def slice_by_n_top(self, n_top: int | None, inplace: bool = False) -> "IVectorizedCorpus": ...
-
-    @abc.abstractmethod
-    def slice_by_document_frequency(self, max_df=1.0, min_df=1, max_n_terms=None) -> "IVectorizedCorpus": ...
-
-    @abc.abstractmethod
-    def slice_by(self, px) -> "IVectorizedCorpus": ...
-
-    @abc.abstractmethod
-    def translate_to_vocab(self, id2token: dict[int, str], inplace=False) -> "IVectorizedCorpus": ...
-
-    @abc.abstractmethod
-    def stats(self): ...
-
-    @abc.abstractmethod
-    def to_n_top_dataframe(self, n_top: int): ...
+    def slice_by_indices(self, indices: Sequence[int], inplace: bool = False) -> "IVectorizedCorpus": ...
 
     @abc.abstractmethod
     def token_indices(self, tokens: Iterable[str]) -> list[int]: ...
@@ -138,14 +117,14 @@ class IVectorizedCorpus(abc.ABC):
     def to_bag_of_terms(self, indices: Optional[Iterable[int]] = None) -> Iterable[Iterable[str]]: ...
 
     @abc.abstractmethod
-    def get_top_n_words(self, n: int = 1000, indices: Sequence[int] = None) -> Sequence[Tuple[str, Number]]: ...
+    def get_top_n_words(self, n: int = 1000, indices: Sequence[int] | None = None) -> Sequence[Tuple[str, Number]]: ...
 
     @abc.abstractmethod
     def get_partitioned_top_n_words(
         self,
         category_column: str = 'category',
         n_top: int = 100,
-        pad: str = None,
+        pad: str | None = None,
         keep_empty: bool = False,
     ) -> dict: ...
 
@@ -166,9 +145,6 @@ class IVectorizedCorpus(abc.ABC):
     def find_matching_words_indices(
         self, word_or_regexp: List[str], n_max_count: int | None, descending: bool
     ) -> List[int]: ...
-
-    @abc.abstractmethod
-    def pick_n_top_words(self, words: List[str], n_top: int, descending: bool) -> List[str]: ...
 
     # @abc.abstractmethod
     # def zero_out_by_tf_threshold(self, tf_threshold: Union[int, float]) -> Sequence[int]: ...
@@ -230,8 +206,6 @@ class IVectorizedCorpusProtocol(Protocol):
 
     def recall(self, key: str) -> Optional[Any]: ...
 
-    def nlargest(self, n_top: int, *, sort_indices: bool = False, override: bool = False) -> np.ndarray: ...
-
     def get_top_n_words(self, n: int = 1000, indices: Sequence[int] | None = None) -> Sequence[Tuple[str, Number]]: ...
 
     def get_partitioned_top_n_words(
@@ -243,6 +217,4 @@ class IVectorizedCorpusProtocol(Protocol):
         keep_empty: bool = False,
     ) -> dict: ...
 
-    def pick_top_tf_map(self, n_top: int) -> dict[str, int]: ...
-
-    def slice_by_n_top(self, n_top: int) -> IVectorizedCorpus: ...
+    def slice_by_indices(self, indices: Sequence[int], inplace: bool = False) -> IVectorizedCorpus: ...

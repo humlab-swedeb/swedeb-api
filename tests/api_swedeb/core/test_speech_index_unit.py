@@ -5,8 +5,8 @@ import pytest
 import scipy
 import scipy.sparse
 
+from api_swedeb.core.dtm import VectorizedCorpus
 from api_swedeb.core.speech_index import _find_documents_with_words
-from penelope.corpus import VectorizedCorpus
 
 # pylint: disable=redefined-outer-name
 

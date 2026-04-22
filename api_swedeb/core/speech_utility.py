@@ -106,7 +106,9 @@ def resolve_wiki_url_for_speaker(wiki_id: str | pd.Series) -> str | pd.Series:
     return unknown if wiki_id == "unknown" else prefix + wiki_id
 
 
-def resolve_pdf_link_for_speech(speech_name: str, base_url: str, page_nr: Any, target: Literal["full-pdf", "page-pdf"] = "page-pdf") -> str:
+def resolve_pdf_link_for_speech(
+    speech_name: str, base_url: str, page_nr: Any, target: Literal["full-pdf", "page-pdf"] = "page-pdf"
+) -> str:
     year: str = speech_name.split('-')[1]
     protocol_name: str = speech_name.split('_')[0]
     if target == "full-pdf":

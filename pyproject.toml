@@ -264,4 +264,4 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["api_swedeb", "penelope"]
+packages = ["api_swedeb"]

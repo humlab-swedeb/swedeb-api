@@ -448,7 +448,12 @@ class TestPersonCodecs:
         base_url: str = ConfigValue("pdf_server.base_url").resolve().strip('/')
         protocol_name: str = speech_id.split('_')[0]
         expected: str = f'{base_url}{subfolder}/{protocol_name}.pdf#page={page_nr}'
-        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_id, page_nr=page_nr, base_url=base_url)
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(
+            speech_id,
+            page_nr=page_nr,
+            base_url=base_url,
+            target="full-pdf",
+        )
         assert isinstance(speech_links, str)
         assert speech_links == expected
 
@@ -463,7 +468,12 @@ class TestPersonCodecs:
                 f"{base_url}201011/prot-201011--084.pdf#page=4",
             ]
         )
-        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(speech_ids, page_nr=page_nrs, base_url=base_url)
+        speech_links: str | pd.Series = resolve_pdf_links_for_speeches(
+            speech_ids,
+            page_nr=page_nrs,
+            base_url=base_url,
+            target="full-pdf",
+        )
         assert isinstance(speech_links, pd.Series)
         pd.testing.assert_series_equal(speech_links, expected)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import os
 import re
 import sqlite3
@@ -8,14 +9,15 @@ import time
 import warnings
 from functools import wraps
 from os.path import basename, dirname, splitext
-from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView
+from pathlib import Path
+from typing import Any, Callable, Generic, ItemsView, Iterator, KeysView, Sequence, Type, TypeVar, ValuesView, overload
 
 import numpy as np
 import pandas as pd
 import requests
 from loguru import logger
 
-from penelope.utility import PropertyValueMaskingOpts
+from api_swedeb.core.common.utility import PropertyValueMaskingOpts
 
 # try:
 #     import github as gh  # type: ignore
@@ -299,8 +301,8 @@ def probe_filename(filename: list[str], exts: list[str] | None = None) -> str | 
 def replace_extension(filename: str, extension: str) -> str:
     if filename.endswith(extension):
         return filename
-    base, _ = splitext(filename)
-    return f"{base}{'' if extension.startswith('.') else '.'}{extension}"
+    ext = extension if extension.startswith('.') else f'.{extension}'
+    return str(Path(filename).with_suffix(ext))
 
 
 def path_add_suffix(path: str, suffix: str, new_extension: str | None = None) -> str:
@@ -401,6 +403,14 @@ def env2dict(prefix: str, data: dict[str, str] | None = None, lower_key: bool = 
         if key.startswith(prefix.lower()):
             dotset(data, key[len(prefix) + 1 :], value)
     return data
+
+
+@overload
+def strip_paths(filenames: str) -> str: ...
+
+
+@overload
+def strip_paths(filenames: list[str]) -> list[str]: ...
 
 
 def strip_paths(filenames: str | list[str]) -> str | list[str]:
@@ -554,3 +564,26 @@ def unstack_data(data: pd.DataFrame, pivot_keys: list[str]) -> pd.DataFrame:
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = [' '.join(x) for x in data.columns]
     return data
+
+
+def read_json(path: str, default: dict | None = None) -> dict:
+    """Reads JSON from file"""
+
+    if not os.path.isfile(path):
+        if default:
+            return default
+
+        raise FileNotFoundError(path)
+
+    with open(path, encoding='utf-8') as fp:
+        return json.load(fp)
+
+
+def write_json(path: str, data: dict, default=None):
+    """Writes JSON to file"""
+    if default is not None:
+        if not callable(default):
+            default = lambda _: default  # noqa: E731 ; pylint: disable=unnecessary-lambda-assignment
+
+    with open(path, 'w', encoding='utf-8') as json_file:
+        json.dump(data, json_file, indent=4, default=default)
