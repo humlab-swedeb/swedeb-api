@@ -7,6 +7,10 @@ polling status will always return "ready" in this context.
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timedelta
+from unittest.mock import patch
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -254,3 +258,122 @@ def test_page_out_of_range_returns_empty_list(speeches_ticket_sample: dict, spee
     assert response.status_code == 200
     body = response.json()
     assert len(body["speech_list"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Download endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_download_csv_returns_valid_content(speeches_ticket_sample: dict, speeches_ticket_client: TestClient):
+    """Test that CSV download returns valid CSV content with all speeches."""
+    ticket_id = speeches_ticket_sample["ticket_id"]
+
+    response = speeches_ticket_client.get(
+        f"{VERSION}/speeches/download/{ticket_id}",
+        params={"format": "csv"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert "attachment" in response.headers["content-disposition"]
+    assert f"speeches_{ticket_id}.csv" in response.headers["content-disposition"]
+
+    # Verify CSV content structure
+    content = response.text
+    assert len(content) > 0
+    lines = content.strip().split("\n")
+    assert len(lines) >= 2  # At least header + 1 row
+
+    # Check CSV header contains expected columns
+    header = lines[0]
+    for col in ["year", "name", "party_abbrev", "document_name", "speech_id"]:
+        assert col in header, f"Expected column '{col}' not found in CSV header"
+
+
+def test_download_json_returns_valid_content(speeches_ticket_sample: dict, speeches_ticket_client: TestClient):
+    """Test that JSON download returns valid JSON content with all speeches."""
+    ticket_id = speeches_ticket_sample["ticket_id"]
+
+    response = speeches_ticket_client.get(
+        f"{VERSION}/speeches/download/{ticket_id}",
+        params={"format": "json"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    assert "attachment" in response.headers["content-disposition"]
+    assert f"speeches_{ticket_id}.json" in response.headers["content-disposition"]
+
+    # Verify JSON content structure
+    data = json.loads(response.text)
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+    # Check first item has expected keys
+    first_item = data[0]
+    for key in ["year", "name", "party_abbrev", "document_name", "speech_id"]:
+        assert key in first_item, f"Expected key '{key}' not found in JSON object"
+
+
+def test_download_csv_default_format(speeches_ticket_sample: dict, speeches_ticket_client: TestClient):
+    """Test that CSV is the default format when no format is specified."""
+    ticket_id = speeches_ticket_sample["ticket_id"]
+
+    response = speeches_ticket_client.get(f"{VERSION}/speeches/download/{ticket_id}")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+
+
+def test_download_returns_404_for_nonexistent_ticket(speeches_ticket_client: TestClient):
+    """Test that download returns 404 for nonexistent ticket."""
+    response = speeches_ticket_client.get(
+        f"{VERSION}/speeches/download/nonexistent-ticket-id",
+        params={"format": "csv"},
+    )
+    assert response.status_code == 404
+    assert "not found or expired" in response.json()["detail"].lower()
+
+
+def test_download_returns_409_for_pending_ticket(speeches_ticket_client: TestClient):
+    """Test that download returns 409 for pending ticket (edge case if background task is slow)."""
+    # This test is mainly for documentation - in TestClient, background tasks run synchronously
+    # so tickets are always ready by the time we check. But the endpoint should handle it.
+
+    from api_swedeb.api.services.result_store import TicketMeta, TicketStatus
+
+    # Create a ticket
+    ticket_id = _submit_ready_ticket(speeches_ticket_client)
+
+    # Mock the ticket status to be pending
+    with patch("api_swedeb.api.services.result_store.ResultStore.require_ticket") as mock_require:
+        now = datetime.now()
+        mock_ticket = TicketMeta(
+            ticket_id=ticket_id,
+            status=TicketStatus.PENDING,
+            created_at=now,
+            expires_at=now + timedelta(minutes=10),
+        )
+        mock_require.return_value = mock_ticket
+
+        response = speeches_ticket_client.get(f"{VERSION}/speeches/download/{ticket_id}")
+        assert response.status_code == 409
+        assert "not ready" in response.json()["detail"].lower()
+
+
+def test_download_full_result_matches_pagination(speeches_ticket_sample: dict, speeches_ticket_client: TestClient):
+    """Test that download returns the same number of speeches as the total_hits from pagination."""
+    ticket_id = speeches_ticket_sample["ticket_id"]
+    total_hits = speeches_ticket_sample["first_page"]["total_hits"]
+
+    # Download CSV
+    response = speeches_ticket_client.get(
+        f"{VERSION}/speeches/download/{ticket_id}",
+        params={"format": "csv"},
+    )
+    assert response.status_code == 200
+
+    # Count rows in CSV (excluding header)
+    content = response.text
+    lines = content.strip().split("\n")
+    csv_row_count = len(lines) - 1  # Exclude header
+
+    assert csv_row_count == total_hits, f"CSV has {csv_row_count} rows, expected {total_hits} from total_hits"

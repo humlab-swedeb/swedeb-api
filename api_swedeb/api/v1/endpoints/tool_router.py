@@ -545,6 +545,54 @@ async def get_speeches_page(
     )
 
 
+@router.get("/speeches/download/{ticket_id}")
+async def download_speeches_by_ticket(
+    ticket_id: str,
+    file_format: str = Query("csv", alias="format", description="Download format: csv or json"),
+    result_store: ResultStore = Depends(get_result_store),
+) -> StreamingResponse:
+    """Download the full speech list from a ready speeches ticket."""
+    import io
+
+    try:
+        ticket = result_store.require_ticket(ticket_id)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+    if ticket.status == TicketStatus.PENDING:
+        raise HTTPException(status_code=409, detail="Ticket not ready")
+    if ticket.status == TicketStatus.ERROR:
+        raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+
+    artifact_path = result_store.artifact_path(ticket_id)
+    if not artifact_path.exists():
+        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
+
+    try:
+        import pandas as pd
+
+        data = pd.read_feather(artifact_path)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
+
+    if file_format == "json":
+        content = data.to_json(orient="records", force_ascii=False)
+        return StreamingResponse(
+            iter([content]),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.json"'},
+        )
+
+    # Default: CSV
+    buf = io.StringIO()
+    data.to_csv(buf, index=False)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.csv"'},
+    )
+
+
 @router.post("/speeches/download")
 async def get_speeches_download_result(
     commons: CommonParams,
