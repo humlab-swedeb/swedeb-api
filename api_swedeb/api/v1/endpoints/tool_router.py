@@ -14,6 +14,7 @@ from api_swedeb.api.dependencies import (
     get_kwic_ticket_service,
     get_result_store,
     get_search_service,
+    get_word_trend_speeches_ticket_service,
     get_word_trends_service,
 )
 from api_swedeb.api.params import CommonQueryParams
@@ -29,6 +30,10 @@ from api_swedeb.api.services.result_store import (
     TicketStatus,
 )
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.api.services.word_trend_speeches_ticket_service import DEFAULT_PAGE_SIZE as WT_DEFAULT_PAGE_SIZE
+from api_swedeb.api.services.word_trend_speeches_ticket_service import (
+    WordTrendSpeechesTicketService,
+)
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.mappers.kwic import kwic_to_api_model
@@ -50,7 +55,15 @@ from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
-from api_swedeb.schemas.word_trends_schema import SearchHits, WordTrendsResult
+from api_swedeb.schemas.word_trends_schema import (
+    SearchHits,
+    WordTrendSpeechesPageResult,
+    WordTrendSpeechesQueryRequest,
+    WordTrendSpeechesTicketAccepted,
+    WordTrendSpeechesTicketSortBy,
+    WordTrendSpeechesTicketStatus,
+    WordTrendsResult,
+)
 
 # pylint: disable=import-outside-toplevel
 CommonParams = Annotated[CommonQueryParams, Depends()]
@@ -205,6 +218,127 @@ async def get_word_trend_speeches_result(
         search.split(','), commons.get_filter_opts(include_year=True)
     )
     return word_trend_speeches_to_api_model(df)
+
+
+@router.post("/word_trend_speeches/query", response_model=WordTrendSpeechesTicketAccepted, status_code=202)
+async def submit_word_trend_speeches_query(
+    request: WordTrendSpeechesQueryRequest,
+    background_tasks: BackgroundTasks,
+    word_trends_service: WordTrendsService = Depends(get_word_trends_service),
+    wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> WordTrendSpeechesTicketAccepted:
+    """Submit a word trend speeches query and receive a ticket immediately."""
+    try:
+        accepted = wt_speeches_ticket_service.submit_query(request, result_store)
+    except ResultStorePendingLimitError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers={"Retry-After": str(result_store.cleanup_interval_seconds)},
+        ) from exc
+
+    if ConfigValue("development.celery_enabled", default=False).resolve():
+        from api_swedeb.celery_app import celery_app  # type: ignore[import]
+
+        celery_app.send_task(
+            "api_swedeb.execute_word_trend_speeches_ticket",
+            args=[accepted.ticket_id, request.model_dump(mode="json")],
+            task_id=accepted.ticket_id,
+        )
+    else:
+        background_tasks.add_task(
+            wt_speeches_ticket_service.execute_ticket,
+            ticket_id=accepted.ticket_id,
+            request=request,
+            word_trends_service=word_trends_service,
+            result_store=result_store,
+        )
+    return accepted
+
+
+@router.get("/word_trend_speeches/status/{ticket_id}", response_model=WordTrendSpeechesTicketStatus)
+async def get_word_trend_speeches_status(
+    ticket_id: str,
+    wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> WordTrendSpeechesTicketStatus:
+    """Poll the status of a word trend speeches query ticket."""
+    try:
+        return wt_speeches_ticket_service.get_status(ticket_id, result_store)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+
+@router.get(
+    "/word_trend_speeches/page/{ticket_id}",
+    response_model=WordTrendSpeechesPageResult | WordTrendSpeechesTicketStatus,
+)
+async def get_word_trend_speeches_page(
+    ticket_id: str,
+    page: int = Query(1, description="1-based page number"),
+    page_size: int = Query(WT_DEFAULT_PAGE_SIZE, description="Number of rows to return"),
+    sort_by: WordTrendSpeechesTicketSortBy | None = Query(None, description="Sort field"),
+    sort_order: SortOrder = Query(SortOrder.asc, description="Sort order"),
+    wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> WordTrendSpeechesPageResult | JSONResponse:
+    """Fetch a page of results from a ready word trend speeches ticket."""
+    try:
+        result = wt_speeches_ticket_service.get_page_result(
+            ticket_id=ticket_id,
+            result_store=result_store,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if isinstance(result, WordTrendSpeechesTicketStatus):
+        if result.status == TicketStatus.PENDING.value:
+            return JSONResponse(status_code=202, content=result.model_dump(mode="json"))
+        if result.status == TicketStatus.ERROR.value:
+            return JSONResponse(status_code=409, content=result.model_dump(mode="json"))
+
+    assert isinstance(result, WordTrendSpeechesPageResult)
+    return result
+
+
+@router.get("/word_trend_speeches/download/{ticket_id}")
+async def download_word_trend_speeches(
+    ticket_id: str,
+    file_format: str = Query("csv", alias="format", description="Download format: csv or json"),
+    wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> StreamingResponse:
+    """Download the full speech list from a ready word trend speeches ticket."""
+    import io
+
+    try:
+        data = wt_speeches_ticket_service.get_full_artifact(ticket_id, result_store)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+    if file_format == "json":
+        content = data.to_json(orient="records", force_ascii=False)
+        return StreamingResponse(
+            iter([content]),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.json"'},
+        )
+
+    # Default: CSV
+    buf = io.StringIO()
+    data.to_csv(buf, index=False)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.csv"'},
+    )
 
 
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)

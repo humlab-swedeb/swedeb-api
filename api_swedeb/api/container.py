@@ -45,6 +45,7 @@ from api_swedeb.api.services.kwic_ticket_service import KWICTicketService
 from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 
 
@@ -59,6 +60,7 @@ class AppContainer:
     search_service: SearchService
     kwic_service: KWICService
     kwic_ticket_service: KWICTicketService
+    word_trend_speeches_ticket_service: WordTrendSpeechesTicketService
     download_service: DownloadService
 
     @classmethod
@@ -73,6 +75,7 @@ class AppContainer:
             search_service=SearchService(corpus_loader),
             kwic_service=KWICService(corpus_loader),
             kwic_ticket_service=KWICTicketService(),
+            word_trend_speeches_ticket_service=WordTrendSpeechesTicketService(),
             download_service=DownloadService(),
         )
 

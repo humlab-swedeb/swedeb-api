@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.services.result_store import ResultStoreNotFound, ResultStorePendingLimitError
 from api_swedeb.api.v1.endpoints.tool_router import (
+    download_word_trend_speeches,
     get_kwic_results,
     get_kwic_ticket_results,
     get_kwic_ticket_status,
@@ -20,17 +21,27 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     get_speeches_result,
     get_topics,
     get_word_hits,
+    get_word_trend_speeches_page,
     get_word_trend_speeches_result,
+    get_word_trend_speeches_status,
     get_word_trends_result,
     get_year_range,
     get_zip,
     submit_kwic_query,
+    submit_word_trend_speeches_query,
 )
 from api_swedeb.core.speech import Speech
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketStatus
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
 from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
+from api_swedeb.schemas.word_trends_schema import (
+    WordTrendSpeechesPageResult,
+    WordTrendSpeechesQueryRequest,
+    WordTrendSpeechesTicketAccepted,
+    WordTrendSpeechesTicketSortBy,
+    WordTrendSpeechesTicketStatus,
+)
 
 
 async def _collect_streaming_response(response: StreamingResponse) -> bytes:
@@ -499,3 +510,289 @@ class TestToolRouterEndpoints:
         result = asyncio.run(get_year_range(corpus_loader=corpus_loader))
 
         assert result == (1867, 2024)
+
+
+class TestWordTrendSpeechesTicketEndpoints:
+    def _make_accepted(self, ticket_id: str = "wt-ticket-1") -> WordTrendSpeechesTicketAccepted:
+        return WordTrendSpeechesTicketAccepted(
+            ticket_id=ticket_id,
+            status="pending",
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+    def _make_status(self, status: str = "ready", total_hits: int = 50) -> WordTrendSpeechesTicketStatus:
+        return WordTrendSpeechesTicketStatus(
+            ticket_id="wt-ticket-1",
+            status=status,
+            total_hits=total_hits,
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+    def _make_page_result(self) -> WordTrendSpeechesPageResult:
+        return WordTrendSpeechesPageResult(
+            ticket_id="wt-ticket-1",
+            status="ready",
+            page=1,
+            page_size=50,
+            total_hits=2,
+            total_pages=1,
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+            speech_list=[],
+        )
+
+    # submit_word_trend_speeches_query ----------------------------------------
+
+    def test_submit_creates_ticket_and_schedules_background_task(self):
+        request = WordTrendSpeechesQueryRequest(search=["demokrati"])
+        background_tasks = BackgroundTasks()
+        wt_service = MagicMock()
+        wt_service.submit_query.return_value = self._make_accepted()
+
+        result = asyncio.run(
+            submit_word_trend_speeches_query(
+                request=request,
+                background_tasks=background_tasks,
+                word_trends_service=MagicMock(),
+                wt_speeches_ticket_service=wt_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        wt_service.submit_query.assert_called_once()
+        assert result.ticket_id == "wt-ticket-1"
+        assert result.status == "pending"
+
+    def test_submit_sends_celery_task_when_enabled(self):
+        request = WordTrendSpeechesQueryRequest(search=["demokrati"])
+        background_tasks = BackgroundTasks()
+        wt_service = MagicMock()
+        wt_service.submit_query.return_value = self._make_accepted()
+
+        with patch("api_swedeb.api.v1.endpoints.tool_router.ConfigValue") as mock_config:
+            mock_config.return_value.resolve.return_value = True
+            with patch("api_swedeb.celery_app.celery_app") as mock_celery:
+                mock_celery.send_task.return_value = MagicMock(id="wt-ticket-1")
+                result = asyncio.run(
+                    submit_word_trend_speeches_query(
+                        request=request,
+                        background_tasks=background_tasks,
+                        word_trends_service=MagicMock(),
+                        wt_speeches_ticket_service=wt_service,
+                        result_store=MagicMock(),
+                    )
+                )
+
+        assert result.ticket_id == "wt-ticket-1"
+
+    def test_submit_returns_429_when_pending_limit_reached(self):
+        request = WordTrendSpeechesQueryRequest(search=["demokrati"])
+        wt_service = MagicMock()
+        wt_service.submit_query.side_effect = ResultStorePendingLimitError("Too many pending jobs")
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                submit_word_trend_speeches_query(
+                    request=request,
+                    background_tasks=BackgroundTasks(),
+                    word_trends_service=MagicMock(),
+                    wt_speeches_ticket_service=wt_service,
+                    result_store=MagicMock(),
+                )
+            )
+
+        assert excinfo.value.status_code == 429
+
+    # get_word_trend_speeches_status ------------------------------------------
+
+    def test_get_status_maps_service_result(self):
+        wt_service = MagicMock()
+        wt_service.get_status.return_value = self._make_status(status="ready", total_hits=100)
+
+        result = asyncio.run(
+            get_word_trend_speeches_status(
+                ticket_id="wt-ticket-1",
+                wt_speeches_ticket_service=wt_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert result.status == "ready"
+        assert result.total_hits == 100
+
+    def test_get_status_returns_404_for_missing_ticket(self):
+        wt_service = MagicMock()
+        wt_service.get_status.side_effect = ResultStoreNotFound("not found")
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                get_word_trend_speeches_status(
+                    ticket_id="wt-ticket-1",
+                    wt_speeches_ticket_service=wt_service,
+                    result_store=MagicMock(),
+                )
+            )
+
+        assert excinfo.value.status_code == 404
+
+    # get_word_trend_speeches_page --------------------------------------------
+
+    def test_get_page_returns_pending_json_when_still_processing(self):
+        wt_service = MagicMock()
+        wt_service.get_page_result.return_value = self._make_status(status="pending", total_hits=0)
+
+        result = asyncio.run(
+            get_word_trend_speeches_page(
+                ticket_id="wt-ticket-1",
+                page=1,
+                page_size=50,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+                wt_speeches_ticket_service=wt_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, JSONResponse)
+        assert result.status_code == 202
+        body = json.loads(bytes(result.body))
+        assert body["status"] == "pending"
+
+    def test_get_page_returns_conflict_json_when_error(self):
+        wt_service = MagicMock()
+        wt_service.get_page_result.return_value = WordTrendSpeechesTicketStatus(
+            ticket_id="wt-ticket-1",
+            status="error",
+            error="execution failed",
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        result = asyncio.run(
+            get_word_trend_speeches_page(
+                ticket_id="wt-ticket-1",
+                page=1,
+                page_size=50,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+                wt_speeches_ticket_service=wt_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, JSONResponse)
+        assert result.status_code == 409
+        body = json.loads(bytes(result.body))
+        assert body["status"] == "error"
+
+    def test_get_page_returns_page_result_when_ready(self):
+        wt_service = MagicMock()
+        wt_service.get_page_result.return_value = self._make_page_result()
+
+        result = asyncio.run(
+            get_word_trend_speeches_page(
+                ticket_id="wt-ticket-1",
+                page=1,
+                page_size=50,
+                sort_by=WordTrendSpeechesTicketSortBy.year,
+                sort_order=SortOrder.desc,
+                wt_speeches_ticket_service=wt_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, WordTrendSpeechesPageResult)
+        assert result.status == "ready"
+        assert result.total_hits == 2
+
+    def test_get_page_returns_404_for_missing_ticket(self):
+        wt_service = MagicMock()
+        wt_service.get_page_result.side_effect = ResultStoreNotFound("missing")
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                get_word_trend_speeches_page(
+                    ticket_id="wt-ticket-1",
+                    page=1,
+                    page_size=50,
+                    sort_by=None,
+                    sort_order=SortOrder.asc,
+                    wt_speeches_ticket_service=wt_service,
+                    result_store=MagicMock(),
+                )
+            )
+
+        assert excinfo.value.status_code == 404
+
+    def test_get_page_returns_400_for_out_of_range_page(self):
+        wt_service = MagicMock()
+        wt_service.get_page_result.side_effect = ValueError("Requested page is out of range")
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                get_word_trend_speeches_page(
+                    ticket_id="wt-ticket-1",
+                    page=999,
+                    page_size=50,
+                    sort_by=None,
+                    sort_order=SortOrder.asc,
+                    wt_speeches_ticket_service=wt_service,
+                    result_store=MagicMock(),
+                )
+            )
+
+        assert excinfo.value.status_code == 400
+
+    # download_word_trend_speeches --------------------------------------------
+
+    def test_download_returns_csv_streaming_response_by_default(self):
+        wt_service = MagicMock()
+        wt_service.get_full_artifact.return_value = pd.DataFrame(
+            [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+        )
+
+        result = asyncio.run(
+            download_word_trend_speeches(
+                ticket_id="wt-ticket-1",
+                file_format="csv",
+                wt_speeches_ticket_service=wt_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, StreamingResponse)
+        assert result.media_type == "text/csv"
+        assert "word_trend_speeches_wt-ticket-1.csv" in result.headers["content-disposition"]
+
+    def test_download_returns_json_streaming_response_when_requested(self):
+        wt_service = MagicMock()
+        wt_service.get_full_artifact.return_value = pd.DataFrame(
+            [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+        )
+
+        result = asyncio.run(
+            download_word_trend_speeches(
+                ticket_id="wt-ticket-1",
+                file_format="json",
+                wt_speeches_ticket_service=wt_service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, StreamingResponse)
+        assert result.media_type == "application/json"
+        assert "word_trend_speeches_wt-ticket-1.json" in result.headers["content-disposition"]
+
+    def test_download_returns_404_for_missing_ticket(self):
+        wt_service = MagicMock()
+        wt_service.get_full_artifact.side_effect = ResultStoreNotFound("missing")
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                download_word_trend_speeches(
+                    ticket_id="wt-ticket-1",
+                    file_format="csv",
+                    wt_speeches_ticket_service=wt_service,
+                    result_store=MagicMock(),
+                )
+            )
+
+        assert excinfo.value.status_code == 404

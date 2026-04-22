@@ -14,6 +14,7 @@ from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.result_store import ResultStore
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.person_codecs import Codecs, PersonCodecs
@@ -46,6 +47,12 @@ def get_search_service(container: AppContainer = Depends(get_container)) -> Sear
 
 def get_kwic_ticket_service(container: AppContainer = Depends(get_container)) -> KWICTicketService:
     return container.kwic_ticket_service
+
+
+def get_word_trend_speeches_ticket_service(
+    container: AppContainer = Depends(get_container),
+) -> WordTrendSpeechesTicketService:
+    return container.word_trend_speeches_ticket_service
 
 
 def get_download_service(container: AppContainer = Depends(get_container)) -> DownloadService:
