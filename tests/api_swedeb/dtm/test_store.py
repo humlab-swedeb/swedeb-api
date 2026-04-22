@@ -58,7 +58,9 @@ def test_should_be_categorical_applies_expected_heuristics():
     assert dtm_store._should_be_categorical(
         "label", low_cardinality_strings, low_cardinality_strings.nunique(), threshold=10
     )
-    assert dtm_store._should_be_categorical("party_id", low_cardinality_ids, low_cardinality_ids.nunique(), threshold=10)
+    assert dtm_store._should_be_categorical(
+        "party_id", low_cardinality_ids, low_cardinality_ids.nunique(), threshold=10
+    )
     assert dtm_store._should_be_categorical(
         "document_name",
         repeated_document_names,
