@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -419,7 +420,7 @@ async def submit_speeches_query(
         try:
             df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
             result_store.store_ready(ticket_id, df=df)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             result_store.store_error(ticket_id, message=str(e))
 
     background_tasks.add_task(execute_speeches_query)
@@ -495,14 +496,11 @@ async def get_speeches_page(
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
 
     try:
-        import pandas as pd
-
         data = pd.read_feather(artifact_path)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 
     # Build page result
-    import math
 
     total_hits = len(data.index)
     total_pages = math.ceil(total_hits / page_size) if total_hits else 0
@@ -568,8 +566,6 @@ async def download_speeches_by_ticket(
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
 
     try:
-        import pandas as pd
-
         data: pd.DataFrame = pd.read_feather(artifact_path)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
