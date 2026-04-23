@@ -77,7 +77,7 @@ speech:
   bootstrap_corpus_folder: ./data/v1.4.1/speeches/bootstrap_corpus
 
 kwic:
-  use_multiprocessing: false  # Keep disabled for dev; BackgroundTasks cannot use multiprocessing
+  use_multiprocessing: false  # Keep disabled for local debugging to avoid extra worker churn
   num_processes: 8
 
 celery:
@@ -85,6 +85,8 @@ celery:
   result_backend: redis://localhost:6379/0
   worker_concurrency: 4
   result_expires: 3600
+  default_queue: celery
+  multiprocessing_queue: multiprocessing
 
 development:
   celery_enabled: false  # Use BackgroundTasks for local debugging; no Redis required

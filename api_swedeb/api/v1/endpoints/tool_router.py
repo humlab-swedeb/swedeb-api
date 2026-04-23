@@ -101,12 +101,13 @@ async def submit_kwic_query(
         # Production mode: delegate to Celery worker (supports multiprocessing).
         # Use send_task() by name so this module never imports celery_tasks at startup,
         # keeping the FastAPI process free of a Redis dependency.
-        from api_swedeb.celery_app import celery_app  # type: ignore[import]
+        from api_swedeb.celery_app import celery_app, get_multiprocessing_queue_name  # type: ignore[import]
 
         celery_app.send_task(
             "api_swedeb.execute_kwic_ticket",
             args=[accepted.ticket_id, request.model_dump(mode="json"), dict(cwb_opts)],
             task_id=accepted.ticket_id,
+            queue=get_multiprocessing_queue_name(),
         )
     else:
         # Development mode: run inline via BackgroundTasks (no Redis required)
@@ -246,12 +247,13 @@ async def submit_word_trend_speeches_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import celery_app  # type: ignore[import]
+        from api_swedeb.celery_app import celery_app, get_default_queue_name  # type: ignore[import]
 
         celery_app.send_task(
             "api_swedeb.execute_word_trend_speeches_ticket",
             args=[accepted.ticket_id, request.model_dump(mode="json")],
             task_id=accepted.ticket_id,
+            queue=get_default_queue_name(),
         )
     else:
         background_tasks.add_task(

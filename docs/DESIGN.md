@@ -217,8 +217,8 @@ The paged KWIC path is designed for larger or slower queries and operates in one
 
 1. the client submits a `KWICQueryRequest`
 2. `KWICTicketService` creates a ticket through `ResultStore`
-3. `celery_app.send_task("api_swedeb.execute_kwic_ticket", ...)` enqueues the task with the ticket ID as the Celery task ID
-4. a separate Celery worker process executes the query using `multiprocessing.Pool` (`kwic.use_multiprocessing: true`)
+3. `celery_app.send_task("api_swedeb.execute_kwic_ticket", ..., queue="multiprocessing")` enqueues the task with the ticket ID as the Celery task ID
+4. a dedicated Celery multiprocessing worker runs with `--pool=solo --queues=multiprocessing`, so the task process itself may safely use `multiprocessing.Pool` (`kwic.use_multiprocessing: true`)
 5. the resulting DataFrame is serialized to Feather in the shared `ResultStore` directory
 6. clients poll ticket status (sourced from `celery_app.AsyncResult`) and fetch paged results from `ResultStore`
 
@@ -237,7 +237,7 @@ The paged word-trend speeches path mirrors the ticketed KWIC flow and uses the s
 
 1. the client POSTs a `WordTrendSpeechesQueryRequest` (search terms + optional metadata filters)
 2. `WordTrendSpeechesTicketService` creates a ticket through `ResultStore`
-3. the query is dispatched to Celery (production) or `BackgroundTasks` (development), executing `execute_word_trend_speeches_ticket`
+3. the query is dispatched to the default Celery queue (production) or `BackgroundTasks` (development), executing `execute_word_trend_speeches_ticket`
 4. the worker calls `WordTrendsService` to resolve matching speech IDs, then `SearchService` to join speaker and speech metadata, and stores the result as Feather in `ResultStore`
 5. clients poll `/v1/tools/word_trend_speeches/status/{ticket_id}` and fetch pages from `/v1/tools/word_trend_speeches/page/{ticket_id}`
 6. the `/v1/tools/word_trend_speeches/download/{ticket_id}` endpoint streams the full artifact as CSV or JSON
@@ -342,14 +342,14 @@ The app currently configures CORS, but it does not implement built-in authentica
 - Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through an explicit app-scoped container built during FastAPI lifespan.
 - Prebuilt speech corpus instead of runtime ZIP parsing: much faster speech retrieval and cleaner batch access, but it adds a required offline build artifact and version-alignment constraint.
 - DataFrame-centric service boundaries: efficient for analytical operations and mapper projection, but it keeps much of the domain logic tied to pandas and Arrow-style structures.
-- Celery + Redis for production KWIC execution: moves ticket queries into a separate worker process so `multiprocessing.Pool` can be used safely. Adds Redis and a worker container to the deployment but enables near-linear CPU scaling for large queries. A `development.celery_enabled` toggle preserves the simpler `BackgroundTasks` path for local development without Redis.
+- Celery + Redis for production multiprocessing-capable ticket execution: moves heavyweight ticket queries into a separate worker process so `multiprocessing.Pool` can be used safely. Adds Redis and a dedicated worker container to the deployment while keeping the default queue available for lighter jobs. A `development.celery_enabled` toggle preserves the simpler `BackgroundTasks` path for local development without Redis.
 - Disk-backed ticket artifacts alongside Celery: Redis holds only small task metadata; large KWIC DataFrames remain in the filesystem `ResultStore`. This keeps Redis memory bounded and reuses the existing artifact lifecycle management.
 - Archived legacy runtime kept in-repo: useful for compatibility and rollback analysis, but it creates a second code path that must be clearly excluded from new feature work.
 
 ## Known Limitations or Technical Debt
 
 - `ResultStore` is host-local and filesystem-backed, so ticket execution and artifact lookup are not designed for horizontally distributed execution. In production, the API container and the Celery worker container must share the same `cache.root_dir` volume.
-- Multiprocessing in KWIC queries requires Celery workers in production. Development mode (`celery_enabled: false`) disables multiprocessing to avoid deadlocking FastAPI's `BackgroundTasks` thread pool.
+- Multiprocessing-capable queries require Celery workers in production. Development mode (`celery_enabled: false`) disables multiprocessing to avoid deadlocking FastAPI's `BackgroundTasks` thread pool.
 - There is no built-in authentication/authorization layer in the backend.
 - The `/v1/tools/topics` endpoint is still a stub.
 - The repository still carries compatibility-oriented code and archived legacy modules. Please avoid using them when working on core logic.

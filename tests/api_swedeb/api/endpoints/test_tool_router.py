@@ -114,6 +114,7 @@ class TestToolRouterEndpoints:
                 {"registry_dir": "/tmp/registry", "corpus_name": "CORPUS", "data_dir": "/tmp/data"},
             ],
             task_id="ticket-1",
+            queue="multiprocessing",
         )
 
     def test_submit_kwic_query_returns_429_when_pending_limit_is_reached(self):
@@ -568,21 +569,28 @@ class TestWordTrendSpeechesTicketEndpoints:
         wt_service = MagicMock()
         wt_service.submit_query.return_value = self._make_accepted()
 
-        with patch("api_swedeb.api.v1.endpoints.tool_router.ConfigValue") as mock_config:
+        with (
+            patch("api_swedeb.api.v1.endpoints.tool_router.ConfigValue") as mock_config,
+            patch("api_swedeb.celery_app.celery_app.send_task") as send_task,
+        ):
             mock_config.return_value.resolve.return_value = True
-            with patch("api_swedeb.celery_app.celery_app") as mock_celery:
-                mock_celery.send_task.return_value = MagicMock(id="wt-ticket-1")
-                result = asyncio.run(
-                    submit_word_trend_speeches_query(
-                        request=request,
-                        background_tasks=background_tasks,
-                        word_trends_service=MagicMock(),
-                        wt_speeches_ticket_service=wt_service,
-                        result_store=MagicMock(),
-                    )
+            result = asyncio.run(
+                submit_word_trend_speeches_query(
+                    request=request,
+                    background_tasks=background_tasks,
+                    word_trends_service=MagicMock(),
+                    wt_speeches_ticket_service=wt_service,
+                    result_store=MagicMock(),
                 )
+            )
 
         assert result.ticket_id == "wt-ticket-1"
+        send_task.assert_called_once_with(
+            "api_swedeb.execute_word_trend_speeches_ticket",
+            args=["wt-ticket-1", request.model_dump(mode="json")],
+            task_id="wt-ticket-1",
+            queue="celery",
+        )
 
     def test_submit_returns_429_when_pending_limit_reached(self):
         request = WordTrendSpeechesQueryRequest(search=["demokrati"])

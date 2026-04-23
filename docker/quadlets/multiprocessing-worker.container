@@ -1,8 +1,7 @@
-# Podman Quadlet: Celery worker for default-queue background tasks
-# Deploy to ~/.config/containers/systemd/ (rootless) or /etc/containers/systemd/ (root)
+# Podman Quadlet: Dedicated Celery worker for multiprocessing-capable tasks
 
 [Unit]
-Description=Swedeb Celery Worker
+Description=Swedeb Multiprocessing Worker
 Requires=redis.service
 After=redis.service
 BindsTo=redis.service
@@ -10,7 +9,7 @@ PartOf=redis.service
 
 [Container]
 Image=ghcr.io/humlab-swedeb/swedeb-api:staging
-ContainerName=swedeb-celery-worker-staging
+ContainerName=swedeb-multiprocessing-worker-staging
 Network=swedeb-staging-app.network
 
 # Mount same data volumes as the API container
@@ -21,9 +20,9 @@ Volume=%h/configuration/secrets/config.yml:/app/config/config.yml:ro
 Tmpfs=/tmp:rw,nosuid,nodev,exec,size=1G
 Volume=swedeb-kwic-cache:/tmp/swedeb-kwic-cache:rw
 
-# Default-queue worker for word trend speeches and other lightweight jobs.
-# Queue name must stay aligned with config.yml celery.default_queue.
-Exec=celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4 --queues=celery
+# Dedicated solo worker for tasks that need their own multiprocessing pool.
+# Queue name must stay aligned with config.yml celery.multiprocessing_queue.
+Exec=celery -A api_swedeb.celery_tasks worker --loglevel=info --pool=solo --concurrency=1 --queues=multiprocessing
 
 Environment=SWEDEB_CONFIG_PATH=/app/config/config.yml
 EnvironmentFile=%h/configuration/secrets/.env
