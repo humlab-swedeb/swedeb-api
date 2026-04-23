@@ -137,11 +137,13 @@ The `config.yml` structure includes the following operational sections:
 - `root_dir` - Filesystem path for ticket artifact storage (e.g., `/tmp/swedeb-kwic-cache`)
 - `max_page_size` - Maximum page size for paginated results (default: `200`)
 
-**`celery`** - Background task queue configuration (required for KWIC paging)
+**`celery`** - Background task queue configuration (required for production ticket execution)
 - `broker_url` - Redis connection URL for task queue
 - `result_backend` - Redis connection URL for result storage
 - `worker_concurrency` - Number of concurrent Celery worker processes
 - `result_expires` - Task result expiration time in seconds
+- `default_queue` - Queue name consumed by the general-purpose Celery worker (default: `celery`)
+- `multiprocessing_queue` - Queue name consumed by the dedicated multiprocessing worker (default: `multiprocessing`)
 
 **`fastapi`** - Web API configuration
 - `origins` - CORS allowed origins list
@@ -324,18 +326,25 @@ Operationally, this means:
 
 ## Celery Worker Deployment
 
-In production (`development.celery_enabled: true`), KWIC ticket queries are executed by a separate Celery worker process. The worker is deployed as a sibling container to the API.
+In production (`development.celery_enabled: true`), background tasks are split across two Celery workers deployed as sibling containers to the API.
 
 Quadlet files:
 
 - `docker/quadlets/redis.container`: Redis 7 service; uses `appendonly yes` for AOF persistence
-- `docker/quadlets/celery-worker.container`: Celery worker running against the same image as the API container
+- `docker/quadlets/celery-worker.container`: default-queue Celery worker for word-trend speeches and other lightweight jobs
+- `docker/quadlets/multiprocessing-worker.container`: dedicated solo-pool Celery worker for the `multiprocessing` queue
 - `docker/quadlets/swedeb-staging-app.container`: API container for the staging environment
 
-The worker starts with:
+The default worker starts with:
 
 ```
-celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4
+celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4 --queues=celery
+```
+
+The dedicated multiprocessing worker starts with:
+
+```
+celery -A api_swedeb.celery_tasks worker --loglevel=info --pool=solo --concurrency=1 --queues=multiprocessing
 ```
 
 The worker reads its configuration from `SWEDEB_CONFIG_PATH` during the `worker_init` signal, then calls `configure_celery()` to apply broker and backend URLs. In the staging Quadlets, `SWEDEB_CONFIG_PATH` is set explicitly to `/app/config/config.yml`, which matches the mounted runtime config path.
@@ -344,17 +353,22 @@ The shared image entrypoint executes any explicit container command before falli
 
 The deployed Celery broker/backend URL must target the Redis container on the shared Podman network, not `localhost`. The checked-in production config uses `redis://redis:6379/0`, and the Redis Quadlet publishes a stable in-network alias `redis` for that purpose.
 
-Service dependency order: `redis.service` must be running before `celery-worker.service` and the API service. The API and worker units declare that relationship explicitly, and `BindsTo=` plus `PartOf=` ensure they are restarted when Redis is restarted so their Celery clients reconnect cleanly.
+The API routes multiprocessing-capable tickets such as KWIC to `celery.multiprocessing_queue` and word-trend speeches tickets to `celery.default_queue`. The queue names in `config.yml` must stay aligned with the `--queues=` arguments in the worker Quadlets.
+
+Service dependency order: `redis.service` must be running before `celery-worker.service`, `multiprocessing-worker.service`, and the API service. The API and worker units declare that relationship explicitly, and `BindsTo=` plus `PartOf=` ensure they are restarted when Redis is restarted so their Celery clients reconnect cleanly.
 
 The `Network=swedeb-staging-app.network` setting already makes Quadlet generate the required network dependency. Do not add manual `Requires=` or `After=` lines that reference `swedeb-staging-app.network` directly; that is a Quadlet file name, not a valid systemd unit name.
 
-The API container, Celery worker container, and Redis container must all be on the same Podman network (`swedeb-*-app.network`). The API and worker must share a common writable volume mounted at `cache.root_dir` (default: `/tmp/swedeb-kwic-cache`) so that ticket artifacts written by the worker are visible to the API when a client polls for results.
+The API container, both Celery worker containers, and the Redis container must all be on the same Podman network (`swedeb-*-app.network`). The API and workers must share a common writable volume mounted at `cache.root_dir` (default: `/tmp/swedeb-kwic-cache`) so that ticket artifacts written by workers are visible to the API when a client polls for results.
 
-To restart the worker after a deployment:
+To restart the workers after a deployment:
 
 ```bash
+systemctl --user restart multiprocessing-worker.service
 systemctl --user restart celery-worker.service
+systemctl --user status multiprocessing-worker.service
 systemctl --user status celery-worker.service
+journalctl --user -u multiprocessing-worker.service -n 100
 journalctl --user -u celery-worker.service -n 100
 ```
 
@@ -377,7 +391,8 @@ Short operator checklist:
 - Confirm `/app/public/.frontend_version` exists in the running container and matches expectations.
 - Confirm `/app/public/index.html` exists in the running container.
 - Confirm Redis is running and accepting connections.
-- Confirm the Celery worker started and shows as `READY` in its logs.
+- Confirm the default Celery worker started and shows as `READY` in its logs.
+- Confirm the dedicated multiprocessing worker started and shows as `READY` in its logs.
 - Review recent service logs for startup, configuration, or asset errors before declaring the rollout complete.
 
 Useful commands in current operational material:

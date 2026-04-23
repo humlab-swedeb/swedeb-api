@@ -1,13 +1,15 @@
 import asyncio
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from api_swedeb.api.services.result_store import ResultStore, ResultStoreNotFound, TicketStatus
+from api_swedeb.api.services.result_store import ResultStore, ResultStoreNotFound, TicketMeta, TicketStatus
 from api_swedeb.api.services.word_trend_speeches_ticket_service import (
     TICKET_ROW_ID,
     WordTrendSpeechesTicketService,
+    execute_word_trend_speeches_ticket_task,
 )
 from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.word_trends_schema import (
@@ -178,6 +180,32 @@ def test_execute_ticket_handles_service_error(tmp_path):
         assert error_ticket.error is not None
     finally:
         asyncio.run(store.shutdown())
+
+
+def test_execute_word_trend_speeches_ticket_task_raises_when_worker_ticket_is_error():
+    worker_store = MagicMock()
+    worker_store.require_ticket.return_value = TicketMeta(
+        ticket_id="ticket-1",
+        status=TicketStatus.ERROR,
+        created_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(seconds=600),
+        total_hits=None,
+        error="Failed to generate word trend speeches results",
+    )
+
+    with (
+        patch(
+            "api_swedeb.api.services.word_trend_speeches_ticket_service._get_worker_word_trends_service",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "api_swedeb.api.services.word_trend_speeches_ticket_service._get_worker_result_store",
+            return_value=worker_store,
+        ),
+        patch.object(WordTrendSpeechesTicketService, "execute_ticket"),
+    ):
+        with pytest.raises(RuntimeError, match="Failed to generate word trend speeches results"):
+            execute_word_trend_speeches_ticket_task("ticket-1", {"search": ["demokrati"], "filters": {}})
 
 
 # ---------------------------------------------------------------------------

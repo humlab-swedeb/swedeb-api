@@ -164,12 +164,12 @@ make clean-dev
 make profile-kwic-pyinstrument
 ```
 
-To start a Celery worker for production-mode KWIC testing (requires a running Redis):
+To start the dedicated multiprocessing worker for production-mode KWIC testing (requires a running Redis):
 
 ```bash
-celery -A api_swedeb.celery_tasks worker --loglevel=info
+celery -A api_swedeb.celery_tasks worker --loglevel=info --pool=solo --concurrency=1 --queues=multiprocessing
 # or via uv:
-uv run celery -A api_swedeb.celery_tasks worker --loglevel=info
+uv run celery -A api_swedeb.celery_tasks worker --loglevel=info --pool=solo --concurrency=1 --queues=multiprocessing
 ```
 
 To start Redis locally:
@@ -286,11 +286,11 @@ KWIC ticket queries use one of two execution paths, controlled by `development.c
 | Mode | Config | Execution | Multiprocessing | Redis required |
 |------|--------|-----------|-----------------|----------------|
 | Development | `debug.config.yml` (`celery_enabled: false`) | FastAPI `BackgroundTasks` | No | No |
-| Production | `config.yml` (`celery_enabled: true`) | Celery worker process | Yes (`num_processes: 8`) | Yes |
+| Production | `config.yml` (`celery_enabled: true`) | Celery workers (`celery` + `multiprocessing` queues) | Yes, on the dedicated multiprocessing worker (`num_processes: 8`) | Yes |
 
 **Development mode** is the default for local work. No Redis or Celery worker is needed; KWIC queries run inline in the FastAPI process. The VS Code debugger works normally — set breakpoints in `kwic_ticket_service.py` and they will be hit.
 
-**Production mode** requires Redis and at least one running Celery worker. The API process enqueues a task via `celery_app.send_task("api_swedeb.execute_kwic_ticket", ...)` and returns immediately. The worker picks up the task and runs the query with multiprocessing enabled. Task state is read back through `celery_app.AsyncResult(ticket_id)`.
+**Production mode** requires Redis and the staged Celery topology: a default-queue worker plus a dedicated multiprocessing worker running `--pool=solo --queues=multiprocessing`. The API process enqueues KWIC work via `celery_app.send_task("api_swedeb.execute_kwic_ticket", ..., queue="multiprocessing")` and returns immediately. The multiprocessing worker then runs the query with multiprocessing enabled, while lighter ticketed jobs remain on the default queue. Task state is read back through `celery_app.AsyncResult(ticket_id)`.
 
 Debugging in production mode: attach the debugger to the Celery worker process instead of the FastAPI process, or switch to development mode temporarily.
 

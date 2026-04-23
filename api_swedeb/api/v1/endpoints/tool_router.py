@@ -1,9 +1,10 @@
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import fastapi
+import pandas as pd
 from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
-from pandas import DataFrame
 
 from api_swedeb.api.dependencies import (
     get_corpus_loader,
@@ -27,13 +28,12 @@ from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreNotFound,
     ResultStorePendingLimitError,
+    TicketMeta,
     TicketStatus,
 )
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trend_speeches_ticket_service import DEFAULT_PAGE_SIZE as WT_DEFAULT_PAGE_SIZE
-from api_swedeb.api.services.word_trend_speeches_ticket_service import (
-    WordTrendSpeechesTicketService,
-)
+from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.mappers.kwic import kwic_to_api_model
@@ -101,12 +101,13 @@ async def submit_kwic_query(
         # Production mode: delegate to Celery worker (supports multiprocessing).
         # Use send_task() by name so this module never imports celery_tasks at startup,
         # keeping the FastAPI process free of a Redis dependency.
-        from api_swedeb.celery_app import celery_app  # type: ignore[import]
+        from api_swedeb.celery_app import celery_app, get_multiprocessing_queue_name  # type: ignore[import]
 
         celery_app.send_task(
             "api_swedeb.execute_kwic_ticket",
             args=[accepted.ticket_id, request.model_dump(mode="json"), dict(cwb_opts)],
             task_id=accepted.ticket_id,
+            queue=get_multiprocessing_queue_name(),
         )
     else:
         # Development mode: run inline via BackgroundTasks (no Redis required)
@@ -144,7 +145,7 @@ async def get_kwic_ticket_results(
     result_store: ResultStore = Depends(get_result_store),
 ) -> KWICPageResult | JSONResponse:
     try:
-        result = kwic_ticket_service.get_page_result(
+        result: KWICPageResult | KWICTicketStatus = kwic_ticket_service.get_page_result(
             ticket_id=ticket_id,
             result_store=result_store,
             page=page,
@@ -185,7 +186,7 @@ async def get_kwic_results(
     if " " in keywords:
         keywords = keywords.split(" ")
 
-    data = kwic_service.get_kwic(
+    data: pd.DataFrame = kwic_service.get_kwic(
         corpus=corpus,
         commons=commons,
         keywords=keywords,
@@ -206,7 +207,7 @@ async def get_word_trends_result(
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> WordTrendsResult:
     """Get word trends"""
-    df: DataFrame = word_trends_service.get_word_trend_results(
+    df: pd.DataFrame = word_trends_service.get_word_trend_results(
         search_terms=search.split(","),
         filter_opts=commons.get_filter_opts(include_year=True),
         normalize=normalize,
@@ -221,7 +222,7 @@ async def get_word_trend_speeches_result(
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> SpeechesResultWT:
     """Get word trends"""
-    df: DataFrame = word_trends_service.get_speeches_for_word_trends(
+    df: pd.DataFrame = word_trends_service.get_speeches_for_word_trends(
         search.split(','), commons.get_filter_opts(include_year=True)
     )
     return word_trend_speeches_to_api_model(df)
@@ -246,12 +247,13 @@ async def submit_word_trend_speeches_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import celery_app  # type: ignore[import]
+        from api_swedeb.celery_app import celery_app, get_default_queue_name  # type: ignore[import]
 
         celery_app.send_task(
             "api_swedeb.execute_word_trend_speeches_ticket",
             args=[accepted.ticket_id, request.model_dump(mode="json")],
             task_id=accepted.ticket_id,
+            queue=get_default_queue_name(),
         )
     else:
         background_tasks.add_task(
@@ -392,7 +394,7 @@ async def get_speeches_result(
     search_service: SearchService = Depends(get_search_service),
 ) -> SpeechesResult:
     """Get speeches matching filter criteria"""
-    df: DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
+    df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
     return speeches_to_api_model(df)
 
 
@@ -405,7 +407,7 @@ async def submit_speeches_query(
 ) -> SpeechesTicketAccepted:
     """Submit an async query for speeches matching filter criteria and receive a ticket immediately."""
     try:
-        ticket = result_store.create_ticket()
+        ticket: TicketMeta = result_store.create_ticket()
     except ResultStorePendingLimitError as exc:
         raise HTTPException(
             status_code=429,
@@ -417,7 +419,7 @@ async def submit_speeches_query(
 
     async def execute_speeches_query():
         try:
-            df: DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
+            df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
             result_store.store_ready(ticket_id, df=df)
         except Exception as e:
             result_store.store_error(ticket_id, message=str(e))
@@ -555,7 +557,7 @@ async def download_speeches_by_ticket(
     import io
 
     try:
-        ticket = result_store.require_ticket(ticket_id)
+        ticket: TicketMeta = result_store.require_ticket(ticket_id)
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
 
@@ -564,14 +566,14 @@ async def download_speeches_by_ticket(
     if ticket.status == TicketStatus.ERROR:
         raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
 
-    artifact_path = result_store.artifact_path(ticket_id)
+    artifact_path: Path = result_store.artifact_path(ticket_id)
     if not artifact_path.exists():
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
 
     try:
         import pandas as pd
 
-        data = pd.read_feather(artifact_path)
+        data: pd.DataFrame = pd.read_feather(artifact_path)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 

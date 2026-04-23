@@ -188,7 +188,7 @@ def test_execute_ticket_stores_error_when_query_fails():
 
 def test_execute_ticket_task_adopts_worker_ticket_and_returns_row_count():
     worker_store = MagicMock()
-    worker_store.get_ticket.return_value = TicketMeta(
+    worker_store.require_ticket.return_value = TicketMeta(
         ticket_id="ticket-1",
         status=TicketStatus.READY,
         created_at=datetime.now(UTC),
@@ -213,6 +213,29 @@ def test_execute_ticket_task_adopts_worker_ticket_and_returns_row_count():
     assert execute_ticket.call_args.kwargs["request"].search == "demokrati"
     assert execute_ticket.call_args.kwargs["request"].lemmatized is False
     assert result == {"ticket_id": "ticket-1", "row_count": 7}
+
+
+def test_execute_ticket_task_raises_when_worker_ticket_is_error():
+    worker_store = MagicMock()
+    worker_store.require_ticket.return_value = TicketMeta(
+        ticket_id="ticket-1",
+        status=TicketStatus.ERROR,
+        created_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(seconds=600),
+        error="Failed to generate KWIC results",
+    )
+
+    with (
+        patch("api_swedeb.api.services.kwic_ticket_service._get_worker_kwic_service", return_value=MagicMock()),
+        patch("api_swedeb.api.services.kwic_ticket_service._get_worker_result_store", return_value=worker_store),
+        patch.object(KWICTicketService, "execute_ticket"),
+    ):
+        with pytest.raises(RuntimeError, match="Failed to generate KWIC results"):
+            execute_ticket_task(
+                "ticket-1",
+                {"search": "demokrati", "lemmatized": False},
+                {"registry_dir": "/tmp/registry", "corpus_name": "CORPUS"},
+            )
 
 
 def test_get_status_uses_celery_success_result(tmp_path):

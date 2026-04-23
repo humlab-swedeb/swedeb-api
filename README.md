@@ -54,7 +54,7 @@ graph TD
 
     subgraph Background["Background Processing (production)"]
         Redis["Redis\n(broker + result backend)"]
-        Worker["Celery Worker\nexecute_kwic_ticket\n(multiprocessing.Pool)"]
+        Worker["Celery Worker\nmultiprocessing queue\n(multiprocessing.Pool)"]
         Redis -->|dequeue task| Worker
         Worker -->|write results| ResultStore
     end
@@ -73,7 +73,7 @@ graph TD
 - **Direct Injection** - Services injected via FastAPI `Depends()` for clean separation of concerns
 - **Pydantic** - Request/response validation with type safety and automatic serialization
 - **Feather/Arrow Storage** - Fast columnar storage for speech indexes and metadata
-- **Celery + Redis** - Production background task execution for KWIC queries; enables `multiprocessing.Pool` in a separate worker process without deadlocking FastAPI. Disabled in local development (`debug.config.yml`).
+- **Celery + Redis** - Production background task execution for multiprocessing-capable queries; currently powers KWIC and leaves room for future analytical jobs such as n-grams. Disabled in local development (`debug.config.yml`).
 - **Docker + Auto-detection** - Containerized deployment with automatic frontend version detection
 
 ## Related Repositories

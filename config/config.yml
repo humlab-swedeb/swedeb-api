@@ -70,7 +70,7 @@ speech:
   bootstrap_corpus_folder: ./data/v1.4.1/speeches/bootstrap_corpus
 
 kwic:
-  use_multiprocessing: true  # Re-enabled: Celery workers run in separate processes
+  use_multiprocessing: true  # Enabled when the current process may safely spawn child workers
   num_processes: 8
 
 celery:
@@ -78,6 +78,8 @@ celery:
   result_backend: redis://redis:6379/0
   worker_concurrency: 4
   result_expires: 3600
+  default_queue: celery
+  multiprocessing_queue: multiprocessing
 
 development:
   celery_enabled: true
