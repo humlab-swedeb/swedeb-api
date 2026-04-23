@@ -5,11 +5,13 @@ import math
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import ccc
 import pandas as pd
 from loguru import logger
+import pandas as pd
 
 from api_swedeb.api.params import CommonQueryParams, build_common_query_params, build_filter_opts
 from api_swedeb.api.services.kwic_service import KWICService
@@ -72,11 +74,11 @@ def execute_ticket_task(ticket_id: str, request_data: dict, cwb_opts: dict) -> d
     The ``celery_tasks`` module (imported only by the worker entry-point) wraps this
     function with ``@celery_app.task``.
     """
-    kwic_service = _get_worker_kwic_service()
-    result_store = _get_worker_result_store()
+    kwic_service: KWICService = _get_worker_kwic_service()
+    result_store: ResultStore = _get_worker_result_store()
     result_store.adopt_ticket(ticket_id)
 
-    request = KWICQueryRequest.model_validate(request_data)
+    request: KWICQueryRequest = KWICQueryRequest.model_validate(request_data)
     _service = KWICTicketService()
     _service.execute_ticket(
         ticket_id=ticket_id,
@@ -166,23 +168,23 @@ class KWICTicketService:
     def _get_celery_status(self, ticket_id: str, result_store: ResultStore) -> KWICTicketStatus:
         from api_swedeb.celery_app import celery_app  # type: ignore[import]
 
-        ticket = result_store.require_ticket(ticket_id)
+        ticket: TicketMeta = result_store.require_ticket(ticket_id)
         celery_result = celery_app.AsyncResult(ticket_id)
-        celery_to_status = {
+        celery_to_status: dict[str, TicketStatus] = {
             "PENDING": TicketStatus.PENDING,
             "STARTED": TicketStatus.PENDING,
             "PROGRESS": TicketStatus.PENDING,
             "SUCCESS": TicketStatus.READY,
             "FAILURE": TicketStatus.ERROR,
         }
-        status = celery_to_status.get(celery_result.state, TicketStatus.PENDING)
+        status: TicketStatus = celery_to_status.get(celery_result.state, TicketStatus.PENDING)
         if status == TicketStatus.READY:
             total_hits = None
             if isinstance(celery_result.result, dict):
                 total_hits = celery_result.result.get("row_count")
             ticket = result_store.sync_external_ready(ticket_id, total_hits=total_hits)
         elif status == TicketStatus.ERROR:
-            error = str(celery_result.info) if celery_result.info else "Task failed"
+            error: str = str(celery_result.info) if celery_result.info else "Task failed"
             ticket = result_store.sync_external_error(ticket_id, message=error)
 
         return self._status_model(ticket)
@@ -225,7 +227,7 @@ class KWICTicketService:
         sort_by: KWICTicketSortBy | None,
         sort_order: SortOrder,
     ) -> KWICPageResult | KWICTicketStatus:
-        status_model = self._get_celery_status(ticket_id, result_store)
+        status_model: KWICTicketStatus = self._get_celery_status(ticket_id, result_store)
         if status_model.status != TicketStatus.READY.value:
             return status_model
 
@@ -234,7 +236,7 @@ class KWICTicketService:
         if page_size < 1 or page_size > result_store.max_page_size:
             raise ValueError(f"page_size must be between 1 and {result_store.max_page_size}")
 
-        artifact_path = result_store.artifact_path(ticket_id)
+        artifact_path: Path = result_store.artifact_path(ticket_id)
         if not artifact_path.exists():
             raise ResultStoreNotFound("Ticket artifact not found or expired")
         try:
@@ -244,19 +246,19 @@ class KWICTicketService:
 
         total_hits: int = len(data.index)
         total_pages: int = math.ceil(total_hits / page_size) if total_hits else 0
-        ticket = result_store.get_ticket(ticket_id)
-        expires_at = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
+        ticket: TicketMeta | None = result_store.get_ticket(ticket_id)
+        expires_at: datetime = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
 
         if total_pages == 0:
             if page != 1:
                 raise ValueError("Requested page is out of range")
-            page_frame = data.iloc[0:0].drop(columns=[TICKET_ROW_ID], errors="ignore")
+            page_frame: pd.DataFrame = data.iloc[0:0].drop(columns=[TICKET_ROW_ID], errors="ignore")
         else:
             if page > total_pages:
                 raise ValueError("Requested page is out of range")
-            sorted_frame = self._sort_frame(data, sort_by=sort_by, sort_order=sort_order)
-            start = (page - 1) * page_size
-            end = start + page_size
+            sorted_frame: pd.DataFrame = self._sort_frame(data, sort_by=sort_by, sort_order=sort_order)
+            start: int = (page - 1) * page_size
+            end: int = start + page_size
             page_frame = sorted_frame.iloc[start:end].drop(columns=[TICKET_ROW_ID], errors="ignore")
 
         return KWICPageResult(
@@ -351,7 +353,7 @@ class KWICTicketService:
         }
 
     def _manifest_meta(self, ticket_id: str, request: KWICQueryRequest, api_frame: pd.DataFrame) -> dict[str, Any]:
-        speech_ids = self._speech_ids(api_frame)
+        speech_ids: list[str] = self._speech_ids(api_frame)
         return {
             "ticket_id": ticket_id,
             "search": request.search,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -66,11 +67,11 @@ def execute_word_trend_speeches_ticket_task(ticket_id: str, request_data: dict) 
     function here so that importing this module in the FastAPI process does *not*
     require a live Celery / Redis connection.
     """
-    word_trends_service = _get_worker_word_trends_service()
-    result_store = _get_worker_result_store()
+    word_trends_service: WordTrendsService = _get_worker_word_trends_service()
+    result_store: ResultStore = _get_worker_result_store()
     result_store.adopt_ticket(ticket_id)
 
-    request = WordTrendSpeechesQueryRequest.model_validate(request_data)
+    request: WordTrendSpeechesQueryRequest = WordTrendSpeechesQueryRequest.model_validate(request_data)
     _service = WordTrendSpeechesTicketService()
     _service.execute_ticket(
         ticket_id=ticket_id,
@@ -104,7 +105,7 @@ class WordTrendSpeechesTicketService:
     ) -> None:
         logger.info(f"Starting execute_ticket for word trend speeches {ticket_id}")
         try:
-            filter_opts = build_filter_opts(
+            filter_opts: dict[str, Any] = build_filter_opts(
                 from_year=request.filters.from_year,
                 to_year=request.filters.to_year,
                 who=request.filters.who,
@@ -147,23 +148,23 @@ class WordTrendSpeechesTicketService:
     def _get_celery_status(self, ticket_id: str, result_store: ResultStore) -> WordTrendSpeechesTicketStatus:
         from api_swedeb.celery_app import celery_app  # type: ignore[import]
 
-        ticket = result_store.require_ticket(ticket_id)
+        ticket: TicketMeta = result_store.require_ticket(ticket_id)
         celery_result = celery_app.AsyncResult(ticket_id)
-        celery_to_status = {
+        celery_to_status: dict[str, TicketStatus] = {
             "PENDING": TicketStatus.PENDING,
             "STARTED": TicketStatus.PENDING,
             "PROGRESS": TicketStatus.PENDING,
             "SUCCESS": TicketStatus.READY,
             "FAILURE": TicketStatus.ERROR,
         }
-        status = celery_to_status.get(celery_result.state, TicketStatus.PENDING)
+        status: TicketStatus = celery_to_status.get(celery_result.state, TicketStatus.PENDING)
         if status == TicketStatus.READY:
             total_hits = None
             if isinstance(celery_result.result, dict):
                 total_hits = celery_result.result.get("row_count")
             ticket = result_store.sync_external_ready(ticket_id, total_hits=total_hits)
         elif status == TicketStatus.ERROR:
-            error = str(celery_result.info) if celery_result.info else "Task failed"
+            error: str = str(celery_result.info) if celery_result.info else "Task failed"
             ticket = result_store.sync_external_error(ticket_id, message=error)
 
         return self._status_model(ticket)
@@ -206,7 +207,7 @@ class WordTrendSpeechesTicketService:
         sort_by: WordTrendSpeechesTicketSortBy | None,
         sort_order: SortOrder,
     ) -> WordTrendSpeechesPageResult | WordTrendSpeechesTicketStatus:
-        status_model = self._get_celery_status(ticket_id, result_store)
+        status_model: WordTrendSpeechesTicketStatus = self._get_celery_status(ticket_id, result_store)
         if status_model.status != TicketStatus.READY.value:
             return status_model
 
@@ -215,11 +216,11 @@ class WordTrendSpeechesTicketService:
         if page_size < 1 or page_size > result_store.max_page_size:
             raise ValueError(f"page_size must be between 1 and {result_store.max_page_size}")
 
-        artifact_path = result_store.artifact_path(ticket_id)
+        artifact_path: Path = result_store.artifact_path(ticket_id)
         if not artifact_path.exists():
             raise ResultStoreNotFound("Ticket artifact not found or expired")
         try:
-            data = pd.read_feather(artifact_path)
+            data: pd.DataFrame = pd.read_feather(artifact_path)
         except Exception as exc:
             raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
 
@@ -260,8 +261,8 @@ class WordTrendSpeechesTicketService:
     ) -> WordTrendSpeechesPageResult:
         total_hits: int = len(data.index)
         total_pages: int = math.ceil(total_hits / page_size) if total_hits else 0
-        ticket = result_store.get_ticket(ticket_id)
-        expires_at = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
+        ticket: TicketMeta | None = result_store.get_ticket(ticket_id)
+        expires_at: datetime = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
 
         if total_pages == 0:
             if page != 1:
@@ -289,18 +290,18 @@ class WordTrendSpeechesTicketService:
     def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
         """Load the complete artifact DataFrame for download purposes."""
         if ConfigValue("development.celery_enabled", default=False).resolve():
-            artifact_path = result_store.artifact_path(ticket_id)
+            artifact_path: Path = result_store.artifact_path(ticket_id)
             if not artifact_path.exists():
                 raise ResultStoreNotFound("Ticket artifact not found or expired")
             try:
-                data = pd.read_feather(artifact_path)
+                data: pd.DataFrame = pd.read_feather(artifact_path)
             except Exception as exc:
                 raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
         else:
             ticket: TicketMeta = result_store.require_ticket(ticket_id)
             if ticket.status != TicketStatus.READY:
                 raise ResultStoreNotFound("Ticket is not ready")
-            data = result_store.load_artifact(ticket_id)
+            data: pd.DataFrame = result_store.load_artifact(ticket_id)
         return data.drop(columns=[TICKET_ROW_ID], errors="ignore")
 
     def _sort_frame(
@@ -339,7 +340,7 @@ class WordTrendSpeechesTicketService:
     def _manifest_meta(
         self, ticket_id: str, request: WordTrendSpeechesQueryRequest, data: pd.DataFrame
     ) -> dict[str, Any]:
-        speech_ids = self._speech_ids(data)
+        speech_ids: list[str] = self._speech_ids(data)
         return {
             "ticket_id": ticket_id,
             "search": request.search,
