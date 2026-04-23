@@ -139,8 +139,7 @@ class SearchService:
         Returns:
             DataFrame with filtered speakers
         """
-        current_speakers: pd.DataFrame = self._loader.decoded_persons.copy()
-        current_speakers = self._get_filtered_speakers(selections, current_speakers)
+        current_speakers: pd.DataFrame = self._get_filtered_speakers(selections, self._loader.decoded_persons)
         return current_speakers.reset_index(inplace=False)
 
     def get_speaker_names(self, speech_ids: list[str]) -> dict[str, str]:
