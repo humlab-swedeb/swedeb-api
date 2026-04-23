@@ -185,6 +185,61 @@ class ResultStore:
                     expires_at=now + timedelta(seconds=self.result_ttl_seconds),
                 )
 
+    def sync_external_ready(self, ticket_id: str, *, total_hits: int | None = None) -> TicketMeta:
+        """Mark a ticket as ready based on external worker state.
+
+        Celery workers write the artifact file in a separate process. The API
+        process uses this method to update its in-memory ``TicketMeta`` so that
+        pending-job accounting and status responses reflect the completed task.
+        """
+        with self._lock:
+            self._ensure_started_locked()
+            ticket = self._tickets.get(ticket_id)
+            if ticket is None:
+                raise ResultStoreNotFound("Ticket not found or expired")
+
+            artifact_path = self._artifact_path(ticket_id)
+            artifact_bytes = artifact_path.stat().st_size if artifact_path.exists() else ticket.artifact_bytes
+            ready_at = ticket.ready_at or datetime.now(UTC)
+            expires_at = ticket.expires_at
+            if ticket.status != TicketStatus.READY:
+                expires_at = ready_at + timedelta(seconds=self.result_ttl_seconds)
+
+            updated = replace(
+                ticket,
+                status=TicketStatus.READY,
+                expires_at=expires_at,
+                artifact_path=artifact_path,
+                artifact_bytes=artifact_bytes,
+                total_hits=total_hits if total_hits is not None else ticket.total_hits,
+                error=None,
+                ready_at=ready_at,
+            )
+            self._tickets[ticket_id] = updated
+            return replace(updated)
+
+    def sync_external_error(self, ticket_id: str, *, message: str) -> TicketMeta:
+        """Mark a ticket as failed based on external worker state."""
+        with self._lock:
+            self._ensure_started_locked()
+            ticket = self._tickets.get(ticket_id)
+            if ticket is None:
+                raise ResultStoreNotFound("Ticket not found or expired")
+
+            if ticket.artifact_path is not None:
+                self._remove_artifact_locked(ticket)
+
+            updated = replace(
+                ticket,
+                status=TicketStatus.ERROR,
+                error=message,
+                artifact_path=None,
+                artifact_bytes=None,
+                ready_at=None,
+            )
+            self._tickets[ticket_id] = updated
+            return replace(updated)
+
     def artifact_path(self, ticket_id: str) -> Path:
         """Return the filesystem path where the artifact for *ticket_id* is stored.
 

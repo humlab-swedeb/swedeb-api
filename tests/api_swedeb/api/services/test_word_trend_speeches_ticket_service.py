@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -218,6 +218,57 @@ def test_get_status_returns_ready_after_execute(tmp_path):
         status = service.get_status(ticket.ticket_id, store)
         assert status.status == "ready"
         assert status.total_hits == 3
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_get_status_celery_success_syncs_ready_state_and_releases_pending_capacity(tmp_path):
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=10_000_000,
+        max_pending_jobs=2,
+        max_page_size=500,
+    )
+    service = WordTrendSpeechesTicketService()
+
+    asyncio.run(store.startup())
+    try:
+        first = store.create_ticket()
+        store.create_ticket()
+        pd.DataFrame([{"speech_id": "i-1"}]).to_feather(store.artifact_path(first.ticket_id))
+        celery_result = MagicMock(state="SUCCESS", result={"row_count": 1}, info=None)
+
+        with (
+            patch("api_swedeb.api.services.word_trend_speeches_ticket_service.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
+        ):
+            status = service.get_status(first.ticket_id, store)
+
+        assert status.status == "ready"
+        assert status.total_hits == 1
+        assert store.require_ticket(first.ticket_id).status == TicketStatus.READY
+
+        accepted = service.submit_query(make_request(["frihet"]), store)
+        assert accepted.status == "pending"
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_get_status_celery_raises_for_unknown_ticket(tmp_path):
+    store = make_result_store(tmp_path)
+    service = WordTrendSpeechesTicketService()
+
+    asyncio.run(store.startup())
+    try:
+        celery_result = MagicMock(state="PENDING", result=None, info=None)
+        with (
+            patch("api_swedeb.api.services.word_trend_speeches_ticket_service.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
+        ):
+            with pytest.raises(ResultStoreNotFound):
+                service.get_status("nonexistent-ticket", store)
     finally:
         asyncio.run(store.shutdown())
 
