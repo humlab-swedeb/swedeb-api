@@ -1,12 +1,11 @@
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from api_swedeb.api.services.kwic_ticket_service import TICKET_ROW_ID, KWICTicketService, execute_ticket_task
-from api_swedeb.api.services.result_store import ResultStore, TicketMeta, TicketStatus
+from api_swedeb.api.services.result_store import ResultStore, ResultStoreNotFound, TicketMeta, TicketStatus
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketSortBy
 from api_swedeb.schemas.sort_order import SortOrder
 
@@ -216,95 +215,185 @@ def test_execute_ticket_task_adopts_worker_ticket_and_returns_row_count():
     assert result == {"ticket_id": "ticket-1", "row_count": 7}
 
 
-def test_get_status_uses_celery_success_result():
+def test_get_status_uses_celery_success_result(tmp_path):
     service = KWICTicketService()
-    expires_at = datetime(2026, 1, 1, tzinfo=UTC)
-    result_store = MagicMock()
-    result_store.get_ticket.return_value = TicketMeta(
-        ticket_id="ticket-1",
-        status=TicketStatus.PENDING,
-        created_at=datetime(2025, 1, 1, tzinfo=UTC),
-        expires_at=expires_at,
+    result_store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
     )
     celery_result = MagicMock(state="SUCCESS", result={"row_count": 12}, info=None)
 
-    with (
-        patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
-        patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
-    ):
-        status = service.get_status("ticket-1", result_store)
+    import asyncio
 
-    assert status.status == "ready"
-    assert status.total_hits == 12
-    assert status.expires_at == expires_at
+    asyncio.run(result_store.startup())
+    try:
+        ticket = result_store.create_ticket(query_meta={"search": "demokrati"})
+        pd.DataFrame([{"node_word": "demokrati"}]).to_feather(result_store.artifact_path(ticket.ticket_id))
+
+        with (
+            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
+        ):
+            status = service.get_status(ticket.ticket_id, result_store)
+
+        assert status.status == "ready"
+        assert status.total_hits == 12
+        assert status.expires_at > ticket.expires_at
+    finally:
+        asyncio.run(result_store.shutdown())
 
 
-def test_get_status_uses_celery_failure_result_with_fallback_expiry():
+def test_get_status_celery_success_syncs_ready_state_and_releases_pending_capacity(tmp_path):
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
     service = KWICTicketService()
-    result_store = MagicMock()
-    result_store.get_ticket.return_value = None
+
+    import asyncio
+
+    asyncio.run(store.startup())
+    try:
+        first = store.create_ticket(query_meta={"search": "demokrati"})
+        store.create_ticket(query_meta={"search": "frihet"})
+        pd.DataFrame([{"node_word": "demokrati"}]).to_feather(store.artifact_path(first.ticket_id))
+        celery_result = MagicMock(state="SUCCESS", result={"row_count": 1}, info=None)
+
+        with (
+            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
+        ):
+            status = service.get_status(first.ticket_id, store)
+
+        assert status.status == TicketStatus.READY.value
+        assert status.total_hits == 1
+        assert store.require_ticket(first.ticket_id).status == TicketStatus.READY
+
+        accepted = service.submit_query(KWICQueryRequest(search="skatt"), store)
+        assert accepted.status == "pending"
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_get_status_uses_celery_failure_result_and_syncs_error_state(tmp_path):
+    service = KWICTicketService()
+    result_store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
     celery_result = MagicMock(state="FAILURE", result=None, info=RuntimeError("boom"))
 
-    with (
-        patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
-        patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
-    ):
-        before = datetime.now(UTC)
-        status = service.get_status("ticket-1", result_store)
-        after = datetime.now(UTC)
+    import asyncio
 
-    assert status.status == "error"
-    assert status.total_hits is None
-    assert "boom" in str(status.error)
-    assert before < status.expires_at <= after + timedelta(seconds=600)
+    asyncio.run(result_store.startup())
+    try:
+        ticket = result_store.create_ticket(query_meta={"search": "demokrati"})
+        with (
+            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
+        ):
+            status = service.get_status(ticket.ticket_id, result_store)
+
+        assert status.status == "error"
+        assert status.total_hits is None
+        assert "boom" in str(status.error)
+        assert result_store.require_ticket(ticket.ticket_id).status == TicketStatus.ERROR
+    finally:
+        asyncio.run(result_store.shutdown())
+
+
+def test_get_status_celery_raises_for_unknown_ticket(tmp_path):
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    service = KWICTicketService()
+
+    import asyncio
+
+    asyncio.run(store.startup())
+    try:
+        celery_result = MagicMock(state="PENDING", result=None, info=None)
+        with (
+            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
+        ):
+            with pytest.raises(ResultStoreNotFound, match="Ticket not found or expired"):
+                service.get_status("nonexistent-ticket", store)
+    finally:
+        asyncio.run(store.shutdown())
 
 
 def test_get_page_result_reads_celery_artifact(tmp_path):
     service = KWICTicketService()
-    artifact_path = Path(tmp_path) / "ticket-1.feather"
-    pd.DataFrame(
-        [
-            {
-                "left_word": "left-b",
-                "node_word": "node-b",
-                "right_word": "right-b",
-                "name": "Bob",
-                "speech_id": "i-2",
-                TICKET_ROW_ID: 1,
-            },
-            {
-                "left_word": "left-a",
-                "node_word": "node-a",
-                "right_word": "right-a",
-                "name": "Alice",
-                "speech_id": "i-1",
-                TICKET_ROW_ID: 0,
-            },
-        ]
-    ).to_feather(artifact_path)
-
-    result_store = MagicMock(max_page_size=200)
-    result_store.artifact_path.return_value = artifact_path
-    result_store.get_ticket.return_value = TicketMeta(
-        ticket_id="ticket-1",
-        status=TicketStatus.PENDING,
-        created_at=datetime(2025, 1, 1, tzinfo=UTC),
-        expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+    result_store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
     )
+
     celery_result = MagicMock(state="SUCCESS", result={"row_count": 2}, info=None)
 
-    with (
-        patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
-        patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
-    ):
-        result = service.get_page_result(
-            ticket_id="ticket-1",
-            result_store=result_store,
-            page=1,
-            page_size=50,
-            sort_by=KWICTicketSortBy.speaker_name,
-            sort_order=SortOrder.asc,
-        )
+    import asyncio
+
+    asyncio.run(result_store.startup())
+    try:
+        ticket = result_store.create_ticket(query_meta={"search": "demokrati"})
+        artifact_path = result_store.artifact_path(ticket.ticket_id)
+        pd.DataFrame(
+            [
+                {
+                    "left_word": "left-b",
+                    "node_word": "node-b",
+                    "right_word": "right-b",
+                    "name": "Bob",
+                    "speech_id": "i-2",
+                    TICKET_ROW_ID: 1,
+                },
+                {
+                    "left_word": "left-a",
+                    "node_word": "node-a",
+                    "right_word": "right-a",
+                    "name": "Alice",
+                    "speech_id": "i-1",
+                    TICKET_ROW_ID: 0,
+                },
+            ]
+        ).to_feather(artifact_path)
+
+        with (
+            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.AsyncResult", return_value=celery_result),
+        ):
+            result = service.get_page_result(
+                ticket_id=ticket.ticket_id,
+                result_store=result_store,
+                page=1,
+                page_size=50,
+                sort_by=KWICTicketSortBy.speaker_name,
+                sort_order=SortOrder.asc,
+            )
+    finally:
+        asyncio.run(result_store.shutdown())
 
     assert isinstance(result, KWICPageResult)
     assert result.status == "ready"

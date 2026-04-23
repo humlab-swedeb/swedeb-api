@@ -225,6 +225,33 @@ def test_result_store_startup_sync_and_adopt_ticket_support_worker_flow(tmp_path
         asyncio.run(store.shutdown())
 
 
+def test_result_store_sync_external_ready_releases_pending_capacity(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+
+    try:
+        first = store.create_ticket(query_meta={"search": "demokrati"})
+        store.create_ticket(query_meta={"search": "frihet"})
+        pd.DataFrame([{"node_word": "demokrati"}]).to_feather(store.artifact_path(first.ticket_id))
+
+        synced = store.sync_external_ready(first.ticket_id, total_hits=1)
+
+        assert synced.status == TicketStatus.READY
+        assert store.pending_jobs == 1
+
+        replacement = store.create_ticket(query_meta={"search": "skatt"})
+        assert replacement.status == TicketStatus.PENDING
+    finally:
+        asyncio.run(store.shutdown())
+
+
 def test_result_store_store_error_removes_artifact_and_marks_ticket_failed(tmp_path) -> None:
     store = ResultStore(
         root_dir=tmp_path,

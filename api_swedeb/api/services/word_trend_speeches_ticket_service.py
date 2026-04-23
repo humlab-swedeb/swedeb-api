@@ -147,6 +147,7 @@ class WordTrendSpeechesTicketService:
     def _get_celery_status(self, ticket_id: str, result_store: ResultStore) -> WordTrendSpeechesTicketStatus:
         from api_swedeb.celery_app import celery_app  # type: ignore[import]
 
+        ticket = result_store.require_ticket(ticket_id)
         celery_result = celery_app.AsyncResult(ticket_id)
         celery_to_status = {
             "PENDING": TicketStatus.PENDING,
@@ -156,21 +157,16 @@ class WordTrendSpeechesTicketService:
             "FAILURE": TicketStatus.ERROR,
         }
         status = celery_to_status.get(celery_result.state, TicketStatus.PENDING)
-        ticket = result_store.get_ticket(ticket_id)
-        expires_at = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
-        error: str | None = None
-        if status == TicketStatus.ERROR:
+        if status == TicketStatus.READY:
+            total_hits = None
+            if isinstance(celery_result.result, dict):
+                total_hits = celery_result.result.get("row_count")
+            ticket = result_store.sync_external_ready(ticket_id, total_hits=total_hits)
+        elif status == TicketStatus.ERROR:
             error = str(celery_result.info) if celery_result.info else "Task failed"
-        total_hits: int | None = None
-        if status == TicketStatus.READY and isinstance(celery_result.result, dict):
-            total_hits = celery_result.result.get("row_count")
-        return WordTrendSpeechesTicketStatus(
-            ticket_id=ticket_id,
-            status=status.value,
-            total_hits=total_hits,
-            error=error,
-            expires_at=expires_at,
-        )
+            ticket = result_store.sync_external_error(ticket_id, message=error)
+
+        return self._status_model(ticket)
 
     def get_page_result(
         self,

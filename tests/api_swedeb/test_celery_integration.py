@@ -98,12 +98,24 @@ def celery_app_eager():
 
     orig_eager = celery_app.conf.task_always_eager
     orig_propagate = celery_app.conf.task_eager_propagates
+    orig_broker = celery_app.conf.broker_url
+    orig_backend = celery_app.conf.result_backend
 
-    celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
+    celery_app.conf.update(
+        task_always_eager=True,
+        task_eager_propagates=True,
+        broker_url="memory://",
+        result_backend="cache+memory://",
+    )
 
     yield celery_app
 
-    celery_app.conf.update(task_always_eager=orig_eager, task_eager_propagates=orig_propagate)
+    celery_app.conf.update(
+        task_always_eager=orig_eager,
+        task_eager_propagates=orig_propagate,
+        broker_url=orig_broker,
+        result_backend=orig_backend,
+    )
 
 
 # ---------------------------------------------------------------------------
