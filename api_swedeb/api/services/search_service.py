@@ -128,9 +128,7 @@ class SearchService:
                     selections = {("speaker_id" if k == "person_id" else k): v for k, v in selections.items()}
                 speeches = filter_by_opts(speeches, selections)
 
-        speeches = speeches.copy()
-        speeches["speech_id"] = speeches.index
-        return speeches
+        return speeches.assign(speech_id=speeches.index)
 
     def get_speakers(self, selections: dict) -> pd.DataFrame:
         """Get speakers with filter options.
