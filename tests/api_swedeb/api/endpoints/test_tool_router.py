@@ -1,7 +1,9 @@
 """Unit tests for uncovered tool router endpoints."""
 
 import asyncio
+import io
 import json
+import zipfile
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.services.result_store import ResultStoreNotFound, ResultStorePendingLimitError
 from api_swedeb.api.v1.endpoints.tool_router import (
+    download_speeches_by_ticket,
     download_word_trend_speeches,
     get_kwic_results,
     get_kwic_ticket_results,
@@ -30,9 +33,11 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     submit_kwic_query,
     submit_word_trend_speeches_query,
 )
+from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.core.speech import Speech
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketStatus
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
+from api_swedeb.schemas.speeches_schema import SpeechesTicketStatus
 from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 from api_swedeb.schemas.word_trends_schema import (
@@ -756,38 +761,59 @@ class TestWordTrendSpeechesTicketEndpoints:
         wt_service.get_full_artifact.return_value = pd.DataFrame(
             [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
         )
+        download_service = DownloadService()
 
         result = asyncio.run(
             download_word_trend_speeches(
                 ticket_id="wt-ticket-1",
                 file_format="csv",
                 wt_speeches_ticket_service=wt_service,
+                download_service=download_service,
                 result_store=MagicMock(),
             )
         )
 
+        body = asyncio.run(_collect_streaming_response(result))
+
         assert isinstance(result, StreamingResponse)
-        assert result.media_type == "text/csv"
-        assert "word_trend_speeches_wt-ticket-1.csv" in result.headers["content-disposition"]
+        assert result.media_type == "application/zip"
+        assert "word_trend_speeches_wt-ticket-1.zip" in result.headers["content-disposition"]
+        with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
+            assert archive.namelist() == ["word_trend_speeches_wt-ticket-1.csv"]
+            assert (
+                archive.read("word_trend_speeches_wt-ticket-1.csv")
+                .decode("utf-8")
+                .startswith("year,name,party_abbrev,document_name")
+            )
 
     def test_download_returns_json_streaming_response_when_requested(self):
         wt_service = MagicMock()
         wt_service.get_full_artifact.return_value = pd.DataFrame(
             [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
         )
+        download_service = DownloadService()
 
         result = asyncio.run(
             download_word_trend_speeches(
                 ticket_id="wt-ticket-1",
                 file_format="json",
                 wt_speeches_ticket_service=wt_service,
+                download_service=download_service,
                 result_store=MagicMock(),
             )
         )
 
+        body = asyncio.run(_collect_streaming_response(result))
+
         assert isinstance(result, StreamingResponse)
-        assert result.media_type == "application/json"
-        assert "word_trend_speeches_wt-ticket-1.json" in result.headers["content-disposition"]
+        assert result.media_type == "application/zip"
+        assert "word_trend_speeches_wt-ticket-1.zip" in result.headers["content-disposition"]
+        with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
+            assert archive.namelist() == ["word_trend_speeches_wt-ticket-1.json"]
+            payload = json.loads(archive.read("word_trend_speeches_wt-ticket-1.json").decode("utf-8"))
+            assert payload == [
+                {"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}
+            ]
 
     def test_download_returns_404_for_missing_ticket(self):
         wt_service = MagicMock()
@@ -799,8 +825,71 @@ class TestWordTrendSpeechesTicketEndpoints:
                     ticket_id="wt-ticket-1",
                     file_format="csv",
                     wt_speeches_ticket_service=wt_service,
+                    download_service=MagicMock(),
                     result_store=MagicMock(),
                 )
             )
 
         assert excinfo.value.status_code == 404
+
+    def test_download_speeches_by_ticket_returns_zip_with_csv_file(self):
+        download_service = DownloadService()
+        result_store = MagicMock()
+        result_store.require_ticket.return_value = type(
+            "Ticket",
+            (),
+            {"status": "ready", "error": None},
+        )()
+        result_store.artifact_path.return_value = MagicMock(exists=MagicMock(return_value=True))
+
+        with patch("pandas.read_feather") as read_feather:
+            read_feather.return_value = pd.DataFrame(
+                [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+            )
+            result = asyncio.run(
+                download_speeches_by_ticket(
+                    ticket_id="speech-ticket-1",
+                    file_format="csv",
+                    download_service=download_service,
+                    result_store=result_store,
+                )
+            )
+
+        body = asyncio.run(_collect_streaming_response(result))
+
+        assert isinstance(result, StreamingResponse)
+        assert result.media_type == "application/zip"
+        assert "speeches_speech-ticket-1.zip" in result.headers["content-disposition"]
+        with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
+            assert archive.namelist() == ["speeches_speech-ticket-1.csv"]
+
+    def test_download_speeches_by_ticket_returns_zip_with_json_file(self):
+        download_service = DownloadService()
+        result_store = MagicMock()
+        result_store.require_ticket.return_value = type(
+            "Ticket",
+            (),
+            {"status": "ready", "error": None},
+        )()
+        result_store.artifact_path.return_value = MagicMock(exists=MagicMock(return_value=True))
+
+        with patch("pandas.read_feather") as read_feather:
+            read_feather.return_value = pd.DataFrame(
+                [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+            )
+            result = asyncio.run(
+                download_speeches_by_ticket(
+                    ticket_id="speech-ticket-1",
+                    file_format="json",
+                    download_service=download_service,
+                    result_store=result_store,
+                )
+            )
+
+        body = asyncio.run(_collect_streaming_response(result))
+
+        assert isinstance(result, StreamingResponse)
+        assert result.media_type == "application/zip"
+        assert "speeches_speech-ticket-1.zip" in result.headers["content-disposition"]
+        with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
+            assert archive.namelist() == ["speeches_speech-ticket-1.json"]

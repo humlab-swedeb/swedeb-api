@@ -206,6 +206,35 @@ class DownloadService:
     def __init__(self, compression_strategy: CompressionStrategy | None = None) -> None:
         self.compression_strategy = compression_strategy or ZipCompressionStrategy()
 
+    def create_single_file_zip_stream(
+        self,
+        *,
+        archive_filename: str,
+        content: bytes,
+    ) -> Callable[[], Generator[bytes, None, None]]:
+        """Return a generator function that yields a ZIP archive with one file."""
+
+        def _generate() -> Generator[bytes, None, None]:
+            writer = _StreamingBuffer()
+
+            with zipfile.ZipFile(
+                writer,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=1,
+                allowZip64=True,
+            ) as zf:
+                zf.writestr(archive_filename, content)
+                chunk = writer.pop()
+                if chunk:
+                    yield chunk
+
+            chunk = writer.pop()
+            if chunk:
+                yield chunk
+
+        return _generate
+
     def create_stream(
         self,
         search_service: SearchService,

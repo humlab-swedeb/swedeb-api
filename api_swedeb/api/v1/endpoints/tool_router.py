@@ -322,31 +322,29 @@ async def download_word_trend_speeches(
     ticket_id: str,
     file_format: str = Query("csv", alias="format", description="Download format: csv or json"),
     wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
+    download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> StreamingResponse:
     """Download the full speech list from a ready word trend speeches ticket."""
-    import io
-
     try:
         data = wt_speeches_ticket_service.get_full_artifact(ticket_id, result_store)
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
 
-    if file_format == "json":
-        content = data.to_json(orient="records", force_ascii=False)
-        return StreamingResponse(
-            iter([content]),
-            media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.json"'},
-        )
+    inner_filename = f"word_trend_speeches_{ticket_id}.{file_format}"
 
-    # Default: CSV
-    buf = io.StringIO()
-    data.to_csv(buf, index=False)
+    if file_format == "json":
+        content = data.to_json(orient="records", force_ascii=False).encode("utf-8")
+    else:
+        content = data.to_csv(index=False).encode("utf-8")
+
     return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.csv"'},
+        download_service.create_single_file_zip_stream(
+            archive_filename=inner_filename,
+            content=content,
+        )(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.zip"'},
     )
 
 
@@ -551,11 +549,10 @@ async def get_speeches_page(
 async def download_speeches_by_ticket(
     ticket_id: str,
     file_format: str = Query("csv", alias="format", description="Download format: csv or json"),
+    download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> StreamingResponse:
     """Download the full speech list from a ready speeches ticket."""
-    import io
-
     try:
         ticket: TicketMeta = result_store.require_ticket(ticket_id)
     except ResultStoreNotFound as exc:
@@ -577,21 +574,20 @@ async def download_speeches_by_ticket(
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 
-    if file_format == "json":
-        content = data.to_json(orient="records", force_ascii=False)
-        return StreamingResponse(
-            iter([content]),
-            media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.json"'},
-        )
+    inner_filename = f"speeches_{ticket_id}.{file_format}"
 
-    # Default: CSV
-    buf = io.StringIO()
-    data.to_csv(buf, index=False)
+    if file_format == "json":
+        content = data.to_json(orient="records", force_ascii=False).encode("utf-8")
+    else:
+        content = data.to_csv(index=False).encode("utf-8")
+
     return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.csv"'},
+        download_service.create_single_file_zip_stream(
+            archive_filename=inner_filename,
+            content=content,
+        )(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.zip"'},
     )
 
 

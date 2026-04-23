@@ -91,6 +91,20 @@ def test_create_stream_from_speech_ids_uses_given_order_and_manifest():
         assert manifest == {"ticket_id": "ticket-1", "speech_count": 2}
 
 
+def test_create_single_file_zip_stream_wraps_content_in_zip_archive():
+    payload = b'{"hello": "world"}'
+
+    stream = DownloadService().create_single_file_zip_stream(
+        archive_filename="speeches_ticket-1.json",
+        content=payload,
+    )
+    zip_bytes = b"".join(stream())
+
+    with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as archive:
+        assert archive.namelist() == ["speeches_ticket-1.json"]
+        assert archive.read("speeches_ticket-1.json") == payload
+
+
 def test_tar_gz_strategy_streams_plain_text_entries():
     search_service = MagicMock()
     commons = MagicMock()
