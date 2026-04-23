@@ -28,6 +28,7 @@ def test_get_kwic_builds_opts_and_delegates_to_kwic_with_decode():
         patch("api_swedeb.api.services.kwic_service.kwic_request_to_CQP_opts", return_value=opts) as to_opts,
         patch("api_swedeb.api.services.kwic_service.simple.kwic_with_decode", return_value=expected) as kwic_fn,
         patch("api_swedeb.api.services.kwic_service.ConfigValue.resolve", side_effect=[True, 4]),
+        patch("api_swedeb.api.services.kwic_service.mp.current_process", return_value=MagicMock(daemon=False)),
     ):
         result = service.get_kwic(
             corpus=corpus,
@@ -53,4 +54,32 @@ def test_get_kwic_builds_opts_and_delegates_to_kwic_with_decode():
         use_multiprocessing=True,
         num_processes=4,
     )
+    assert result is expected
+
+
+def test_get_kwic_disables_nested_multiprocessing_in_daemon_process():
+    loader = MagicMock()
+    loader.prebuilt_speech_index = pd.DataFrame({"name": ["Alice"]}, index=pd.Index(["i-1"], name="speech_id"))
+    service = KWICService(loader=loader)
+    commons = CommonQueryParams(from_year=1970, to_year=1971)
+    corpus = MagicMock()
+    opts = [{"cqp": "[]"}]
+    expected = pd.DataFrame({"speech_id": ["i-1"], "node_word": ["jobb"]})
+
+    with (
+        patch("api_swedeb.api.services.kwic_service.kwic_request_to_CQP_opts", return_value=opts),
+        patch("api_swedeb.api.services.kwic_service.simple.kwic_with_decode", return_value=expected) as kwic_fn,
+        patch("api_swedeb.api.services.kwic_service.ConfigValue.resolve", side_effect=[True, 4]),
+        patch("api_swedeb.api.services.kwic_service.mp.current_process", return_value=MagicMock(daemon=True)),
+    ):
+        result = service.get_kwic(
+            corpus=corpus,
+            commons=commons,
+            keywords="jobb",
+            lemmatized=False,
+            use_multiprocessing=None,
+        )
+
+    assert kwic_fn.call_args.kwargs["use_multiprocessing"] is False
+    assert kwic_fn.call_args.kwargs["num_processes"] == 4
     assert result is expected

@@ -1,7 +1,10 @@
 """KWIC (Keyword In Context) analysis service for parliamentary speech data."""
 
+import multiprocessing as mp
+
 import ccc
 import pandas as pd
+from loguru import logger
 
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.corpus_loader import CorpusLoader
@@ -60,6 +63,14 @@ class KWICService:
         """
 
         opts = kwic_request_to_CQP_opts(commons, keywords, lemmatized)
+        resolved_use_multiprocessing = (
+            use_multiprocessing
+            if use_multiprocessing is not None
+            else bool(ConfigValue("kwic.use_multiprocessing", default=False).resolve())
+        )
+        if resolved_use_multiprocessing and mp.current_process().daemon:
+            logger.info("Disabling KWIC multiprocessing inside daemon worker process")
+            resolved_use_multiprocessing = False
 
         data: pd.DataFrame = simple.kwic_with_decode(
             corpus,
@@ -69,11 +80,7 @@ class KWICService:
             words_after=words_after,
             p_show=p_show,
             cut_off=cut_off,
-            use_multiprocessing=(
-                use_multiprocessing
-                if use_multiprocessing is not None
-                else bool(ConfigValue("kwic.use_multiprocessing", default=False).resolve())
-            ),
+            use_multiprocessing=resolved_use_multiprocessing,
             num_processes=n_processes or ConfigValue("kwic.num_processes", default=8).resolve(),
         )
 
