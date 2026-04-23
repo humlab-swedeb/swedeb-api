@@ -112,7 +112,7 @@ test_http_connectivity() {
 }
 
 test_github_download() {
-    local url="https://github.com/humlab-swedeb/swedeb_frontend/releases/download/staging/frontend-staging.tar.gz"
+    local url="https://github.com/humlab-swedeb/swedeb_frontend/releases/download/frontend-staging/frontend-staging.tar.gz"
     
     echo -n "Testing GitHub tarball download... "
     if curl -L --fail --connect-timeout 10 --max-time 30 -o /dev/null "$url" 2>/dev/null; then

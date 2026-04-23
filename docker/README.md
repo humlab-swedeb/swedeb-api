@@ -41,7 +41,7 @@ At runtime:
 - [main.py](main.py) exposes the FastAPI app for `uvicorn`.
 
 
-**Note:** Frontend is bundled into the image during build. This eliminates runtime download complexity, works with ReadOnly containers, and ensures consistent deployments. Frontend version is controlled via the `FRONTEND_VERSION` build argument (defaults to `staging`).
+**Note:** Frontend is bundled into the image during build. This eliminates runtime download complexity, works with ReadOnly containers, and ensures consistent deployments. Frontend version is controlled via the `FRONTEND_VERSION` build argument (defaults to `staging`). For compatibility, `FRONTEND_VERSION=staging|test` now resolves to the frontend release tags `frontend-staging|frontend-test` while keeping the asset names `frontend-staging.tar.gz|frontend-test.tar.gz`.
 
 ## GitHub Actions Workflow
 
