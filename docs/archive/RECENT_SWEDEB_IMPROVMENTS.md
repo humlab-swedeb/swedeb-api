@@ -2,42 +2,32 @@
 
 Snapshot date: 2026-04-23
 
-This document combines the recent improvement summaries from `swedeb-api` and `swedeb_frontend` into one cross-repository overview.
+This document combines the recent improvement in the `swedeb-api` and `swedeb_frontend` repositories.
 
 ## Executive Summary
 
-Over the last couple of weeks, the main change across Swedeb has been a move from large synchronous result delivery to ticket-based, paginated workflows for expensive searches. The backend introduced server-side result caching, async ticket execution, paged KWIC and word-trend speech retrieval, more consistent speech-download handling, and follow-up worker and staging stability fixes. The frontend was updated to consume those flows through server-side pagination, improved download behavior, and more explicit handling of loading, expiry, and error states.
+Over the last couple of weeks, the main change in Swedeb has been a move from large synchronous API calls to server-side, ticket-based, and paginated workflow. The backend now has server-side result caching, async ticket execution, paged KWIC and word-trend speech retrieval, more consistent speech-download handling, and follow-up worker and staging stability fixes. The frontend has been updated to consume those flows through server-side pagination, improved download that utilizes server-side caching, and more explicit handling of loading, expiry, and error states.
 
 Performance was the second major theme. In `swedeb-api`, word-trend execution for common-word searches was reduced substantially, DTM grouping and corpus-loading behavior were optimized, and unused Penelope/DTM code was removed or folded into the active runtime. In `swedeb_frontend`, the word-trends page was reworked to use parallel requests and progressive rendering, reducing perceived wait time and making the page usable earlier during long-running searches.
 
-The codebase was also cleaned up structurally. The backend moved further toward explicit services, thinner routers, clearer dependency wiring, and a cleaner split between active and legacy paths. The frontend simplified store/component responsibilities, consolidated ticket-aware table behavior, and cleaned up analytics and build workflow logic. In parallel, both repositories gained stronger operational support through release and staging work, and the backend added a much broader automated test surface to support the architectural changes.
+The codebase has been cleaned up structurally. The backend has moved further toward explicit services, thinner routers, clearer dependency wiring, and a cleaner split between active and legacy paths. The frontend simplified store/component responsibilities, consolidated ticket-aware table behavior, and cleaned up analytics and build workflow logic. In parallel, both repositories have better CI/CD release and staging workflows, and the backend has much improved automated test code coverage.
 
-## Source Basis
 
-This summary is based on:
-
-1. `RECENT_IMPROVEMENTS.md` in `swedeb-api`
-2. `RECENT_IMPROVEMENTS.md` in `swedeb_frontend`
-3. The underlying evidence already compiled for those documents:
-   `CHANGELOG.md`, `origin/main..origin/staging` diffs, recent commit history, and relevant GitHub issues and pull requests
-
-As noted in the underlying summaries, the changelogs do not yet reflect most of the April 2026 work. The branch diffs and issue/PR history therefore provide the more accurate view for the last couple of weeks.
-
-## Combined View
+## Detailes
 
 ### 1. Search and Result Delivery
 
-The largest shared change was the introduction of ticket-based search workflows for expensive result sets.
+The largest change is the introduction of **a ticket-based search workflows** across all the tools except n-grams.
 
-On the backend, this included:
+On the backend, this includes:
 
 - paged KWIC results via a server-side result cache
 - async, paged word-trend speeches retrieval
 - async speeches queries with page-based retrieval
 - reuse of cached speech IDs and manifest metadata when downloading from ticketed results
-- ZIP-based delivery consistency for ticketed speech exports
+- ZIP-based delivery for ticketed speech exports
 
-On the frontend, this included:
+On the frontend, this includes
 
 - KWIC ticket submission, polling, and server-side pagination
 - ticket-based speeches paging and downloads
@@ -45,7 +35,7 @@ On the frontend, this included:
 - better handling of ticket expiry during pagination
 - improved loading and empty-state transitions in ticketed result tables
 
-The main system-level outcome is that the browser no longer needs to materialize and sort large result sets locally for these tools.
+The main system-level outcome is that the browser **no longer needs to store or handle large result sets locally** for these tools.
 
 ### 2. Performance and Scalability
 
@@ -53,17 +43,24 @@ The next major area was performance work across both the backend runtime and the
 
 Backend improvements included:
 
-- faster word-trend execution for small word lists by slicing the vector space before grouping
-- DTM grouping improvements that reduced allocation churn and improved large-scale grouping performance
-- corpus-loading improvements that shifted the main gain from storage-format experiments to eager loading at startup
+- added a new and faster indexing storage structure for speech data
+  - added a new pre-computed speech index with decoded metadata
+  - switched to pre-computed speech storage (indexed feather files - previouly zipped JSON files)
+- added a serverside ticket/working implemented using Celery and Redis frameworks
+- faster word-trend execution by slicing the vector space (DTM) before grouping
+- DTM grouping grouping optimizations (SciPy improvements)
+- changed default Pandas storage format to Pyarrow instead of Numpy.
+- improved corpus-loading (preloading) based on benchmarking 
 - KWIC and worker stability improvements aimed at long-running and concurrent request behavior
 
 Frontend improvements included:
 
-- parallel API requests on the Word Trends page
-- progressive rendering so chart/table content can appear before speeches finish loading
+- parallel API requests on the Word Trends page - don't wait for all data before display
+- browser no longer fetches data locally - it's fetched on demand via server side paging
+- all downloads are now stream server side
+- faster rendering so chart/table content can appear before speeches finish loading
 - split loading states by tab instead of blocking the whole view
-- cleanup of chart reactivity and rendering delays
+- ...
 
 The combined effect is both lower backend processing time and better perceived responsiveness in the UI.
 
