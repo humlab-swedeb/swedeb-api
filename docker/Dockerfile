@@ -36,9 +36,13 @@ RUN mkdir -p public && \
 ARG FRONTEND_VERSION=staging
 RUN set -ex; \
     if [ -n "${FRONTEND_VERSION}" ]; then \
-        echo "Downloading frontend version: ${FRONTEND_VERSION}"; \
+        case "${FRONTEND_VERSION}" in \
+            staging|test) FRONTEND_RELEASE_TAG="frontend-${FRONTEND_VERSION}" ;; \
+            *) FRONTEND_RELEASE_TAG="${FRONTEND_VERSION}" ;; \
+        esac; \
+        echo "Downloading frontend version: ${FRONTEND_VERSION} from release tag: ${FRONTEND_RELEASE_TAG}"; \
         wget -O /tmp/frontend.tar.gz \
-            "https://github.com/humlab-swedeb/swedeb_frontend/releases/download/${FRONTEND_VERSION}/frontend-${FRONTEND_VERSION}.tar.gz"; \
+            "https://github.com/humlab-swedeb/swedeb_frontend/releases/download/${FRONTEND_RELEASE_TAG}/frontend-${FRONTEND_VERSION}.tar.gz"; \
         tar -xzf /tmp/frontend.tar.gz -C /app/public; \
         rm /tmp/frontend.tar.gz; \
         echo "${FRONTEND_VERSION}" > /app/public/.frontend_version; \
