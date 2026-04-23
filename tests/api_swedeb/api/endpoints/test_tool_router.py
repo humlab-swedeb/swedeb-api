@@ -12,6 +12,7 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.result_store import ResultStoreNotFound, ResultStorePendingLimitError
 from api_swedeb.api.v1.endpoints.tool_router import (
     download_speeches_by_ticket,
@@ -33,11 +34,9 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     submit_kwic_query,
     submit_word_trend_speeches_query,
 )
-from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.core.speech import Speech
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketStatus
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
-from api_swedeb.schemas.speeches_schema import SpeechesTicketStatus
 from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 from api_swedeb.schemas.word_trends_schema import (
