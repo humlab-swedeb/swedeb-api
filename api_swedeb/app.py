@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from api_swedeb.api.container import AppContainer
@@ -52,9 +53,6 @@ def create_app(*, config_source: str | None = DEFAULT_CONFIG_SOURCE, static_dir:
 
     app = FastAPI(lifespan=lifespan)
 
-    if static_dir is not None:
-        app.mount("/public", StaticFiles(directory=static_dir), name="public")
-
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ConfigValue("fastapi.origins").resolve(),
@@ -65,5 +63,15 @@ def create_app(*, config_source: str | None = DEFAULT_CONFIG_SOURCE, static_dir:
 
     app.include_router(tool_router.router)
     app.include_router(metadata_router.router)
+
+    @app.get("/public/index.html", include_in_schema=False)
+    async def redirect_legacy_entrypoint():
+        """Redirect old /public/index.html bookmarks to the root URL."""
+        return RedirectResponse(url="/", status_code=301)
+
+    if static_dir is not None:
+        # Mounted last so API routes take precedence.
+        # html=True enables SPA fallback: unknown paths return index.html (required for history-mode routing).
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
     return app
