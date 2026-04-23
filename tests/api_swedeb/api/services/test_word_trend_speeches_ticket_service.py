@@ -198,7 +198,10 @@ def test_execute_word_trend_speeches_ticket_task_raises_when_worker_ticket_is_er
             "api_swedeb.api.services.word_trend_speeches_ticket_service._get_worker_word_trends_service",
             return_value=MagicMock(),
         ),
-        patch("api_swedeb.api.services.word_trend_speeches_ticket_service._get_worker_result_store", return_value=worker_store),
+        patch(
+            "api_swedeb.api.services.word_trend_speeches_ticket_service._get_worker_result_store",
+            return_value=worker_store,
+        ),
         patch.object(WordTrendSpeechesTicketService, "execute_ticket"),
     ):
         with pytest.raises(RuntimeError, match="Failed to generate word trend speeches results"):

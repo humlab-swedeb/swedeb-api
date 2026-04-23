@@ -11,7 +11,6 @@ from typing import Any
 import ccc
 import pandas as pd
 from loguru import logger
-import pandas as pd
 
 from api_swedeb.api.params import CommonQueryParams, build_common_query_params, build_filter_opts
 from api_swedeb.api.services.kwic_service import KWICService

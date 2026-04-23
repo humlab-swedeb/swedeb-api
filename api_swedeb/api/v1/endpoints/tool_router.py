@@ -24,7 +24,13 @@ from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import DEFAULT_PAGE_SIZE, KWICTicketService
 from api_swedeb.api.services.ngrams_service import NGramsService
-from api_swedeb.api.services.result_store import ResultStore, ResultStoreNotFound, ResultStorePendingLimitError, TicketMeta, TicketStatus
+from api_swedeb.api.services.result_store import (
+    ResultStore,
+    ResultStoreNotFound,
+    ResultStorePendingLimitError,
+    TicketMeta,
+    TicketStatus,
+)
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trend_speeches_ticket_service import DEFAULT_PAGE_SIZE as WT_DEFAULT_PAGE_SIZE
 from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
@@ -32,7 +38,11 @@ from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.mappers.kwic import kwic_to_api_model
 from api_swedeb.mappers.speeches import speeches_to_api_model
-from api_swedeb.mappers.word_trends import search_hits_to_api_model, word_trend_speeches_to_api_model, word_trends_to_api_model
+from api_swedeb.mappers.word_trends import (
+    search_hits_to_api_model,
+    word_trend_speeches_to_api_model,
+    word_trends_to_api_model,
+)
 from api_swedeb.schemas.kwic_schema import (
     KeywordInContextResult,
     KWICPageResult,
