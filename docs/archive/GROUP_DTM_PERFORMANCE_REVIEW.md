@@ -237,7 +237,7 @@ uv run pytest tests/integration/test_word_trends.py -v
 
 1. **`api_swedeb/core/dtm/corpus_optimized.py`** - Optimized implementation
 2. **`tests/profiling/benchmark_group_dtm.py`** - Benchmark script
-3. **`docs/GROUP_DTM_PERFORMANCE_REVIEW.md`** - This document
+3. **`docs/archive/GROUP_DTM_PERFORMANCE_REVIEW.md`** - This document
 
 ---
 
