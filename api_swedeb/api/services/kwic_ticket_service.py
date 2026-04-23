@@ -87,9 +87,14 @@ def execute_ticket_task(ticket_id: str, request_data: dict, cwb_opts: dict) -> d
         kwic_service=kwic_service,
         result_store=result_store,
     )
+    ticket: TicketMeta = result_store.require_ticket(ticket_id)
+    if ticket.status == TicketStatus.ERROR:
+        raise RuntimeError(ticket.error or "Failed to generate KWIC results")
+    if ticket.status != TicketStatus.READY:
+        raise RuntimeError(f"KWIC ticket {ticket_id} did not reach ready state")
+
     # Return a small summary so Celery / Redis can report row_count
-    ticket = result_store.get_ticket(ticket_id)
-    row_count = ticket.total_hits if ticket is not None else 0
+    row_count: int = ticket.total_hits if ticket.total_hits is not None else 0
     return {"ticket_id": ticket_id, "row_count": row_count}
 
 

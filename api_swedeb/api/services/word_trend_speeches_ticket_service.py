@@ -79,8 +79,13 @@ def execute_word_trend_speeches_ticket_task(ticket_id: str, request_data: dict) 
         word_trends_service=word_trends_service,
         result_store=result_store,
     )
-    ticket = result_store.get_ticket(ticket_id)
-    row_count = ticket.total_hits if ticket is not None else 0
+    ticket: TicketMeta = result_store.require_ticket(ticket_id)
+    if ticket.status == TicketStatus.ERROR:
+        raise RuntimeError(ticket.error or "Failed to generate word trend speeches results")
+    if ticket.status != TicketStatus.READY:
+        raise RuntimeError(f"Word trend speeches ticket {ticket_id} did not reach ready state")
+
+    row_count = ticket.total_hits if ticket.total_hits is not None else 0
     return {"ticket_id": ticket_id, "row_count": row_count}
 
 
