@@ -42,7 +42,7 @@ class KWICService:
         words_before: int = 3,
         words_after: int = 3,
         p_show: str = "word",
-        cut_off: int = 200000,
+        cut_off: int | None = 200000,
         use_multiprocessing: bool | None = None,  # None = read from config
         n_processes: int | None = None,
     ) -> pd.DataFrame:

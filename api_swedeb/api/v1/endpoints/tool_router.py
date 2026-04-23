@@ -175,7 +175,7 @@ async def get_kwic_results(
     lemmatized: bool = Query(True, description="Whether to search for lemmatized version of search string"),
     words_before: int = Query(2, description="Number of tokens before the search word(s)"),
     words_after: int = Query(2, description="Number of tokens after the search word(s)"),
-    cut_off: int = Query(200000, description="Maximum number of hits to return"),
+    cut_off: int | None = Query(200000, description="Maximum number of hits to return, or null for no limit"),
     corpus: Any = Depends(get_cwb_corpus),
     kwic_service: KWICService = Depends(get_kwic_service),
 ) -> KeywordInContextResult:
