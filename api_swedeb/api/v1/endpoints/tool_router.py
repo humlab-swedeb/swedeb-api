@@ -332,6 +332,12 @@ async def download_word_trend_speeches(
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
 
+    ticket_meta: dict | None = None
+    try:
+        ticket_meta = result_store.require_ticket(ticket_id).manifest_meta
+    except Exception:  # noqa: BLE001 ; # pylint: disable=broad-except
+        pass
+
     inner_filename = f"word_trend_speeches_{ticket_id}.{file_format}"
 
     if file_format == "json":
@@ -339,10 +345,15 @@ async def download_word_trend_speeches(
     else:
         content = data.to_csv(index=False).encode("utf-8")
 
+    manifest = download_service.build_download_manifest(
+        ticket_meta={**(ticket_meta or {}), "file_format": file_format, "row_count": len(data)}
+    )
+
     return StreamingResponse(
         download_service.create_single_file_zip_stream(
             archive_filename=inner_filename,
             content=content,
+            manifest=manifest,
         )(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.zip"'},
@@ -577,10 +588,20 @@ async def download_speeches_by_ticket(
     else:
         content = data.to_csv(index=False).encode("utf-8")
 
+    manifest = download_service.build_download_manifest(
+        ticket_meta={
+            **(ticket.manifest_meta or {}),
+            "file_format": file_format,
+            "total_hits": ticket.total_hits,
+            "expires_at": ticket.expires_at.isoformat() if ticket.expires_at else None,
+        }
+    )
+
     return StreamingResponse(
         download_service.create_single_file_zip_stream(
             archive_filename=inner_filename,
             content=content,
+            manifest=manifest,
         )(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.zip"'},
