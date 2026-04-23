@@ -20,7 +20,7 @@ ContainerName=swedeb-api-staging
 Network=swedeb-staging-app.network
 
 # Ports MUST be hard-coded. This maps host port 8098 to container port 8098.
-PublishPort=127.0.0.1:8098:8092
+PublishPort=127.0.0.1:8098:8098
 
 # Volume paths MUST be hard-coded and absolute.
 # We use the %h specifier to correctly point to /srv/swedeb_staging.
