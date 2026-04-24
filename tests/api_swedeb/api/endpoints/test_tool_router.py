@@ -134,7 +134,7 @@ class TestToolRouterEndpoints:
         request = KWICQueryRequest(search="demokrati")
         background_tasks = BackgroundTasks()
         kwic_ticket_service = MagicMock()
-        kwic_ticket_service.submit_query.side_effect = ResultStorePendingLimitError("Too many pending KWIC jobs")
+        kwic_ticket_service.submit_query.side_effect = ResultStorePendingLimitError("Too many pending ticket jobs")
         result_store = MagicMock(cleanup_interval_seconds=45)
 
         with pytest.raises(HTTPException) as excinfo:

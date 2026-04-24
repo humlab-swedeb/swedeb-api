@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import suppress
 from dataclasses import dataclass, field, replace
@@ -69,6 +70,8 @@ class ResultStore:
         max_artifact_bytes: int,
         max_pending_jobs: int,
         max_page_size: int,
+        artifact_cache_max_entries: int = 16,
+        sorted_positions_cache_max_entries: int = 64,
         ticket_state_store: TicketStateStore | None = None,
     ) -> None:
         self.root_dir = Path(root_dir)
@@ -77,13 +80,17 @@ class ResultStore:
         self.max_artifact_bytes = max_artifact_bytes
         self.max_pending_jobs = max_pending_jobs
         self.max_page_size = max_page_size
+        self.artifact_cache_max_entries = max(0, artifact_cache_max_entries)
+        self.sorted_positions_cache_max_entries = max(0, sorted_positions_cache_max_entries)
         self.ticket_state_store = ticket_state_store
         self._lock = Lock()
         self._started = False
         self._tickets: dict[str, TicketMeta] = {}
         self._cleanup_task: asyncio.Task[None] | None = None
-        self._artifact_cache: dict[str, pd.DataFrame] = {}
-        self._sorted_positions_cache: dict[tuple[str, tuple[str, ...], tuple[bool, ...]], tuple[int, ...]] = {}
+        self._artifact_cache: OrderedDict[str, pd.DataFrame] = OrderedDict()
+        self._sorted_positions_cache: OrderedDict[
+            tuple[str, tuple[str, ...], tuple[bool, ...]], tuple[int, ...]
+        ] = OrderedDict()
 
     @classmethod
     def from_config(cls) -> "ResultStore":
@@ -94,6 +101,10 @@ class ResultStore:
             max_artifact_bytes=ConfigValue("cache.max_artifact_bytes").resolve(),
             max_pending_jobs=ConfigValue("cache.max_pending_jobs").resolve(),
             max_page_size=ConfigValue("cache.max_page_size").resolve(),
+            artifact_cache_max_entries=ConfigValue("cache.artifact_cache_max_entries", default=16).resolve(),
+            sorted_positions_cache_max_entries=ConfigValue(
+                "cache.sorted_positions_cache_max_entries", default=64
+            ).resolve(),
             ticket_state_store=TicketStateStore.from_config(),
         )
 
@@ -165,7 +176,7 @@ class ResultStore:
         with self._lock, self._state_lock():
             self._ensure_started_locked()
             if self._pending_jobs_locked() >= self.max_pending_jobs:
-                raise ResultStorePendingLimitError("Too many pending KWIC jobs")
+                raise ResultStorePendingLimitError("Too many pending ticket jobs")
 
             now = datetime.now(UTC)
             ticket = TicketMeta(
@@ -288,6 +299,7 @@ class ResultStore:
         with self._lock:
             cached = self._artifact_cache.get(ticket_id)
             if cached is not None:
+                self._artifact_cache.move_to_end(ticket_id)
                 return cached
 
         try:
@@ -300,7 +312,7 @@ class ResultStore:
             raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
 
         with self._lock:
-            self._artifact_cache[ticket_id] = artifact
+            self._cache_artifact_locked(ticket_id, artifact)
         return artifact
 
     def get_sorted_positions(
@@ -316,11 +328,12 @@ class ResultStore:
         with self._lock:
             cached = self._sorted_positions_cache.get(cache_key)
             if cached is not None:
+                self._sorted_positions_cache.move_to_end(cache_key)
                 return cached
 
         positions = self._build_sorted_positions(data, sort_columns=sort_columns, ascending=ascending)
         with self._lock:
-            self._sorted_positions_cache[cache_key] = positions
+            self._cache_sorted_positions_locked(cache_key, positions)
         return positions
 
     def store_ready(
@@ -491,6 +504,26 @@ class ResultStore:
         cache_keys = [cache_key for cache_key in self._sorted_positions_cache if cache_key[0] == ticket_id]
         for cache_key in cache_keys:
             self._sorted_positions_cache.pop(cache_key, None)
+
+    def _cache_artifact_locked(self, ticket_id: str, artifact: pd.DataFrame) -> None:
+        if self.artifact_cache_max_entries <= 0:
+            return
+        self._artifact_cache[ticket_id] = artifact
+        self._artifact_cache.move_to_end(ticket_id)
+        while len(self._artifact_cache) > self.artifact_cache_max_entries:
+            self._artifact_cache.popitem(last=False)
+
+    def _cache_sorted_positions_locked(
+        self,
+        cache_key: tuple[str, tuple[str, ...], tuple[bool, ...]],
+        positions: tuple[int, ...],
+    ) -> None:
+        if self.sorted_positions_cache_max_entries <= 0:
+            return
+        self._sorted_positions_cache[cache_key] = positions
+        self._sorted_positions_cache.move_to_end(cache_key)
+        while len(self._sorted_positions_cache) > self.sorted_positions_cache_max_entries:
+            self._sorted_positions_cache.popitem(last=False)
 
     def _list_tickets_locked(self) -> list[TicketMeta]:
         if self.ticket_state_store is None:

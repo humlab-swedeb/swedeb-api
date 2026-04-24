@@ -38,7 +38,7 @@ This change request does not cover:
 
 The current routing keeps speeches on the default queue.
 
-In [api_swedeb/celery_app.py](/home/roger/source/swedeb/swedeb-api/api_swedeb/celery_app.py), both `api_swedeb.execute_word_trend_speeches_ticket` and `api_swedeb.execute_speeches_ticket` route to the default queue, while KWIC continues to use the separate multiprocessing queue.
+In [api_swedeb/celery_app.py](../../api_swedeb/celery_app.py), both `api_swedeb.execute_word_trend_speeches_ticket` and `api_swedeb.execute_speeches_ticket` route to the default queue, while KWIC continues to use the separate multiprocessing queue.
 
 This is the recommended state for Phase 1 and Phase 2 because it keeps worker routing simple while the repository finishes rollout-focused validation.
 

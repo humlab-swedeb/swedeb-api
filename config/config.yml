@@ -91,6 +91,8 @@ cache:
   max_pending_jobs: 2
   root_dir: /tmp/swedeb-kwic-cache
   max_page_size: 200
+  artifact_cache_max_entries: 16
+  sorted_positions_cache_max_entries: 64
   ticket_poll_retry_after_seconds: 2
   ticket_state_backend_url: redis://redis:6379/0
   ticket_state_prefix: swedeb:ticket-state

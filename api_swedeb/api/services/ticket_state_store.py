@@ -9,6 +9,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, cast
 
+from loguru import logger
 from redis import Redis
 from redis.exceptions import ResponseError
 
@@ -61,7 +62,8 @@ class TicketStateStore:
             with lock:
                 yield
         except ResponseError:
-            yield
+            logger.exception("Redis lock failed for ticket state store key {}", self._key("lock"))
+            raise
 
     def get_ticket(self, ticket_id: str) -> dict[str, Any] | None:
         raw = self._client.get(self._ticket_key(ticket_id))

@@ -139,69 +139,70 @@ def _summary(values: list[float]) -> dict[str, float | None]:
 @contextmanager
 def _run_server(*, config_path: Path, workers: int, query_delay_ms: int, max_pending_jobs: int):
     http_port = _free_port()
-    tmp_root = Path(tempfile.mkdtemp(prefix=f"ticket-loadtest-w{workers}-"))
-    root_dir = tmp_root / "cache"
-    root_dir.mkdir(parents=True, exist_ok=True)
-    state_file = tmp_root / "state.json"
-    block_file = tmp_root / "blockfile"
+    with tempfile.TemporaryDirectory(prefix=f"ticket-loadtest-w{workers}-") as tmp_dir:
+        tmp_root = Path(tmp_dir)
+        root_dir = tmp_root / "cache"
+        root_dir.mkdir(parents=True, exist_ok=True)
+        state_file = tmp_root / "state.json"
+        block_file = tmp_root / "blockfile"
 
-    env = os.environ.copy()
-    env.update(
-        {
-            "PYTHONPATH": str(Path.cwd()),
-            "SWEDEB_TEST_CONFIG_PATH": str(config_path),
-            "SWEDEB_TEST_RESULT_ROOT": str(root_dir),
-            "SWEDEB_TEST_STATE_FILE": str(state_file),
-            "SWEDEB_TEST_BLOCK_FILE": str(block_file),
-            "SWEDEB_TEST_QUERY_DELAY_MS": str(query_delay_ms),
-            "SWEDEB_TEST_MAX_PENDING_JOBS": str(max_pending_jobs),
-        }
-    )
+        env = os.environ.copy()
+        env.update(
+            {
+                "PYTHONPATH": str(Path.cwd()),
+                "SWEDEB_TEST_CONFIG_PATH": str(config_path),
+                "SWEDEB_TEST_RESULT_ROOT": str(root_dir),
+                "SWEDEB_TEST_STATE_FILE": str(state_file),
+                "SWEDEB_TEST_BLOCK_FILE": str(block_file),
+                "SWEDEB_TEST_QUERY_DELAY_MS": str(query_delay_ms),
+                "SWEDEB_TEST_MAX_PENDING_JOBS": str(max_pending_jobs),
+            }
+        )
 
-    process = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "tests.integration.uvicorn_multiworker_test_app:app",
-            "--workers",
-            str(workers),
-            "--host",
-            "127.0.0.1",
-            "--port",
-            str(http_port),
-            "--log-level",
-            "warning",
-        ],
-        cwd=Path.cwd(),
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "tests.integration.uvicorn_multiworker_test_app:app",
+                "--workers",
+                str(workers),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(http_port),
+                "--log-level",
+                "warning",
+            ],
+            cwd=Path.cwd(),
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
-    base_url = f"http://127.0.0.1:{http_port}"
-    try:
-        deadline = time.monotonic() + 20
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                raise RuntimeError(f"uvicorn test server exited early with code {process.returncode}")
-            try:
-                response = _request("GET", f"{base_url}/healthz")
-                if response.status_code == 200:
-                    break
-            except requests.RequestException:
-                time.sleep(0.1)
-        else:
-            raise RuntimeError("Timed out waiting for uvicorn load-test server")
-
-        yield base_url
-    finally:
-        process.terminate()
+        base_url = f"http://127.0.0.1:{http_port}"
         try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
+            deadline = time.monotonic() + 20
+            while time.monotonic() < deadline:
+                if process.poll() is not None:
+                    raise RuntimeError(f"uvicorn test server exited early with code {process.returncode}")
+                try:
+                    response = _request("GET", f"{base_url}/healthz")
+                    if response.status_code == 200:
+                        break
+                except requests.RequestException:
+                    time.sleep(0.1)
+            else:
+                raise RuntimeError("Timed out waiting for uvicorn load-test server")
+
+            yield base_url
+        finally:
+            process.terminate()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
 
 
 def _run_ticket_flow(base_url: str, *, poll_interval_ms: int, ticket_timeout_seconds: float) -> dict[str, Any]:

@@ -99,8 +99,18 @@ class SpeechesTicketService:
             logger.info(f"Successfully stored speeches results for ticket {ticket_id}")
         except ResultStoreCapacityError:
             logger.warning(f"Result store capacity error for speeches ticket {ticket_id}")
+            self._store_error_if_present(
+                result_store,
+                ticket_id,
+                message="Result store capacity exceeded",
+            )
         except ResultStoreNotFound:
             logger.warning(f"Result store not found for speeches ticket {ticket_id}")
+            self._store_error_if_present(
+                result_store,
+                ticket_id,
+                message="Result store entry was not found",
+            )
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception(f"Error executing speeches ticket {ticket_id}: {exc}")
             result_store.store_error(ticket_id, message="Failed to generate speeches results")
@@ -176,14 +186,7 @@ class SpeechesTicketService:
         if status_model.status != TicketStatus.READY.value:
             return status_model
 
-        artifact_path = result_store.artifact_path(ticket_id)
-        if not artifact_path.exists():
-            raise ResultStoreNotFound("Ticket artifact not found or expired")
-        try:
-            data = pd.read_feather(artifact_path)
-        except Exception as exc:
-            raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
-
+        data = result_store.load_artifact(ticket_id)
         return self._build_page_result(ticket_id, data, page, page_size, sort_by, sort_order, result_store)
 
     def _get_page_result_local(
@@ -291,6 +294,17 @@ class SpeechesTicketService:
         if "speech_id" not in data.columns:
             return []
         return list(dict.fromkeys(speech_id for speech_id in data["speech_id"].tolist() if speech_id))
+
+    def _store_error_if_present(self, result_store: ResultStore, ticket_id: str, *, message: str) -> None:
+        ticket = result_store.get_ticket(ticket_id)
+        if ticket is None:
+            return
+        if ticket.status == TicketStatus.ERROR and ticket.error:
+            return
+        try:
+            result_store.store_error(ticket_id, message=message)
+        except ResultStoreNotFound:
+            logger.warning(f"Unable to persist error state for speeches ticket {ticket_id}; ticket no longer exists")
 
     def _status_model(self, ticket: TicketMeta) -> SpeechesTicketStatus:
         return SpeechesTicketStatus(

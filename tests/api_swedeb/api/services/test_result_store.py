@@ -3,11 +3,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from threading import Barrier
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import fakeredis
 import pandas as pd
 import pytest
+from redis.exceptions import ResponseError
 
 from api_swedeb.api.services.result_store import (
     ResultStore,
@@ -17,6 +18,27 @@ from api_swedeb.api.services.result_store import (
     TicketStatus,
 )
 from api_swedeb.api.services.ticket_state_store import TicketStateStore, serialize_ticket_meta
+
+
+def test_ticket_state_store_lock_raises_if_redis_lock_fails() -> None:
+    client = MagicMock()
+    failing_lock = MagicMock()
+    failing_lock.__enter__.side_effect = ResponseError("lock failure")
+    client.lock.return_value = failing_lock
+    ticket_state_store = TicketStateStore(client=client, key_prefix="test:ticket-state")
+
+    with patch("api_swedeb.api.services.ticket_state_store.logger.exception") as log_exception:
+        with pytest.raises(ResponseError, match="lock failure"):
+            with ticket_state_store.lock():
+                pass
+
+    client.lock.assert_called_once_with(
+        "test:ticket-state:lock",
+        timeout=30,
+        blocking_timeout=30,
+        thread_local=False,
+    )
+    log_exception.assert_called_once()
 
 
 def test_result_store_enforces_pending_job_limit(tmp_path) -> None:
@@ -282,6 +304,69 @@ def test_result_store_caches_loaded_artifact_and_sorted_positions(tmp_path) -> N
         assert first.to_dict(orient="records") == second.to_dict(orient="records")
         assert build_positions.call_count == 1
         assert first_positions == second_positions == (1, 0)
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_evicts_oldest_artifact_cache_entry_when_limit_is_exceeded(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=4,
+        max_page_size=200,
+        artifact_cache_max_entries=2,
+    )
+    asyncio.run(store.startup())
+
+    try:
+        tickets = [store.create_ticket(query_meta={"search": f"term-{index}"}) for index in range(3)]
+        for index, ticket in enumerate(tickets):
+            store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": f"term-{index}"}]))
+
+        for ticket in tickets:
+            store.load_artifact(ticket.ticket_id)
+
+        assert list(store._artifact_cache.keys()) == [tickets[1].ticket_id, tickets[2].ticket_id]
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_evicts_oldest_sorted_positions_cache_entry_when_limit_is_exceeded(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+        sorted_positions_cache_max_entries=2,
+    )
+    asyncio.run(store.startup())
+
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+        store.store_ready(
+            ticket.ticket_id,
+            df=pd.DataFrame(
+                [
+                    {"node_word": "b", "year": 1971, "_ticket_row_id": 1},
+                    {"node_word": "a", "year": 1970, "_ticket_row_id": 0},
+                ]
+            ),
+        )
+
+        first_key = ("year", "_ticket_row_id")
+        second_key = ("node_word", "_ticket_row_id")
+        third_key = ("year", "node_word")
+
+        store.get_sorted_positions(ticket.ticket_id, sort_columns=first_key, ascending=(True, True))
+        store.get_sorted_positions(ticket.ticket_id, sort_columns=second_key, ascending=(True, True))
+        store.get_sorted_positions(ticket.ticket_id, sort_columns=third_key, ascending=(True, True))
+
+        cached_sort_keys = [cache_key[1] for cache_key in store._sorted_positions_cache.keys()]
+        assert cached_sort_keys == [second_key, third_key]
     finally:
         asyncio.run(store.shutdown())
 

@@ -1,9 +1,17 @@
 import asyncio
+from datetime import UTC, datetime
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import fakeredis
 import pandas as pd
 
-from api_swedeb.api.services.result_store import ResultStore, TicketStatus
+from api_swedeb.api.services.result_store import (
+    ResultStore,
+    ResultStoreCapacityError,
+    ResultStoreNotFound,
+    TicketStatus,
+)
 from api_swedeb.api.services.speeches_ticket_service import TICKET_ROW_ID, SpeechesTicketService
 from api_swedeb.api.services.ticket_state_store import TicketStateStore
 from api_swedeb.schemas.sort_order import SortOrder
@@ -154,3 +162,64 @@ def test_ready_speeches_ticket_survives_store_restart_with_shared_state(tmp_path
         assert artifact[TICKET_ROW_ID].tolist() == [0, 1]
     finally:
         asyncio.run(restarted_store.shutdown())
+
+
+def test_execute_ticket_marks_pending_ticket_as_error_on_capacity_failure():
+    service = SpeechesTicketService()
+    search_service = make_mock_search_service()
+    result_store = MagicMock()
+    result_store.get_ticket.return_value = SimpleNamespace(status=TicketStatus.PENDING, error=None)
+    result_store.store_ready.side_effect = ResultStoreCapacityError("Insufficient result-store capacity for ticket artifact")
+
+    service.execute_ticket(
+        ticket_id="ticket-1",
+        selections={"from_year": 1970},
+        search_service=search_service,
+        result_store=result_store,
+    )
+
+    result_store.store_error.assert_called_once_with("ticket-1", message="Result store capacity exceeded")
+
+
+def test_execute_ticket_marks_pending_ticket_as_error_on_missing_result_store_entry():
+    service = SpeechesTicketService()
+    search_service = make_mock_search_service()
+    result_store = MagicMock()
+    result_store.get_ticket.return_value = SimpleNamespace(status=TicketStatus.PENDING, error=None)
+    result_store.store_ready.side_effect = ResultStoreNotFound("Ticket not found or expired")
+
+    service.execute_ticket(
+        ticket_id="ticket-1",
+        selections={"from_year": 1970},
+        search_service=search_service,
+        result_store=result_store,
+    )
+
+    result_store.store_error.assert_called_once_with("ticket-1", message="Result store entry was not found")
+
+
+def test_get_celery_page_result_uses_result_store_load_artifact():
+    service = SpeechesTicketService()
+    result_store = MagicMock()
+    result_store.load_artifact.return_value = pd.DataFrame(
+        [
+            {**SAMPLE_SPEECHES[0], TICKET_ROW_ID: 0},
+            {**SAMPLE_SPEECHES[1], TICKET_ROW_ID: 1},
+        ]
+    )
+    result_store.get_ticket.return_value = SimpleNamespace(expires_at=datetime.now(UTC))
+    result_store.get_sorted_positions.return_value = (0, 1)
+
+    with patch.object(service, "_get_celery_status", return_value=SimpleNamespace(status=TicketStatus.READY.value)):
+        result = service._get_celery_page_result(
+            ticket_id="ticket-1",
+            result_store=result_store,
+            page=1,
+            page_size=10,
+            sort_by=SpeechesTicketSortBy.year,
+            sort_order=SortOrder.asc,
+        )
+
+    result_store.load_artifact.assert_called_once_with("ticket-1")
+    assert isinstance(result, SpeechesPageResult)
+    assert [speech.speech_id for speech in result.speech_list] == ["i-1", "i-2"]
