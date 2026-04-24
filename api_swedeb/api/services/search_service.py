@@ -78,21 +78,14 @@ class SearchService:
 
             if key == "party_id":
                 ivalues: list[int] = [int(v) for v in values]
-                person_party = getattr(self._loader.person_codecs, 'person_party')
-                party_person_ids = (
-                    person_party.loc[person_party.party_id.isin(ivalues), "person_id"].drop_duplicates().tolist()
-                )
-                mask &= df.index.isin(_normalize_like_index(party_person_ids))
+                party_map = self._loader.party_person_ids
+                allowed_person_ids = set().union(*(party_map.get(v, set()) for v in ivalues))
+                mask &= df.index.isin(_normalize_like_index(list(allowed_person_ids)))
             elif key == "chamber_abbrev":
                 svalues: list[str] = [str(v).lower() for v in values]
-                di: pd.DataFrame = self._loader.vectorized_corpus.document_index
-                chamber_abbrev = (
-                    di["chamber_abbrev"].str.lower()
-                    if pd.api.types.is_string_dtype(di["chamber_abbrev"])
-                    else di["chamber_abbrev"]
-                )
-                chamber_person_ids = di.loc[chamber_abbrev.isin(svalues), "person_id"].drop_duplicates().tolist()
-                mask &= df.index.isin(_normalize_like_index(chamber_person_ids))
+                chamber_map = self._loader.chamber_person_ids
+                allowed_person_ids = set().union(*(chamber_map.get(v, set()) for v in svalues))
+                mask &= df.index.isin(_normalize_like_index(list(allowed_person_ids)))
             else:
                 if key in df.columns:
                     mask &= df[key].isin(values)

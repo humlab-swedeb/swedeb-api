@@ -170,6 +170,38 @@ class CorpusLoader:
         return self.person_codecs.decode(self.person_codecs.persons_of_interest, drop=False)
 
     @cached_property
+    def chamber_person_ids(self) -> dict[str, set[str]]:
+        """Map lowercase chamber_abbrev -> set of person_ids present in that chamber.
+
+        Precomputed from document_index once, then reused on every
+        SearchService filter call. See issue #320.
+        """
+        di = self.document_index
+        abbrev = (
+            di["chamber_abbrev"].str.lower()
+            if pd.api.types.is_string_dtype(di["chamber_abbrev"])
+            else di["chamber_abbrev"]
+        )
+        result: dict[str, set[str]] = {}
+        for abbrev_val, person_id in zip(abbrev, di["person_id"]):
+            result.setdefault(abbrev_val, set()).add(person_id)
+        return result
+
+    @cached_property
+    def party_person_ids(self) -> dict[int, set[str]]:
+        """Map party_id -> set of person_ids in that party.
+
+        Precomputed from person_codecs.person_party once, then reused on
+        every SearchService filter call. Same-pattern companion to
+        chamber_person_ids per issue #320.
+        """
+        pp = self.person_codecs.person_party
+        result: dict[int, set[str]] = {}
+        for party_id, person_id in zip(pp["party_id"], pp["person_id"]):
+            result.setdefault(int(party_id), set()).add(person_id)
+        return result
+
+    @cached_property
     def year_range(self) -> tuple[int, int]:
         """Get corpus min and max year (cached after first access)."""
         try:
