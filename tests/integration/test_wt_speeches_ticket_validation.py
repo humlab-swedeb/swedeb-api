@@ -378,6 +378,15 @@ def test_download_json_is_parseable(wt_ticket_client: TestClient, wt_ticket_samp
     assert len(rows) == total_hits
 
 
+def test_download_rejects_invalid_format(wt_ticket_client: TestClient, wt_ticket_sample: dict):
+    ticket_id = wt_ticket_sample["ticket_id"]
+    response = wt_ticket_client.get(
+        f"{VERSION}/word_trend_speeches/download/{ticket_id}",
+        params={"format": "../x"},
+    )
+    assert response.status_code == 422
+
+
 def test_download_returns_404_for_unknown_ticket(wt_ticket_client: TestClient):
     response = wt_ticket_client.get(
         f"{VERSION}/word_trend_speeches/download/nonexistent-ticket-id",

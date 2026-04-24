@@ -109,6 +109,7 @@ def test_ticket_download_manifest_matches_kwic_baseline(
     response = ticket_validation_client.get(f"{VERSION}/speeches/archive/{ticket_id}")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/zip"
+    assert f"speeches_archive_{ticket_id}.zip" in response.headers["content-disposition"]
 
     with zipfile.ZipFile(io.BytesIO(response.content), "r") as archive:
         manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
@@ -157,3 +158,35 @@ def test_kwic_download_json_matches_ticket_rows(
     assert manifest["ticket_id"] == ticket_id
     assert manifest["file_format"] == "json"
     assert payload == ticket_rows
+
+
+def test_kwic_download_rejects_invalid_format(
+    ticket_validation_client: TestClient, kwic_ticket_validation_sample: dict
+):
+    ticket_id = kwic_ticket_validation_sample["ticket_id"]
+
+    response = ticket_validation_client.get(
+        f"{VERSION}/kwic/download/{ticket_id}",
+        params={"format": "../x"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_kwic_download_normalizes_uppercase_format(
+    ticket_validation_client: TestClient, kwic_ticket_validation_sample: dict
+):
+    ticket_id = kwic_ticket_validation_sample["ticket_id"]
+
+    response = ticket_validation_client.get(
+        f"{VERSION}/kwic/download/{ticket_id}",
+        params={"format": "JSON"},
+    )
+    assert response.status_code == 200
+
+    with zipfile.ZipFile(io.BytesIO(response.content), "r") as archive:
+        names = archive.namelist()
+        manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+
+    assert names == ["manifest.json", f"kwic_{ticket_id}.json"]
+    assert manifest["file_format"] == "json"

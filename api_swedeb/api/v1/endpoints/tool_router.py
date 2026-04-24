@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Annotated, Any, Literal
 
 import fastapi
@@ -78,6 +79,20 @@ CommonParams = Annotated[CommonQueryParams, Depends()]
 
 
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
+
+
+class DownloadFormat(StrEnum):
+    csv = "csv"
+    json = "json"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "DownloadFormat | None":
+        if isinstance(value, str):
+            normalized = value.lower()
+            for member in cls:
+                if member.value == normalized:
+                    return member
+        return None
 
 
 def _pending_retry_headers() -> dict[str, str]:
@@ -185,7 +200,7 @@ async def get_kwic_ticket_results(
 @router.get("/kwic/download/{ticket_id}")
 async def download_kwic_ticket(
     ticket_id: str,
-    file_format: str = Query("json", alias="format", description="Download format: csv or json"),
+    file_format: DownloadFormat = Query(DownloadFormat.json, alias="format", description="Download format: csv or json"),
     kwic_ticket_service: KWICTicketService = Depends(get_kwic_ticket_service),
     download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),
@@ -202,12 +217,12 @@ async def download_kwic_ticket(
 
     try:
         data = kwic_ticket_service.get_full_artifact(ticket_id, result_store)
-    except Exception as exc:
+    except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 
-    inner_filename = f"kwic_{ticket_id}.{file_format}"
+    inner_filename = f"kwic_{ticket_id}.{file_format.value}"
 
-    if file_format == "csv":
+    if file_format is DownloadFormat.csv:
         content = data.to_csv(index=False).encode("utf-8")
     else:
         content = data.to_json(orient="records", force_ascii=False).encode("utf-8")
@@ -216,7 +231,7 @@ async def download_kwic_ticket(
     manifest = download_service.build_download_manifest(
         ticket_meta={
             **(getattr(ticket, "manifest_meta", None) or {}),
-            "file_format": file_format,
+            "file_format": file_format.value,
             "total_hits": getattr(ticket, "total_hits", None),
             "expires_at": ticket_expires_at.isoformat() if ticket_expires_at is not None else None,
         }
@@ -393,7 +408,7 @@ async def get_word_trend_speeches_page(
 @router.get("/word_trend_speeches/download/{ticket_id}")
 async def download_word_trend_speeches(
     ticket_id: str,
-    file_format: str = Query("csv", alias="format", description="Download format: csv or json"),
+    file_format: DownloadFormat = Query(DownloadFormat.csv, alias="format", description="Download format: csv or json"),
     wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
     download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),
@@ -407,18 +422,18 @@ async def download_word_trend_speeches(
     ticket_meta: dict | None = None
     try:
         ticket_meta = result_store.require_ticket(ticket_id).manifest_meta
-    except Exception:  # noqa: BLE001 ; # pylint: disable=broad-except
+    except ResultStoreNotFound:
         pass
 
-    inner_filename = f"word_trend_speeches_{ticket_id}.{file_format}"
+    inner_filename = f"word_trend_speeches_{ticket_id}.{file_format.value}"
 
-    if file_format == "json":
+    if file_format is DownloadFormat.json:
         content = data.to_json(orient="records", force_ascii=False).encode("utf-8")
     else:
         content = data.to_csv(index=False).encode("utf-8")
 
     manifest = download_service.build_download_manifest(
-        ticket_meta={**(ticket_meta or {}), "file_format": file_format, "row_count": len(data)}
+        ticket_meta={**(ticket_meta or {}), "file_format": file_format.value, "row_count": len(data)}
     )
 
     return StreamingResponse(
@@ -582,7 +597,7 @@ async def get_speeches_page(
 @router.get("/speeches/download/{ticket_id}")
 async def download_speeches_by_ticket(
     ticket_id: str,
-    file_format: str = Query("csv", alias="format", description="Download format: csv or json"),
+    file_format: DownloadFormat = Query(DownloadFormat.csv, alias="format", description="Download format: csv or json"),
     download_service: DownloadService = Depends(get_download_service),
     speeches_ticket_service: SpeechesTicketService = Depends(get_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
@@ -600,12 +615,12 @@ async def download_speeches_by_ticket(
 
     try:
         data = speeches_ticket_service.get_full_artifact(ticket_id, result_store)
-    except Exception as exc:
+    except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 
-    inner_filename = f"speeches_{ticket_id}.{file_format}"
+    inner_filename = f"speeches_{ticket_id}.{file_format.value}"
 
-    if file_format == "json":
+    if file_format is DownloadFormat.json:
         content = data.to_json(orient="records", force_ascii=False).encode("utf-8")
     else:
         content = data.to_csv(index=False).encode("utf-8")
@@ -614,7 +629,7 @@ async def download_speeches_by_ticket(
     manifest = download_service.build_download_manifest(
         ticket_meta={
             **(getattr(ticket, "manifest_meta", None) or {}),
-            "file_format": file_format,
+            "file_format": file_format.value,
             "total_hits": getattr(ticket, "total_hits", None),
             "expires_at": ticket_expires_at.isoformat() if ticket_expires_at is not None else None,
         }
@@ -659,7 +674,7 @@ async def download_speeches_archive_by_ticket(
     return StreamingResponse(
         streamer(),
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="speeches_archive_{ticket_id}.zip"'},
     )
 
 
