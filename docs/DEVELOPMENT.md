@@ -24,7 +24,7 @@ It is not the deployment or runtime operations runbook. Environment rollout, rel
     - [Before opening a PR](#before-opening-a-pr)
   - [Database and Migration Workflow](#database-and-migration-workflow)
   - [Debugging and Troubleshooting](#debugging-and-troubleshooting)
-    - [Background Task Execution (KWIC)](#background-task-execution-kwic)
+    - [Background Task Execution (Ticketed Endpoints)](#background-task-execution-ticketed-endpoints)
   - [Local Debug Modes](#local-debug-modes)
       - [Step 1 — Start the backend.](#step-1--start-the-backend)
       - [Step 2 — Configure the frontend dev server to proxy API calls.](#step-2--configure-the-frontend-dev-server-to-proxy-api-calls)
@@ -115,8 +115,15 @@ Development rules for config work:
 - initialize config through `get_config_store().configure_context(...)`
 - use `ConfigValue("...").resolve()` for config reads
 - when adding config keys, update both `config/config.yml` and `tests/config.yml`
+- update `config/debug.config.yml` too when local developer behavior should change rather than relying on runtime defaults
 - in tests, patch `api_swedeb.core.configuration.inject.get_config_store` rather than relying on the module-level alias
 - `config/debug.config.yml` sets `development.celery_enabled: false` and `kwic.use_multiprocessing: false`; this keeps local development free of a Redis dependency and allows the VS Code debugger to attach directly to KWIC execution
+
+Important ticket-related config keys in the current runtime:
+
+- `cache.ticket_poll_retry_after_seconds`: backend hint used for `Retry-After` on pending ticket responses
+- `cache.ticket_state_backend_url`: shared ticket metadata backend; set this to Redis when you want to validate multi-process behavior locally
+- `cache.ticket_state_prefix`: key namespace for the shared ticket-state backend; use a distinct prefix if multiple local stacks point at the same Redis instance
 
 Test configuration is also managed dynamically in [tests/conftest.py](../tests/conftest.py), which generates session-scoped test config and registry files for some test paths.
 
@@ -162,6 +169,7 @@ make test
 make coverage
 make clean-dev
 make profile-kwic-pyinstrument
+python scripts/loadtest_ticket_deployments.py --output tests/output/loadtest_ticket_deployments.json
 ```
 
 To start the dedicated multiprocessing worker for production-mode KWIC testing (requires a running Redis):
@@ -176,6 +184,12 @@ To start Redis locally:
 
 ```bash
 docker run --rm -p 6379:6379 redis:7-alpine
+```
+
+To start the default queue worker used by ticketed speeches and word-trend speeches in production-mode testing:
+
+```bash
+uv run celery -A api_swedeb.celery_tasks worker --loglevel=info --concurrency=4 --queues=celery
 ```
 
 Additional useful commands:
@@ -279,20 +293,23 @@ Developer implications:
 
 If your change affects speech corpus build outputs, use the speech-corpus build targets in the `Makefile` and validate the affected tests.
 
-## Background Task Execution (KWIC)
+## Background Task Execution (Ticketed Endpoints)
 
-KWIC ticket queries use one of two execution paths, controlled by `development.celery_enabled` in the active config file.
+The async ticketed endpoints all use one of two execution paths, controlled by `development.celery_enabled` in the active config file.
 
-| Mode | Config | Execution | Multiprocessing | Redis required |
-|------|--------|-----------|-----------------|----------------|
-| Development | `debug.config.yml` (`celery_enabled: false`) | FastAPI `BackgroundTasks` | No | No |
-| Production | `config.yml` (`celery_enabled: true`) | Celery workers (`celery` + `multiprocessing` queues) | Yes, on the dedicated multiprocessing worker (`num_processes: 8`) | Yes |
+| Endpoint family | Development mode (`celery_enabled: false`) | Production mode (`celery_enabled: true`) | Redis required in production |
+|------|--------|-----------|----------------|
+| KWIC | FastAPI `BackgroundTasks` in the API process | Celery `multiprocessing` queue on a dedicated solo worker | Yes |
+| Speeches | FastAPI `BackgroundTasks` in the API process | Celery `default_queue` on the general-purpose worker | Yes |
+| Word-trend speeches | FastAPI `BackgroundTasks` in the API process | Celery `default_queue` on the general-purpose worker | Yes |
 
-**Development mode** is the default for local work. No Redis or Celery worker is needed; KWIC queries run inline in the FastAPI process. The VS Code debugger works normally — set breakpoints in `kwic_ticket_service.py` and they will be hit.
+**Development mode** is the default for local work. No Redis or Celery worker is needed unless you are specifically validating the shared-state or worker-backed path. Breakpoints in the ticket service code run in the FastAPI process.
 
-**Production mode** requires Redis and the staged Celery topology: a default-queue worker plus a dedicated multiprocessing worker running `--pool=solo --queues=multiprocessing`. The API process enqueues KWIC work via `celery_app.send_task("api_swedeb.execute_kwic_ticket", ..., queue="multiprocessing")` and returns immediately. The multiprocessing worker then runs the query with multiprocessing enabled, while lighter ticketed jobs remain on the default queue. Task state is read back through `celery_app.AsyncResult(ticket_id)`.
+**Production mode** requires Redis and the staged Celery topology: a default-queue worker plus a dedicated multiprocessing worker. KWIC submits to `celery.multiprocessing_queue`, while ticketed speeches and word-trend speeches submit to `celery.default_queue`. Shared ticket metadata and counters come from `cache.ticket_state_backend_url` when configured.
 
-Debugging in production mode: attach the debugger to the Celery worker process instead of the FastAPI process, or switch to development mode temporarily.
+When testing the async endpoints manually, respect the backend `Retry-After` hint on pending responses instead of polling at a fixed interval. The hint is controlled by `cache.ticket_poll_retry_after_seconds`.
+
+Debugging in production mode: attach the debugger to the relevant Celery worker process instead of the FastAPI process, or switch to development mode temporarily.
 
 ## Debugging and Troubleshooting
 
@@ -308,6 +325,8 @@ Repository-specific troubleshooting notes:
 - if a fixture or object resolves `ConfigValue(...)` too early, ensure the config store is configured before construction
 - if a change affects CWB or KWIC performance, profile it with `make profile-kwic-pyinstrument`
 - if a change affects test data or metadata-driven behavior, compare `config/config.yml`, `tests/config.yml`, and the generated test config path in `tests/output/`
+- if a change affects ticket lifecycle behavior across processes, run the focused integration coverage in `tests/integration/test_multi_process_ticket_validation.py` before widening scope
+- use `python scripts/loadtest_ticket_deployments.py --output tests/output/loadtest_ticket_deployments.json` when you need a repeatable staged load comparison for the current ticket-control-plane behavior
 - use `/docs` and `/redoc` to confirm request/response contracts quickly during API work
 
 ### Local Debug Modes

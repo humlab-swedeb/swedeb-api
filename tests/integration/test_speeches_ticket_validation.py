@@ -7,7 +7,9 @@ polling status will always return "ready" in this context.
 
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -78,6 +80,30 @@ def _submit_ready_ticket(client: TestClient, params: dict | None = None) -> str:
     assert status_response.json()["status"] == "ready"
 
     return ticket_id
+
+
+class _InMemoryZipArchive:
+    """Lightweight archive wrapper backed by in-memory entry bytes."""
+
+    def __init__(self, entries: dict[str, bytes]):
+        self._entries = entries
+
+    def namelist(self) -> list[str]:
+        return list(self._entries)
+
+    def read(self, name: str) -> bytes:
+        return self._entries[name]
+
+    def open(self, name: str) -> io.BytesIO:
+        return io.BytesIO(self.read(name))
+
+
+def _read_zip_entries(response) -> tuple[list[str], _InMemoryZipArchive]:
+    with zipfile.ZipFile(io.BytesIO(response.content), "r") as archive:
+        entry_names = archive.namelist()
+        entry_contents = {name: archive.read(name) for name in entry_names}
+
+    return entry_names, _InMemoryZipArchive(entry_contents)
 
 
 @pytest.fixture(scope="module")
@@ -276,13 +302,14 @@ def test_download_csv_returns_valid_content(speeches_ticket_sample: dict, speech
         params={"format": "csv"},
     )
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert response.headers["content-type"] == "application/zip"
     assert "attachment" in response.headers["content-disposition"]
-    assert f"speeches_{ticket_id}.csv" in response.headers["content-disposition"]
+    assert f"speeches_{ticket_id}.zip" in response.headers["content-disposition"]
 
-    # Verify CSV content structure
-    content = response.text
-    assert len(content) > 0
+    names, archive = _read_zip_entries(response)
+    assert names == ["manifest.json", f"speeches_{ticket_id}.csv"]
+
+    content = archive.read(f"speeches_{ticket_id}.csv").decode("utf-8")
     lines = content.strip().split("\n")
     assert len(lines) >= 2  # At least header + 1 row
 
@@ -301,12 +328,14 @@ def test_download_json_returns_valid_content(speeches_ticket_sample: dict, speec
         params={"format": "json"},
     )
     assert response.status_code == 200
-    assert response.headers["content-type"] == "application/json"
+    assert response.headers["content-type"] == "application/zip"
     assert "attachment" in response.headers["content-disposition"]
-    assert f"speeches_{ticket_id}.json" in response.headers["content-disposition"]
+    assert f"speeches_{ticket_id}.zip" in response.headers["content-disposition"]
 
-    # Verify JSON content structure
-    data = json.loads(response.text)
+    names, archive = _read_zip_entries(response)
+    assert names == ["manifest.json", f"speeches_{ticket_id}.json"]
+
+    data = json.loads(archive.read(f"speeches_{ticket_id}.json").decode("utf-8"))
     assert isinstance(data, list)
     assert len(data) > 0
 
@@ -322,7 +351,8 @@ def test_download_csv_default_format(speeches_ticket_sample: dict, speeches_tick
 
     response = speeches_ticket_client.get(f"{VERSION}/speeches/download/{ticket_id}")
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert response.headers["content-type"] == "application/zip"
+    assert f"speeches_{ticket_id}.zip" in response.headers["content-disposition"]
 
 
 def test_download_returns_404_for_nonexistent_ticket(speeches_ticket_client: TestClient):
@@ -371,8 +401,8 @@ def test_download_full_result_matches_pagination(speeches_ticket_sample: dict, s
     )
     assert response.status_code == 200
 
-    # Count rows in CSV (excluding header)
-    content = response.text
+    _, archive = _read_zip_entries(response)
+    content = archive.read(f"speeches_{ticket_id}.csv").decode("utf-8")
     lines = content.strip().split("\n")
     csv_row_count = len(lines) - 1  # Exclude header
 

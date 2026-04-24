@@ -13,6 +13,9 @@ import os
 from celery.signals import worker_init
 
 from api_swedeb.api.services.kwic_ticket_service import execute_ticket_task as _execute_ticket_task
+from api_swedeb.api.services.speeches_ticket_service import (
+    execute_speeches_ticket_task as _execute_speeches_ticket_task,
+)
 from api_swedeb.api.services.word_trend_speeches_ticket_service import (
     execute_word_trend_speeches_ticket_task as _execute_wt_speeches_ticket_task,
 )
@@ -51,3 +54,10 @@ def execute_word_trend_speeches_ticket_celery_task(self, ticket_id: str, request
     """
     self.update_state(state="PROGRESS", meta={"ticket_id": ticket_id})
     return _execute_wt_speeches_ticket_task(ticket_id, request_data)
+
+
+@celery_app.task(bind=True, name="api_swedeb.execute_speeches_ticket")
+def execute_speeches_ticket_celery_task(self, ticket_id: str, selections: dict) -> dict:
+    """Celery-wrapped speeches ticket execution."""
+    self.update_state(state="PROGRESS", meta={"ticket_id": ticket_id})
+    return _execute_speeches_ticket_task(ticket_id, selections)
