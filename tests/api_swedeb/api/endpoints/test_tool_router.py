@@ -16,6 +16,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.result_store import ResultStoreNotFound, ResultStorePendingLimitError
 from api_swedeb.api.v1.endpoints.tool_router import (
+    DownloadFormat,
+    download_kwic_ticket,
+    download_speeches_archive_by_ticket,
     download_speeches_by_ticket,
     download_word_trend_speeches,
     get_kwic_results,
@@ -782,7 +785,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         result = asyncio.run(
             download_word_trend_speeches(
                 ticket_id="wt-ticket-1",
-                file_format="csv",
+                file_format=DownloadFormat.csv,
                 wt_speeches_ticket_service=wt_service,
                 download_service=download_service,
                 result_store=MagicMock(),
@@ -812,7 +815,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         result = asyncio.run(
             download_word_trend_speeches(
                 ticket_id="wt-ticket-1",
-                file_format="json",
+                file_format=DownloadFormat.json,
                 wt_speeches_ticket_service=wt_service,
                 download_service=download_service,
                 result_store=MagicMock(),
@@ -839,7 +842,7 @@ class TestWordTrendSpeechesTicketEndpoints:
             asyncio.run(
                 download_word_trend_speeches(
                     ticket_id="wt-ticket-1",
-                    file_format="csv",
+                    file_format=DownloadFormat.csv,
                     wt_speeches_ticket_service=wt_service,
                     download_service=MagicMock(),
                     result_store=MagicMock(),
@@ -847,6 +850,91 @@ class TestWordTrendSpeechesTicketEndpoints:
             )
 
         assert excinfo.value.status_code == 404
+
+    def test_download_propagates_unexpected_manifest_lookup_errors(self):
+        wt_service = MagicMock()
+        wt_service.get_full_artifact.return_value = pd.DataFrame(
+            [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+        )
+        result_store = MagicMock()
+        result_store.require_ticket.side_effect = RuntimeError("store unavailable")
+
+        with pytest.raises(RuntimeError, match="store unavailable"):
+            asyncio.run(
+                download_word_trend_speeches(
+                    ticket_id="wt-ticket-1",
+                    file_format=DownloadFormat.csv,
+                    wt_speeches_ticket_service=wt_service,
+                    download_service=MagicMock(),
+                    result_store=result_store,
+                )
+            )
+
+    def test_download_kwic_ticket_returns_zip_with_json_file(self):
+        download_service = DownloadService()
+        result_store = MagicMock()
+        kwic_ticket_service = MagicMock()
+        result_store.require_ticket.return_value = type(
+            "Ticket",
+            (),
+            {"status": "ready", "error": None, "manifest_meta": {}, "total_hits": 1, "expires_at": None},
+        )()
+        kwic_ticket_service.get_full_artifact.return_value = pd.DataFrame(
+            [{"left_word": "vi", "node_word": "debatt", "right_word": "nu", "speech_id": "i-1"}]
+        )
+
+        result = asyncio.run(
+            download_kwic_ticket(
+                ticket_id="kwic-ticket-1",
+                file_format=DownloadFormat.json,
+                kwic_ticket_service=kwic_ticket_service,
+                download_service=download_service,
+                result_store=result_store,
+            )
+        )
+
+        body = asyncio.run(_collect_streaming_response(result))
+
+        assert isinstance(result, StreamingResponse)
+        assert result.media_type == "application/zip"
+        assert "kwic_kwic-ticket-1.zip" in result.headers["content-disposition"]
+        with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
+            assert archive.namelist() == ["manifest.json", "kwic_kwic-ticket-1.json"]
+
+    def test_download_kwic_ticket_returns_404_for_missing_ticket(self):
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                download_kwic_ticket(
+                    ticket_id="kwic-ticket-1",
+                    file_format=DownloadFormat.json,
+                    kwic_ticket_service=MagicMock(),
+                    download_service=MagicMock(),
+                    result_store=MagicMock(require_ticket=MagicMock(side_effect=ResultStoreNotFound("missing"))),
+                )
+            )
+
+        assert excinfo.value.status_code == 404
+
+    def test_download_kwic_ticket_propagates_unexpected_artifact_errors(self):
+        result_store = MagicMock()
+        kwic_ticket_service = MagicMock()
+        result_store.require_ticket.return_value = type(
+            "Ticket",
+            (),
+            {"status": "ready", "error": None, "manifest_meta": {}, "total_hits": 1, "expires_at": None},
+        )()
+        kwic_ticket_service.get_full_artifact.side_effect = RuntimeError("corrupt artifact")
+
+        with pytest.raises(RuntimeError, match="corrupt artifact"):
+            asyncio.run(
+                download_kwic_ticket(
+                    ticket_id="kwic-ticket-1",
+                    file_format=DownloadFormat.json,
+                    kwic_ticket_service=kwic_ticket_service,
+                    download_service=MagicMock(),
+                    result_store=result_store,
+                )
+            )
 
     def test_download_speeches_by_ticket_returns_zip_with_csv_file(self):
         download_service = DownloadService()
@@ -864,7 +952,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         result = asyncio.run(
             download_speeches_by_ticket(
                 ticket_id="speech-ticket-1",
-                file_format="csv",
+                file_format=DownloadFormat.csv,
                 download_service=download_service,
                 speeches_ticket_service=speeches_ticket_service,
                 result_store=result_store,
@@ -895,7 +983,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         result = asyncio.run(
             download_speeches_by_ticket(
                 ticket_id="speech-ticket-1",
-                file_format="json",
+                file_format=DownloadFormat.json,
                 download_service=download_service,
                 speeches_ticket_service=speeches_ticket_service,
                 result_store=result_store,
@@ -909,6 +997,74 @@ class TestWordTrendSpeechesTicketEndpoints:
         assert "speeches_speech-ticket-1.zip" in result.headers["content-disposition"]
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
             assert archive.namelist() == ["manifest.json", "speeches_speech-ticket-1.json"]
+
+    def test_download_speeches_by_ticket_propagates_unexpected_artifact_errors(self):
+        result_store = MagicMock()
+        speeches_ticket_service = MagicMock()
+        result_store.require_ticket.return_value = type(
+            "Ticket",
+            (),
+            {"status": "ready", "error": None, "manifest_meta": {}, "total_hits": 1, "expires_at": None},
+        )()
+        speeches_ticket_service.get_full_artifact.side_effect = RuntimeError("corrupt artifact")
+
+        with pytest.raises(RuntimeError, match="corrupt artifact"):
+            asyncio.run(
+                download_speeches_by_ticket(
+                    ticket_id="speech-ticket-1",
+                    file_format=DownloadFormat.json,
+                    download_service=MagicMock(),
+                    speeches_ticket_service=speeches_ticket_service,
+                    result_store=result_store,
+                )
+            )
+
+    def test_download_speeches_archive_by_ticket_returns_text_zip(self):
+        download_service = DownloadService()
+        result_store = MagicMock()
+        search_service = MagicMock()
+        result_store.require_ticket.return_value = type(
+            "Ticket",
+            (),
+            {
+                "status": "ready",
+                "error": None,
+                "speech_ids": ["i-1"],
+                "manifest_meta": {"ticket_id": "kwic-ticket-1"},
+            },
+        )()
+        search_service.get_speaker_names.return_value = {"i-1": "Alice Andersson"}
+        search_service.get_speeches_text_batch.return_value = iter([("i-1", "speech text for i-1")])
+
+        result = asyncio.run(
+            download_speeches_archive_by_ticket(
+                ticket_id="kwic-ticket-1",
+                download_service=download_service,
+                result_store=result_store,
+                search_service=search_service,
+            )
+        )
+
+        body = asyncio.run(_collect_streaming_response(result))
+
+        assert isinstance(result, StreamingResponse)
+        assert result.media_type == "application/zip"
+        assert "speeches_archive_kwic-ticket-1.zip" in result.headers["content-disposition"]
+        with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
+            assert archive.namelist() == ["manifest.json", "Alice_Andersson_i-1.txt"]
+
+    def test_download_speeches_archive_by_ticket_returns_404_for_missing_ticket(self):
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                download_speeches_archive_by_ticket(
+                    ticket_id="kwic-ticket-1",
+                    download_service=MagicMock(),
+                    result_store=MagicMock(require_ticket=MagicMock(side_effect=ResultStoreNotFound("missing"))),
+                    search_service=MagicMock(),
+                )
+            )
+
+        assert excinfo.value.status_code == 404
 
 
 class TestSpeechesTicketEndpoints:

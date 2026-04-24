@@ -355,6 +355,18 @@ def test_download_csv_default_format(speeches_ticket_sample: dict, speeches_tick
     assert f"speeches_{ticket_id}.zip" in response.headers["content-disposition"]
 
 
+def test_download_rejects_invalid_format(speeches_ticket_sample: dict, speeches_ticket_client: TestClient):
+    """Test that unsupported download formats are rejected."""
+    ticket_id = speeches_ticket_sample["ticket_id"]
+
+    response = speeches_ticket_client.get(
+        f"{VERSION}/speeches/download/{ticket_id}",
+        params={"format": "xlsx"},
+    )
+
+    assert response.status_code == 422
+
+
 def test_download_returns_404_for_nonexistent_ticket(speeches_ticket_client: TestClient):
     """Test that download returns 404 for nonexistent ticket."""
     response = speeches_ticket_client.get(
