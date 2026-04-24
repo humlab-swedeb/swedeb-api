@@ -8,52 +8,25 @@
  - [ ] FIXME: Try using category type for names?
 
 
-For all of these, the result is the same: replace a runtime codec translate-step with a
-`DataFrame.join(prebuilt_speech_index, on='speech_id', how='left')`.
+# ÄNDRINGAR SENASTE TVÅ VECKORNA
 
-#  VS Code Codex extension
-
-In the VS Code Codex extension, you can add file context in three main ways:
-
-1. **Open the file**
-   The IDE extension automatically includes your **open files** as context. ([OpenAI Utvecklare][1])
-
-2. **Select code/text before prompting**
-   The extension also automatically includes the **currently selected text range** in the editor. ([OpenAI Utvecklare][2])
-
-3. **Tag the file in the prompt with `@`**
-   You can explicitly reference a file by mentioning it in your prompt, for example:
-
-   ```text
-   Use @backend/app/services/validation_service.py as context and explain how validation flows through the backend.
-   ```
-
-   OpenAI’s IDE docs give examples like `@example.tsx` and `@resources.ts` in prompts. ([OpenAI Utvecklare][3])
-
-A reliable workflow is:
-
-* open the file you want Codex to use
-* optionally highlight the exact function/class/block
-* ask your question and tag the file with `@path/to/file`
-
-Example:
-
-```text
-Review @src/normalizer.py and @src/link.py. Focus on the selected function and explain why FK resolution might fail here.
-```
-
-If you want faster access, the extension also exposes commands for **adding items to Codex context**, and you can bind those through the Codex chat settings → **Keyboard shortcuts** or VS Code keyboard shortcuts. ([OpenAI Utvecklare][4])
-
-A few practical tips:
-
-* Use `@file` when the file is important and must not be missed. ([OpenAI Utvecklare][3])
-* Keep only relevant files open, since open files are included automatically. ([OpenAI Utvecklare][1])
-* Select the exact code region when you want a very focused answer. ([OpenAI Utvecklare][2])
-
-If you want, I can give you a set of example prompts for “explain this file”, “review this function”, and “modify these two files together” in Codex.
-
-[1]: https://developers.openai.com/codex/workflows?utm_source=chatgpt.com "Workflows – Codex | OpenAI Developers"
-[2]: https://developers.openai.com/codex/prompting?utm_source=chatgpt.com "Prompting – Codex | OpenAI Developers"
-[3]: https://developers.openai.com/codex/ide/features?utm_source=chatgpt.com "Features – Codex IDE | OpenAI Developers"
-[4]: https://developers.openai.com/codex/ide?utm_source=chatgpt.com "IDE extension – Codex | OpenAI Developers"
-
+1. Fokus på prestanda. Ändrat arkitekturen och flödet av data så att allt nu ligger server-side. Klienten hanterar nu inte längre ned stora datamängder, utan få precis det data som behövs för att via saker i UX. Gåt från synkrona, skicka allt, till server side paging.
+2. Rätt stora ändringar i hur serverdelen hanterar data. Bland annat en ny indexerad struktur för att snabbare hämta index över talen, och även själva talen. Lagras nu lite mer som en indexerad databas. Har testat och optimera lagringsformatet (=> feather)
+3. Hanteringen av anrop sker och hanteras är helt nytt. Nu används en mer robust "task queue" som gör att klienten inte längre hänger och väntar på data, den skickar istället en request, får direkt en ticket som sedan använs för polla status, hämta delmängder av och ladda ned hela datasetet.
+4. Lite mer komplex deploy nu, tidigare 1 container är nu 4 (Redis + 2 x Celery)
+5. Jag har kört mängder av benchmarks för att hitta flaskhalsar,  fixat många långsamma delar i systemet. Snålare minnesanvändning, vektoroperationer istället för loopar. Patchat paketet vi använder för att prata med CWB. etc. etc. Väldigt lite kod i kärna är opåverkad.
+6. Wordtrends, KWIC och anföranden bör nu vara mycket snabbare. Även nedladdning, som nu sker streamat. Även ändrat så att det laddas ned komprimerat. Alla Zipfiler bör nu också ett manifest med versioner och sökparametrar.
+7. De flesta gamla API:er finns kvar, men kan avvecklas när vi testat,
+9. Stor uppstädning av källkoden. Mycket bättre struktur med tydligare flöden. Slutfört jobb som startades för ett halvår sedan.
+10.  En större modul i systemet kommer från Westac-projektet, den är nu nedbantad och integrerad i Swedeb. 95% av koden är borttagen, resten delvis omskriven.
+11. PDF:er visas nu från sidvisa PDF:er. Finns säkert edgecases här som kan förorsaka problem, om PDF saknas, eller om sidnummer inte stämmer. Det är sällan man träffar rätt sida.
+12. Nedladdningar bör nu funka, och förhoppningsvis mycket snabbare. 
+13. Jag gått igenom dokumentationen, den är mestadels AI-genererad, men med avsevärt med specifika instruktioner. Frontend är i princip helt dokumenterad.
+14. Jag har uppdaterat alla paket (dependencies) i både frontend och backend. Vissa paket bumpades rejält, mer breaking changes. Det kan finns saker som inte är hanterat, främst då i frontend.
+15. Fixat URL, client-side routing visas fortsatt, vilket är ok, men inte public och "#".
+16. Har lagt in alternativ för antal träffar för KWIC. Finns nu mest för att testa. Kan läggas in för övriga tools också.
+17. N-grams är inte rörd. Viss gemensam logik med KWIC kan ha påverkats. Är några dagars jobb att fixa n-grams. Jag vet inte om n-gramsbuggen följt med ut till staging.
+18. Jag har ökat test code coverage, en del återstår att göra.
+19. Jag har kör regressionstester mellan gammal och ny logik, det ser ut att vara ok.
+20. Vi måste skapa qos tester asap, och innan vi driftsääter publikt.
+21. 
