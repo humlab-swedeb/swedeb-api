@@ -94,6 +94,8 @@ def _create_mask(df: pd.DataFrame, name: str, value: Any, sign: bool = True) -> 
         ),
     ):
         m = df[name].isin(value)
+    elif isinstance(value, dict) and "low" in value and "high" in value:
+        m = df[name].between(value["low"], value["high"])
     elif isinstance(value, tuple):
         m = df[name].between(*value)
     elif isinstance(value, (bool, Number, str)):
@@ -144,6 +146,8 @@ def create_mask(doc: pd.DataFrame, args: dict) -> np.ndarray:
                                 (fx, v)                 fx(df.k, attr_value)
                                      v: list            df.k.isin(lst)
                                      v: set             df.k.isin(set)
+                        {"low": x, "high": y}           df.k.between(x, y)
+                                    (x, y)              df.k.between(x, y)
                                      v                  df.k == v
 
     """
@@ -189,7 +193,11 @@ def create_mask(doc: pd.DataFrame, args: dict) -> np.ndarray:
             else (
                 attr_operator(value_serie, attr_value)  # type: ignore
                 if attr_operator is not None
-                else value_serie.isin(attr_value) if isinstance(attr_value, (list, set)) else value_serie == attr_value
+                else value_serie.isin(attr_value)
+                if isinstance(attr_value, (list, set))
+                else value_serie.between(attr_value["low"], attr_value["high"])
+                if isinstance(attr_value, dict) and "low" in attr_value
+                else value_serie == attr_value
             )
         )
 
