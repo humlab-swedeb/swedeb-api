@@ -25,8 +25,9 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
     - [2. Metadata and speech-listing flow](#2-metadata-and-speech-listing-flow)
     - [3. Synchronous KWIC flow](#3-synchronous-kwic-flow)
     - [4. Ticketed KWIC flow](#4-ticketed-kwic-flow)
-    - [5. Ticketed word-trend speeches flow](#5-ticketed-word-trend-speeches-flow)
-    - [6. Speech download flow](#6-speech-download-flow)
+    - [5. Ticketed speeches flow](#5-ticketed-speeches-flow)
+    - [6. Ticketed word-trend speeches flow](#6-ticketed-word-trend-speeches-flow)
+    - [7. Speech download flow](#7-speech-download-flow)
   - [Data and Persistence Design](#data-and-persistence-design)
     - [Configuration](#configuration)
     - [Read-only runtime data](#read-only-runtime-data)
@@ -141,9 +142,11 @@ The entry point is [main.py](../main.py), which builds the app through [api_swed
 - `NGramsService`
 - `KWICService`
 - `KWICTicketService`
+- `SpeechesTicketService`
 - `WordTrendSpeechesTicketService`
 - `DownloadService`
 - `ResultStore`
+- `TicketStateStore`
 - CWB corpus creation helpers
 
 The key services are:
@@ -155,9 +158,11 @@ The key services are:
 - `NGramsService`: CWB-backed n-gram extraction
 - `KWICService`: synchronous KWIC query execution and metadata join
 - `KWICTicketService`: paged KWIC ticket lifecycle; dispatches to Celery (production, multiprocessing) or FastAPI `BackgroundTasks` (development, singleprocessing) based on `development.celery_enabled`
+- `SpeechesTicketService`: paged speeches ticket lifecycle; dispatches to the default Celery queue (production) or FastAPI `BackgroundTasks` (development) and stores the resulting speech listing artifact in `ResultStore`
 - `WordTrendSpeechesTicketService`: paged word-trend speeches ticket lifecycle; same dispatch model as `KWICTicketService`, storing results as Feather artifacts in `ResultStore`
 - `DownloadService`: streamed archive generation for speech downloads
-- `ResultStore`: disk-backed storage for generated KWIC result artifacts
+- `ResultStore`: disk-backed storage for ticket result artifacts plus ticket lifecycle bookkeeping such as paging, expiry, and capacity enforcement
+- `TicketStateStore`: shared ticket metadata and counters backed by `cache.ticket_state_backend_url` when configured, allowing ticket status, pending limits, and artifact accounting to survive process boundaries
 
 ### Core runtime modules
 
@@ -184,7 +189,7 @@ The main core subsystems are:
 
 ### 1. Application startup
 
-At startup, the app configures the active `ConfigStore` context, builds the FastAPI application, creates an app-scoped `AppContainer`, and starts a `ResultStore` rooted at `cache.root_dir`. This makes service wiring and ticket artifact cleanup part of application state rather than ad hoc global handling.
+At startup, the app configures the active `ConfigStore` context, builds the FastAPI application, creates an app-scoped `AppContainer`, and starts a `ResultStore` rooted at `cache.root_dir`. When `cache.ticket_state_backend_url` is configured, the store also connects a shared `TicketStateStore` so ticket metadata, pending counts, and artifact-byte accounting are no longer tied to a single API process.
 
 ### 2. Metadata and speech-listing flow
 
@@ -231,7 +236,20 @@ The paged KWIC path is designed for larger or slower queries and operates in one
 
 The important design constraint is that `multiprocessing.Pool().map()` deadlocks when called from FastAPI's thread-pool-backed `BackgroundTasks`. Production mode avoids this by moving the query into a true separate process (Celery worker). Development mode disables multiprocessing and relies on `BackgroundTasks`, which enables native debugger support without a Redis dependency.
 
-### 5. Ticketed word-trend speeches flow
+### 5. Ticketed speeches flow
+
+The paged speeches path now uses the same ticket-service pattern as the other heavier async endpoints.
+
+1. the client POSTs filter parameters to `/v1/tools/speeches/query`
+2. `SpeechesTicketService` creates a ticket through `ResultStore`
+3. the query is dispatched to the default Celery queue (production) or `BackgroundTasks` (development), executing `execute_speeches_ticket`
+4. the worker uses `SearchService` and the prebuilt speech index to resolve the filtered speech listing and stores the result as Feather in `ResultStore`
+5. clients poll `/v1/tools/speeches/status/{ticket_id}` and fetch pages from `/v1/tools/speeches/page/{ticket_id}`
+6. the speeches download endpoints read the stored artifact and stream a ZIP-wrapped export so the full result can be fetched independently of the API process that accepted the original submit request
+
+This flow closes the earlier design gap where `/speeches/query` still depended on API-local background execution in production mode.
+
+### 6. Ticketed word-trend speeches flow
 
 The paged word-trend speeches path mirrors the ticketed KWIC flow and uses the same `ResultStore`-backed artifact model.
 
@@ -240,11 +258,11 @@ The paged word-trend speeches path mirrors the ticketed KWIC flow and uses the s
 3. the query is dispatched to the default Celery queue (production) or `BackgroundTasks` (development), executing `execute_word_trend_speeches_ticket`
 4. the worker calls `WordTrendsService` to resolve matching speech IDs, then `SearchService` to join speaker and speech metadata, and stores the result as Feather in `ResultStore`
 5. clients poll `/v1/tools/word_trend_speeches/status/{ticket_id}` and fetch pages from `/v1/tools/word_trend_speeches/page/{ticket_id}`
-6. the `/v1/tools/word_trend_speeches/download/{ticket_id}` endpoint streams the full artifact as CSV or JSON
+6. the `/v1/tools/word_trend_speeches/download/{ticket_id}` endpoint streams the full artifact as a ZIP-wrapped CSV or JSON export
 
 The frontend fires the word-trend speeches ticket request in parallel with the synchronous word-trend chart request, so the chart and count-table tabs become interactive immediately while the speeches tab resolves asynchronously.
 
-### 6. Speech download flow
+### 7. Speech download flow
 
 Speech download requests either:
 
@@ -252,6 +270,8 @@ Speech download requests either:
 - reuse the speech IDs already captured in a KWIC ticket manifest
 
 `DownloadService` then batches text retrieval through `SearchService` and `SpeechRepository`, and streams the result as ZIP by default. The service also supports tar.gz and jsonl.gz strategies, but the public route currently serves ZIP responses.
+
+This direct speech-archive flow is separate from the ticket-backed full-result export endpoints for speeches and word-trend speeches, which stream archived copies of stored ticket artifacts rather than re-running the underlying query.
 
 ## Data and Persistence Design
 
@@ -288,14 +308,17 @@ In production mode, Redis holds a second layer of ephemeral state:
 - task queue: pending Celery tasks waiting for worker pickup
 - task execution state: PENDING → STARTED → SUCCESS/FAILURE
 - small task return values: ticket ID and row count
+- shared ticket metadata and counters keyed by `cache.ticket_state_prefix` when `cache.ticket_state_backend_url` is configured
 
-Large KWIC DataFrames are always stored in `ResultStore` (filesystem), not in Redis, because Celery's Redis result backend is not sized for multi-megabyte row results.
+Large DataFrames and exported ticket artifacts stay in `ResultStore` (filesystem), not in Redis, because the Redis-backed Celery state layer is only intended for small control-plane metadata.
 
 ## Cross-Cutting Concerns
 
 ### Validation and API contracts
 
 Pydantic schemas define the public request and response contracts, and FastAPI exposes generated API documentation at `/docs` and `/redoc`.
+
+Pending ticket responses also expose a `Retry-After` hint derived from `cache.ticket_poll_retry_after_seconds`, so clients can back off instead of polling at a fixed interval.
 
 ### Error handling
 
@@ -335,6 +358,7 @@ The app currently configures CORS, but it does not implement built-in authentica
 - CWB registry and data directories must be valid for query endpoints to work.
 - `speech_id` must remain stable across the prebuilt speech index and any batch retrieval or ticket-manifest workflow.
 - The filesystem-backed `ResultStore` is local to the running deployment unit; it is not a distributed job/result system.
+- Multi-process correctness depends on both a shared `cache.root_dir` and a shared ticket-state backend when `cache.ticket_state_backend_url` is enabled.
 - The active backend design centers on the prebuilt repository path, not the archived ZIP-based legacy runtime.
 
 ## Design Decisions and Tradeoffs
@@ -344,11 +368,13 @@ The app currently configures CORS, but it does not implement built-in authentica
 - DataFrame-centric service boundaries: efficient for analytical operations and mapper projection, but it keeps much of the domain logic tied to pandas and Arrow-style structures.
 - Celery + Redis for production multiprocessing-capable ticket execution: moves heavyweight ticket queries into a separate worker process so `multiprocessing.Pool` can be used safely. Adds Redis and a dedicated worker container to the deployment while keeping the default queue available for lighter jobs. A `development.celery_enabled` toggle preserves the simpler `BackgroundTasks` path for local development without Redis.
 - Disk-backed ticket artifacts alongside Celery: Redis holds only small task metadata; large KWIC DataFrames remain in the filesystem `ResultStore`. This keeps Redis memory bounded and reuses the existing artifact lifecycle management.
+- Shared ticket metadata alongside disk artifacts: `TicketStateStore` moves pending-job counting, artifact-byte accounting, and ticket status lookup out of process-local memory, which makes API multi-worker and worker-churn scenarios correct but adds a Redis-backed control-plane dependency in production.
 - Archived legacy runtime kept in-repo: useful for compatibility and rollback analysis, but it creates a second code path that must be clearly excluded from new feature work.
 
 ## Known Limitations or Technical Debt
 
-- `ResultStore` is host-local and filesystem-backed, so ticket execution and artifact lookup are not designed for horizontally distributed execution. In production, the API container and the Celery worker container must share the same `cache.root_dir` volume.
+- `ResultStore` is still host-local and filesystem-backed, so ticket execution and artifact lookup are not designed for deployment shapes that do not share the same `cache.root_dir` volume.
+- The current shared-state design assumes one Redis-reachable deployment unit. It has been validated for multi-process and staged multi-worker setups, but not yet for a fully horizontally scaled multi-host artifact store.
 - Multiprocessing-capable queries require Celery workers in production. Development mode (`celery_enabled: false`) disables multiprocessing to avoid deadlocking FastAPI's `BackgroundTasks` thread pool.
 - There is no built-in authentication/authorization layer in the backend.
 - The `/v1/tools/topics` endpoint is still a stub.
