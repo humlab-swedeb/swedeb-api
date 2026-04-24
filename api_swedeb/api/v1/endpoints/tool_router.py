@@ -182,6 +182,57 @@ async def get_kwic_ticket_results(
     return result
 
 
+@router.get("/kwic/download/{ticket_id}")
+async def download_kwic_ticket(
+    ticket_id: str,
+    file_format: str = Query("json", alias="format", description="Download format: csv or json"),
+    kwic_ticket_service: KWICTicketService = Depends(get_kwic_ticket_service),
+    download_service: DownloadService = Depends(get_download_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> StreamingResponse:
+    try:
+        ticket = result_store.require_ticket(ticket_id)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+    if ticket.status == TicketStatus.PENDING:
+        raise HTTPException(status_code=409, detail="Ticket not ready")
+    if ticket.status == TicketStatus.ERROR:
+        raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+
+    try:
+        data = kwic_ticket_service.get_full_artifact(ticket_id, result_store)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
+
+    inner_filename = f"kwic_{ticket_id}.{file_format}"
+
+    if file_format == "csv":
+        content = data.to_csv(index=False).encode("utf-8")
+    else:
+        content = data.to_json(orient="records", force_ascii=False).encode("utf-8")
+
+    ticket_expires_at = getattr(ticket, "expires_at", None)
+    manifest = download_service.build_download_manifest(
+        ticket_meta={
+            **(getattr(ticket, "manifest_meta", None) or {}),
+            "file_format": file_format,
+            "total_hits": getattr(ticket, "total_hits", None),
+            "expires_at": ticket_expires_at.isoformat() if ticket_expires_at is not None else None,
+        }
+    )
+
+    return StreamingResponse(
+        download_service.create_single_file_zip_stream(
+            archive_filename=inner_filename,
+            content=content,
+            manifest=manifest,
+        )(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="kwic_{ticket_id}.zip"'},
+    )
+
+
 @router.get("/kwic/{search}", response_model=KeywordInContextResult)
 async def get_kwic_results(
     commons: CommonParams,
@@ -575,6 +626,38 @@ async def download_speeches_by_ticket(
             content=content,
             manifest=manifest,
         )(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.zip"'},
+    )
+
+
+@router.get("/speeches/archive/{ticket_id}")
+async def download_speeches_archive_by_ticket(
+    ticket_id: str,
+    download_service: DownloadService = Depends(get_download_service),
+    result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
+) -> StreamingResponse:
+    try:
+        ticket = result_store.require_ticket(ticket_id)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
+    if ticket.status == TicketStatus.PENDING:
+        raise HTTPException(status_code=409, detail="Ticket not ready")
+    if ticket.status == TicketStatus.ERROR:
+        raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+    if ticket.speech_ids is None or ticket.manifest_meta is None:
+        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
+
+    streamer = download_service.create_stream_from_speech_ids(
+        search_service=search_service,
+        speech_ids=ticket.speech_ids,
+        manifest_meta=ticket.manifest_meta,
+    )
+
+    return StreamingResponse(
+        streamer(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.zip"'},
     )

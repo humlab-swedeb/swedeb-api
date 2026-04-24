@@ -106,7 +106,7 @@ def test_ticket_download_manifest_matches_kwic_baseline(
     ticket_id = kwic_ticket_validation_sample["ticket_id"]
     sync_rows = kwic_ticket_validation_sample["sync_rows"]
 
-    response = ticket_validation_client.post(f"{VERSION}/speeches/download?ticket_id={ticket_id}")
+    response = ticket_validation_client.get(f"{VERSION}/speeches/archive/{ticket_id}")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/zip"
 
@@ -133,3 +133,27 @@ def test_ticket_download_manifest_matches_kwic_baseline(
     assert manifest["checksum"] == expected_checksum
     assert len(names) == len(speech_ids) + 1
     assert names[0] == "manifest.json"
+
+
+def test_kwic_download_json_matches_ticket_rows(
+    ticket_validation_client: TestClient, kwic_ticket_validation_sample: dict
+):
+    ticket_id = kwic_ticket_validation_sample["ticket_id"]
+    ticket_rows = kwic_ticket_validation_sample["ticket_rows"]
+
+    response = ticket_validation_client.get(
+        f"{VERSION}/kwic/download/{ticket_id}",
+        params={"format": "json"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+
+    with zipfile.ZipFile(io.BytesIO(response.content), "r") as archive:
+        names = archive.namelist()
+        manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+        payload = json.loads(archive.read(f"kwic_{ticket_id}.json").decode("utf-8"))
+
+    assert names == ["manifest.json", f"kwic_{ticket_id}.json"]
+    assert manifest["ticket_id"] == ticket_id
+    assert manifest["file_format"] == "json"
+    assert payload == ticket_rows

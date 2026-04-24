@@ -343,6 +343,23 @@ class KWICTicketService:
 
         return (sort_by.value, TICKET_ROW_ID), (sort_order == SortOrder.asc, True)
 
+    def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
+        if ConfigValue("development.celery_enabled", default=False).resolve():
+            artifact_path: Path = result_store.artifact_path(ticket_id)
+            if not artifact_path.exists():
+                raise ResultStoreNotFound("Ticket artifact not found or expired")
+            try:
+                data: pd.DataFrame = pd.read_feather(artifact_path)
+            except Exception as exc:
+                raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
+        else:
+            ticket: TicketMeta = result_store.require_ticket(ticket_id)
+            if ticket.status != TicketStatus.READY:
+                raise ResultStoreNotFound("Ticket is not ready")
+            data = result_store.load_artifact(ticket_id)
+
+        return data.drop(columns=[TICKET_ROW_ID], errors="ignore")
+
     def _query_meta(self, request: KWICQueryRequest) -> dict[str, Any]:
         return {
             "search": request.search,
