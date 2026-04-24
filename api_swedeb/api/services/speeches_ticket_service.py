@@ -32,8 +32,8 @@ TICKET_ROW_ID = "_ticket_row_id"
 
 @lru_cache(maxsize=1)
 def _get_worker_search_service() -> SearchService:
-    from api_swedeb.api.services.corpus_loader import (
-        CorpusLoader,  # type: ignore[import] ; # pylint: disable=import-outside-toplevel
+    from api_swedeb.api.services.corpus_loader import (  # type: ignore[import] ; # pylint: disable=import-outside-toplevel
+        CorpusLoader,
     )
 
     return SearchService(CorpusLoader())
