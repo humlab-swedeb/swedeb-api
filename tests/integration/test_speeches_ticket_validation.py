@@ -83,7 +83,7 @@ def _submit_ready_ticket(client: TestClient, params: dict | None = None) -> str:
 
 
 def _read_zip_entries(response) -> tuple[list[str], zipfile.ZipFile]:
-    archive = zipfile.ZipFile(io.BytesIO(response.content), "r")
+    archive = zipfile.ZipFile(io.BytesIO(response.content), "r")  # pylint: disable=consider-using-with
     return archive.namelist(), archive
 
 
