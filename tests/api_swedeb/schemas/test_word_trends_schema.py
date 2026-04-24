@@ -149,13 +149,13 @@ class TestWordTrendSpeechesTicketAccepted:
 class TestWordTrendSpeechesTicketStatus:
     def test_pending_status(self):
         s = WordTrendSpeechesTicketStatus(ticket_id="t-1", status="pending", expires_at=_NOW)
-        assert s.status == "pending"
+        assert WordTrendSpeechesTicketSortBy.speaker_name == "name"
         assert s.total_hits is None
         assert s.error is None
 
     def test_ready_status_with_hits(self):
         s = WordTrendSpeechesTicketStatus(ticket_id="t-1", status="ready", total_hits=8247, expires_at=_NOW)
-        assert s.status == "ready"
+        assert WordTrendSpeechesTicketSortBy("name") is WordTrendSpeechesTicketSortBy.speaker_name
         assert s.total_hits == 8247
 
     def test_error_status_with_message(self):
@@ -193,13 +193,13 @@ class TestWordTrendSpeechesTicketStatus:
 class TestWordTrendSpeechesTicketSortBy:
     def test_enum_members(self):
         assert WordTrendSpeechesTicketSortBy.year == "year"
-        assert WordTrendSpeechesTicketSortBy.name == "name"
+        assert WordTrendSpeechesTicketSortBy.speaker_name == "name"
         assert WordTrendSpeechesTicketSortBy.party_abbrev == "party_abbrev"
         assert WordTrendSpeechesTicketSortBy.document_name == "document_name"
 
     def test_from_string_value(self):
         assert WordTrendSpeechesTicketSortBy("year") is WordTrendSpeechesTicketSortBy.year
-        assert WordTrendSpeechesTicketSortBy("name") is WordTrendSpeechesTicketSortBy.name
+        assert WordTrendSpeechesTicketSortBy("name") is WordTrendSpeechesTicketSortBy.speaker_name
 
     def test_invalid_value_raises(self):
         with pytest.raises(ValueError):

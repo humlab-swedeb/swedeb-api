@@ -43,7 +43,7 @@ def test_faster_to_dict_records_and_size_of_return_expected_shapes():
     assert records == [{"token": "a", "count": 1}, {"token": "b", "count": 2}]
     assert isinstance(sizes, dict)
     assert all(str(value).endswith(" kB") for value in sizes.values())
-    assert total.endswith(" kB")
+    assert str(total).endswith(" kB")
 
 
 def test_create_mask_supports_operator_range_negation_and_skips_unknown_columns():
@@ -158,14 +158,14 @@ def test_ts_store_raises_for_unknown_extension(tmp_path, monkeypatch):
     monkeypatch.setattr(pu, "now_timestamp", lambda: "20240102030405")
 
     with pytest.raises(ValueError):
-        pu.ts_store(pd.DataFrame({"a": [1]}), extension="parquet", basename="tokens")
+        pu.ts_store(pd.DataFrame({"a": [1]}), extension="parquet", basename="tokens")  # type: ignore[return-value]
 
 
 def test_rename_columns_as_slim_types_and_set_index_helpers():
     df = pd.DataFrame({"old": [1, np.nan], "value": [10, 20]})
 
     renamed = pu.rename_columns(df.copy(), ["count", "value"])
-    slimmed = pu.as_slim_types(renamed.copy(), "count", np.int32)
+    slimmed = pu.as_slim_types(renamed.copy(), "count", np.int32)  # type: ignore[return-value]
     indexed = pu.set_index(slimmed.copy(), "count", axis_name="token_id")
     skipped = pu.set_index(slimmed.copy(), "missing")
 
@@ -175,4 +175,4 @@ def test_rename_columns_as_slim_types_and_set_index_helpers():
     assert indexed.index.name == "token_id"
     assert indexed.index.tolist() == [1, 0]
     pd.testing.assert_frame_equal(skipped, slimmed)
-    assert pu.as_slim_types(None, ["count"], np.int32) is None
+    assert pu.as_slim_types(None, ["count"], np.int32) is None  # type: ignore[return-value]

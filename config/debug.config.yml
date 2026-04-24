@@ -98,6 +98,8 @@ cache:
   max_pending_jobs: 2
   root_dir: /tmp/swedeb-kwic-cache
   max_page_size: 200
+  artifact_cache_max_entries: 16
+  sorted_positions_cache_max_entries: 64
 
 fastapi:
   origins:

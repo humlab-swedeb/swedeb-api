@@ -260,10 +260,15 @@ class KWICTicketService:
         else:
             if page > total_pages:
                 raise ValueError("Requested page is out of range")
-            sorted_frame: pd.DataFrame = self._sort_frame(data, sort_by=sort_by, sort_order=sort_order)
             start: int = (page - 1) * page_size
             end: int = start + page_size
-            page_frame = sorted_frame.iloc[start:end].drop(columns=[TICKET_ROW_ID], errors="ignore")
+            sort_columns, ascending = self._sort_spec(sort_by=sort_by, sort_order=sort_order)
+            sorted_positions = result_store.get_sorted_positions(
+                ticket_id,
+                sort_columns=sort_columns,
+                ascending=ascending,
+            )
+            page_frame = data.iloc[list(sorted_positions[start:end])].drop(columns=[TICKET_ROW_ID], errors="ignore")
 
         return KWICPageResult(
             ticket_id=ticket_id,
@@ -306,10 +311,15 @@ class KWICTicketService:
         else:
             if page > total_pages:
                 raise ValueError("Requested page is out of range")
-            sorted_frame: pd.DataFrame = self._sort_frame(data, sort_by=sort_by, sort_order=sort_order)
             start: int = (page - 1) * page_size
             end: int = start + page_size
-            page_frame = sorted_frame.iloc[start:end].drop(columns=[TICKET_ROW_ID], errors="ignore")
+            sort_columns, ascending = self._sort_spec(sort_by=sort_by, sort_order=sort_order)
+            sorted_positions = result_store.get_sorted_positions(
+                ticket_id,
+                sort_columns=sort_columns,
+                ascending=ascending,
+            )
+            page_frame = data.iloc[list(sorted_positions[start:end])].drop(columns=[TICKET_ROW_ID], errors="ignore")
 
         return KWICPageResult(
             ticket_id=ticket.ticket_id,
@@ -322,21 +332,33 @@ class KWICTicketService:
             kwic_list=kwic_api_frame_to_model(page_frame).kwic_list,
         )
 
-    def _sort_frame(
+    def _sort_spec(
         self,
-        data: pd.DataFrame,
         *,
         sort_by: KWICTicketSortBy | None,
         sort_order: SortOrder,
-    ) -> pd.DataFrame:
+    ) -> tuple[tuple[str, ...], tuple[bool, ...]]:
         if sort_by is None:
-            return data.sort_values(by=[TICKET_ROW_ID], ascending=True, kind="mergesort")
+            return (TICKET_ROW_ID,), (True,)
 
-        return data.sort_values(
-            by=[sort_by.value, TICKET_ROW_ID],
-            ascending=[sort_order == SortOrder.asc, True],
-            kind="mergesort",
-        )
+        return (sort_by.value, TICKET_ROW_ID), (sort_order == SortOrder.asc, True)
+
+    def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
+        if ConfigValue("development.celery_enabled", default=False).resolve():
+            artifact_path: Path = result_store.artifact_path(ticket_id)
+            if not artifact_path.exists():
+                raise ResultStoreNotFound("Ticket artifact not found or expired")
+            try:
+                data: pd.DataFrame = pd.read_feather(artifact_path)
+            except Exception as exc:
+                raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
+        else:
+            ticket: TicketMeta = result_store.require_ticket(ticket_id)
+            if ticket.status != TicketStatus.READY:
+                raise ResultStoreNotFound("Ticket is not ready")
+            data = result_store.load_artifact(ticket_id)
+
+        return data.drop(columns=[TICKET_ROW_ID], errors="ignore")
 
     def _query_meta(self, request: KWICQueryRequest) -> dict[str, Any]:
         return {

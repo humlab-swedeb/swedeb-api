@@ -46,7 +46,7 @@ Backend improvements included:
 - added a new and faster indexing storage structure for speech data
   - added a new pre-computed speech index with decoded metadata
   - switched to pre-computed speech storage (indexed feather files - previouly zipped JSON files)
-- added a serverside ticket/working implemented using Celery and Redis frameworks
+- added a serverside ticket-based task queue system implemented using Celery and Redis frameworks
 - faster word-trend execution by slicing the vector space (DTM) before grouping
 - DTM grouping grouping optimizations (SciPy improvements)
 - changed default Pandas storage format to Pyarrow instead of Numpy.

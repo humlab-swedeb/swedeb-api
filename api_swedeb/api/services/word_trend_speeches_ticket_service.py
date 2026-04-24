@@ -276,10 +276,15 @@ class WordTrendSpeechesTicketService:
         else:
             if page > total_pages:
                 raise ValueError("Requested page is out of range")
-            sorted_frame: pd.DataFrame = self._sort_frame(data, sort_by=sort_by, sort_order=sort_order)
             start: int = (page - 1) * page_size
             end: int = start + page_size
-            page_frame = sorted_frame.iloc[start:end].drop(columns=[TICKET_ROW_ID], errors="ignore")
+            sort_columns, ascending = self._sort_spec(sort_by=sort_by, sort_order=sort_order)
+            sorted_positions = result_store.get_sorted_positions(
+                ticket_id,
+                sort_columns=sort_columns,
+                ascending=ascending,
+            )
+            page_frame = data.iloc[list(sorted_positions[start:end])].drop(columns=[TICKET_ROW_ID], errors="ignore")
 
         return WordTrendSpeechesPageResult(
             ticket_id=ticket_id,
@@ -309,20 +314,15 @@ class WordTrendSpeechesTicketService:
             data: pd.DataFrame = result_store.load_artifact(ticket_id)
         return data.drop(columns=[TICKET_ROW_ID], errors="ignore")
 
-    def _sort_frame(
+    def _sort_spec(
         self,
-        data: pd.DataFrame,
         *,
         sort_by: WordTrendSpeechesTicketSortBy | None,
         sort_order: SortOrder,
-    ) -> pd.DataFrame:
+    ) -> tuple[tuple[str, ...], tuple[bool, ...]]:
         if sort_by is None:
-            return data.sort_values(by=[TICKET_ROW_ID], ascending=True, kind="mergesort")
-        return data.sort_values(
-            by=[sort_by.value, TICKET_ROW_ID],
-            ascending=[sort_order == SortOrder.asc, True],
-            kind="mergesort",
-        )
+            return (TICKET_ROW_ID,), (True,)
+        return (sort_by.value, TICKET_ROW_ID), (sort_order == SortOrder.asc, True)
 
     def _frame_to_speeches(self, frame: pd.DataFrame) -> list[SpeechesResultItemWT]:
         rows: list[dict[str, Any]] = frame.to_dict(orient="records")  # type: ignore[no-untyped-call]

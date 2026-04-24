@@ -16,6 +16,7 @@ It is not the main guide for local project bootstrap or runtime operations. Loca
 - [Test Data, Fixtures, and Mocking Strategy](#test-data-fixtures-and-mocking-strategy)
 - [Common Test Commands](#common-test-commands)
 - [Validation Before Merge](#validation-before-merge)
+- [Manual Smoke Testing](#manual-smoke-testing)
 - [CI Test Execution](#ci-test-execution)
 - [Troubleshooting and Common Pitfalls](#troubleshooting-and-common-pitfalls)
 - [Related Documents](#related-documents)
@@ -248,6 +249,12 @@ The normal pre-PR baseline is:
 3. run `make tidy`
 4. update [TESTING.md](./TESTING.md) if the supported test workflow, fixture policy, or validation expectations changed
 
+## Manual Smoke Testing
+
+Before handing a deployed or locally staged build over to testers, run the concise
+[manual smoke-test checklist](./SMOKE_TEST_CHECKLIST.md). It covers startup, API documentation, metadata, KWIC,
+word trends, n-grams, speech retrieval, ticketed query flows, ZIP downloads, and basic error handling.
+
 ## CI Test Execution
 
 The checked-in GitHub workflows under `.github/workflows/` are currently release and image-build workflows:
@@ -273,6 +280,7 @@ That means local test execution remains the primary automated validation path be
 
 - [DEVELOPMENT.md](./DEVELOPMENT.md)
 - [DESIGN.md](./DESIGN.md)
+- [SMOKE_TEST_CHECKLIST.md](./SMOKE_TEST_CHECKLIST.md)
 - [OPERATIONS.md](./OPERATIONS.md)
 - [AGENTS.md](../AGENTS.md)
 - [pyproject.toml](../pyproject.toml)

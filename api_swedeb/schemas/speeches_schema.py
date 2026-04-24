@@ -54,7 +54,7 @@ class SpeechesTicketStatus(BaseModel):
 
 class SpeechesTicketSortBy(str, Enum):
     year = "year"
-    name = "name"
+    speaker_name = "name"
     party_abbrev = "party_abbrev"
     document_name = "document_name"
 

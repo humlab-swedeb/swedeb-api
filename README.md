@@ -18,6 +18,7 @@ This repository contains the backend API for the Swedeb project. It is a Python 
 
 ### For Developers
 - **[Development Guide](docs/DEVELOPMENT.md)** - Complete developer workflow, branching strategy, commit conventions, and CI/CD architecture
+- **[Design Guide](docs/DESIGN.md)** - Current backend architecture, ticket-service flows, and shared ticket-state design
 - **[AI Coding Agent Instructions](.github/copilot-instructions.md)** - Essential guide for AI assistants working with this codebase
 
 ### For Deployment & Operations
@@ -73,7 +74,7 @@ graph TD
 - **Direct Injection** - Services injected via FastAPI `Depends()` for clean separation of concerns
 - **Pydantic** - Request/response validation with type safety and automatic serialization
 - **Feather/Arrow Storage** - Fast columnar storage for speech indexes and metadata
-- **Celery + Redis** - Production background task execution for multiprocessing-capable queries; currently powers KWIC and leaves room for future analytical jobs such as n-grams. Disabled in local development (`debug.config.yml`).
+- **Celery + Redis** - Production background task execution and shared ticket-state control plane for KWIC, speeches, and word-trend speeches. Disabled in local development (`debug.config.yml`).
 - **Docker + Auto-detection** - Containerized deployment with automatic frontend version detection
 
 ## Related Repositories
@@ -98,7 +99,7 @@ See [pyproject.toml](pyproject.toml) for the complete dependency list.
 - **Docker** (optional, for containerized development)
 - **CWB data** - Corpus files from [sample-data repository](https://github.com/humlab-swedeb/sample-data)
 - **Metadata database** - SQLite database with speaker/party information
-- **Redis** (production only) - Required when `development.celery_enabled: true` for KWIC multiprocessing. Not needed for local development with `config/debug.config.yml`.
+- **Redis** (production only) - Required when `development.celery_enabled: true` for the worker-backed ticket flows and shared ticket-state backend. Not needed for local development with `config/debug.config.yml`.
 
 ### Local Development Setup
 
@@ -175,7 +176,7 @@ docker run --rm -p 6379:6379 redis:7-alpine                          # Start Red
 uv run celery -A api_swedeb.celery_tasks worker --loglevel=info      # Start Celery worker
 ```
 
-See [Background Task Execution (KWIC)](docs/DEVELOPMENT.md#background-task-execution-kwic) for full details on development vs production modes.
+See [Background Task Execution (Ticketed Endpoints)](docs/DEVELOPMENT.md#background-task-execution-ticketed-endpoints) for development versus production ticket execution, and [Operations Guide](docs/OPERATIONS.md) for the deployed Redis and worker topology.
 
 ## Testing
 

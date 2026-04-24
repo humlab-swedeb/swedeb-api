@@ -129,13 +129,16 @@ The `config.yml` structure includes the following operational sections:
 - `tagged_frames.folder` - Tagged frame input data
 - `bootstrap_corpus_folder` - Prebuilt speech corpus location
 
-**`cache`** - Shared ticket-based paging configuration (used by both KWIC and word trends paging)
+**`cache`** - Shared ticket-based paging and export configuration for the async ticketed endpoints
 - `result_ttl_seconds` - Ticket lifetime before expiration (default: `600`)
 - `cleanup_interval_seconds` - Frequency of automatic cleanup (default: `60`)
 - `max_artifact_bytes` - Maximum total storage for all ticket artifacts in bytes (default: `2147483648` = 2GB)
 - `max_pending_jobs` - Maximum concurrent pending tickets (default: `2`)
 - `root_dir` - Filesystem path for ticket artifact storage (e.g., `/tmp/swedeb-kwic-cache`)
 - `max_page_size` - Maximum page size for paginated results (default: `200`)
+- `ticket_poll_retry_after_seconds` - `Retry-After` hint returned on pending ticket responses so clients back off instead of polling constantly
+- `ticket_state_backend_url` - Shared backend used for ticket metadata and counters; production should point this at the same Redis deployment used by the workers
+- `ticket_state_prefix` - Key prefix for shared ticket metadata; use a deployment-specific namespace when multiple environments share one Redis server
 
 **`celery`** - Background task queue configuration (required for production ticket execution)
 - `broker_url` - Redis connection URL for task queue
@@ -150,9 +153,11 @@ The `config.yml` structure includes the following operational sections:
 
 **Operational notes:**
 - The `cache.root_dir` volume must be shared between API and Celery worker containers so ticket artifacts are accessible across processes
-- Cache settings apply globally to all ticket-based endpoints (KWIC and word trends speeches)
+- Cache settings apply globally to all ticket-based endpoints (KWIC, speeches, and word-trend speeches)
 - Ticket artifacts are stored as feather files under `cache.root_dir`
 - Cleanup runs automatically at `cleanup_interval_seconds` frequency to remove expired tickets
+- When `ticket_state_backend_url` is set, pending-job counts, artifact-byte limits, and ticket metadata are enforced through that shared backend rather than per-process memory
+- If multiple environments point at the same Redis deployment, `ticket_state_prefix` must differ so ticket state does not collide across environments
 
 ### Runtime environment variables
 
@@ -221,6 +226,8 @@ Versioning matters operationally:
 - deployment should not silently mix incompatible corpus and metadata versions
 
 Redis is treated as ephemeral runtime state. Task queue entries and task execution state are stored in Redis by the Celery integration, but these are short-lived and do not require persistent backup. Redis persistence (`appendonly yes`) is enabled in `docker/redis.container` as a convenience for crash recovery of in-flight tasks, not as a primary data store.
+
+The same Redis deployment now also carries shared ticket-control-plane state when `cache.ticket_state_backend_url` is configured. That state remains ephemeral, but it is operationally important because it holds pending-ticket counts, artifact-byte accounting, and ticket metadata that allow multi-process API instances to observe the same ticket lifecycle.
 
 ## Build Artifacts
 
@@ -353,13 +360,13 @@ The shared image entrypoint executes any explicit container command before falli
 
 The deployed Celery broker/backend URL must target the Redis container on the shared Podman network, not `localhost`. The checked-in production config uses `redis://redis:6379/0`, and the Redis Quadlet publishes a stable in-network alias `redis` for that purpose.
 
-The API routes multiprocessing-capable tickets such as KWIC to `celery.multiprocessing_queue` and word-trend speeches tickets to `celery.default_queue`. The queue names in `config.yml` must stay aligned with the `--queues=` arguments in the worker Quadlets.
+The API routes multiprocessing-capable tickets such as KWIC to `celery.multiprocessing_queue`, while ticketed speeches and word-trend speeches use `celery.default_queue`. The queue names in `config.yml` must stay aligned with the `--queues=` arguments in the worker Quadlets.
 
 Service dependency order: `redis.service` must be running before `celery-worker.service`, `multiprocessing-worker.service`, and the API service. The API and worker units declare that relationship explicitly, and `BindsTo=` plus `PartOf=` ensure they are restarted when Redis is restarted so their Celery clients reconnect cleanly.
 
 The `Network=swedeb-staging-app.network` setting already makes Quadlet generate the required network dependency. Do not add manual `Requires=` or `After=` lines that reference `swedeb-staging-app.network` directly; that is a Quadlet file name, not a valid systemd unit name.
 
-The API container, both Celery worker containers, and the Redis container must all be on the same Podman network (`swedeb-*-app.network`). The API and workers must share a common writable volume mounted at `cache.root_dir` (default: `/tmp/swedeb-kwic-cache`) so that ticket artifacts written by workers are visible to the API when a client polls for results.
+The API container, both Celery worker containers, and the Redis container must all be on the same Podman network (`swedeb-*-app.network`). The API and workers must share a common writable volume mounted at `cache.root_dir` (default: `/tmp/swedeb-kwic-cache`) so that ticket artifacts written by workers are visible to the API when a client polls for results. They must also agree on the same `cache.ticket_state_backend_url` and `cache.ticket_state_prefix` so ticket counters and metadata are shared across processes.
 
 To restart the workers after a deployment:
 
@@ -393,7 +400,11 @@ Short operator checklist:
 - Confirm Redis is running and accepting connections.
 - Confirm the default Celery worker started and shows as `READY` in its logs.
 - Confirm the dedicated multiprocessing worker started and shows as `READY` in its logs.
+- Submit at least one ticketed speeches request and one ticketed word-trend speeches request, then confirm status or page retrieval succeeds from the running environment.
+- If pending responses are observed during smoke tests, confirm they return a sensible `Retry-After` value that matches `cache.ticket_poll_retry_after_seconds`.
 - Review recent service logs for startup, configuration, or asset errors before declaring the rollout complete.
+
+For a fuller operator workflow, use [SMOKE_TEST_CHECKLIST.md](./SMOKE_TEST_CHECKLIST.md).
 
 Useful commands in current operational material:
 

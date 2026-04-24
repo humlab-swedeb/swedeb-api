@@ -501,7 +501,7 @@ def test_get_page_result_sorts_by_name(tmp_path):
             result_store=store,
             page=1,
             page_size=50,
-            sort_by=WordTrendSpeechesTicketSortBy.name,  # type: ignore[call-arg]
+            sort_by=WordTrendSpeechesTicketSortBy.speaker_name,
             sort_order=SortOrder.asc,
         )
 
