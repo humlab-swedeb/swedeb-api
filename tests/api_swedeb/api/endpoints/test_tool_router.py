@@ -5,6 +5,7 @@ import io
 import json
 import zipfile
 from datetime import UTC, datetime
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -22,7 +23,9 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     get_kwic_ticket_status,
     get_ngram_results,
     get_speech_by_id_result,
+    get_speeches_page,
     get_speeches_result,
+    get_speeches_status,
     get_topics,
     get_word_hits,
     get_word_trend_speeches_page,
@@ -32,13 +35,19 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     get_year_range,
     get_zip,
     submit_kwic_query,
+    submit_speeches_query,
     submit_word_trend_speeches_query,
 )
 from api_swedeb.core.speech import Speech
 from api_swedeb.schemas.kwic_schema import KWICPageResult, KWICQueryRequest, KWICTicketStatus
 from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
 from api_swedeb.schemas.sort_order import SortOrder
-from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
+from api_swedeb.schemas.speeches_schema import (
+    SpeechesPageResult,
+    SpeechesResult,
+    SpeechesResultItem,
+    SpeechesTicketStatus,
+)
 from api_swedeb.schemas.word_trends_schema import (
     WordTrendSpeechesPageResult,
     WordTrendSpeechesQueryRequest,
@@ -155,6 +164,7 @@ class TestToolRouterEndpoints:
         result = asyncio.run(
             get_kwic_ticket_status(
                 ticket_id="ticket-1",
+                response=MagicMock(headers={}),
                 kwic_ticket_service=kwic_ticket_service,
                 result_store=MagicMock(),
             )
@@ -171,6 +181,7 @@ class TestToolRouterEndpoints:
             asyncio.run(
                 get_kwic_ticket_status(
                     ticket_id="ticket-1",
+                    response=MagicMock(headers={}),
                     kwic_ticket_service=kwic_ticket_service,
                     result_store=MagicMock(),
                 )
@@ -525,7 +536,11 @@ class TestWordTrendSpeechesTicketEndpoints:
             expires_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
-    def _make_status(self, status: str = "ready", total_hits: int = 50) -> WordTrendSpeechesTicketStatus:
+    def _make_status(
+        self,
+        status: Literal["pending", "ready", "error"] = "ready",
+        total_hits: int = 50,
+    ) -> WordTrendSpeechesTicketStatus:
         return WordTrendSpeechesTicketStatus(
             ticket_id="wt-ticket-1",
             status=status,
@@ -623,6 +638,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         result = asyncio.run(
             get_word_trend_speeches_status(
                 ticket_id="wt-ticket-1",
+                response=MagicMock(headers={}),
                 wt_speeches_ticket_service=wt_service,
                 result_store=MagicMock(),
             )
@@ -639,6 +655,7 @@ class TestWordTrendSpeechesTicketEndpoints:
             asyncio.run(
                 get_word_trend_speeches_status(
                     ticket_id="wt-ticket-1",
+                    response=MagicMock(headers={}),
                     wt_speeches_ticket_service=wt_service,
                     result_store=MagicMock(),
                 )
@@ -834,25 +851,25 @@ class TestWordTrendSpeechesTicketEndpoints:
     def test_download_speeches_by_ticket_returns_zip_with_csv_file(self):
         download_service = DownloadService()
         result_store = MagicMock()
+        speeches_ticket_service = MagicMock()
         result_store.require_ticket.return_value = type(
             "Ticket",
             (),
-            {"status": "ready", "error": None},
+            {"status": "ready", "error": None, "manifest_meta": {}, "total_hits": 1, "expires_at": None},
         )()
-        result_store.artifact_path.return_value = MagicMock(exists=MagicMock(return_value=True))
+        speeches_ticket_service.get_full_artifact.return_value = pd.DataFrame(
+            [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+        )
 
-        with patch("pandas.read_feather") as read_feather:
-            read_feather.return_value = pd.DataFrame(
-                [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+        result = asyncio.run(
+            download_speeches_by_ticket(
+                ticket_id="speech-ticket-1",
+                file_format="csv",
+                download_service=download_service,
+                speeches_ticket_service=speeches_ticket_service,
+                result_store=result_store,
             )
-            result = asyncio.run(
-                download_speeches_by_ticket(
-                    ticket_id="speech-ticket-1",
-                    file_format="csv",
-                    download_service=download_service,
-                    result_store=result_store,
-                )
-            )
+        )
 
         body = asyncio.run(_collect_streaming_response(result))
 
@@ -860,30 +877,30 @@ class TestWordTrendSpeechesTicketEndpoints:
         assert result.media_type == "application/zip"
         assert "speeches_speech-ticket-1.zip" in result.headers["content-disposition"]
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
-            assert archive.namelist() == ["speeches_speech-ticket-1.csv"]
+            assert archive.namelist() == ["manifest.json", "speeches_speech-ticket-1.csv"]
 
     def test_download_speeches_by_ticket_returns_zip_with_json_file(self):
         download_service = DownloadService()
         result_store = MagicMock()
+        speeches_ticket_service = MagicMock()
         result_store.require_ticket.return_value = type(
             "Ticket",
             (),
-            {"status": "ready", "error": None},
+            {"status": "ready", "error": None, "manifest_meta": {}, "total_hits": 1, "expires_at": None},
         )()
-        result_store.artifact_path.return_value = MagicMock(exists=MagicMock(return_value=True))
+        speeches_ticket_service.get_full_artifact.return_value = pd.DataFrame(
+            [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+        )
 
-        with patch("pandas.read_feather") as read_feather:
-            read_feather.return_value = pd.DataFrame(
-                [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
+        result = asyncio.run(
+            download_speeches_by_ticket(
+                ticket_id="speech-ticket-1",
+                file_format="json",
+                download_service=download_service,
+                speeches_ticket_service=speeches_ticket_service,
+                result_store=result_store,
             )
-            result = asyncio.run(
-                download_speeches_by_ticket(
-                    ticket_id="speech-ticket-1",
-                    file_format="json",
-                    download_service=download_service,
-                    result_store=result_store,
-                )
-            )
+        )
 
         body = asyncio.run(_collect_streaming_response(result))
 
@@ -891,4 +908,162 @@ class TestWordTrendSpeechesTicketEndpoints:
         assert result.media_type == "application/zip"
         assert "speeches_speech-ticket-1.zip" in result.headers["content-disposition"]
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
-            assert archive.namelist() == ["speeches_speech-ticket-1.json"]
+            assert archive.namelist() == ["manifest.json", "speeches_speech-ticket-1.json"]
+
+
+class TestSpeechesTicketEndpoints:
+    def _make_accepted(self, ticket_id: str = "speech-ticket-1"):
+        return type(
+            "Accepted",
+            (),
+            {"ticket_id": ticket_id, "status": "pending", "expires_at": datetime(2026, 1, 1, tzinfo=UTC)},
+        )()
+
+    def test_submit_speeches_query_schedules_background_task(self):
+        commons = MagicMock()
+        commons.get_filter_opts.return_value = {"from_year": 1960, "to_year": 1975}
+        background_tasks = BackgroundTasks()
+        speeches_ticket_service = MagicMock()
+        speeches_ticket_service.submit_query.return_value = self._make_accepted()
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        result = asyncio.run(
+            submit_speeches_query(
+                commons=commons,
+                background_tasks=background_tasks,
+                search_service=MagicMock(),
+                speeches_ticket_service=speeches_ticket_service,
+                result_store=result_store,
+            )
+        )
+
+        speeches_ticket_service.submit_query.assert_called_once_with({"from_year": 1960, "to_year": 1975}, result_store)
+        assert result.ticket_id == "speech-ticket-1"
+        assert len(background_tasks.tasks) == 1
+
+    def test_submit_speeches_query_sends_celery_task_when_enabled(self):
+        commons = MagicMock()
+        commons.get_filter_opts.return_value = {"from_year": 1960, "to_year": 1975}
+        background_tasks = BackgroundTasks()
+        speeches_ticket_service = MagicMock()
+        speeches_ticket_service.submit_query.return_value = self._make_accepted()
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        with (
+            patch("api_swedeb.api.v1.endpoints.tool_router.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.send_task") as send_task,
+        ):
+            result = asyncio.run(
+                submit_speeches_query(
+                    commons=commons,
+                    background_tasks=background_tasks,
+                    search_service=MagicMock(),
+                    speeches_ticket_service=speeches_ticket_service,
+                    result_store=result_store,
+                )
+            )
+
+        assert result.ticket_id == "speech-ticket-1"
+        assert len(background_tasks.tasks) == 0
+        send_task.assert_called_once_with(
+            "api_swedeb.execute_speeches_ticket",
+            args=["speech-ticket-1", {"from_year": 1960, "to_year": 1975}],
+            task_id="speech-ticket-1",
+            queue="celery",
+        )
+
+    def test_get_speeches_status_uses_service(self):
+        service = MagicMock()
+        service.get_status.return_value = SpeechesTicketStatus(
+            ticket_id="speech-ticket-1",
+            status="ready",
+            total_hits=12,
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        response = MagicMock(headers={})
+
+        result = asyncio.run(
+            get_speeches_status(
+                ticket_id="speech-ticket-1",
+                response=response,
+                speeches_ticket_service=service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert result.status == "ready"
+        assert result.total_hits == 12
+        assert response.headers == {}
+
+    def test_get_speeches_status_sets_retry_after_for_pending(self):
+        service = MagicMock()
+        service.get_status.return_value = SpeechesTicketStatus(
+            ticket_id="speech-ticket-1",
+            status="pending",
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        response = MagicMock(headers={})
+
+        result = asyncio.run(
+            get_speeches_status(
+                ticket_id="speech-ticket-1",
+                response=response,
+                speeches_ticket_service=service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert result.status == "pending"
+        assert response.headers["Retry-After"] == "2"
+
+    def test_get_speeches_page_returns_pending_json(self):
+        service = MagicMock()
+        service.get_page_result.return_value = SpeechesTicketStatus(
+            ticket_id="speech-ticket-1",
+            status="pending",
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        result = asyncio.run(
+            get_speeches_page(
+                ticket_id="speech-ticket-1",
+                page=1,
+                page_size=10,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+                speeches_ticket_service=service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, JSONResponse)
+        assert result.status_code == 202
+        assert result.headers["retry-after"] == "2"
+
+    def test_get_speeches_page_returns_ready_page_result(self):
+        service = MagicMock()
+        service.get_page_result.return_value = SpeechesPageResult(
+            ticket_id="speech-ticket-1",
+            status="ready",
+            page=1,
+            page_size=10,
+            total_hits=2,
+            total_pages=1,
+            expires_at=datetime(2026, 1, 1, tzinfo=UTC),
+            speech_list=[],
+        )
+
+        result = asyncio.run(
+            get_speeches_page(
+                ticket_id="speech-ticket-1",
+                page=1,
+                page_size=10,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+                speeches_ticket_service=service,
+                result_store=MagicMock(),
+            )
+        )
+
+        assert isinstance(result, SpeechesPageResult)
+        assert result.status == "ready"

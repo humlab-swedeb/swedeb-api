@@ -1,10 +1,8 @@
-import math
-from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import fastapi
 import pandas as pd
-from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query
+from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.dependencies import (
@@ -16,6 +14,7 @@ from api_swedeb.api.dependencies import (
     get_kwic_ticket_service,
     get_result_store,
     get_search_service,
+    get_speeches_ticket_service,
     get_word_trend_speeches_ticket_service,
     get_word_trends_service,
 )
@@ -29,10 +28,11 @@ from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreNotFound,
     ResultStorePendingLimitError,
-    TicketMeta,
     TicketStatus,
 )
 from api_swedeb.api.services.search_service import SearchService
+from api_swedeb.api.services.speeches_ticket_service import DEFAULT_PAGE_SIZE as SPEECHES_DEFAULT_PAGE_SIZE
+from api_swedeb.api.services.speeches_ticket_service import SpeechesTicketService
 from api_swedeb.api.services.word_trend_speeches_ticket_service import DEFAULT_PAGE_SIZE as WT_DEFAULT_PAGE_SIZE
 from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
@@ -78,6 +78,11 @@ CommonParams = Annotated[CommonQueryParams, Depends()]
 
 
 router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools"], responses={404: {"description": "Not found"}})
+
+
+def _pending_retry_headers() -> dict[str, str]:
+    retry_after_seconds = ConfigValue("cache.ticket_poll_retry_after_seconds", default=2).resolve()
+    return {"Retry-After": str(retry_after_seconds)}
 
 
 @router.post("/kwic/query", response_model=KWICTicketAccepted, status_code=202)
@@ -126,13 +131,17 @@ async def submit_kwic_query(
 @router.get("/kwic/status/{ticket_id}", response_model=KWICTicketStatus)
 async def get_kwic_ticket_status(
     ticket_id: str,
+    response: Response,
     kwic_ticket_service: KWICTicketService = Depends(get_kwic_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> KWICTicketStatus:
     try:
-        return kwic_ticket_service.get_status(ticket_id, result_store)
+        result = kwic_ticket_service.get_status(ticket_id, result_store)
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    if result.status == TicketStatus.PENDING.value:
+        response.headers.update(_pending_retry_headers())
+    return result
 
 
 @router.get("/kwic/results/{ticket_id}", response_model=KWICPageResult | KWICTicketStatus)
@@ -161,7 +170,11 @@ async def get_kwic_ticket_results(
 
     if isinstance(result, KWICTicketStatus):
         if result.status == TicketStatus.PENDING.value:
-            return JSONResponse(status_code=202, content=result.model_dump(mode="json"))
+            return JSONResponse(
+                status_code=202,
+                content=result.model_dump(mode="json"),
+                headers=_pending_retry_headers(),
+            )
         if result.status == TicketStatus.ERROR.value:
             return JSONResponse(status_code=409, content=result.model_dump(mode="json"))
 
@@ -270,14 +283,18 @@ async def submit_word_trend_speeches_query(
 @router.get("/word_trend_speeches/status/{ticket_id}", response_model=WordTrendSpeechesTicketStatus)
 async def get_word_trend_speeches_status(
     ticket_id: str,
+    response: Response,
     wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> WordTrendSpeechesTicketStatus:
     """Poll the status of a word trend speeches query ticket."""
     try:
-        return wt_speeches_ticket_service.get_status(ticket_id, result_store)
+        result = wt_speeches_ticket_service.get_status(ticket_id, result_store)
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    if result.status == TicketStatus.PENDING.value:
+        response.headers.update(_pending_retry_headers())
+    return result
 
 
 @router.get(
@@ -310,7 +327,11 @@ async def get_word_trend_speeches_page(
 
     if isinstance(result, WordTrendSpeechesTicketStatus):
         if result.status == TicketStatus.PENDING.value:
-            return JSONResponse(status_code=202, content=result.model_dump(mode="json"))
+            return JSONResponse(
+                status_code=202,
+                content=result.model_dump(mode="json"),
+                headers=_pending_retry_headers(),
+            )
         if result.status == TicketStatus.ERROR.value:
             return JSONResponse(status_code=409, content=result.model_dump(mode="json"))
 
@@ -413,11 +434,13 @@ async def submit_speeches_query(
     commons: CommonParams,
     background_tasks: BackgroundTasks,
     search_service: SearchService = Depends(get_search_service),
+    speeches_ticket_service: SpeechesTicketService = Depends(get_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> SpeechesTicketAccepted:
     """Submit an async query for speeches matching filter criteria and receive a ticket immediately."""
+    selections = commons.get_filter_opts(True)
     try:
-        ticket: TicketMeta = result_store.create_ticket()
+        accepted = speeches_ticket_service.submit_query(selections, result_store)
     except ResultStorePendingLimitError as exc:
         raise HTTPException(
             status_code=429,
@@ -425,41 +448,42 @@ async def submit_speeches_query(
             headers={"Retry-After": str(result_store.cleanup_interval_seconds)},
         ) from exc
 
-    ticket_id = ticket.ticket_id
+    if ConfigValue("development.celery_enabled", default=False).resolve():
+        from api_swedeb.celery_app import celery_app, get_default_queue_name  # type: ignore[import]
 
-    async def execute_speeches_query():
-        try:
-            df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
-            result_store.store_ready(ticket_id, df=df)
-        except Exception as e:  # pylint: disable=broad-except
-            result_store.store_error(ticket_id, message=str(e))
+        celery_app.send_task(
+            "api_swedeb.execute_speeches_ticket",
+            args=[accepted.ticket_id, dict(selections)],
+            task_id=accepted.ticket_id,
+            queue=get_default_queue_name(),
+        )
+    else:
+        background_tasks.add_task(
+            speeches_ticket_service.execute_ticket,
+            ticket_id=accepted.ticket_id,
+            selections=dict(selections),
+            search_service=search_service,
+            result_store=result_store,
+        )
 
-    background_tasks.add_task(execute_speeches_query)
-
-    return SpeechesTicketAccepted(
-        ticket_id=ticket_id,
-        status="pending",
-        expires_at=ticket.expires_at,
-    )
+    return accepted
 
 
 @router.get("/speeches/status/{ticket_id}", response_model=SpeechesTicketStatus)
 async def get_speeches_status(
     ticket_id: str,
+    response: Response,
+    speeches_ticket_service: SpeechesTicketService = Depends(get_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> SpeechesTicketStatus:
     """Poll the status of a speeches query ticket."""
-    ticket = result_store.get_ticket(ticket_id)
-    if ticket is None:
-        raise HTTPException(status_code=404, detail="Ticket not found or expired")
-
-    return SpeechesTicketStatus(
-        ticket_id=ticket_id,
-        status=ticket.status.value,
-        total_hits=ticket.total_hits,
-        error=ticket.error,
-        expires_at=ticket.expires_at,
-    )
+    try:
+        result = speeches_ticket_service.get_status(ticket_id, result_store)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    if result.status == TicketStatus.PENDING.value:
+        response.headers.update(_pending_retry_headers())
+    return result
 
 
 @router.get(
@@ -469,89 +493,39 @@ async def get_speeches_status(
 async def get_speeches_page(
     ticket_id: str,
     page: int = Query(1, description="1-based page number", ge=1),
-    page_size: int = Query(10, description="Number of rows to return", ge=1, le=100),
+    page_size: int = Query(SPEECHES_DEFAULT_PAGE_SIZE, description="Number of rows to return", ge=1, le=100),
     sort_by: SpeechesTicketSortBy | None = Query(None, description="Sort field"),
     sort_order: SortOrder = Query(SortOrder.asc, description="Sort order"),
+    speeches_ticket_service: SpeechesTicketService = Depends(get_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> SpeechesPageResult | JSONResponse:
     """Fetch a page of results from a ready speeches query ticket."""
     try:
-        ticket = result_store.require_ticket(ticket_id)
+        result = speeches_ticket_service.get_page_result(
+            ticket_id=ticket_id,
+            result_store=result_store,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    # If ticket is still pending or failed, return status
-    if ticket.status == TicketStatus.PENDING:
-        status = SpeechesTicketStatus(
-            ticket_id=ticket_id,
-            status=ticket.status.value,
-            total_hits=ticket.total_hits,
-            error=ticket.error,
-            expires_at=ticket.expires_at,
-        )
-        return JSONResponse(status_code=202, content=status.model_dump(mode="json"))
+    if isinstance(result, SpeechesTicketStatus):
+        if result.status == TicketStatus.PENDING.value:
+            return JSONResponse(
+                status_code=202,
+                content=result.model_dump(mode="json"),
+                headers=_pending_retry_headers(),
+            )
+        if result.status == TicketStatus.ERROR.value:
+            return JSONResponse(status_code=409, content=result.model_dump(mode="json"))
 
-    if ticket.status == TicketStatus.ERROR:
-        status = SpeechesTicketStatus(
-            ticket_id=ticket_id,
-            status=ticket.status.value,
-            total_hits=ticket.total_hits,
-            error=ticket.error,
-            expires_at=ticket.expires_at,
-        )
-        return JSONResponse(status_code=409, content=status.model_dump(mode="json"))
-
-    # Ticket is ready, fetch the page
-    artifact_path = result_store.artifact_path(ticket_id)
-    if not artifact_path.exists():
-        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
-
-    try:
-        data = pd.read_feather(artifact_path)
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
-
-    # Build page result
-
-    total_hits = len(data.index)
-    total_pages = math.ceil(total_hits / page_size) if total_hits else 0
-
-    # Handle empty result
-    if total_hits == 0:
-        if page != 1:
-            raise HTTPException(status_code=400, detail="Requested page is out of range")
-        page_frame = data.iloc[0:0]
-    else:
-        # Allow out-of-range pages but return empty list
-        if page > total_pages:
-            page_frame = data.iloc[0:0]
-        else:
-            # Sort data
-            sort_field = sort_by.value if sort_by else "year"
-            ascending = sort_order == SortOrder.asc
-            if sort_field in data.columns:
-                sorted_data = data.sort_values(by=sort_field, ascending=ascending)
-            else:
-                sorted_data = data
-
-            # Extract page
-            start = (page - 1) * page_size
-            end = start + page_size
-            page_frame = sorted_data.iloc[start:end]
-
-    # Convert DataFrame page to API model
-    page_data = speeches_to_api_model(page_frame)
-
-    return SpeechesPageResult(
-        ticket_id=ticket_id,
-        status="ready",
-        page=page,
-        page_size=page_size,
-        total_hits=total_hits,
-        total_pages=total_pages,
-        expires_at=ticket.expires_at,
-        speech_list=page_data.speech_list,
-    )
+    assert isinstance(result, SpeechesPageResult)
+    return result
 
 
 @router.get("/speeches/download/{ticket_id}")
@@ -559,11 +533,12 @@ async def download_speeches_by_ticket(
     ticket_id: str,
     file_format: str = Query("csv", alias="format", description="Download format: csv or json"),
     download_service: DownloadService = Depends(get_download_service),
+    speeches_ticket_service: SpeechesTicketService = Depends(get_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> StreamingResponse:
     """Download the full speech list from a ready speeches ticket."""
     try:
-        ticket: TicketMeta = result_store.require_ticket(ticket_id)
+        ticket = result_store.require_ticket(ticket_id)
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
 
@@ -572,12 +547,8 @@ async def download_speeches_by_ticket(
     if ticket.status == TicketStatus.ERROR:
         raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
 
-    artifact_path: Path = result_store.artifact_path(ticket_id)
-    if not artifact_path.exists():
-        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
-
     try:
-        data: pd.DataFrame = pd.read_feather(artifact_path)
+        data = speeches_ticket_service.get_full_artifact(ticket_id, result_store)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 
@@ -588,12 +559,13 @@ async def download_speeches_by_ticket(
     else:
         content = data.to_csv(index=False).encode("utf-8")
 
+    ticket_expires_at = getattr(ticket, "expires_at", None)
     manifest = download_service.build_download_manifest(
         ticket_meta={
-            **(ticket.manifest_meta or {}),
+            **(getattr(ticket, "manifest_meta", None) or {}),
             "file_format": file_format,
-            "total_hits": ticket.total_hits,
-            "expires_at": ticket.expires_at.isoformat() if ticket.expires_at else None,
+            "total_hits": getattr(ticket, "total_hits", None),
+            "expires_at": ticket_expires_at.isoformat() if ticket_expires_at is not None else None,
         }
     )
 

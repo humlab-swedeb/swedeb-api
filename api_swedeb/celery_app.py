@@ -23,6 +23,7 @@ def _build_queue_config(default_queue: str, multiprocessing_queue: str) -> dict[
         "task_routes": {
             "api_swedeb.execute_kwic_ticket": {"queue": multiprocessing_queue},
             "api_swedeb.execute_word_trend_speeches_ticket": {"queue": default_queue},
+            "api_swedeb.execute_speeches_ticket": {"queue": default_queue},
         },
     }
 
