@@ -88,9 +88,9 @@ class ResultStore:
         self._tickets: dict[str, TicketMeta] = {}
         self._cleanup_task: asyncio.Task[None] | None = None
         self._artifact_cache: OrderedDict[str, pd.DataFrame] = OrderedDict()
-        self._sorted_positions_cache: OrderedDict[
-            tuple[str, tuple[str, ...], tuple[bool, ...]], tuple[int, ...]
-        ] = OrderedDict()
+        self._sorted_positions_cache: OrderedDict[tuple[str, tuple[str, ...], tuple[bool, ...]], tuple[int, ...]] = (
+            OrderedDict()
+        )
 
     @classmethod
     def from_config(cls) -> "ResultStore":

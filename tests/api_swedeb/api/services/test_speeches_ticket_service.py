@@ -169,7 +169,9 @@ def test_execute_ticket_marks_pending_ticket_as_error_on_capacity_failure():
     search_service = make_mock_search_service()
     result_store = MagicMock()
     result_store.get_ticket.return_value = SimpleNamespace(status=TicketStatus.PENDING, error=None)
-    result_store.store_ready.side_effect = ResultStoreCapacityError("Insufficient result-store capacity for ticket artifact")
+    result_store.store_ready.side_effect = ResultStoreCapacityError(
+        "Insufficient result-store capacity for ticket artifact"
+    )
 
     service.execute_ticket(
         ticket_id="ticket-1",
