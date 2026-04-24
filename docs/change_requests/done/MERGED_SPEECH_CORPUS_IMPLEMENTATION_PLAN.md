@@ -6,10 +6,10 @@ Current execution progress:
 
 - Phase 0 started and initial deliverables have been produced.
 - Phase 1 implementation has started with initial merger module and unit tests.
-- Baseline metrics: docs/change_requests/phase0/baseline_metrics.json
-- Canonical parity sample: docs/change_requests/phase0/canonical_parity_sample.json
-- Initial schema contract freeze: docs/change_requests/phase0/schema_contract.json
-- Human-readable summary: docs/change_requests/phase0/PHASE0_EXECUTION_REPORT.md
+- Baseline metrics: docs/change_requests/done/phase0/baseline_metrics.json
+- Canonical parity sample: docs/change_requests/done/phase0/canonical_parity_sample.json
+- Initial schema contract freeze: docs/change_requests/done/phase0/schema_contract.json
+- Human-readable summary: docs/change_requests/done/phase0/PHASE0_EXECUTION_REPORT.md
 - Phase 1 module: api_swedeb/core/speech_merge.py
 - Phase 1 tests: tests/api_swedeb/core/test_speech_merge.py
 
