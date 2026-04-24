@@ -795,7 +795,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         assert result.media_type == "application/zip"
         assert "word_trend_speeches_wt-ticket-1.zip" in result.headers["content-disposition"]
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
-            assert archive.namelist() == ["word_trend_speeches_wt-ticket-1.csv"]
+            assert set(archive.namelist()) == {"word_trend_speeches_wt-ticket-1.csv", "manifest.json"}
             assert (
                 archive.read("word_trend_speeches_wt-ticket-1.csv")
                 .decode("utf-8")
@@ -825,7 +825,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         assert result.media_type == "application/zip"
         assert "word_trend_speeches_wt-ticket-1.zip" in result.headers["content-disposition"]
         with zipfile.ZipFile(io.BytesIO(body), "r") as archive:
-            assert archive.namelist() == ["word_trend_speeches_wt-ticket-1.json"]
+            assert set(archive.namelist()) == {"word_trend_speeches_wt-ticket-1.json", "manifest.json"}
             payload = json.loads(archive.read("word_trend_speeches_wt-ticket-1.json").decode("utf-8"))
             assert payload == [
                 {"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}
