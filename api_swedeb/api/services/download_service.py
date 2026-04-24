@@ -206,13 +206,33 @@ class DownloadService:
     def __init__(self, compression_strategy: CompressionStrategy | None = None) -> None:
         self.compression_strategy = compression_strategy or ZipCompressionStrategy()
 
+    @staticmethod
+    def build_download_manifest(ticket_meta: dict | None = None) -> dict:
+        """Build a manifest dict with download-time fields merged with ticket metadata."""
+        base: dict = {
+            "download_time": datetime.now(timezone.utc).isoformat(),
+            "corpus_version": os.environ.get("CORPUS_VERSION", "unknown"),
+            "metadata_version": ConfigValue("metadata.version").resolve(),
+        }
+        if ticket_meta:
+            base.update(ticket_meta)
+        return base
+
     def create_single_file_zip_stream(
         self,
         *,
         archive_filename: str,
         content: bytes,
+        manifest: dict | None = None,
     ) -> Callable[[], Generator[bytes, None, None]]:
-        """Return a generator function that yields a ZIP archive with one file."""
+        """Return a generator function that yields a ZIP archive with one file.
+
+        If *manifest* is provided it is serialised as ``manifest.json`` and
+        included as a second entry in the archive alongside *archive_filename*.
+        """
+        manifest_bytes: bytes | None = (
+            json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8") if manifest is not None else None
+        )
 
         def _generate() -> Generator[bytes, None, None]:
             writer = _StreamingBuffer()
@@ -224,6 +244,12 @@ class DownloadService:
                 compresslevel=1,
                 allowZip64=True,
             ) as zf:
+                if manifest_bytes is not None:
+                    zf.writestr("manifest.json", manifest_bytes)
+                    chunk = writer.pop()
+                    if chunk:
+                        yield chunk
+
                 zf.writestr(archive_filename, content)
                 chunk = writer.pop()
                 if chunk:

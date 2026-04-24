@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -175,7 +176,7 @@ async def get_kwic_results(
     lemmatized: bool = Query(True, description="Whether to search for lemmatized version of search string"),
     words_before: int = Query(2, description="Number of tokens before the search word(s)"),
     words_after: int = Query(2, description="Number of tokens after the search word(s)"),
-    cut_off: int = Query(200000, description="Maximum number of hits to return"),
+    cut_off: int | None = Query(200000, description="Maximum number of hits to return, or null for no limit"),
     corpus: Any = Depends(get_cwb_corpus),
     kwic_service: KWICService = Depends(get_kwic_service),
 ) -> KeywordInContextResult:
@@ -331,6 +332,12 @@ async def download_word_trend_speeches(
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
 
+    ticket_meta: dict | None = None
+    try:
+        ticket_meta = result_store.require_ticket(ticket_id).manifest_meta
+    except Exception:  # noqa: BLE001 ; # pylint: disable=broad-except
+        pass
+
     inner_filename = f"word_trend_speeches_{ticket_id}.{file_format}"
 
     if file_format == "json":
@@ -338,10 +345,15 @@ async def download_word_trend_speeches(
     else:
         content = data.to_csv(index=False).encode("utf-8")
 
+    manifest = download_service.build_download_manifest(
+        ticket_meta={**(ticket_meta or {}), "file_format": file_format, "row_count": len(data)}
+    )
+
     return StreamingResponse(
         download_service.create_single_file_zip_stream(
             archive_filename=inner_filename,
             content=content,
+            manifest=manifest,
         )(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.zip"'},
@@ -419,7 +431,7 @@ async def submit_speeches_query(
         try:
             df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
             result_store.store_ready(ticket_id, df=df)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             result_store.store_error(ticket_id, message=str(e))
 
     background_tasks.add_task(execute_speeches_query)
@@ -495,14 +507,11 @@ async def get_speeches_page(
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
 
     try:
-        import pandas as pd
-
         data = pd.read_feather(artifact_path)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 
     # Build page result
-    import math
 
     total_hits = len(data.index)
     total_pages = math.ceil(total_hits / page_size) if total_hits else 0
@@ -568,8 +577,6 @@ async def download_speeches_by_ticket(
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
 
     try:
-        import pandas as pd
-
         data: pd.DataFrame = pd.read_feather(artifact_path)
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
@@ -581,10 +588,20 @@ async def download_speeches_by_ticket(
     else:
         content = data.to_csv(index=False).encode("utf-8")
 
+    manifest = download_service.build_download_manifest(
+        ticket_meta={
+            **(ticket.manifest_meta or {}),
+            "file_format": file_format,
+            "total_hits": ticket.total_hits,
+            "expires_at": ticket.expires_at.isoformat() if ticket.expires_at else None,
+        }
+    )
+
     return StreamingResponse(
         download_service.create_single_file_zip_stream(
             archive_filename=inner_filename,
             content=content,
+            manifest=manifest,
         )(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="speeches_{ticket_id}.zip"'},

@@ -44,7 +44,7 @@ class KWICQueryRequest(BaseModel):
     lemmatized: bool = True
     words_before: int = 2
     words_after: int = 2
-    cut_off: int = 200000
+    cut_off: int | None = 200000
     filters: KWICFilterRequest = Field(default_factory=KWICFilterRequest)
 
 
