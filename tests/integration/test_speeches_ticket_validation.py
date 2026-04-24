@@ -82,9 +82,28 @@ def _submit_ready_ticket(client: TestClient, params: dict | None = None) -> str:
     return ticket_id
 
 
-def _read_zip_entries(response) -> tuple[list[str], zipfile.ZipFile]:
-    archive = zipfile.ZipFile(io.BytesIO(response.content), "r")  # pylint: disable=consider-using-with
-    return archive.namelist(), archive
+class _InMemoryZipArchive:
+    """Lightweight archive wrapper backed by in-memory entry bytes."""
+
+    def __init__(self, entries: dict[str, bytes]):
+        self._entries = entries
+
+    def namelist(self) -> list[str]:
+        return list(self._entries)
+
+    def read(self, name: str) -> bytes:
+        return self._entries[name]
+
+    def open(self, name: str) -> io.BytesIO:
+        return io.BytesIO(self.read(name))
+
+
+def _read_zip_entries(response) -> tuple[list[str], _InMemoryZipArchive]:
+    with zipfile.ZipFile(io.BytesIO(response.content), "r") as archive:
+        entry_names = archive.namelist()
+        entry_contents = {name: archive.read(name) for name in entry_names}
+
+    return entry_names, _InMemoryZipArchive(entry_contents)
 
 
 @pytest.fixture(scope="module")

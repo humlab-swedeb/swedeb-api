@@ -86,9 +86,12 @@ def _submit_ready_ticket(client: TestClient, payload: dict | None = None) -> str
     return ticket_id
 
 
-def _read_zip_entries(response) -> tuple[list[str], zipfile.ZipFile]:
-    archive = zipfile.ZipFile(io.BytesIO(response.content), "r")  # pylint: disable=consider-using-with
-    return archive.namelist(), archive
+def _read_zip_entries(response) -> tuple[list[str], dict[str, bytes]]:
+    with zipfile.ZipFile(io.BytesIO(response.content), "r") as archive:
+        names = archive.namelist()
+        entries = {name: archive.read(name) for name in names}
+
+    return names, entries
 
 
 @pytest.fixture(scope="module")
@@ -339,10 +342,10 @@ def test_download_csv_is_parseable(wt_ticket_client: TestClient, wt_ticket_sampl
         params={"format": "csv"},
     )
     assert response.status_code == 200
-    names, archive = _read_zip_entries(response)
+    names, entries = _read_zip_entries(response)
     assert names == ["manifest.json", f"word_trend_speeches_{ticket_id}.csv"]
 
-    reader = csv.DictReader(io.StringIO(archive.read(f"word_trend_speeches_{ticket_id}.csv").decode("utf-8")))
+    reader = csv.DictReader(io.StringIO(entries[f"word_trend_speeches_{ticket_id}.csv"].decode("utf-8")))
     rows = list(reader)
     total_hits = wt_ticket_sample["first_page"]["total_hits"]
     assert len(rows) == total_hits
@@ -366,10 +369,10 @@ def test_download_json_is_parseable(wt_ticket_client: TestClient, wt_ticket_samp
         params={"format": "json"},
     )
     assert response.status_code == 200
-    names, archive = _read_zip_entries(response)
+    names, entries = _read_zip_entries(response)
     assert names == ["manifest.json", f"word_trend_speeches_{ticket_id}.json"]
 
-    rows = json.loads(archive.read(f"word_trend_speeches_{ticket_id}.json").decode("utf-8"))
+    rows = json.loads(entries[f"word_trend_speeches_{ticket_id}.json"].decode("utf-8"))
     total_hits = wt_ticket_sample["first_page"]["total_hits"]
     assert isinstance(rows, list)
     assert len(rows) == total_hits
@@ -392,6 +395,6 @@ def test_download_csv_row_count_matches_page_total_hits(wt_ticket_client: TestCl
         params={"format": "csv"},
     )
     assert response.status_code == 200
-    _, archive = _read_zip_entries(response)
-    rows = list(csv.DictReader(io.StringIO(archive.read(f"word_trend_speeches_{ticket_id}.csv").decode("utf-8"))))
+    _, entries = _read_zip_entries(response)
+    rows = list(csv.DictReader(io.StringIO(entries[f"word_trend_speeches_{ticket_id}.csv"].decode("utf-8"))))
     assert len(rows) == total_hits
