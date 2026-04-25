@@ -39,15 +39,11 @@ from api_swedeb.api.services.word_trend_speeches_ticket_service import DEFAULT_P
 from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import ConfigValue
-from api_swedeb.mappers.kwic import kwic_to_api_model
-from api_swedeb.mappers.speeches import speeches_to_api_model
 from api_swedeb.mappers.word_trends import (
     search_hits_to_api_model,
-    word_trend_speeches_to_api_model,
     word_trends_to_api_model,
 )
 from api_swedeb.schemas.kwic_schema import (
-    KeywordInContextResult,
     KWICPageResult,
     KWICQueryRequest,
     KWICTicketAccepted,
@@ -59,8 +55,6 @@ from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import (
     SpeechesPageResult,
-    SpeechesResult,
-    SpeechesResultWT,
     SpeechesTicketAccepted,
     SpeechesTicketSortBy,
     SpeechesTicketStatus,
@@ -256,37 +250,6 @@ async def download_kwic_ticket(
     )
 
 
-@router.get("/kwic/{search}", response_model=KeywordInContextResult)
-async def get_kwic_results(
-    commons: CommonParams,
-    search: str,
-    lemmatized: bool = Query(True, description="Whether to search for lemmatized version of search string"),
-    words_before: int = Query(2, description="Number of tokens before the search word(s)"),
-    words_after: int = Query(2, description="Number of tokens after the search word(s)"),
-    cut_off: int | None = Query(200000, description="Maximum number of hits to return, or null for no limit"),
-    corpus: Any = Depends(get_cwb_corpus),
-    kwic_service: KWICService = Depends(get_kwic_service),
-) -> KeywordInContextResult:
-    """Get keyword in context"""
-
-    keywords: str | list[str] = search
-
-    if " " in keywords:
-        keywords = keywords.split(" ")
-
-    data: pd.DataFrame = kwic_service.get_kwic(
-        corpus=corpus,
-        commons=commons,
-        keywords=keywords,
-        lemmatized=lemmatized,
-        words_before=words_before,
-        words_after=words_after,
-        cut_off=cut_off,
-        p_show="word",
-    )
-    return kwic_to_api_model(data)
-
-
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
 async def get_word_trends_result(
     search: str,
@@ -301,19 +264,6 @@ async def get_word_trends_result(
         normalize=normalize,
     )
     return word_trends_to_api_model(df)
-
-
-@router.get("/word_trend_speeches/{search}", response_model=SpeechesResultWT)
-async def get_word_trend_speeches_result(
-    search: str,
-    commons: CommonParams,
-    word_trends_service: WordTrendsService = Depends(get_word_trends_service),
-) -> SpeechesResultWT:
-    """Get word trends"""
-    df: pd.DataFrame = word_trends_service.get_speeches_for_word_trends(
-        search.split(','), commons.get_filter_opts(include_year=True)
-    )
-    return word_trend_speeches_to_api_model(df)
 
 
 @router.post("/word_trend_speeches/query", response_model=WordTrendSpeechesTicketAccepted, status_code=202)
@@ -535,16 +485,6 @@ async def get_ngram_results(
     )
 
 
-@router.api_route("/speeches", methods=["GET", "POST"], response_model=SpeechesResult)
-async def get_speeches_result(
-    commons: CommonParams,
-    search_service: SearchService = Depends(get_search_service),
-) -> SpeechesResult:
-    """Get speeches matching filter criteria"""
-    df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
-    return speeches_to_api_model(df)
-
-
 @router.post("/speeches/query", response_model=SpeechesTicketAccepted, status_code=202)
 async def submit_speeches_query(
     commons: CommonParams,
@@ -757,26 +697,6 @@ async def get_speech_by_id_result(
         speaker_note=speech.speaker_note,
         speech_text=speech.text,
         page_number=speech.page_number,
-    )
-
-
-@router.post("/speech_download/", deprecated=True)
-async def get_zip(
-    ids: list[str] = Body(..., min_length=1),
-    download_service: DownloadService = Depends(get_download_service),
-    search_service: SearchService = Depends(get_search_service),
-) -> StreamingResponse:
-    """Download speeches as ZIP file"""
-    if not ids:
-        raise HTTPException(status_code=400, detail="Speech ids are required")
-
-    commons = CommonQueryParams(speech_id=ids).resolve()
-    streamer = download_service.create_stream(search_service=search_service, commons=commons)
-
-    return StreamingResponse(
-        streamer(),
-        media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=speeches.zip"},
     )
 
 

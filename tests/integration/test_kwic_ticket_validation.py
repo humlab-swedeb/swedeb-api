@@ -128,7 +128,7 @@ def test_ticket_download_manifest_matches_kwic_baseline(
     assert manifest["words_before"] == 2
     assert manifest["words_after"] == 2
     assert manifest["cut_off"] == 50
-    assert manifest["filters"] == {"gender_id": [1], "year": [1970, 1975]}
+    assert manifest["filters"] == {"gender_id": [1], "year": {"low": 1970, "high": 1975}}
     assert manifest["total_hits"] == len(sync_rows)
     assert manifest["speech_count"] == len(speech_ids)
     assert manifest["checksum"] == expected_checksum

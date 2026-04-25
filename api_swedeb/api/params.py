@@ -50,7 +50,7 @@ class SpeakerQueryParams:
         self.gender_id: List[int] | None = gender_id
         self.chamber_abbrev: List[str] | None = chamber_abbrev
 
-    def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:  # pylint: disable=unused-argument
+    def get_filter_opts(self, include_year: bool = True) -> dict[str, dict[str, int]]:  # pylint: disable=unused-argument
         return build_filter_opts(
             party_id=self.party_id,
             gender_id=self.gender_id,
@@ -89,7 +89,7 @@ class CommonQueryParams(SpeakerQueryParams):
         self.offset: int | None = offset
         self.sort_order: str = sort_order
 
-    def get_filter_opts(self, include_year: bool = True) -> dict[str, list[int]]:
+    def get_filter_opts(self, include_year: bool = True) -> dict[str, dict[str, int]]:
         return build_filter_opts(
             from_year=self.from_year,
             to_year=self.to_year,
