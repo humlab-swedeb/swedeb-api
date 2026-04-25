@@ -257,7 +257,7 @@ async def get_word_trends_result(
     normalize: bool = Query(False, description="Normalize counts by total number of tokens per year"),
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> WordTrendsResult:
-    """Get word trends"""
+    """Get word trends, returns aggregated counts per year (for the chart). Fast enough to be synchronous!"""
     df: pd.DataFrame = word_trends_service.get_word_trend_results(
         search_terms=search.split(","),
         filter_opts=commons.get_filter_opts(include_year=True),
@@ -274,7 +274,8 @@ async def submit_word_trend_speeches_query(
     wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> WordTrendSpeechesTicketAccepted:
-    """Submit a word trend speeches query and receive a ticket immediately."""
+    """Returns individual speech records (for the table).
+    Ticketed because pagination and ZIP archiving require storing the full result set."""
     try:
         accepted = wt_speeches_ticket_service.submit_query(request, result_store)
     except ResultStorePendingLimitError as exc:
