@@ -52,7 +52,7 @@ class SpeakerQueryParams:
 
     def get_filter_opts(
         self, include_year: bool = True
-    ) -> dict[str, dict[str, int]]:  # pylint: disable=unused-argument
+    ) -> dict[str, Any]:
         return build_filter_opts(
             party_id=self.party_id,
             gender_id=self.gender_id,

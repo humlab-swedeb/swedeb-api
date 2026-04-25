@@ -82,9 +82,9 @@ In production mode (`development.celery_enabled: true`), the backend also depend
 
 The public API surface is currently organized into three routers:
 
-- `/v1/tools` for analysis, retrieval, and download endpoints
-- `/v1/tools` (deprecated) for synchronous endpoints superseded by their ticketed equivalents
-- `/v1/metadata` for metadata lists and speaker queries
+- tools router (active), mounted at `/v1/tools`, for analysis, retrieval, and download endpoints
+- tools router (deprecated), also mounted at `/v1/tools`, for synchronous endpoints superseded by their ticketed equivalents
+- metadata router, mounted at `/v1/metadata`, for metadata lists and speaker queries
 
 The backend can also mount static frontend assets at `/public` when `create_app()` is given a `static_dir`, but the primary responsibility of this repository remains the backend API and corpus-access layer.
 

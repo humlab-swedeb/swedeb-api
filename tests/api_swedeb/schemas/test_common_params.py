@@ -6,10 +6,10 @@ def test_get_filter_opts():
         from_year=1970, to_year=1975, who=None, party_id=None, office_types=None, sub_office_types=None, gender_id=None
     )
 
-    opts: dict[str, dict[str, int]] = args.get_filter_opts(True)
+    opts = args.get_filter_opts(True)
     assert opts.get('year') == {'low': 1970, 'high': 1975}
 
-    opts: dict[str, dict[str, int]] = args.get_filter_opts(False)
+    opts = args.get_filter_opts(False)
     assert opts.get('year') is None
 
 
