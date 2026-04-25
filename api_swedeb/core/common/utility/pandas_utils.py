@@ -193,11 +193,15 @@ def create_mask(doc: pd.DataFrame, args: dict) -> np.ndarray:
             else (
                 attr_operator(value_serie, attr_value)  # type: ignore
                 if attr_operator is not None
-                else value_serie.isin(attr_value)
-                if isinstance(attr_value, (list, set))
-                else value_serie.between(attr_value["low"], attr_value["high"])
-                if isinstance(attr_value, dict) and "low" in attr_value
-                else value_serie == attr_value
+                else (
+                    value_serie.isin(attr_value)
+                    if isinstance(attr_value, (list, set))
+                    else (
+                        value_serie.between(attr_value["low"], attr_value["high"])
+                        if isinstance(attr_value, dict) and "low" in attr_value
+                        else value_serie == attr_value
+                    )
+                )
             )
         )
 

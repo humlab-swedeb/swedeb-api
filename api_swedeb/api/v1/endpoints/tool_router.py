@@ -29,6 +29,7 @@ from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreNotFound,
     ResultStorePendingLimitError,
+    TicketMeta,
     TicketStatus,
 )
 from api_swedeb.api.services.search_service import SearchService
@@ -38,15 +39,11 @@ from api_swedeb.api.services.word_trend_speeches_ticket_service import DEFAULT_P
 from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.core.configuration import ConfigValue
-from api_swedeb.mappers.kwic import kwic_to_api_model
-from api_swedeb.mappers.speeches import speeches_to_api_model
 from api_swedeb.mappers.word_trends import (
     search_hits_to_api_model,
-    word_trend_speeches_to_api_model,
     word_trends_to_api_model,
 )
 from api_swedeb.schemas.kwic_schema import (
-    KeywordInContextResult,
     KWICPageResult,
     KWICQueryRequest,
     KWICTicketAccepted,
@@ -58,8 +55,6 @@ from api_swedeb.schemas.sort_order import SortOrder
 from api_swedeb.schemas.speech_text_schema import SpeechesTextResultItem
 from api_swedeb.schemas.speeches_schema import (
     SpeechesPageResult,
-    SpeechesResult,
-    SpeechesResultWT,
     SpeechesTicketAccepted,
     SpeechesTicketSortBy,
     SpeechesTicketStatus,
@@ -98,6 +93,19 @@ class DownloadFormat(StrEnum):
 def _pending_retry_headers() -> dict[str, str]:
     retry_after_seconds = ConfigValue("cache.ticket_poll_retry_after_seconds", default=2).resolve()
     return {"Retry-After": str(retry_after_seconds)}
+
+
+def _require_ready_ticket(ticket_id: str, result_store: ResultStore) -> TicketMeta:
+    """Fetch a ticket and raise HTTP 404/409 if it is not found or not in a ready state."""
+    try:
+        ticket = result_store.require_ticket(ticket_id)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    if ticket.status == TicketStatus.PENDING:
+        raise HTTPException(status_code=409, detail="Ticket not ready")
+    if ticket.status == TicketStatus.ERROR:
+        raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+    return ticket
 
 
 @router.post("/kwic/query", response_model=KWICTicketAccepted, status_code=202)
@@ -207,15 +215,7 @@ async def download_kwic_ticket(
     download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> StreamingResponse:
-    try:
-        ticket = result_store.require_ticket(ticket_id)
-    except ResultStoreNotFound as exc:
-        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
-
-    if ticket.status == TicketStatus.PENDING:
-        raise HTTPException(status_code=409, detail="Ticket not ready")
-    if ticket.status == TicketStatus.ERROR:
-        raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+    ticket = _require_ready_ticket(ticket_id, result_store)
 
     try:
         data = kwic_ticket_service.get_full_artifact(ticket_id, result_store)
@@ -250,37 +250,6 @@ async def download_kwic_ticket(
     )
 
 
-@router.get("/kwic/{search}", response_model=KeywordInContextResult)
-async def get_kwic_results(
-    commons: CommonParams,
-    search: str,
-    lemmatized: bool = Query(True, description="Whether to search for lemmatized version of search string"),
-    words_before: int = Query(2, description="Number of tokens before the search word(s)"),
-    words_after: int = Query(2, description="Number of tokens after the search word(s)"),
-    cut_off: int | None = Query(200000, description="Maximum number of hits to return, or null for no limit"),
-    corpus: Any = Depends(get_cwb_corpus),
-    kwic_service: KWICService = Depends(get_kwic_service),
-) -> KeywordInContextResult:
-    """Get keyword in context"""
-
-    keywords: str | list[str] = search
-
-    if " " in keywords:
-        keywords = keywords.split(" ")
-
-    data: pd.DataFrame = kwic_service.get_kwic(
-        corpus=corpus,
-        commons=commons,
-        keywords=keywords,
-        lemmatized=lemmatized,
-        words_before=words_before,
-        words_after=words_after,
-        cut_off=cut_off,
-        p_show="word",
-    )
-    return kwic_to_api_model(data)
-
-
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
 async def get_word_trends_result(
     search: str,
@@ -288,26 +257,13 @@ async def get_word_trends_result(
     normalize: bool = Query(False, description="Normalize counts by total number of tokens per year"),
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> WordTrendsResult:
-    """Get word trends"""
+    """Get word trends, returns aggregated counts per year (for the chart). Fast enough to be synchronous!"""
     df: pd.DataFrame = word_trends_service.get_word_trend_results(
         search_terms=search.split(","),
         filter_opts=commons.get_filter_opts(include_year=True),
         normalize=normalize,
     )
     return word_trends_to_api_model(df)
-
-
-@router.get("/word_trend_speeches/{search}", response_model=SpeechesResultWT)
-async def get_word_trend_speeches_result(
-    search: str,
-    commons: CommonParams,
-    word_trends_service: WordTrendsService = Depends(get_word_trends_service),
-) -> SpeechesResultWT:
-    """Get word trends"""
-    df: pd.DataFrame = word_trends_service.get_speeches_for_word_trends(
-        search.split(','), commons.get_filter_opts(include_year=True)
-    )
-    return word_trend_speeches_to_api_model(df)
 
 
 @router.post("/word_trend_speeches/query", response_model=WordTrendSpeechesTicketAccepted, status_code=202)
@@ -318,7 +274,8 @@ async def submit_word_trend_speeches_query(
     wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> WordTrendSpeechesTicketAccepted:
-    """Submit a word trend speeches query and receive a ticket immediately."""
+    """Returns individual speech records (for the table).
+    Ticketed because pagination and ZIP archiving require storing the full result set."""
     try:
         accepted = wt_speeches_ticket_service.submit_query(request, result_store)
     except ResultStorePendingLimitError as exc:
@@ -449,6 +406,48 @@ async def download_word_trend_speeches(
     )
 
 
+def _stream_speech_archive(
+    ticket_id: str,
+    filename_stem: str,
+    download_service: DownloadService,
+    result_store: ResultStore,
+    search_service: SearchService,
+) -> StreamingResponse:
+    """Shared helper: validate a ticket and stream its speech text archive as ZIP."""
+    ticket = _require_ready_ticket(ticket_id, result_store)
+    if ticket.speech_ids is None or ticket.manifest_meta is None:
+        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
+
+    streamer = download_service.create_stream_from_speech_ids(
+        search_service=search_service,
+        speech_ids=ticket.speech_ids,
+        manifest_meta=ticket.manifest_meta,
+    )
+
+    return StreamingResponse(
+        streamer(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename_stem}.zip"'},
+    )
+
+
+@router.get("/word_trend_speeches/archive/{ticket_id}")
+async def download_word_trend_speeches_archive(
+    ticket_id: str,
+    download_service: DownloadService = Depends(get_download_service),
+    result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
+) -> StreamingResponse:
+    """Download speech text archive from a ready word trend speeches ticket."""
+    return _stream_speech_archive(
+        ticket_id=ticket_id,
+        filename_stem=f"word_trend_speeches_archive_{ticket_id}",
+        download_service=download_service,
+        result_store=result_store,
+        search_service=search_service,
+    )
+
+
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
 async def get_word_hits(
     search: str,
@@ -485,16 +484,6 @@ async def get_ngram_results(
         display_target=target,
         mode=mode,
     )
-
-
-@router.api_route("/speeches", methods=["GET", "POST"], response_model=SpeechesResult)
-async def get_speeches_result(
-    commons: CommonParams,
-    search_service: SearchService = Depends(get_search_service),
-) -> SpeechesResult:
-    """Get speeches matching filter criteria"""
-    df: pd.DataFrame = search_service.get_speeches(selections=commons.get_filter_opts(True))
-    return speeches_to_api_model(df)
 
 
 @router.post("/speeches/query", response_model=SpeechesTicketAccepted, status_code=202)
@@ -605,15 +594,7 @@ async def download_speeches_by_ticket(
     result_store: ResultStore = Depends(get_result_store),
 ) -> StreamingResponse:
     """Download the full speech list from a ready speeches ticket."""
-    try:
-        ticket = result_store.require_ticket(ticket_id)
-    except ResultStoreNotFound as exc:
-        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
-
-    if ticket.status == TicketStatus.PENDING:
-        raise HTTPException(status_code=409, detail="Ticket not ready")
-    if ticket.status == TicketStatus.ERROR:
-        raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+    ticket = _require_ready_ticket(ticket_id, result_store)
 
     try:
         data = speeches_ticket_service.get_full_artifact(ticket_id, result_store)
@@ -655,28 +636,13 @@ async def download_speeches_archive_by_ticket(
     result_store: ResultStore = Depends(get_result_store),
     search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
-    try:
-        ticket = result_store.require_ticket(ticket_id)
-    except ResultStoreNotFound as exc:
-        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
-
-    if ticket.status == TicketStatus.PENDING:
-        raise HTTPException(status_code=409, detail="Ticket not ready")
-    if ticket.status == TicketStatus.ERROR:
-        raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
-    if ticket.speech_ids is None or ticket.manifest_meta is None:
-        raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
-
-    streamer = download_service.create_stream_from_speech_ids(
+    """Download speech text archive from a ready speeches ticket."""
+    return _stream_speech_archive(
+        ticket_id=ticket_id,
+        filename_stem=f"speeches_archive_{ticket_id}",
+        download_service=download_service,
+        result_store=result_store,
         search_service=search_service,
-        speech_ids=ticket.speech_ids,
-        manifest_meta=ticket.manifest_meta,
-    )
-
-    return StreamingResponse(
-        streamer(),
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="speeches_archive_{ticket_id}.zip"'},
     )
 
 
@@ -701,15 +667,7 @@ async def get_speeches_download_result(
         if ids is not None or commons.get_filter_opts(True):
             raise HTTPException(status_code=400, detail="ticket_id cannot be combined with ids or query filters")
 
-        try:
-            ticket = result_store.require_ticket(ticket_id)
-        except ResultStoreNotFound as exc:
-            raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
-
-        if ticket.status == TicketStatus.PENDING:
-            raise HTTPException(status_code=409, detail="Ticket not ready")
-        if ticket.status == TicketStatus.ERROR:
-            raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
+        ticket = _require_ready_ticket(ticket_id, result_store)
         if ticket.speech_ids is None or ticket.manifest_meta is None:
             raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
 
@@ -740,26 +698,6 @@ async def get_speech_by_id_result(
         speaker_note=speech.speaker_note,
         speech_text=speech.text,
         page_number=speech.page_number,
-    )
-
-
-@router.post("/speech_download/", deprecated=True)
-async def get_zip(
-    ids: list[str] = Body(..., min_length=1),
-    download_service: DownloadService = Depends(get_download_service),
-    search_service: SearchService = Depends(get_search_service),
-) -> StreamingResponse:
-    """Download speeches as ZIP file"""
-    if not ids:
-        raise HTTPException(status_code=400, detail="Speech ids are required")
-
-    commons = CommonQueryParams(speech_id=ids).resolve()
-    streamer = download_service.create_stream(search_service=search_service, commons=commons)
-
-    return StreamingResponse(
-        streamer(),
-        media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=speeches.zip"},
     )
 
 

@@ -80,10 +80,11 @@ In production mode (`development.celery_enabled: true`), the backend also depend
 
 - Redis as the Celery broker and task-state backend for ticketed KWIC query execution
 
-The public API surface is currently organized into two routers:
+The public API surface is currently organized into three routers:
 
-- `/v1/tools` for analysis, retrieval, and download endpoints
-- `/v1/metadata` for metadata lists and speaker queries
+- tools router (active), mounted at `/v1/tools`, for analysis, retrieval, and download endpoints
+- tools router (deprecated), also mounted at `/v1/tools`, for synchronous endpoints superseded by their ticketed equivalents
+- metadata router, mounted at `/v1/metadata`, for metadata lists and speaker queries
 
 The backend can also mount static frontend assets at `/public` when `create_app()` is given a `static_dir`, but the primary responsibility of this repository remains the backend API and corpus-access layer.
 
@@ -126,7 +127,8 @@ The main architectural layers are:
 
 The entry point is [main.py](../main.py), which builds the app through [api_swedeb/app.py](../api_swedeb/app.py). Routers live in:
 
-- [api_swedeb/api/v1/endpoints/tool_router.py](../api_swedeb/api/v1/endpoints/tool_router.py)
+- [api_swedeb/api/v1/endpoints/tool_router.py](../api_swedeb/api/v1/endpoints/tool_router.py) — active analysis and download endpoints
+- [api_swedeb/api/v1/endpoints/deprecated_endpoints.py](../api_swedeb/api/v1/endpoints/deprecated_endpoints.py) — backward-compat synchronous endpoints superseded by ticketed equivalents; isolated for easy future removal
 - [api_swedeb/api/v1/endpoints/metadata_router.py](../api_swedeb/api/v1/endpoints/metadata_router.py)
 
 `api_swedeb/api/params.py` defines shared query-parameter objects so filtering semantics are centralized rather than reimplemented per endpoint.
