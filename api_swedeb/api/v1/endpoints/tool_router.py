@@ -200,7 +200,9 @@ async def get_kwic_ticket_results(
 @router.get("/kwic/download/{ticket_id}")
 async def download_kwic_ticket(
     ticket_id: str,
-    file_format: DownloadFormat = Query(DownloadFormat.json, alias="format", description="Download format: csv or json"),
+    file_format: DownloadFormat = Query(
+        DownloadFormat.json, alias="format", description="Download format: csv or json"
+    ),
     kwic_ticket_service: KWICTicketService = Depends(get_kwic_ticket_service),
     download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),

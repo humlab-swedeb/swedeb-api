@@ -69,6 +69,47 @@ def test_create_mask_supports_operator_range_negation_and_skips_unknown_columns(
     assert mask.tolist() == [False, False, True]
 
 
+def test_create_mask_dict_range_matches_between():
+    """Dict {"low": x, "high": y} must behave like between(x, y), not isin([x, y])."""
+    doc = pd.DataFrame({"year": [1867, 1900, 2000, 2022]})
+
+    mask = pu.create_mask(doc, {"year": {"low": 1900, "high": 2000}})
+
+    assert mask.tolist() == [False, True, True, False]
+
+
+def test_create_mask_dict_range_includes_boundaries():
+    """Boundaries must be inclusive (between is inclusive by default)."""
+    doc = pd.DataFrame({"year": [1867, 1900, 2022]})
+
+    mask = pu.create_mask(doc, {"year": {"low": 1867, "high": 2022}})
+
+    assert mask.tolist() == [True, True, True]
+
+
+def test_create_mask_dict_range_vs_list_isin_are_distinct():
+    """A plain list must still use isin, not between — confirming the two semantics are separate."""
+    doc = pd.DataFrame({"year": [1867, 1900, 2022]})
+
+    range_mask = pu.create_mask(doc, {"year": {"low": 1867, "high": 2022}})
+    isin_mask = pu.create_mask(doc, {"year": [1867, 2022]})
+
+    # range matches all three; isin matches only the boundary years
+    assert range_mask.tolist() == [True, True, True]
+    assert isin_mask.tolist() == [True, False, True]
+
+
+def test_private_create_mask_dict_range():
+    """_create_mask also handles the dict range correctly."""
+    doc = pd.DataFrame({"year": [1867, 1950, 2022]})
+
+    m = pu._create_mask(doc, "year", {"low": 1900, "high": 2000})
+    assert m.tolist() == [False, True, False]
+
+    m_neg = pu._create_mask(doc, "year", {"low": 1900, "high": 2000}, sign=False)
+    assert m_neg.tolist() == [True, False, True]
+
+
 def test_create_mask_raises_for_invalid_tuple_and_unknown_operator():
     doc = pd.DataFrame({"year": [2020], "count": [1]})
 

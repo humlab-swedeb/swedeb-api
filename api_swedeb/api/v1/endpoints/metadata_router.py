@@ -38,13 +38,13 @@ year = r"^\d{4}$"
 @router.get("/start_year", response_model=int)
 async def get_meta_start_year(loader=Depends(get_corpus_loader)):
     """Get the first year in the corpus"""
-    return int(loader.document_index["year"].min())
+    return loader.year_range[0]
 
 
 @router.get("/end_year", response_model=int)
 async def get_meta_end_year(loader=Depends(get_corpus_loader)):
     """Get the last year in the corpus"""
-    return int(loader.document_index["year"].max())
+    return loader.year_range[1]
 
 
 @router.get("/parties", response_model=PartyList)

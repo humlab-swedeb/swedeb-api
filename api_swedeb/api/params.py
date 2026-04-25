@@ -21,9 +21,9 @@ def build_filter_opts(
     speech_id: list[str] | None = None,
     include_year: bool = True,
 ) -> dict[str, Any]:
-    year_opts: dict[str, tuple[int, int]] = {}
+    year_opts: dict[str, dict[str, int]] = {}
     if include_year and (from_year or to_year):
-        year_opts = {"year": (from_year or 0, to_year or 3000)}
+        year_opts = {"year": {"low": from_year or 0, "high": to_year or 3000}}
 
     return {
         **({"party_id": party_id} if party_id else {}),
