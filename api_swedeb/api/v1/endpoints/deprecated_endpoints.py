@@ -32,7 +32,9 @@ from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 # pylint: disable=import-outside-toplevel
 CommonParams = Annotated[CommonQueryParams, Depends()]
 
-router = fastapi.APIRouter(prefix="/v1/tools", tags=["Tools (deprecated)"], responses={404: {"description": "Not found"}})
+router = fastapi.APIRouter(
+    prefix="/v1/tools", tags=["Tools (deprecated)"], responses={404: {"description": "Not found"}}
+)
 
 
 @router.get("/kwic/{search}", response_model=KeywordInContextResult, deprecated=True)
