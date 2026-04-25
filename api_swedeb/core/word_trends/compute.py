@@ -98,7 +98,13 @@ def compute_word_trends(
     filter_opts: dict[str, Any],
     normalize: bool = False,
 ) -> pd.DataFrame:
-    start_year, end_year = filter_opts.pop('year') if 'year' in filter_opts else (None, None)
+    year_range = filter_opts.pop('year', None)
+    if isinstance(year_range, dict):
+        start_year, end_year = year_range.get('low'), year_range.get('high')
+    elif isinstance(year_range, (tuple, list)) and len(year_range) == 2:
+        start_year, end_year = year_range
+    else:
+        start_year, end_year = None, None
 
     trends_data: SweDebTrendsData = SweDebTrendsData(
         corpus=vectorized_corpus, person_codecs=person_codecs, n_top=1000000
