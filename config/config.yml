@@ -86,6 +86,7 @@ development:
 
 cache:
   result_ttl_seconds: 600
+  max_absolute_lifetime_seconds: 3600
   cleanup_interval_seconds: 60
   max_artifact_bytes: 2147483648
   max_pending_jobs: 2

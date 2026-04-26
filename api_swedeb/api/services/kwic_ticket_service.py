@@ -203,6 +203,7 @@ class KWICTicketService:
         sort_by: KWICTicketSortBy | None,
         sort_order: SortOrder,
     ) -> KWICPageResult | KWICTicketStatus:
+        result_store.touch_ticket(ticket_id)
         if ConfigValue("development.celery_enabled", default=False).resolve():
             return self._get_celery_page_result(
                 ticket_id=ticket_id,
@@ -344,6 +345,7 @@ class KWICTicketService:
         return (sort_by.value, TICKET_ROW_ID), (sort_order == SortOrder.asc, True)
 
     def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
+        result_store.touch_ticket(ticket_id)
         if ConfigValue("development.celery_enabled", default=False).resolve():
             artifact_path: Path = result_store.artifact_path(ticket_id)
             if not artifact_path.exists():

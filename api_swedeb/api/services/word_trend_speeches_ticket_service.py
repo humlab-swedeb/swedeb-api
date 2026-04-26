@@ -184,6 +184,7 @@ class WordTrendSpeechesTicketService:
         sort_by: WordTrendSpeechesTicketSortBy | None,
         sort_order: SortOrder,
     ) -> WordTrendSpeechesPageResult | WordTrendSpeechesTicketStatus:
+        result_store.touch_ticket(ticket_id)
         if ConfigValue("development.celery_enabled", default=False).resolve():
             return self._get_celery_page_result(
                 ticket_id=ticket_id,
@@ -299,6 +300,7 @@ class WordTrendSpeechesTicketService:
 
     def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
         """Load the complete artifact DataFrame for download purposes."""
+        result_store.touch_ticket(ticket_id)
         if ConfigValue("development.celery_enabled", default=False).resolve():
             artifact_path: Path = result_store.artifact_path(ticket_id)
             if not artifact_path.exists():
