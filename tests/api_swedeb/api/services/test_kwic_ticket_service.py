@@ -53,7 +53,6 @@ def test_execute_ticket_stores_mapped_artifact_and_manifest(tmp_path):
     )
     request = KWICQueryRequest(search="demokrati")
 
-
     asyncio.run(store.startup())
     try:
         ticket = store.create_ticket(query_meta={"search": "demokrati"})
@@ -91,7 +90,6 @@ def test_get_page_result_sorts_with_ticket_row_id_tiebreaker(tmp_path):
         max_page_size=200,
     )
     service = KWICTicketService()
-
 
     asyncio.run(store.startup())
     try:
@@ -146,7 +144,6 @@ def test_get_page_result_rejects_out_of_range_page(tmp_path):
         max_page_size=200,
     )
     service = KWICTicketService()
-
 
     asyncio.run(store.startup())
     try:
@@ -249,7 +246,6 @@ def test_get_status_uses_celery_success_result(tmp_path):
     )
     celery_result = MagicMock(state="SUCCESS", result={"row_count": 12}, info=None)
 
-
     asyncio.run(result_store.startup())
     try:
         ticket = result_store.create_ticket(query_meta={"search": "demokrati"})
@@ -278,7 +274,6 @@ def test_get_status_celery_success_syncs_ready_state_and_releases_pending_capaci
         max_page_size=200,
     )
     service = KWICTicketService()
-
 
     asyncio.run(store.startup())
     try:
@@ -315,7 +310,6 @@ def test_get_status_uses_celery_failure_result_and_syncs_error_state(tmp_path):
     )
     celery_result = MagicMock(state="FAILURE", result=None, info=RuntimeError("boom"))
 
-
     asyncio.run(result_store.startup())
     try:
         ticket = result_store.create_ticket(query_meta={"search": "demokrati"})
@@ -344,7 +338,6 @@ def test_get_status_celery_raises_for_unknown_ticket(tmp_path):
     )
     service = KWICTicketService()
 
-
     asyncio.run(store.startup())
     try:
         celery_result = MagicMock(state="PENDING", result=None, info=None)
@@ -370,7 +363,6 @@ def test_get_page_result_reads_celery_artifact(tmp_path):
     )
 
     celery_result = MagicMock(state="SUCCESS", result={"row_count": 2}, info=None)
-
 
     asyncio.run(result_store.startup())
     try:
