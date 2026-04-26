@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import gzip
 import io
 import json
@@ -11,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from loguru import logger
 
 from api_swedeb.api.services.result_store import (
@@ -22,8 +22,6 @@ from api_swedeb.api.services.result_store import (
 )
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.schemas.bulk_archive_schema import (
-    ARCHIVE_MEDIA_TYPES,
-    ARCHIVE_SUFFIXES,
     ArchivePrepareResponse,
     BulkArchiveFormat,
 )
@@ -119,8 +117,6 @@ class KWICArchiveService:
 
             archive_format = BulkArchiveFormat(archive_format_str)
 
-            import pandas as pd  # pylint: disable=import-outside-toplevel
-
             data: pd.DataFrame = result_store.load_artifact(source_ticket_id)
             data = data.drop(columns=[_TICKET_ROW_ID], errors="ignore")
 
@@ -160,7 +156,6 @@ class KWICArchiveService:
         archive_format: BulkArchiveFormat,
         dest_path: Path,
     ) -> None:
-        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         partial = Path(str(dest_path) + ".partial")
         partial.parent.mkdir(parents=True, exist_ok=True)
@@ -185,7 +180,9 @@ class KWICArchiveService:
     def _write_jsonl_gz(self, data: "pd.DataFrame", dest: Path) -> None:
         with gzip.open(str(dest), "wb", compresslevel=1) as gz:
             for record in data.to_dict(orient="records"):
-                cleaned = {k: (None if isinstance(v, float) and v != v else v) for k, v in record.items()}
+                import math  # pylint: disable=import-outside-toplevel
+
+                cleaned = {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in record.items()}
                 line = (json.dumps(cleaned, ensure_ascii=False, default=str) + "\n").encode("utf-8")
                 gz.write(line)
 
@@ -197,7 +194,6 @@ class KWICArchiveService:
         dest.write_bytes(buf.getvalue())
 
     def _write_xlsx(self, data: "pd.DataFrame", dest: Path) -> None:
-        import openpyxl  # pylint: disable=import-outside-toplevel  # noqa: F401
 
         # pandas/openpyxl validates the file extension, so we must use .xlsx for the temp file
         tmp = dest.parent / (dest.name.replace(".partial", ".tmp.xlsx"))

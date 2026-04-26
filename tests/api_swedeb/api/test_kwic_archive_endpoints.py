@@ -12,7 +12,6 @@ import gzip
 import json
 from pathlib import Path
 from typing import Generator
-from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -23,6 +22,7 @@ from api_swedeb.api.dependencies import (
     get_kwic_archive_service,
     get_result_store,
 )
+from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.result_store import ResultStore, TicketMeta, TicketStatus
 from api_swedeb.api.v1.endpoints import tool_router
@@ -240,8 +240,10 @@ def test_execute_archive_task_produces_csv_gz_artifact(tmp_path):
 
     ready = store.require_ticket(archive_ticket.ticket_id)
     assert ready.status == TicketStatus.READY
+    assert ready.artifact_path is not None
+    assert ready.artifact_path.exists()
     content = gzip.decompress(ready.artifact_path.read_bytes()).decode("utf-8")
-    lines = [l for l in content.splitlines() if l]
+    lines = [line for line in content.splitlines() if line]
     assert lines[0].startswith("left_word")
     assert len(lines) == len(SAMPLE_KWIC_ROWS) + 1  # header + rows
 
@@ -260,12 +262,15 @@ def test_execute_archive_task_produces_xlsx_artifact(tmp_path):
 
     ready = store.require_ticket(archive_ticket.ticket_id)
     assert ready.status == TicketStatus.READY
+    assert ready.artifact_path is not None
+    assert ready.artifact_path.exists()
     assert ready.artifact_path.suffix == ".xlsx"
 
-    import openpyxl  # noqa: F401
+    import openpyxl  # noqa: F401 ; # pylint: disable=import-outside-toplevel
 
     wb = openpyxl.load_workbook(str(ready.artifact_path))
     ws = wb.active
+    assert ws is not None
     rows = list(ws.iter_rows(values_only=True))
     assert len(rows) == len(SAMPLE_KWIC_ROWS) + 1  # header + data rows
 
@@ -300,7 +305,7 @@ def test_get_kwic_archive_status_via_downloads_router(kwic_archive_client):
     archive_ticket_id = prepare_r.json()["archive_ticket_id"]
 
     # The background task runs inline in TestClient; status may already be ready
-    status_r = client.get(f"/v1/downloads/{archive_ticket_id}")
+    _ = client.get(f"/v1/downloads/{archive_ticket_id}")
     # downloads_router is not included in this test app; just verify the archive ticket was created
     assert archive_ticket_id in store.require_ticket(archive_ticket_id).ticket_id
 
@@ -312,7 +317,6 @@ def test_get_kwic_archive_status_via_downloads_router(kwic_archive_client):
 
 def test_kwic_archive_artifact_is_downloadable(tmp_path):
     """Ready KWIC archive artifacts can be streamed via ArchiveTicketService.build_file_response."""
-    from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 
     store = make_result_store(tmp_path)
     asyncio.run(store.startup())
