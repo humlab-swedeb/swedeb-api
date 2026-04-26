@@ -6,7 +6,7 @@ import os
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -21,10 +21,17 @@ from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.ticketed_download_service import TicketedDownloadService
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.schemas.bulk_archive_schema import (
+    ARCHIVE_MEDIA_TYPES,
+    ARCHIVE_SUFFIXES,
     ArchivePrepareResponse,
     ArchiveTicketStatus,
     BulkArchiveFormat,
 )
+
+if TYPE_CHECKING:
+    from fastapi.responses import FileResponse
+
+
 
 # ---------------------------------------------------------------------------
 # Per-worker singleton helpers (Celery workers only)
@@ -180,6 +187,50 @@ class ArchiveTicketService:
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception(f"Error executing archive ticket {archive_ticket_id}: {exc}")
             result_store.store_error(archive_ticket_id, message="Failed to generate archive")
+
+    def build_file_response(
+        self,
+        *,
+        archive_ticket_id: str,
+        filename_stem: str,
+        result_store: ResultStore,
+    ) -> FileResponse:
+        """Validate a ready archive ticket and return a FileResponse for its artifact.
+
+        Raises HTTPException for all error states (404, 409, 410).
+        Touches the ticket to defer expiry before streaming.
+        """
+        from fastapi import HTTPException  # pylint: disable=import-outside-toplevel
+        from fastapi.responses import FileResponse  # pylint: disable=import-outside-toplevel
+
+        try:
+            ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
+        except ResultStoreNotFound as e:
+            raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
+
+        if ticket.status == TicketStatus.ERROR:
+            raise HTTPException(status_code=409, detail=ticket.error or "Archive preparation failed")
+        if ticket.status != TicketStatus.READY:
+            raise HTTPException(status_code=409, detail="Archive is not ready yet")
+        if ticket.artifact_path is None or not ticket.artifact_path.exists():
+            raise HTTPException(status_code=410, detail="Archive file no longer available")
+
+        archive_format_str: str = ticket.archive_format or BulkArchiveFormat.jsonl_gz.value
+        try:
+            archive_format = BulkArchiveFormat(archive_format_str)
+        except ValueError:
+            archive_format = BulkArchiveFormat.jsonl_gz
+
+        media_type: str = ARCHIVE_MEDIA_TYPES.get(archive_format, "application/octet-stream")
+        suffix: str = ARCHIVE_SUFFIXES.get(archive_format, f".{archive_format_str}")
+        filename: str = f"{filename_stem}_{archive_ticket_id}{suffix}"
+
+        try:
+            result_store.touch_ticket(archive_ticket_id)
+        except ResultStoreNotFound as e:
+            raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
+
+        return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
 
     def get_status(self, archive_ticket_id: str, result_store: ResultStore) -> ArchiveTicketStatus:
         ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)

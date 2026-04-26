@@ -46,8 +46,6 @@ from api_swedeb.mappers.word_trends import (
     word_trends_to_api_model,
 )
 from api_swedeb.schemas.bulk_archive_schema import (
-    ARCHIVE_MEDIA_TYPES,
-    ARCHIVE_SUFFIXES,
     ArchivePrepareResponse,
     ArchiveTicketStatus,
     BulkArchiveFormat,
@@ -543,36 +541,14 @@ async def get_word_trend_speeches_archive_status(
 )
 async def download_word_trend_speeches_bulk_archive(
     archive_ticket_id: str,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ):
-    from fastapi.responses import FileResponse  # pylint: disable=import-outside-toplevel
-
-    try:
-        ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-
-    if ticket.status == TicketStatus.ERROR:
-        raise HTTPException(status_code=409, detail=ticket.error or "Archive preparation failed")
-    if ticket.status != TicketStatus.READY:
-        raise HTTPException(status_code=409, detail="Archive is not ready yet")
-    if ticket.artifact_path is None or not ticket.artifact_path.exists():
-        raise HTTPException(status_code=410, detail="Archive file no longer available")
-
-    archive_format_str: str = ticket.archive_format or BulkArchiveFormat.jsonl_gz.value
-    try:
-        archive_format = BulkArchiveFormat(archive_format_str)
-    except ValueError:
-        archive_format = BulkArchiveFormat.jsonl_gz
-
-    media_type: str = ARCHIVE_MEDIA_TYPES.get(archive_format, "application/octet-stream")
-    suffix: str = ARCHIVE_SUFFIXES.get(archive_format, f".{archive_format_str}")
-    filename: str = f"word_trend_speeches_archive_{archive_ticket_id}{suffix}"
-    try:
-        result_store.touch_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-    return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
+    return archive_ticket_service.build_file_response(
+        archive_ticket_id=archive_ticket_id,
+        filename_stem="word_trend_speeches_archive",
+        result_store=result_store,
+    )
 
 
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
@@ -854,36 +830,14 @@ async def get_speeches_archive_status(
 )
 async def download_speeches_bulk_archive(
     archive_ticket_id: str,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ):
-    from fastapi.responses import FileResponse  # pylint: disable=import-outside-toplevel
-
-    try:
-        ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-
-    if ticket.status == TicketStatus.ERROR:
-        raise HTTPException(status_code=409, detail=ticket.error or "Archive preparation failed")
-    if ticket.status != TicketStatus.READY:
-        raise HTTPException(status_code=409, detail="Archive is not ready yet")
-    if ticket.artifact_path is None or not ticket.artifact_path.exists():
-        raise HTTPException(status_code=410, detail="Archive file no longer available")
-
-    archive_format_str: str = ticket.archive_format or BulkArchiveFormat.jsonl_gz.value
-    try:
-        archive_format = BulkArchiveFormat(archive_format_str)
-    except ValueError:
-        archive_format = BulkArchiveFormat.jsonl_gz
-
-    media_type: str = ARCHIVE_MEDIA_TYPES.get(archive_format, "application/octet-stream")
-    suffix: str = ARCHIVE_SUFFIXES.get(archive_format, f".{archive_format_str}")
-    filename: str = f"speeches_archive_{archive_ticket_id}{suffix}"
-    try:
-        result_store.touch_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-    return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
+    return archive_ticket_service.build_file_response(
+        archive_ticket_id=archive_ticket_id,
+        filename_stem="speeches_archive",
+        result_store=result_store,
+    )
 
 
 @router.post("/speeches/download")

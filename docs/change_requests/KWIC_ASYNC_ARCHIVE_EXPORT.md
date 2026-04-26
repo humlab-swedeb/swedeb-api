@@ -8,7 +8,7 @@
 
 ## Summary
 
-Add `POST /v1/tools/kwic/archive/{ticket_id}` to offload KWIC export to a background job, return a `retrieval_url` from the prepare response, and wire the frontend copy-link button in the same way as the existing export components. Excel generation is done server-side via `openpyxl`; no client-side fallback is needed.
+Add `POST /v1/tools/kwic/archive/{ticket_id}` to offload KWIC export to a background job, return a `retrieval_url` from the prepare response, and wire the frontend copy-link button in the same way as the existing export components. Excel generation git pullis done server-side via `openpyxl`; no client-side fallback is needed.
 
 ## Problem
 
@@ -210,6 +210,13 @@ sequenceDiagram
   - [ ] Schedule `execute_archive_task` as `BackgroundTasks` job
   - [ ] Return `ArchivePrepareResponse` (202)
 
+**Completed (this branch):**
+- [x] `ArchiveTicketService.build_file_response()` extracted — ticket validation, format parsing, `touch_ticket`, and `FileResponse` are now in one place; all three bulk-archive download endpoints delegate to it
+- [x] `retrieval_url` included in `ArchivePrepareResponse` schema (`str | None`)
+- [x] `retrieval_url` computed and set in both existing prepare endpoints (`/word_trend_speeches/archive/{ticket_id}` and `/speeches/archive/{ticket_id}`)
+- [x] `GET /v1/downloads/{archive_ticket_id}` — generic status poll for any ticket
+- [x] `GET /v1/downloads/{archive_ticket_id}/download` — generic file stream for any ready ticket
+
 ### Backend tests
 
 - [ ] Create `tests/api_swedeb/api/test_kwic_archive_endpoints.py`
@@ -219,6 +226,10 @@ sequenceDiagram
   - [ ] `GET /v1/downloads/{id}` returns pending/ready status
   - [ ] `GET /v1/downloads/{id}/download` streams artifact for ready ticket
 
+**Completed (this branch):**
+- [x] `test_downloads_router.py` — covers `GET /v1/downloads/{id}` status (all states) and `GET /v1/downloads/{id}/download`
+- [x] `test_downloads_router.py` — verifies `retrieval_url` and `expires_at` are present in prepare responses for both existing tools
+
 ### Frontend
 
 - [ ] Add `archiveRetrievalUrl: null` to `kwicDataStore` state
@@ -227,6 +238,8 @@ sequenceDiagram
 - [ ] Add `linkCopied` ref and `copyRetrievalLink()` to `kwicDataTable.vue`
 - [ ] Show copy-link button when `archiveRetrievalUrl` is set
 - [ ] Remove client-side Excel generation (ExcelJS/JSZip path in `kwicDataStore.js`)
+
+**Note:** `archiveRetrievalUrl` and the `downloadKwicArchive()` pattern are already implemented in `downloadDataStore.js` and `wordTrendsDataStore.js`. `kwicDataStore.js` still uses client-side ExcelJS/JSZip; the backend endpoint does not exist yet so these cannot be removed yet.
 
 ### Validation
 
