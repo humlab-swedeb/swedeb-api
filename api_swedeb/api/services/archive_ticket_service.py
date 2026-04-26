@@ -32,7 +32,6 @@ if TYPE_CHECKING:
     from fastapi.responses import FileResponse
 
 
-
 # ---------------------------------------------------------------------------
 # Per-worker singleton helpers (Celery workers only)
 # ---------------------------------------------------------------------------

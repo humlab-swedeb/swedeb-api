@@ -12,6 +12,7 @@ from api_swedeb.api.dependencies import (
     get_cwb_corpus,
     get_cwb_corpus_opts,
     get_download_service,
+    get_kwic_archive_service,
     get_kwic_service,
     get_kwic_ticket_service,
     get_result_store,
@@ -24,6 +25,7 @@ from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import DEFAULT_PAGE_SIZE, KWICTicketService
 from api_swedeb.api.services.ngrams_service import NGramsService
@@ -255,6 +257,53 @@ async def download_kwic_ticket(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="kwic_{ticket_id}.zip"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# Async bulk archive: KWIC
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/kwic/archive/{ticket_id}",
+    response_model=ArchivePrepareResponse,
+    status_code=202,
+    summary="Prepare a bulk archive from a KWIC ticket",
+)
+async def prepare_kwic_bulk_archive(
+    ticket_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
+    kwic_archive_service: KWICArchiveService = Depends(get_kwic_archive_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> ArchivePrepareResponse:
+    """Start async archive generation for a ready KWIC ticket.
+
+    Returns 202 with an ``archive_ticket_id`` to poll for completion via
+    ``GET /v1/downloads/{archive_ticket_id}``.
+    """
+    try:
+        response: ArchivePrepareResponse = kwic_archive_service.prepare(
+            source_ticket_id=ticket_id,
+            archive_format=archive_format,
+            result_store=result_store,
+        )
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
+
+    background_tasks.add_task(
+        kwic_archive_service.execute_archive_task,
+        archive_ticket_id=response.archive_ticket_id,
+        result_store=result_store,
+    )
+
+    return response
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)

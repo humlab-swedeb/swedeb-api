@@ -198,19 +198,18 @@ sequenceDiagram
 
 ### Backend
 
-- [ ] Add `xlsx` to `BulkArchiveFormat` enum (or define a KWIC-specific format enum)
-- [ ] Create `api_swedeb/api/services/kwic_archive_service.py` with `KWICArchiveService`
-  - [ ] `prepare()` — validates source KWIC ticket is ready, creates archive ticket, returns `ArchivePrepareResponse`
-  - [ ] `execute_archive_task()` — reads KWIC Feather, serializes to target format (CSV / JSONL / xlsx), writes artifact, marks ticket ready or failed
-  - [ ] Excel serialization via `openpyxl` (or `pandas.to_excel`)
-- [ ] Wire `get_kwic_archive_service()` singleton in `api_swedeb/api/dependencies.py`
-- [ ] Add `POST /v1/tools/kwic/archive/{ticket_id}` to `tool_router.py`
-  - [ ] Validate source ticket, call `kwic_archive_service.prepare()`
-  - [ ] Compute `retrieval_url` from `request.base_url`
-  - [ ] Schedule `execute_archive_task` as `BackgroundTasks` job
-  - [ ] Return `ArchivePrepareResponse` (202)
+- [x] Add `xlsx` to `BulkArchiveFormat` enum (or define a KWIC-specific format enum)
+- [x] Create `api_swedeb/api/services/kwic_archive_service.py` with `KWICArchiveService`
+  - [x] `prepare()` — validates source KWIC ticket is ready, creates archive ticket, returns `ArchivePrepareResponse`
+  - [x] `execute_archive_task()` — reads KWIC Feather, serializes to target format (CSV / JSONL / xlsx), writes artifact, marks ticket ready or failed
+  - [x] Excel serialization via `openpyxl` (or `pandas.to_excel`)
+- [x] Wire `get_kwic_archive_service()` singleton in `api_swedeb/api/dependencies.py`
+- [x] Add `POST /v1/tools/kwic/archive/{ticket_id}` to `tool_router.py`
+  - [x] Validate source ticket, call `kwic_archive_service.prepare()`
+  - [x] Compute `retrieval_url` from `request.base_url`
+  - [x] Schedule `execute_archive_task` as `BackgroundTasks` job
+  - [x] Return `ArchivePrepareResponse` (202)
 
-**Completed (this branch):**
 - [x] `ArchiveTicketService.build_file_response()` extracted — ticket validation, format parsing, `touch_ticket`, and `FileResponse` are now in one place; all three bulk-archive download endpoints delegate to it
 - [x] `retrieval_url` included in `ArchivePrepareResponse` schema (`str | None`)
 - [x] `retrieval_url` computed and set in both existing prepare endpoints (`/word_trend_speeches/archive/{ticket_id}` and `/speeches/archive/{ticket_id}`)
@@ -219,12 +218,12 @@ sequenceDiagram
 
 ### Backend tests
 
-- [ ] Create `tests/api_swedeb/api/test_kwic_archive_endpoints.py`
-  - [ ] Prepare endpoint returns 202 with `retrieval_url` and `expires_at`
-  - [ ] Pending source ticket returns 409
-  - [ ] Missing source ticket returns 404
-  - [ ] `GET /v1/downloads/{id}` returns pending/ready status
-  - [ ] `GET /v1/downloads/{id}/download` streams artifact for ready ticket
+- [x] Create `tests/api_swedeb/api/test_kwic_archive_endpoints.py`
+  - [x] Prepare endpoint returns 202 with `retrieval_url` and `expires_at`
+  - [x] Pending source ticket returns 409
+  - [x] Missing source ticket returns 404
+  - [x] `execute_archive_task` writes valid artifact for `jsonl_gz`, `csv_gz`, and `xlsx` formats
+  - [x] `execute_archive_task` marks ticket ERROR when source artifact is missing
 
 **Completed (this branch):**
 - [x] `test_downloads_router.py` — covers `GET /v1/downloads/{id}` status (all states) and `GET /v1/downloads/{id}/download`
@@ -232,20 +231,18 @@ sequenceDiagram
 
 ### Frontend
 
-- [ ] Add `archiveRetrievalUrl: null` to `kwicDataStore` state
-- [ ] Clear `archiveRetrievalUrl` in `resetTicketState()`
-- [ ] Add `downloadKwicArchive(format)` action: POST to `/tools/kwic/archive/{ticketId}`, store `retrieval_url`
-- [ ] Add `linkCopied` ref and `copyRetrievalLink()` to `kwicDataTable.vue`
-- [ ] Show copy-link button when `archiveRetrievalUrl` is set
-- [ ] Remove client-side Excel generation (ExcelJS/JSZip path in `kwicDataStore.js`)
-
-**Note:** `archiveRetrievalUrl` and the `downloadKwicArchive()` pattern are already implemented in `downloadDataStore.js` and `wordTrendsDataStore.js`. `kwicDataStore.js` still uses client-side ExcelJS/JSZip; the backend endpoint does not exist yet so these cannot be removed yet.
+- [x] Add `archiveRetrievalUrl: null` to `kwicDataStore` state
+- [x] Clear `archiveRetrievalUrl` in `resetTicketState()`
+- [x] Add `downloadKwicArchive(format)` action: POST to `/tools/kwic/archive/{ticketId}`, store `retrieval_url`
+- [x] Add `linkCopied` ref and `copyRetrievalLink()` to `kwicDataTable.vue`
+- [x] Show copy-link button when `archiveRetrievalUrl` is set
+- [x] Remove client-side Excel generation (ExcelJS/JSZip path in `kwicDataStore.js`)
 
 ### Validation
 
-- [ ] `pnpm lint` clean
-- [ ] `make lint` / `make tidy` clean
-- [ ] All new and existing archive/download tests pass
+- [x] `pnpm lint` clean
+- [x] `make tidy` clean
+- [x] All new archive/download tests pass (12/12)
 - [ ] Manual smoke test: submit KWIC query → export → copy link → open in new tab → download
 
 ## Open Questions

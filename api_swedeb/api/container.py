@@ -41,6 +41,7 @@ from fastapi import Request
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import KWICTicketService
 from api_swedeb.api.services.metadata_service import MetadataService
@@ -63,6 +64,7 @@ class AppContainer:
     speeches_ticket_service: SpeechesTicketService
     kwic_service: KWICService
     kwic_ticket_service: KWICTicketService
+    kwic_archive_service: KWICArchiveService
     word_trend_speeches_ticket_service: WordTrendSpeechesTicketService
     download_service: DownloadService
     archive_ticket_service: ArchiveTicketService
@@ -80,6 +82,7 @@ class AppContainer:
             speeches_ticket_service=SpeechesTicketService(),
             kwic_service=KWICService(corpus_loader),
             kwic_ticket_service=KWICTicketService(),
+            kwic_archive_service=KWICArchiveService(),
             word_trend_speeches_ticket_service=WordTrendSpeechesTicketService(),
             download_service=DownloadService(),
             archive_ticket_service=ArchiveTicketService(),
