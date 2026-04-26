@@ -3,7 +3,7 @@
 ## Status
 
 - Phase 1 (frontend error handling): **Implemented**
-- Phase 2 (backend sliding-window TTL): **Pending**
+- Phase 2 (backend sliding-window TTL): **Implemented** (commit `da9eea0`, branch `sliding-window-ticket-ttl`, issue #338)
 - Scope: Backend result caching and frontend error handling
 - Goal: Prevent ticket expiration during active pagination and improve user experience when tickets expire
 
@@ -181,7 +181,7 @@ See the Implementation Checklist section for the full test list.
 ## Recommended Delivery Order
 
 1. ~~Phase 1: Frontend error handling~~ — **Done**
-2. Phase 2: Backend sliding-window TTL (see checklist below)
+2. ~~Phase 2: Backend sliding-window TTL~~ — **Done** (see checklist below)
 3. Deploy Phase 2 to test, validate, promote to staging and main
 
 ---
@@ -190,36 +190,36 @@ See the Implementation Checklist section for the full test list.
 
 ### 1. Configuration
 
-- [ ] Add `max_absolute_lifetime_seconds: 3600` to `config/config.yml` under the `cache:` key
-- [ ] Mirror the same key in `tests/config.yml`
-- [ ] Add `max_absolute_lifetime_seconds: int` parameter to `ResultStore.__init__` with no default
+- [x] Add `max_absolute_lifetime_seconds: 3600` to `config/config.yml` under the `cache:` key
+- [x] Mirror the same key in `tests/config.yml`
+- [x] Add `max_absolute_lifetime_seconds: int` parameter to `ResultStore.__init__` with no default
   (force explicit configuration to avoid silent mis-configuration)
-- [ ] Read it in `ResultStore.from_config()` via
+- [x] Read it in `ResultStore.from_config()` via
   `ConfigValue("cache.max_absolute_lifetime_seconds").resolve()`
-- [ ] Verify that existing tests still pass after the new required parameter is added
+- [x] Verify that existing tests still pass after the new required parameter is added
   (`uv run pytest tests/api_swedeb/api/services/test_result_store.py`)
 
 ### 2. `ResultStore.touch_ticket()` method
 
-- [ ] Add `touch_ticket(self, ticket_id: str) -> None` to `ResultStore`
+- [x] Add `touch_ticket(self, ticket_id: str) -> None` to `ResultStore`
   (see Proposed Design section for the full implementation)
-- [ ] Acquire `self._lock` and `self._state_lock()` together (same pattern as other mutating methods)
-- [ ] Use `self._get_ticket_locked()` — not `require_ticket` — to avoid a double lock
-- [ ] Raise `ResultStoreNotFound` if the ticket is absent (expired tickets are already removed by cleanup)
-- [ ] Compute `new_expiry = now + timedelta(seconds=self.result_ttl_seconds)`
-- [ ] Compute `max_expiry = ticket.created_at + timedelta(seconds=self.max_absolute_lifetime_seconds)`
-- [ ] Set `expires_at = min(new_expiry, max_expiry)` — never extend past the absolute cap
-- [ ] Update via `replace(ticket, expires_at=...)` and `self._set_ticket_locked(updated)`
-- [ ] Do not update `ready_at`, `status`, or any other field
+- [x] Acquire `self._lock` and `self._state_lock()` together (same pattern as other mutating methods)
+- [x] Use `self._get_ticket_locked()` — not `require_ticket` — to avoid a double lock
+- [x] Raise `ResultStoreNotFound` if the ticket is absent (expired tickets are already removed by cleanup)
+- [x] Compute `new_expiry = now + timedelta(seconds=self.result_ttl_seconds)`
+- [x] Compute `max_expiry = ticket.created_at + timedelta(seconds=self.max_absolute_lifetime_seconds)`
+- [x] Set `expires_at = min(new_expiry, max_expiry)` — never extend past the absolute cap
+- [x] Update via `replace(ticket, expires_at=...)` and `self._set_ticket_locked(updated)`
+- [x] Do not update `ready_at`, `status`, or any other field
 
 ### 3. Unit tests for `touch_ticket` in `tests/api_swedeb/api/services/test_result_store.py`
 
-- [ ] Test: calling `touch_ticket` on a ready ticket resets `expires_at` forward in time
-- [ ] Test: calling `touch_ticket` when the new expiry would exceed the absolute cap clamps to
+- [x] Test: calling `touch_ticket` on a ready ticket resets `expires_at` forward in time
+- [x] Test: calling `touch_ticket` when the new expiry would exceed the absolute cap clamps to
   `created_at + max_absolute_lifetime_seconds`
-- [ ] Test: calling `touch_ticket` on a missing/expired ticket raises `ResultStoreNotFound`
-- [ ] Test: calling `touch_ticket` does not change `status`, `ready_at`, or `artifact_path`
-- [ ] Test: `cleanup_expired` still removes a ticket whose clamped `expires_at` has passed
+- [x] Test: calling `touch_ticket` on a missing/expired ticket raises `ResultStoreNotFound`
+- [x] Test: calling `touch_ticket` does not change `status`, `ready_at`, or `artifact_path`
+- [x] Test: `cleanup_expired` still removes a ticket whose clamped `expires_at` has passed
 
 ### 4. Wire `touch_ticket` into page and archive service methods
 
@@ -228,30 +228,30 @@ active user-facing data retrieval. Add `result_store.touch_ticket(ticket_id)` im
 (or instead of) the `require_ticket` call in each:
 
 **`api_swedeb/api/services/kwic_ticket_service.py`**
-- [ ] Identify the `get_kwic_page`-equivalent function (currently around line 169 / 175)
-- [ ] Identify the `get_kwic_archive`-equivalent function (currently around line 294 / 356)
-- [ ] Add `result_store.touch_ticket(ticket_id)` at the start of each, before `require_ticket`
-- [ ] Confirm that the status-check function (around line 89 / 253) does **not** call `touch_ticket`
+- [x] Identify the `get_kwic_page`-equivalent function (currently around line 169 / 175)
+- [x] Identify the `get_kwic_archive`-equivalent function (currently around line 294 / 356)
+- [x] Add `result_store.touch_ticket(ticket_id)` at the start of each, before `require_ticket`
+- [x] Confirm that the status-check function (around line 89 / 253) does **not** call `touch_ticket`
 
 **`api_swedeb/api/services/speeches_ticket_service.py`**
-- [ ] Identify the `get_speeches_page`-equivalent function (currently around line 121 / 127)
-- [ ] Identify the `get_speeches_archive`-equivalent function (currently around line 202 / 267)
-- [ ] Add `result_store.touch_ticket(ticket_id)` at the start of each, before `require_ticket`
-- [ ] Confirm that the status-check function (around line 61 / 224 / 299) does **not** call `touch_ticket`
+- [x] Identify the `get_speeches_page`-equivalent function (currently around line 121 / 127)
+- [x] Identify the `get_speeches_archive`-equivalent function (currently around line 202 / 267)
+- [x] Add `result_store.touch_ticket(ticket_id)` at the start of each, before `require_ticket`
+- [x] Confirm that the status-check function (around line 61 / 224 / 299) does **not** call `touch_ticket`
 
 **`api_swedeb/api/services/word_trend_speeches_ticket_service.py`**
-- [ ] Identify the `get_speeches_page`-equivalent function (currently around line 150 / 156)
-- [ ] Identify the `get_speeches_archive`-equivalent function (currently around line 244 / 311)
-- [ ] Add `result_store.touch_ticket(ticket_id)` at the start of each, before `require_ticket`
-- [ ] Confirm that the status-check function (around line 82 / 269) does **not** call `touch_ticket`
+- [x] Identify the `get_speeches_page`-equivalent function (currently around line 150 / 156)
+- [x] Identify the `get_speeches_archive`-equivalent function (currently around line 244 / 311)
+- [x] Add `result_store.touch_ticket(ticket_id)` at the start of each, before `require_ticket`
+- [x] Confirm that the status-check function (around line 82 / 269) does **not** call `touch_ticket`
 
 **`api_swedeb/api/v1/endpoints/tool_router.py`**
-- [ ] Check the `speeches/archive/{ticket_id}` handler (around line 383) which reads `manifest_meta`
+- [x] Check the `speeches/archive/{ticket_id}` handler (around line 383) which reads `manifest_meta`
   directly via `result_store.require_ticket(ticket_id)` — add `touch_ticket` before it
 
 ### 5. Service-level tests
 
-- [ ] Add or extend tests in `tests/api_swedeb/api/services/test_kwic_ticket_service.py`:
+- [x] Add or extend tests in `tests/api_swedeb/api/services/test_kwic_ticket_service.py`:
   - Test that a page request to `get_kwic_page` advances the ticket's `expires_at`
   - Test that a status request does **not** advance `expires_at`
 - [ ] Add equivalent tests for speeches and word-trend-speeches services if test files exist,
@@ -265,12 +265,12 @@ active user-facing data retrieval. Add `result_store.touch_ticket(ticket_id)` im
 
 ### 7. Error propagation check
 
-- [ ] Verify that `touch_ticket` raising `ResultStoreNotFound` propagates correctly through the
+- [x] Verify that `touch_ticket` raising `ResultStoreNotFound` propagates correctly through the
   service layer as an HTTP 404 response (consistent with the existing `require_ticket` behaviour)
-- [ ] Confirm no service swallows the exception before it reaches FastAPI's exception handler
+- [x] Confirm no service swallows the exception before it reaches FastAPI's exception handler
 
 ### 8. Documentation
 
-- [ ] Update `docs/OPERATIONS.md` to document the new `cache.max_absolute_lifetime_seconds` config
+- [x] Update `docs/OPERATIONS.md` to document the new `cache.max_absolute_lifetime_seconds` config
   key, its purpose, and its default value
-- [ ] Update this document's Status section to "Implemented" when the PR merges
+- [x] Update this document's Status section to "Implemented" when the PR merges
