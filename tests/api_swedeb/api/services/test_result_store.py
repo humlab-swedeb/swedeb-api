@@ -825,6 +825,37 @@ def test_touch_ticket_raises_for_missing_ticket(tmp_path) -> None:
         asyncio.run(store.shutdown())
 
 
+def test_touch_ticket_raises_for_expired_ticket_without_resurrect(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+        store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "demokrati"}]))
+
+        # Simulate the gap between expiry and the next cleanup pass by
+        # back-dating expires_at directly in the in-memory store, without
+        # running cleanup_expired().
+        live = store.require_ticket(ticket.ticket_id)
+        expired = replace(live, expires_at=datetime.now(UTC) - timedelta(seconds=1))
+        store._tickets[ticket.ticket_id] = expired
+
+        with pytest.raises(ResultStoreNotFound):
+            store.touch_ticket(ticket.ticket_id)
+
+        # The expired ticket must have been deleted, not resurrected.
+        assert store.get_ticket(ticket.ticket_id) is None
+    finally:
+        asyncio.run(store.shutdown())
+
+
 def test_touch_ticket_does_not_change_status_or_artifact(tmp_path) -> None:
     store = ResultStore(
         root_dir=tmp_path,

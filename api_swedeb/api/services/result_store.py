@@ -186,7 +186,7 @@ class ResultStore:
                 ticket_id=str(uuid4()),
                 status=TicketStatus.PENDING,
                 created_at=now,
-                expires_at=now + timedelta(seconds=self.result_ttl_seconds),
+                expires_at=self._clamped_expiry(now, now + timedelta(seconds=self.result_ttl_seconds)),
                 query_meta=dict(query_meta or {}),
             )
             self._set_ticket_locked(ticket)
@@ -219,9 +219,12 @@ class ResultStore:
                 raise ResultStoreNotFound("Ticket not found or expired")
 
             now = datetime.now(UTC)
+            if ticket.expires_at < now:
+                self._delete_ticket_locked(ticket_id)
+                raise ResultStoreNotFound("Ticket not found or expired")
+
             new_expiry = now + timedelta(seconds=self.result_ttl_seconds)
-            max_expiry = ticket.created_at + timedelta(seconds=self.max_absolute_lifetime_seconds)
-            updated = replace(ticket, expires_at=min(new_expiry, max_expiry))
+            updated = replace(ticket, expires_at=self._clamped_expiry(ticket.created_at, new_expiry))
             self._set_ticket_locked(updated)
 
     def adopt_ticket(self, ticket_id: str) -> None:
@@ -241,7 +244,7 @@ class ResultStore:
                         ticket_id=ticket_id,
                         status=TicketStatus.PENDING,
                         created_at=now,
-                        expires_at=now + timedelta(seconds=self.result_ttl_seconds),
+                        expires_at=self._clamped_expiry(now, now + timedelta(seconds=self.result_ttl_seconds)),
                     )
                 )
 
@@ -263,7 +266,9 @@ class ResultStore:
             ready_at = ticket.ready_at or datetime.now(UTC)
             expires_at = ticket.expires_at
             if ticket.status != TicketStatus.READY:
-                expires_at = ready_at + timedelta(seconds=self.result_ttl_seconds)
+                expires_at = self._clamped_expiry(
+                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                )
 
             updated = replace(
                 ticket,
@@ -407,7 +412,9 @@ class ResultStore:
             updated = replace(
                 ticket,
                 status=TicketStatus.READY,
-                expires_at=ready_at + timedelta(seconds=self.result_ttl_seconds),
+                expires_at=self._clamped_expiry(
+                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                ),
                 query_meta=dict(query_meta or ticket.query_meta),
                 artifact_path=artifact_path,
                 artifact_bytes=artifact_bytes,
@@ -495,6 +502,11 @@ class ResultStore:
             if not ready_tickets:
                 return
             self._delete_ticket_locked(ready_tickets[0].ticket_id)
+
+    def _clamped_expiry(self, created_at: datetime, candidate_expiry: datetime) -> datetime:
+        """Return *candidate_expiry* clamped to the absolute lifetime cap for this ticket."""
+        max_expiry = created_at + timedelta(seconds=self.max_absolute_lifetime_seconds)
+        return min(candidate_expiry, max_expiry)
 
     def _ensure_started_locked(self) -> None:
         if not self._started:
