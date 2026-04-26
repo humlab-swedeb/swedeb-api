@@ -198,7 +198,8 @@ class TicketedDownloadService:
 
         # 3. Use it
         svc = TicketedDownloadService.for_format(BulkArchiveFormat.parquet)
-        svc.write(speech_ids=ids, search_service=svc, dest_path=path)
+        search_service = SearchService(...)
+        svc.write(speech_ids=ids, search_service=search_service, dest_path=path)
     """
 
     def __init__(self, writer: ArchiveWriter, compresslevel: int = 1) -> None:

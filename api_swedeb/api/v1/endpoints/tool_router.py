@@ -491,10 +491,10 @@ async def prepare_word_trend_speeches_bulk_archive(
             archive_format=archive_format,
             result_store=result_store,
         )
-    except ResultStoreNotFound:
-        raise HTTPException(status_code=404, detail="Source ticket not found or expired")
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     celery_enabled: bool = ConfigValue("development.celery_enabled", default=False).resolve()
     if celery_enabled:
@@ -520,13 +520,17 @@ async def prepare_word_trend_speeches_bulk_archive(
 )
 async def get_word_trend_speeches_archive_status(
     archive_ticket_id: str,
+    response: Response,
     archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> ArchiveTicketStatus:
     try:
-        return archive_ticket_service.get_status(archive_ticket_id, result_store)
-    except ResultStoreNotFound:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired")
+        status = archive_ticket_service.get_status(archive_ticket_id, result_store)
+        if status.status == TicketStatus.PENDING.value:
+            response.headers.update(_pending_retry_headers())
+        return status
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
 
 
 @router.get(
@@ -541,9 +545,11 @@ async def download_word_trend_speeches_bulk_archive(
 
     try:
         ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
-    except ResultStoreNotFound:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired")
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
 
+    if ticket.status == TicketStatus.ERROR:
+        raise HTTPException(status_code=409, detail=ticket.error or "Archive preparation failed")
     if ticket.status != TicketStatus.READY:
         raise HTTPException(status_code=409, detail="Archive is not ready yet")
     if ticket.artifact_path is None or not ticket.artifact_path.exists():
@@ -558,7 +564,10 @@ async def download_word_trend_speeches_bulk_archive(
     media_type: str = ARCHIVE_MEDIA_TYPES.get(archive_format, "application/octet-stream")
     suffix: str = ARCHIVE_SUFFIXES.get(archive_format, f".{archive_format_str}")
     filename: str = f"word_trend_speeches_archive_{archive_ticket_id}{suffix}"
-    result_store.touch_ticket(archive_ticket_id)
+    try:
+        result_store.touch_ticket(archive_ticket_id)
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
     return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
 
 
@@ -818,11 +827,15 @@ async def prepare_speeches_bulk_archive(
 )
 async def get_speeches_archive_status(
     archive_ticket_id: str,
+    response: Response,
     archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ) -> ArchiveTicketStatus:
     try:
-        return archive_ticket_service.get_status(archive_ticket_id, result_store)
+        status = archive_ticket_service.get_status(archive_ticket_id, result_store)
+        if status.status == TicketStatus.PENDING.value:
+            response.headers.update(_pending_retry_headers())
+        return status
     except ResultStoreNotFound:
         raise HTTPException(status_code=404, detail="Archive ticket not found or expired")
 
@@ -839,9 +852,11 @@ async def download_speeches_bulk_archive(
 
     try:
         ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
-    except ResultStoreNotFound:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired")
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
 
+    if ticket.status == TicketStatus.ERROR:
+        raise HTTPException(status_code=409, detail=ticket.error or "Archive preparation failed")
     if ticket.status != TicketStatus.READY:
         raise HTTPException(status_code=409, detail="Archive is not ready yet")
     if ticket.artifact_path is None or not ticket.artifact_path.exists():
@@ -856,7 +871,10 @@ async def download_speeches_bulk_archive(
     media_type: str = ARCHIVE_MEDIA_TYPES.get(archive_format, "application/octet-stream")
     suffix: str = ARCHIVE_SUFFIXES.get(archive_format, f".{archive_format_str}")
     filename: str = f"speeches_archive_{archive_ticket_id}{suffix}"
-    result_store.touch_ticket(archive_ticket_id)
+    try:
+        result_store.touch_ticket(archive_ticket_id)
+    except ResultStoreNotFound:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired")
     return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
 
 

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import gzip
+import io
 import json
 import zipfile
 from dataclasses import replace
@@ -78,6 +80,12 @@ def test_archive_artifact_path_zip_has_zip_suffix(tmp_path):
     store = make_result_store(tmp_path)
     path = store.archive_artifact_path("some-ticket-id", "zip")
     assert path.name == "some-ticket-id.zip"
+
+
+def test_archive_artifact_path_csv_gz_has_csv_gz_suffix(tmp_path):
+    store = make_result_store(tmp_path)
+    path = store.archive_artifact_path("some-ticket-id", "csv_gz")
+    assert path.name == "some-ticket-id.csv.gz"
 
 
 def test_archive_artifact_path_distinct_from_feather_artifact(tmp_path):
@@ -400,6 +408,62 @@ def test_execute_archive_task_zip_marks_ticket_ready(tmp_path):
         assert ready.status == TicketStatus.READY
         assert ready.artifact_path is not None
         assert zipfile.is_zipfile(str(ready.artifact_path))
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_execute_archive_task_csv_gz_marks_ticket_ready(tmp_path):
+    store = make_result_store(tmp_path)
+    service = ArchiveTicketService()
+    search_service = make_mock_search_service()
+
+    asyncio.run(store.startup())
+    try:
+        source = make_ready_source_ticket(store)
+        archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="csv_gz")
+
+        service.execute_archive_task(
+            archive_ticket_id=archive_ticket.ticket_id,
+            result_store=store,
+            search_service=search_service,
+        )
+
+        ready = store.require_ticket(archive_ticket.ticket_id)
+        assert ready.status == TicketStatus.READY
+        assert ready.artifact_path is not None
+        assert ready.artifact_path.exists()
+        assert ready.artifact_path.suffix == ".gz"
+        assert ready.total_hits == len(SAMPLE_SPEECH_IDS)
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_execute_archive_task_csv_gz_output_is_valid(tmp_path):
+    store = make_result_store(tmp_path)
+    service = ArchiveTicketService()
+    search_service = make_mock_search_service()
+
+    asyncio.run(store.startup())
+    try:
+        source = make_ready_source_ticket(store)
+        archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="csv_gz")
+
+        service.execute_archive_task(
+            archive_ticket_id=archive_ticket.ticket_id,
+            result_store=store,
+            search_service=search_service,
+        )
+
+        ready = store.require_ticket(archive_ticket.ticket_id)
+        with gzip.open(str(ready.artifact_path), "rt", encoding="utf-8", newline="") as gz:
+            rows = list(csv.reader(gz))
+
+        header, *data_rows = rows
+        assert header == ["speech_id", "speaker_name", "text"]
+        assert [r[0] for r in data_rows] == [sid for sid, _ in SAMPLE_SPEECHES_TEXT]
+        assert [r[2] for r in data_rows] == [text for _, text in SAMPLE_SPEECHES_TEXT]
+        speaker_names = {"i-1": "Alice", "i-2": "Bob", "i-3": "Carol"}
+        assert [r[1] for r in data_rows] == [speaker_names[sid] for sid, _ in SAMPLE_SPEECHES_TEXT]
     finally:
         asyncio.run(store.shutdown())
 

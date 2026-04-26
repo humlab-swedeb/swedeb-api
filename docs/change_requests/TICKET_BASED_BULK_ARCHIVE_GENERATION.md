@@ -2,7 +2,7 @@
 
 ## Status
 
-- **In progress** — backend implementation complete on branch `ticket-based-buld-archive-generation`; frontend integration pending
+- **In progress** — backend implementation complete on branch `ticket-based-bulk-archive-generation`; frontend integration pending
 - Scope: Backend archive generation for large speech downloads
 - Goal: Move expensive archive creation out of synchronous HTTP download requests
 

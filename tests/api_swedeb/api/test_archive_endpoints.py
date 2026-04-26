@@ -85,9 +85,9 @@ def make_ready_archive_ticket(store: ResultStore, source_ticket_id: str, search_
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
-def archive_client(tmp_path) -> Generator[tuple[TestClient, ResultStore], None, None]:
-    """Yields (client, store) with a real in-memory ResultStore and mocked services."""
+@pytest.fixture(name="archive_client")
+def _archive_client(tmp_path) -> Generator[tuple[TestClient, ResultStore, MagicMock], None, None]:
+    """Yields (client, store, search_service) with a real in-memory ResultStore and mocked services."""
     store = make_result_store(tmp_path)
     asyncio.run(store.startup())
 
@@ -98,7 +98,7 @@ def archive_client(tmp_path) -> Generator[tuple[TestClient, ResultStore], None, 
 
     app.dependency_overrides[get_result_store] = lambda: store
     app.dependency_overrides[get_search_service] = lambda: search_service
-    app.dependency_overrides[get_archive_ticket_service] = lambda: ArchiveTicketService()
+    app.dependency_overrides[get_archive_ticket_service] = ArchiveTicketService
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -112,7 +112,7 @@ def archive_client(tmp_path) -> Generator[tuple[TestClient, ResultStore], None, 
 # ---------------------------------------------------------------------------
 
 
-def test_prepare_wt_archive_returns_202_with_archive_ticket_id(archive_client, tmp_path):
+def test_prepare_wt_archive_returns_202_with_archive_ticket_id(archive_client):
     client, store, _ = archive_client
     source = make_ready_source_ticket(store)
 
@@ -130,7 +130,7 @@ def test_prepare_wt_archive_returns_202_with_archive_ticket_id(archive_client, t
 
 
 def test_prepare_wt_archive_returns_404_for_missing_source_ticket(archive_client):
-    client, store, _ = archive_client
+    client, _, _ = archive_client
 
     r = client.post("/v1/tools/word_trend_speeches/archive/nonexistent")
     assert r.status_code == 404
@@ -155,7 +155,7 @@ def test_prepare_speeches_archive_returns_202(archive_client):
 
 
 def test_prepare_speeches_archive_returns_404_for_missing_source_ticket(archive_client):
-    client, store, _ = archive_client
+    client, _, _ = archive_client
 
     r = client.post("/v1/tools/speeches/archive/nonexistent")
     assert r.status_code == 404

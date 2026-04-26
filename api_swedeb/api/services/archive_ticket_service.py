@@ -125,8 +125,20 @@ class ArchiveTicketService:
     ) -> None:
         """Generate the archive artifact and mark the ticket ready or failed."""
         logger.info(f"Starting execute_archive_task for archive ticket {archive_ticket_id}")
+
+        # Load the archive ticket first. If it is missing there is nothing to update, so return silently.
         try:
             archive_ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
+        except ResultStoreNotFound:
+            logger.warning(f"Archive ticket {archive_ticket_id} not found; nothing to update")
+            return
+        except ResultStoreCapacityError:
+            logger.warning(f"Result store capacity error loading archive ticket {archive_ticket_id}")
+            return
+
+        # From here the archive ticket exists. Any NotFound means a dependency (e.g. source ticket)
+        # has expired and the archive ticket must be moved to ERROR so clients stop polling.
+        try:
             source_ticket_id: str | None = archive_ticket.source_ticket_id
             archive_format_str: str | None = archive_ticket.archive_format
 
@@ -161,9 +173,9 @@ class ArchiveTicketService:
         except ResultStoreCapacityError:
             logger.warning(f"Result store capacity error for archive ticket {archive_ticket_id}")
             return
-        except ResultStoreNotFound:
-            logger.warning(f"Result store not found for archive ticket {archive_ticket_id}")
-            return
+        except ResultStoreNotFound as exc:
+            logger.warning(f"Required resource not found for archive ticket {archive_ticket_id}: {exc}")
+            result_store.store_error(archive_ticket_id, message=f"Required resource not found: {exc}")
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception(f"Error executing archive ticket {archive_ticket_id}: {exc}")
             result_store.store_error(archive_ticket_id, message="Failed to generate archive")
