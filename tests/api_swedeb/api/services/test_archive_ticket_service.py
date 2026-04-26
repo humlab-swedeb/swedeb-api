@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import csv
 import gzip
-import io
 import json
 import zipfile
 from dataclasses import replace
