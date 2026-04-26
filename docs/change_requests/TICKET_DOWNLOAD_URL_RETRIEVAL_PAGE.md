@@ -2,9 +2,25 @@
 
 ## Status
 
-- Proposed feature / change request
+- **Ready to implement** — depends on `TICKET_BASED_BULK_ARCHIVE_GENERATION.md`, which is complete on the backend
 - Scope: User-facing retrieval URL for generated download artifacts
 - Goal: Let users return to a stable link that shows archive/job status and exposes the completed download for a limited time
+
+### Foundation provided by the implemented bulk archive generation
+
+The following infrastructure from `TICKET_BASED_BULK_ARCHIVE_GENERATION.md` is already in place and does not need to be re-implemented here:
+
+| Component | Status |
+|---|---|
+| `BulkArchiveFormat`, `ArchivePrepareResponse`, `ArchiveTicketStatus` schemas | ✅ Done |
+| `TicketMeta` with `source_ticket_id`, `archive_format`, `artifact_path`, `expires_at` | ✅ Done |
+| `ResultStore`: archive artifact path, `store_archive_ready()`, TTL, cleanup, capacity | ✅ Done |
+| `ArchiveTicketService`: `prepare()`, `execute_archive_task()`, `get_status()` | ✅ Done |
+| Celery task and `dependencies.py` wiring | ✅ Done |
+| Tool-specific status and download endpoints (word trend speeches, speeches) | ✅ Done |
+| HTTP error responses without internal stack traces | ✅ Done |
+| Artifact access gated on ticket state; 409 for pending, 404 for missing/expired | ✅ Done |
+| UUID-based ticket IDs with sufficient entropy | ✅ Done |
 
 ## Summary
 
@@ -177,39 +193,86 @@ Manual validation should include:
 4. Integrate the retrieval URL into frontend download feedback.
 5. Validate behavior across pending, ready, error, and expired tickets.
 
+## User Experience Design
+
+### UX Principle
+
+The inline polling flow is the primary path — the user stays on the page and the download starts automatically when ready. The retrieval URL is the fallback for tab-close, network loss, or sharing, not an alternative primary flow.
+
+### Flow 1 — Normal: user stays on the page
+
+1. User clicks the download button on a tool page (word trends, speeches, or n-grams).
+2. The button immediately changes to a progress indicator with text like _"Preparing archive… (this may take a minute)"_ and a spinner. The button is disabled.
+3. The frontend polls the status endpoint every 2 s in the background.
+4. A small **"Copy retrieval link"** icon appears next to the spinner. Clicking it copies the retrieval URL to the clipboard with a brief confirmation toast: _"Link copied — you can return to this download later."_
+5. When polling reports `ready`, the download starts automatically (browser `<a download>` trigger) and the button resets.
+6. If polling reports `error`, the spinner is replaced with an inline error message and a **"Try again"** button.
+
+### Flow 2 — Recovery: user closed the tab or lost the connection
+
+1. User re-opens the retrieval URL (from clipboard, browser history, or a shared link).
+2. The frontend route `/download/{archive_ticket_id}` renders one of four states:
+
+| State | What the user sees |
+|---|---|
+| **Pending** | Spinner + _"Your archive is still being prepared."_ + estimated expiry time + auto-refresh every 5 s |
+| **Ready** | Prominent download button + format, speech count if available, expiry countdown (_"Available until HH:MM"_) |
+| **Failed** | Error message + _"Please return to the search and start a new download."_ + link back to the tool |
+| **Expired** | _"This download link has expired."_ + link back to the tool + guidance to re-run the query |
+
+### Flow 3 — Sharing: researcher sends the link to a colleague
+
+Same rendering as Flow 2. Since ticket IDs are UUID-based, the URL functions as an unguessable bearer token for the TTL window. No login is required. The page must make the expiry time clearly visible.
+
+### Retrieval URL display timing
+
+The retrieval URL and copy button should appear immediately after the `POST 202` response, before the archive is ready. A pending link is valid and can be shared.
+
+### Retrieval page expiry state
+
+The retrieval page returns `200` with a clear expiry message when the ticket is missing or expired, so the user sees a helpful page rather than a browser error. The machine-facing `/archive/download/{id}` endpoint continues to return `404` for missing/expired tickets.
+
+## Key Decisions
+
+The following open questions are resolved. Record any future changes here.
+
+| Question | Decision |
+|---|---|
+| Who serves the retrieval page? | **Frontend** — Vue/Quasar route `/download/:id` calling the existing JSON status and download endpoints. Consistent with app style; no backend HTML rendering needed. |
+| Bearer link vs signed URL vs session-bound? | **Bearer link (UUID token)** — UUID ticket IDs are high-entropy enough to be unguessable. No authentication is enforced on Swedeb today, so session-bound links add complexity without benefit. Signed URLs add dependency complexity; revisit if auth is added. |
+| Show retrieval URL before archive is ready? | **Yes** — show and allow copying the retrieval URL immediately after POST 202. A pending link is valid. |
+| Auto-refresh interval on retrieval page (pending)? | **5 s** on the standalone retrieval page; **2 s** for inline polling while the user is actively waiting on the tool page. |
+| Expired ticket: `404`, `410 Gone`, or `200`? | **`200` with expiry message on the retrieval page**; `404` from the API download endpoint (machine path). The frontend catches 404 on the retrieval route and renders the expired state. |
+
 ## Open Questions
 
-- Should the retrieval page be served by FastAPI or by the frontend application?
-- Should retrieval URLs be bearer links, signed URLs, or session-bound links?
-- Should users be able to copy the URL before the task is ready?
-- Should the page auto-refresh while pending, and at what interval?
-- Should expired tickets return `404`, `410 Gone`, or a `200` HTML page explaining expiry?
+- Should the `retrieval_url` field be constructed in `ArchiveTicketService.prepare()` or injected by the router from the request base URL? (The router has access to `Request.base_url`; the service does not.)
 
 ## Implementation Checklist
 
 ### Backend — API Schema and Endpoints
 
-- [ ] Add `retrieval_url` and `expires_at` fields to the archive-job acceptance response schema (`api_swedeb/schemas/`)
-- [ ] Add `GET /v1/downloads/{download_ticket_id}/status` endpoint returning ticket state as JSON
-- [ ] Add `GET /v1/downloads/{download_ticket_id}/file` endpoint serving the artifact only when the ticket is ready
+- [ ] Add `retrieval_url` and `expires_at` fields to `ArchivePrepareResponse` in `api_swedeb/schemas/bulk_archive_schema.py` (`expires_at` is already on `ArchiveTicketStatus` but not on the prepare response)
+- [x] Machine-facing status endpoint — tool-specific equivalents (`/v1/tools/word_trend_speeches/archive/status/{id}` and `/v1/tools/speeches/archive/status/{id}`) already exist and return `ArchiveTicketStatus` JSON
+- [x] Machine-facing download endpoint — tool-specific equivalents (`/v1/tools/word_trend_speeches/archive/download/{id}` and `/v1/tools/speeches/archive/download/{id}`) already exist
 - [ ] Add `GET /v1/downloads/{download_ticket_id}` endpoint (HTML page or shell page depending on deployment decision)
-- [ ] Register new endpoints in the appropriate router (`tool_router.py` or a new `downloads_router.py`)
-- [ ] Inject download service via `Depends()`; do not add corpus-level facade methods
+- [ ] Register new download-page endpoint in the appropriate router (`tool_router.py` or a new `downloads_router.py`)
+- [x] Inject archive service via `Depends()`; `get_archive_ticket_service` is already wired in `dependencies.py`
 
 ### Backend — Service and Ticket Logic
 
-- [ ] Create or extend a `DownloadService` that reads ticket state from the existing store without starting new work
-- [ ] Resolve the ticket state into one of four states: `pending`, `ready`, `failed`, `expired`
-- [ ] Gate file serving on ticket state and expiry time; return `404` or `410` after expiry
-- [ ] Construct `retrieval_url` from base URL and ticket ID when a long-running job is accepted
-- [ ] Ensure ticket ID entropy is sufficient to act as an unguessable bearer token
+- [x] Read ticket state from the existing store without starting new work — `ArchiveTicketService.get_status()` already does this
+- [x] Resolve ticket state into four states — `TicketStatus` covers pending, ready, and error; missing/expired tickets return 404 from the download endpoints
+- [x] Gate file serving on ticket state and expiry time — already enforced in the download endpoints (409 for pending, 404 for missing/expired)
+- [ ] Construct `retrieval_url` from base URL and ticket ID when a long-running job is accepted — add to `ArchiveTicketService.prepare()` return value
+- [x] Ticket ID entropy — UUID-based ticket IDs already used
 
 ### Backend — Configuration and Security
 
 - [ ] Decide and document bearer-link vs. signed-URL vs. session-bound access strategy (resolve open question)
-- [ ] Ensure artifact access stops at ticket expiry with no bypass path
-- [ ] Confirm error responses do not expose internal stack traces or exception details
-- [ ] Add the new endpoints to `tests/config.yml` and `config/config.yml` if config-driven
+- [x] Artifact access stops at ticket expiry — already enforced by `ResultStore` and download endpoint logic
+- [x] Error responses do not expose internal stack traces — already enforced via `HTTPException` pattern throughout
+- [x] No new config keys required — existing `result_ttl_seconds` and `max_artifact_bytes` apply
 
 ### Frontend Integration
 
@@ -221,8 +284,8 @@ Manual validation should include:
 
 ### Testing
 
-- [ ] Unit test: pending ticket → in-progress state rendered
-- [ ] Unit test: ready ticket → download link rendered; artifact served by `/file`
+- [ ] Unit test: pending ticket → in-progress state rendered by retrieval page
+- [ ] Unit test: ready ticket → download link rendered; artifact served
 - [ ] Unit test: failed ticket → safe error message; no stack trace
 - [ ] Unit test: expired or missing ticket → expired/unavailable state; no file access
 - [ ] Unit test: retrieval page does not trigger archive regeneration
