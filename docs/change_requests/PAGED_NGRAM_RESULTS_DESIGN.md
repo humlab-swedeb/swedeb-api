@@ -124,6 +124,11 @@ Recommended MVP rule:
 
 If server-side export is added later, it should export directly from the cached aggregated n-gram artifact.
 
+> **Deprecation note**: Once this change is implemented and the n-gram flow uses a ticket-based speech export path
+> (equivalent to `GET /v1/tools/speeches/archive/{ticket_id}`), the `POST /v1/tools/speeches/download` endpoint
+> can be deprecated. At that point no active frontend caller will send speech IDs via POST body; all speech
+> retrieval will go through the ticket archive route.
+
 ### Persistence and Lifecycle
 
 Reuse the same `ResultStore`, lifespan, cleanup, and byte-budget machinery introduced by the KWIC ticket flow.

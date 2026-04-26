@@ -185,6 +185,60 @@ Manual validation should include:
 - Should the page auto-refresh while pending, and at what interval?
 - Should expired tickets return `404`, `410 Gone`, or a `200` HTML page explaining expiry?
 
+## Implementation Checklist
+
+### Backend — API Schema and Endpoints
+
+- [ ] Add `retrieval_url` and `expires_at` fields to the archive-job acceptance response schema (`api_swedeb/schemas/`)
+- [ ] Add `GET /v1/downloads/{download_ticket_id}/status` endpoint returning ticket state as JSON
+- [ ] Add `GET /v1/downloads/{download_ticket_id}/file` endpoint serving the artifact only when the ticket is ready
+- [ ] Add `GET /v1/downloads/{download_ticket_id}` endpoint (HTML page or shell page depending on deployment decision)
+- [ ] Register new endpoints in the appropriate router (`tool_router.py` or a new `downloads_router.py`)
+- [ ] Inject download service via `Depends()`; do not add corpus-level facade methods
+
+### Backend — Service and Ticket Logic
+
+- [ ] Create or extend a `DownloadService` that reads ticket state from the existing store without starting new work
+- [ ] Resolve the ticket state into one of four states: `pending`, `ready`, `failed`, `expired`
+- [ ] Gate file serving on ticket state and expiry time; return `404` or `410` after expiry
+- [ ] Construct `retrieval_url` from base URL and ticket ID when a long-running job is accepted
+- [ ] Ensure ticket ID entropy is sufficient to act as an unguessable bearer token
+
+### Backend — Configuration and Security
+
+- [ ] Decide and document bearer-link vs. signed-URL vs. session-bound access strategy (resolve open question)
+- [ ] Ensure artifact access stops at ticket expiry with no bypass path
+- [ ] Confirm error responses do not expose internal stack traces or exception details
+- [ ] Add the new endpoints to `tests/config.yml` and `config/config.yml` if config-driven
+
+### Frontend Integration
+
+- [ ] Decide whether the retrieval page is served by FastAPI or by the Vue frontend (resolve open question)
+- [ ] Show or copy the retrieval URL in frontend download feedback when a long-running export starts
+- [ ] Implement the four-state retrieval page: in progress, ready with download link, failed, expired
+- [ ] Add auto-refresh or manual refresh for the pending state (resolve interval open question)
+- [ ] Add i18n keys in both `sv` and `en-US` for all four state messages
+
+### Testing
+
+- [ ] Unit test: pending ticket → in-progress state rendered
+- [ ] Unit test: ready ticket → download link rendered; artifact served by `/file`
+- [ ] Unit test: failed ticket → safe error message; no stack trace
+- [ ] Unit test: expired or missing ticket → expired/unavailable state; no file access
+- [ ] Unit test: retrieval page does not trigger archive regeneration
+- [ ] Unit test: acceptance response includes `retrieval_url` and `expires_at`
+- [ ] Manual: start a long-running export, copy the URL, close the tab, reopen the URL
+- [ ] Manual: refresh the retrieval page while pending
+- [ ] Manual: download the artifact from the ready page
+- [ ] Manual: verify expired-ticket wording after cleanup runs
+
+### Documentation and Cleanup
+
+- [ ] Resolve all open questions and record decisions in this document
+- [ ] Update `docs/DESIGN.md` if the new endpoints change the active API surface or routing structure
+- [ ] Update `docs/OPERATIONS.md` if artifact storage, expiry behavior, or cleanup cron configuration changes
+- [ ] Update OpenAPI schema comments/docstrings so `/docs` reflects the new endpoints
+
 ## Final Recommendation
 
 Add a small single-ticket retrieval page for generated downloads.
