@@ -141,6 +141,11 @@ The `config.yml` structure includes the following operational sections:
 - `ticket_state_backend_url` - Shared backend used for ticket metadata and counters; production should point this at the same Redis deployment used by the workers
 - `ticket_state_prefix` - Key prefix for shared ticket metadata; use a deployment-specific namespace when multiple environments share one Redis server
 
+**`cache`** - Bulk archive generation
+- Archive artifacts are stored under `cache.root_dir/archives/` as either `<archive_ticket_id>.jsonl.gz` or `<archive_ticket_id>.zip`, depending on the `archive_format` query parameter
+- Archive artifacts share the same `max_artifact_bytes` capacity pool and `result_ttl_seconds` TTL as feather result artifacts; they are evicted and cleaned up by the same background cleanup loop
+- No separate `archive_ttl_seconds` key is needed; tune `result_ttl_seconds` and `max_artifact_bytes` together to accommodate the expected artifact sizes
+
 **`celery`** - Background task queue configuration (required for production ticket execution)
 - `broker_url` - Redis connection URL for task queue
 - `result_backend` - Redis connection URL for result storage
@@ -156,6 +161,9 @@ The `config.yml` structure includes the following operational sections:
 - The `cache.root_dir` volume must be shared between API and Celery worker containers so ticket artifacts are accessible across processes
 - Cache settings apply globally to all ticket-based endpoints (KWIC, speeches, and word-trend speeches)
 - Ticket artifacts are stored as feather files under `cache.root_dir`
+- Archive artifacts are stored as `.jsonl.gz` or `.zip` files under `cache.root_dir/archives/`; this subdirectory is created automatically at startup
+- Both feather and archive artifacts share the same `max_artifact_bytes` capacity pool; size `max_artifact_bytes` to accommodate both (feather files are typically small; a 50k-speech `.jsonl.gz` is approximately 50–200 MB compressed)
+- Partial archive files (`.partial` suffix) written by a failed task are cleaned up automatically on the next startup or background cleanup cycle
 - Cleanup runs automatically at `cleanup_interval_seconds` frequency to remove expired tickets
 - When `ticket_state_backend_url` is set, pending-job counts, artifact-byte limits, and ticket metadata are enforced through that shared backend rather than per-process memory
 - If multiple environments point at the same Redis deployment, `ticket_state_prefix` must differ so ticket state does not collide across environments

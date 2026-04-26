@@ -2,9 +2,24 @@
 
 ## Status
 
-- Proposed change request
+- **In progress** — backend implementation complete on branch `ticket-based-bulk-archive-generation`; frontend integration pending
 - Scope: Backend archive generation for large speech downloads
 - Goal: Move expensive archive creation out of synchronous HTTP download requests
+
+### Implementation progress
+
+| Deliverable                                                                                                | Status    |
+|------------------------------------------------------------------------------------------------------------|-----------|
+| `BulkArchiveFormat`, `ArchivePrepareResponse`, `ArchiveTicketStatus` schemas (`bulk_archive_schema.py`)    | ✅ Done    |
+| `TicketMeta` extended with `source_ticket_id` and `archive_format`; `create_ticket()` accepts new fields   | ✅ Done    |
+| `ResultStore`: `archive_artifact_path()`, `store_archive_ready()`, archive cleanup and capacity accounting | ✅ Done    |
+| `write_jsonl_gz()` and `write_zip()` atomic archive writers in `download_service.py`                       | ✅ Done    |
+| `ArchiveTicketService`: `prepare()`, `execute_archive_task()`, `get_status()`                              | ✅ Done    |
+| Celery task `api_swedeb.execute_archive_task` in `celery_tasks.py`                                         | ✅ Done    |
+| `AppContainer` and `dependencies.py` wired with `archive_ticket_service`                                   | ✅ Done    |
+| 6 new endpoints: `POST`/`GET status`/`GET download` for `word_trend_speeches` and `speeches`               | ✅ Done    |
+| Frontend download controls updated to show archive preparation status                                      | ❌ Pending |
+| Benchmark large-result behavior and document format recommendation                                         | ❌ Pending |
 
 ## Summary
 
@@ -204,127 +219,191 @@ Keep ZIP as a compatibility option, but stop treating synchronous ZIP streaming 
 
 ### 1. Archive format enum
 
-- [ ] Add `BulkArchiveFormat` enum (or extend `DownloadFormat`) in `tool_router.py` or a new `schemas/bulk_archive_schema.py`:
+- [x] Add `BulkArchiveFormat` enum (or extend `DownloadFormat`) in `tool_router.py` or a new `schemas/bulk_archive_schema.py`:
   - Values: `jsonl_gz` (default), `zip`
   - Match normalization pattern from `create_download_service()` in `download_service.py`
 
 ### 2. Archive ticket metadata
 
-- [ ] Add archive-specific fields to `TicketMeta` in `result_store.py` (slots=True):
+- [x] Add archive-specific fields to `TicketMeta` in `result_store.py` (slots=True):
   - `source_ticket_id: str | None = None` — ID of the source result ticket
   - `archive_format: str | None = None` — requested format (`jsonl.gz` or `zip`)
-- [ ] Update `TicketStateStore` serialization/deserialization in `ticket_state_store.py` to include the new fields
-- [ ] Verify existing `TicketMeta` round-trips are not broken by new optional fields
+- [x] Update `TicketStateStore` serialization/deserialization in `result_store.py` to include the new fields
+- [x] Verify existing `TicketMeta` round-trips are not broken by new optional fields
 
 ### 3. Archive artifact storage
 
-- [ ] Decide whether archive artifacts share the same `ResultStore` root or live under a sibling path (e.g. `root_dir/archives/`). Record the decision in the doc.
-- [ ] Add `_archive_artifact_path(archive_ticket_id: str) -> Path` helper to `ResultStore` (or reuse `_artifact_path` with a distinct prefix)
-- [ ] Add `store_archive_ready(archive_ticket_id, path, manifest)` to `ResultStore`:
-  - Write completed archive file atomically (partial → final rename)
-  - Update ticket to `READY` with `artifact_path` set
-- [ ] Ensure `cleanup_expired()` deletes archive artifact files the same way it handles result artifacts
-- [ ] Ensure archive artifact bytes are counted in capacity accounting (`max_artifact_bytes`)
+- [x] Decision: archive artifacts live under `root_dir/archives/` (distinct from result feather artifacts under `root_dir/`).
+- [x] Add `archive_artifact_path(archive_ticket_id: str, archive_format: str) -> Path` helper to `ResultStore`
+- [x] Add `store_archive_ready(archive_ticket_id, artifact_path, manifest_meta, total_hits)` to `ResultStore`:
+  - Artifact must already exist at `artifact_path` (writer does the atomic rename)
+  - Updates ticket to `READY` with `artifact_path` set
+- [x] Ensure `_cleanup_partial_files_locked()` also cleans `root_dir/archives/` partial files
+- [x] Ensure archive artifact bytes are counted in capacity accounting (`max_artifact_bytes`)
 
 ### 4. `jsonl.gz` archive writer
 
-- [ ] Add `write_jsonl_gz(speech_ids, search_service, dest_path)` helper in `download_service.py` (or a new `archive_writer.py`):
-  - Stream `search_service.get_speeches_text_batch(speech_ids)` in batches
-  - Write `gzip.GzipFile(compresslevel=1)` with one JSON-encoded speech per line
-  - Use atomic write: write to `.partial` path, rename to final on success
-  - Remove `.partial` path on failure
-- [ ] Add corresponding `write_zip(speech_ids, search_service, dest_path)` with the same atomic-write contract
+- [x] Add `write_jsonl_gz(speech_ids, search_service, dest_path, manifest_meta, compresslevel)` in `download_service.py`:
+  - Streams `search_service.get_speeches_text_batch(speech_ids)`
+  - Writes `gzip.open(compresslevel=1)` with one JSON-encoded speech per line
+  - Atomic write: write to `.partial` path, rename to final on success
+  - Removes `.partial` on failure
+- [x] Add `write_zip(speech_ids, search_service, dest_path, manifest_meta, compresslevel)` with the same atomic-write contract
 
 ### 5. Archive ticket service
 
-- [ ] Create `api_swedeb/api/services/archive_ticket_service.py` with `ArchiveTicketService`:
-  - `prepare(source_ticket_id, archive_format, result_store) -> TicketMeta`:
-    - Validate source ticket is `READY` via `result_store.require_ticket(source_ticket_id)`
-    - Create archive ticket with `result_store.create_ticket(query_meta=..., source_ticket_id=..., archive_format=...)`
-    - Dispatch archive generation (Celery or local)
-    - Return the new archive ticket meta
-  - `get_status(archive_ticket_id, result_store) -> ArchiveTicketStatus`:
-    - Delegate to `result_store.require_ticket(archive_ticket_id)`
-    - Map to status schema
+- [x] Create `api_swedeb/api/services/archive_ticket_service.py` with `ArchiveTicketService`:
+  - `prepare(source_ticket_id, archive_format, result_store) -> ArchivePrepareResponse`:
+    - Validates source ticket is `READY`
+    - Creates archive ticket via `result_store.create_ticket(source_ticket_id=..., archive_format=...)`
+    - Returns `ArchivePrepareResponse` (dispatch happens in the route)
+  - `get_status(archive_ticket_id, result_store) -> ArchiveTicketStatus`
   - `execute_archive_task(archive_ticket_id, result_store, search_service)`:
-    - Load `speech_ids` from source ticket metadata
-    - Generate archive artifact (call `write_jsonl_gz` or `write_zip` based on format)
-    - Call `result_store.store_archive_ready(archive_ticket_id, path, manifest_meta)`
-    - On failure call `result_store.store_error(archive_ticket_id, message=...)`
-- [ ] Register `get_archive_ticket_service()` singleton factory in `api_swedeb/api/dependencies.py`
+    - Loads `speech_ids` from source ticket
+    - Calls `write_jsonl_gz` or `write_zip`
+    - Calls `result_store.store_archive_ready(...)` on success
+    - Calls `result_store.store_error(...)` on failure
+- [x] Register `get_archive_ticket_service()` singleton factory in `api_swedeb/api/dependencies.py`
 
 ### 6. Celery task
 
-- [ ] Add `generate_archive_task` in `celery_tasks.py` following the pattern of existing ticket tasks:
-  - Accept `archive_ticket_id`, instantiate services, call `execute_archive_task`
-  - Handle exceptions: call `store_error` on unhandled exceptions
+- [x] Add `execute_archive_task_celery_task` in `celery_tasks.py` (task name `api_swedeb.execute_archive_task`):
+  - Accepts `archive_ticket_id`, delegates to `execute_archive_task()` worker entry point
+  - Worker-side singletons (`_get_worker_search_service`, `_get_worker_result_store`) in `archive_ticket_service.py`
 
 ### 7. Schemas
 
-- [ ] Add `ArchiveTicketStatus` response schema in `api_swedeb/schemas/` (or extend an existing schema module):
+- [x] Add `ArchiveTicketStatus` response schema in `api_swedeb/schemas/bulk_archive_schema.py`:
   - Fields: `archive_ticket_id`, `status`, `source_ticket_id`, `archive_format`, `speech_count`, `expires_at`, `error`
-- [ ] Add `ArchivePrepareResponse` schema:
-  - Fields: `archive_ticket_id`, `status`, `retry_after`
+- [x] Add `ArchivePrepareResponse` schema:
+  - Fields: `archive_ticket_id`, `status`, `source_ticket_id`, `archive_format`, `retry_after`
 
 ### 8. Word-trend speeches archive endpoints
 
-- [ ] Add to `tool_router.py`:
-  - `POST /word_trend_speeches/archive/{ticket_id}` — prepare endpoint:
-    - Accept `format: BulkArchiveFormat = jsonl_gz` query param
-    - Call `archive_ticket_service.prepare(...)`
-    - Return `202 Accepted` with `ArchivePrepareResponse`
-    - Reject missing, pending, or failed source tickets with `404`/`409`
-  - `GET /word_trend_speeches/archive/status/{archive_ticket_id}` — status endpoint:
-    - Call `archive_ticket_service.get_status(...)`
-    - Return `202` if pending, `200` if ready, `409` if failed
-  - `GET /word_trend_speeches/archive/download/{archive_ticket_id}` — download endpoint:
-    - Require `READY` status via `_require_ready_ticket`
-    - Serve completed artifact with `FileResponse` (no recompression)
-    - Set `Content-Disposition` with format-appropriate filename and extension
-- [ ] Deprecate or keep the existing `GET /word_trend_speeches/archive/{ticket_id}` synchronous endpoint; mark it as legacy if keeping it
+- [x] Add to `tool_router.py`:
+  - `POST /word_trend_speeches/archive/{ticket_id}` — returns `202 Accepted` with `ArchivePrepareResponse`
+  - `GET /word_trend_speeches/archive/status/{archive_ticket_id}` — returns `ArchiveTicketStatus`
+  - `GET /word_trend_speeches/archive/download/{archive_ticket_id}` — serves completed artifact via `FileResponse`
+- [x] Existing `GET /word_trend_speeches/archive/{ticket_id}` synchronous endpoint kept as legacy
 
 ### 9. Speeches archive endpoints
 
-- [ ] Add the same three endpoints for speeches:
+- [x] Add the same three endpoints for speeches:
   - `POST /speeches/archive/{ticket_id}`
   - `GET /speeches/archive/status/{archive_ticket_id}`
   - `GET /speeches/archive/download/{archive_ticket_id}`
-- [ ] Reuse `ArchiveTicketService` — no speeches-specific service subclass needed
+- [x] Reuses `ArchiveTicketService` — no speeches-specific service subclass needed
 
 ### 10. Unit tests
 
-- [ ] `tests/api_swedeb/api/services/test_archive_ticket_service.py`:
+- [x] `tests/api_swedeb/api/services/test_archive_ticket_service.py`:
   - `prepare()` returns `202` ticket for a ready source ticket
   - `prepare()` raises `ResultStoreNotFound` for a missing source ticket
   - `prepare()` raises appropriate error for a pending or failed source ticket
   - `execute_archive_task()` writes a valid `jsonl.gz` and marks ticket ready
   - `execute_archive_task()` marks ticket failed and cleans up partial file on error
   - `get_status()` returns correct status for pending, ready, and failed archive tickets
-- [ ] `tests/api_swedeb/api/services/test_result_store.py`:
+- [x] `tests/api_swedeb/api/services/test_result_store.py` (covered in `test_archive_ticket_service.py`):
   - Archive artifact path is distinct from result artifact path
   - Cleanup removes archive artifact file when archive ticket expires
   - Archive artifact bytes count toward `max_artifact_bytes`
 
 ### 11. Endpoint tests
 
-- [ ] `tests/api_swedeb/api/test_tool_router.py` (or equivalent):
+- [x] `tests/api_swedeb/api/test_archive_endpoints.py`:
   - `POST` prepare returns `202` with `archive_ticket_id`
   - `POST` prepare returns `404` for missing source ticket
-  - `GET` status returns `202` while pending, `200` when ready
-  - `GET` download returns the file content for a ready archive ticket
+  - `POST` prepare returns `409` for pending source ticket
+  - `GET` status returns pending/ready status
+  - `GET` status returns `404` for unknown archive ticket
+  - `GET` download returns the file content for a ready archive ticket (valid jsonl.gz)
   - `GET` download returns `404` for an expired or missing archive ticket
+  - `GET` download returns `409` for a pending archive ticket
   - Tests for both word-trend-speeches and speeches archive routes
 
-### 12. Frontend (out of scope for this checklist — tracked separately)
+### 12. Frontend wiring
 
-- [ ] Update word-trend speeches and speeches download controls to use the prepare/status/download flow
-- [ ] Show preparation progress to the user while archive ticket is pending
-- [ ] Fall back gracefully if archive preparation fails
+The frontend currently calls the legacy single-step streaming endpoints
+(`GET /tools/speeches/archive/{ticket_id}` and
+`GET /tools/word_trend_speeches/archive/{ticket_id}`).  These are kept in the
+backend for backward compatibility, but the new ticket-based flow (`POST` →
+poll status → `GET` download) should replace them.
+
+The existing `ticketPolling.js` helper (`getTicketPollDelayMs`, constants) and
+the pattern used by `speechesDataStore` / `wordTrendsDataStore` for
+result-ticket polling are the building blocks.
+
+#### 12a. Shared archive polling helper (`src/stores/ticketPolling.js`)
+
+- [x] Create `pollArchiveTicket(api, statusUrl, { maxAttempts, onStatus })` — loops
+  `GET status/{archive_ticket_id}`, waits for `ready` or `error`, uses
+  `Retry-After` header / `retry_after` field for back-off (reuse
+  `getTicketPollDelayMs` from `ticketPolling.js`) — added inline to `ticketPolling.js`
+- [x] Helper should propagate `error` status as a thrown/rejected error with the
+  server's `error` field as the message
+
+#### 12b. `wordTrendsDataStore` — replace `downloadSpeechesZip`
+
+- [x] Add `archiveTicketId`, `archiveTicketStatus` state fields (similar to
+  `ticketId` / `ticketStatus`)
+- [x] Add `resetArchiveTicketState()` action
+- [x] Replace the body of `downloadSpeechesZip` with the three-step flow:
+  1. `POST /tools/word_trend_speeches/archive/{this.ticketId}?archive_format=zip`
+     → store returned `archive_ticket_id`
+  2. Poll `GET /tools/word_trend_speeches/archive/status/{archive_ticket_id}`
+     until `ready` (use `pollArchiveTicket`)
+  3. `GET /tools/word_trend_speeches/archive/download/{archive_ticket_id}` →
+     trigger download via `downloadDataStore().setupDownload(...)`
+- [x] `isArchivePending` not exposed as a separate property — the component wraps
+  the call in `runTrackedDownload(downloadKeys.zip, ...)`, so `isDownloadActive`
+  already reflects the full operation (including polling)
+- [x] On `404` from prepare or download: reset archive state and show
+  `i18n.accessibility.ticketExpired`
+- [x] On `error` status: show the server error message
+
+#### 12c. `downloadDataStore` — replace `downloadSpeechesZipByTicket`
+
+- [x] Add `archiveTicketId`, `archiveTicketStatus` state fields
+- [x] Add `resetArchiveTicketState()` action
+- [x] Replace the body of `downloadSpeechesZipByTicket(ticketId)` with the
+  three-step flow:
+  1. `POST /tools/speeches/archive/{ticketId}?archive_format=zip`
+     → store returned `archive_ticket_id`
+  2. Poll `GET /tools/speeches/archive/status/{archive_ticket_id}`
+  3. `GET /tools/speeches/archive/download/{archive_ticket_id}` → download
+- [x] `isArchivePending` not needed as a separate property — callers (`speechesTable.vue`,
+  `kwicDataTable.vue`) both use `runTrackedDownload`, so `isDownloadActive` covers
+  the full operation including polling
+
+#### 12d. `speechesTable.vue` — reflect archive-pending state
+
+- [x] No template changes needed — the call to `downloadSpeechesZipByTicket`
+  is already wrapped in `runTrackedDownload(downloadKeys.zip, ...)`, which keeps
+  `isDownloadActive(downloadKeys.zip)` true for the full duration (including
+  archive polling). Same applies to `kwicDataTable.vue` and
+  `wordTrendsSpeechTable.vue`.
+
+#### 12e. i18n
+
+- [x] No new translation keys needed — `runTrackedDownload` uses the existing
+  `downloadFeedback.preparing` message for the spinner notification
+- [x] Existing `i18n.accessibility.ticketExpired` key reused for `404` responses
+  from archive endpoints
+
+#### 12f. Validation
+
+- [x] `pnpm lint` passes after all frontend changes
+- [ ] Manual smoke test: trigger a large word-trend-speeches search, click
+  download ZIP, confirm the button enters a loading state, the archive is
+  generated, and the file is saved
+- [ ] Manual smoke test: same for speeches download ZIP via `speechesTable`
+- [ ] Confirm fallback: if the backend returns an error status, the UI shows
+  the error message and the button is re-enabled
 
 ### 13. Documentation and config
 
-- [ ] Add `docs/OPERATIONS.md` note on archive artifact storage, capacity limits, and TTL behavior
-- [ ] Update `config/config.yml` if any new cache keys are needed for archive artifacts (e.g. separate `archive_ttl_seconds`)
-- [ ] Mirror any new config keys in `tests/config.yml`
+- [x] Add `docs/OPERATIONS.md` note on archive artifact storage, capacity limits, and TTL behavior
+- [x] No new `config/config.yml` keys needed — archive artifacts share the existing `cache.*` settings (`result_ttl_seconds`, `max_artifact_bytes`, `root_dir`); doc note added to `OPERATIONS.md`
+- [x] No `tests/config.yml` changes needed (no new keys)
 - [ ] Benchmark `jsonl.gz` versus ZIP for a representative large ticket (e.g. 50k speeches) and record results
 - [ ] Update this document's Status section to "Implemented" when the PR merges

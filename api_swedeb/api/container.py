@@ -38,6 +38,7 @@ from typing import cast
 
 from fastapi import Request
 
+from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
@@ -64,6 +65,7 @@ class AppContainer:
     kwic_ticket_service: KWICTicketService
     word_trend_speeches_ticket_service: WordTrendSpeechesTicketService
     download_service: DownloadService
+    archive_ticket_service: ArchiveTicketService
 
     @classmethod
     def build(cls) -> AppContainer:
@@ -80,6 +82,7 @@ class AppContainer:
             kwic_ticket_service=KWICTicketService(),
             word_trend_speeches_ticket_service=WordTrendSpeechesTicketService(),
             download_service=DownloadService(),
+            archive_ticket_service=ArchiveTicketService(),
         )
 
 

@@ -72,7 +72,6 @@ def make_result_store(tmp_path, *, ticket_state_store=None):
 
 
 def make_mock_search_service(speeches=None):
-    from unittest.mock import MagicMock
 
     service = MagicMock()
     frame = pd.DataFrame(speeches if speeches is not None else SAMPLE_SPEECHES)
@@ -227,7 +226,7 @@ def test_get_celery_page_result_uses_result_store_load_artifact():
     assert [speech.speech_id for speech in result.speech_list] == ["i-1", "i-2"]
 
 
-def test_get_page_result_touches_ticket(tmp_path):
+def test_get_page_result_touches_ticket():
     """get_page_result() must call touch_ticket so that expires_at advances on every page access."""
     result_store = MagicMock()
     service = SpeechesTicketService()
