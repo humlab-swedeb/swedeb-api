@@ -5,6 +5,7 @@ from __future__ import annotations
 import gzip
 import io
 import json
+import math
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -180,8 +181,6 @@ class KWICArchiveService:
     def _write_jsonl_gz(self, data: "pd.DataFrame", dest: Path) -> None:
         with gzip.open(str(dest), "wb", compresslevel=1) as gz:
             for record in data.to_dict(orient="records"):
-                import math  # pylint: disable=import-outside-toplevel
-
                 cleaned = {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in record.items()}
                 line = (json.dumps(cleaned, ensure_ascii=False, default=str) + "\n").encode("utf-8")
                 gz.write(line)
