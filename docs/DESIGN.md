@@ -28,6 +28,7 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
     - [5. Ticketed speeches flow](#5-ticketed-speeches-flow)
     - [6. Ticketed word-trend speeches flow](#6-ticketed-word-trend-speeches-flow)
     - [7. Speech download flow](#7-speech-download-flow)
+    - [8. Bulk archive retrieval flow](#8-bulk-archive-retrieval-flow)
   - [Data and Persistence Design](#data-and-persistence-design)
     - [Configuration](#configuration)
     - [Read-only runtime data](#read-only-runtime-data)
@@ -80,11 +81,12 @@ In production mode (`development.celery_enabled: true`), the backend also depend
 
 - Redis as the Celery broker and task-state backend for ticketed KWIC query execution
 
-The public API surface is currently organized into three routers:
+The public API surface is currently organized into four routers:
 
 - tools router (active), mounted at `/v1/tools`, for analysis, retrieval, and download endpoints
 - tools router (deprecated), also mounted at `/v1/tools`, for synchronous endpoints superseded by their ticketed equivalents
 - metadata router, mounted at `/v1/metadata`, for metadata lists and speaker queries
+- downloads router, mounted at `/v1/downloads`, for tool-agnostic archive retrieval by ticket ID
 
 The backend can also mount static frontend assets at `/public` when `create_app()` is given a `static_dir`, but the primary responsibility of this repository remains the backend API and corpus-access layer.
 
@@ -130,6 +132,7 @@ The entry point is [main.py](../main.py), which builds the app through [api_swed
 - [api_swedeb/api/v1/endpoints/tool_router.py](../api_swedeb/api/v1/endpoints/tool_router.py) — active analysis and download endpoints
 - [api_swedeb/api/v1/endpoints/deprecated_endpoints.py](../api_swedeb/api/v1/endpoints/deprecated_endpoints.py) — backward-compat synchronous endpoints superseded by ticketed equivalents; isolated for easy future removal
 - [api_swedeb/api/v1/endpoints/metadata_router.py](../api_swedeb/api/v1/endpoints/metadata_router.py)
+- [api_swedeb/api/v1/endpoints/downloads_router.py](../api_swedeb/api/v1/endpoints/downloads_router.py) — tool-agnostic `GET /v1/downloads/{archive_ticket_id}` (status) and `GET /v1/downloads/{archive_ticket_id}/download` (file stream) endpoints used by the frontend retrieval page
 
 `api_swedeb/api/params.py` defines shared query-parameter objects so filtering semantics are centralized rather than reimplemented per endpoint.
 
@@ -163,6 +166,7 @@ The key services are:
 - `SpeechesTicketService`: paged speeches ticket lifecycle; dispatches to the default Celery queue (production) or FastAPI `BackgroundTasks` (development) and stores the resulting speech listing artifact in `ResultStore`
 - `WordTrendSpeechesTicketService`: paged word-trend speeches ticket lifecycle; same dispatch model as `KWICTicketService`, storing results as Feather artifacts in `ResultStore`
 - `DownloadService`: streamed archive generation for speech downloads
+- `ArchiveTicketService`: bulk archive ticket lifecycle — creates archive tickets, dispatches execution to background tasks or Celery, and returns `ArchivePrepareResponse` (including `expires_at`); the calling router injects `retrieval_url` from `Request.base_url`
 - `ResultStore`: disk-backed storage for ticket result artifacts plus ticket lifecycle bookkeeping such as paging, expiry, and capacity enforcement
 - `TicketStateStore`: shared ticket metadata and counters backed by `cache.ticket_state_backend_url` when configured, allowing ticket status, pending limits, and artifact accounting to survive process boundaries
 
@@ -275,6 +279,23 @@ Speech download requests either:
 
 This direct speech-archive flow is separate from the ticket-backed full-result export endpoints for speeches and word-trend speeches, which stream archived copies of stored ticket artifacts rather than re-running the underlying query.
 
+### 8. Bulk archive retrieval flow
+
+When a client submits a bulk-archive prepare request to either `/v1/tools/speeches/archive/{ticket_id}` or `/v1/tools/word_trend_speeches/archive/{ticket_id}`, the router:
+
+1. calls `ArchiveTicketService.prepare()`, which creates an archive ticket in `ResultStore` and dispatches archive execution to the background
+2. constructs a `retrieval_url` of the form `{base_url}/download/{archive_ticket_id}` using `Request.base_url`
+3. returns a `202 ArchivePrepareResponse` containing `archive_ticket_id`, `retrieval_url`, and `expires_at`
+
+The `retrieval_url` is a bearer link: a stable URL that requires no additional authentication. Any holder of the URL may poll the retrieval page or trigger a download while the ticket is valid.
+
+The frontend renders this link as a copyable retrieval URL. Separately, the Vue frontend route `/download/:archiveTicketId` renders a four-state retrieval page (pending, ready, failed, expired) that calls:
+
+- `GET /v1/downloads/{archive_ticket_id}` — returns `ArchiveTicketStatus` JSON; 404 for missing or expired tickets
+- `GET /v1/downloads/{archive_ticket_id}/download` — streams the artifact file; 409 if not yet ready; 404 if missing
+
+Polling the status endpoint never triggers re-execution of the archive job. The downloads router is tool-agnostic and reads any archive ticket from the shared `ResultStore`.
+
 ## Data and Persistence Design
 
 ### Configuration
@@ -352,6 +373,8 @@ Performance-related design choices are visible throughout the runtime:
 ### Security and access model
 
 The app currently configures CORS, but it does not implement built-in authentication or authorization. The current design assumes a trusted deployment boundary around the API rather than an internal auth subsystem in this repository.
+
+Bulk archive retrieval URLs (`/v1/downloads/{archive_ticket_id}`) use a bearer-link model: the archive ticket ID is a UUID that has sufficient entropy to be unguessable. No session binding or signed URL is applied. If authentication is added in a future iteration, the retrieval endpoints should be revisited.
 
 ## Constraints and Assumptions
 

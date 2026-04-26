@@ -3,7 +3,7 @@ from typing import Annotated, Any, Literal
 
 import fastapi
 import pandas as pd
-from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query, Response
+from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.dependencies import (
@@ -475,6 +475,7 @@ async def download_word_trend_speeches_archive(
 )
 async def prepare_word_trend_speeches_bulk_archive(
     ticket_id: str,
+    request: Request,
     background_tasks: BackgroundTasks,
     archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
     archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
@@ -495,6 +496,9 @@ async def prepare_word_trend_speeches_bulk_archive(
         raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
 
     celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
     if celery_enabled:
@@ -782,6 +786,7 @@ async def download_speeches_archive_by_ticket(
 )
 async def prepare_speeches_bulk_archive(
     ticket_id: str,
+    request: Request,
     background_tasks: BackgroundTasks,
     archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
     archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
@@ -802,6 +807,9 @@ async def prepare_speeches_bulk_archive(
         raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
 
     celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
     if celery_enabled:

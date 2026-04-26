@@ -145,6 +145,8 @@ The `config.yml` structure includes the following operational sections:
 - Archive artifacts are stored under `cache.root_dir/archives/` as either `<archive_ticket_id>.jsonl.gz` or `<archive_ticket_id>.zip`, depending on the `archive_format` query parameter
 - Archive artifacts share the same `max_artifact_bytes` capacity pool and `result_ttl_seconds` TTL as feather result artifacts; they are evicted and cleaned up by the same background cleanup loop
 - No separate `archive_ttl_seconds` key is needed; tune `result_ttl_seconds` and `max_artifact_bytes` together to accommodate the expected artifact sizes
+- Prepare responses (`POST .../archive/{ticket_id}`) include a `retrieval_url` of the form `{base_url}/download/{archive_ticket_id}` and an `expires_at` timestamp; these let users or external tools poll or retrieve the archive without re-running the export
+- The retrieval URL is a bearer link (UUID token); no additional authentication is required to poll or download while the ticket is valid — review this policy if authentication is introduced
 
 **`celery`** - Background task queue configuration (required for production ticket execution)
 - `broker_url` - Redis connection URL for task queue
@@ -411,6 +413,7 @@ Short operator checklist:
 - Confirm the dedicated multiprocessing worker started and shows as `READY` in its logs.
 - Submit at least one ticketed speeches request and one ticketed word-trend speeches request, then confirm status or page retrieval succeeds from the running environment.
 - If pending responses are observed during smoke tests, confirm they return a sensible `Retry-After` value that matches `cache.ticket_poll_retry_after_seconds`.
+- After a bulk archive prepare request, confirm the response includes `retrieval_url` and `expires_at`, and that the retrieval URL (`GET /v1/downloads/{archive_ticket_id}`) is reachable and returns a valid status response.
 - Review recent service logs for startup, configuration, or asset errors before declaring the rollout complete.
 
 For a fuller operator workflow, use [SMOKE_TEST_CHECKLIST.md](./SMOKE_TEST_CHECKLIST.md).

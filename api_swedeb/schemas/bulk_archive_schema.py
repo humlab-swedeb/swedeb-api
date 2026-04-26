@@ -41,6 +41,8 @@ class ArchivePrepareResponse(BaseModel):
     source_ticket_id: str
     archive_format: str
     retry_after: int
+    retrieval_url: str | None = None
+    expires_at: datetime | None = None
 
 
 class ArchiveTicketStatus(BaseModel):
