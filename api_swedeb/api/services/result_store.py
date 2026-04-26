@@ -38,6 +38,8 @@ class TicketMeta:
     manifest_meta: dict | None = None
     error: str | None = None
     ready_at: datetime | None = None
+    source_ticket_id: str | None = None
+    archive_format: str | None = None
 
 
 class ResultStoreError(RuntimeError):
@@ -114,6 +116,7 @@ class ResultStore:
     async def startup(self) -> None:
         with self._lock:
             self.root_dir.mkdir(parents=True, exist_ok=True)
+            (self.root_dir / "archives").mkdir(exist_ok=True)
             self._cleanup_partial_files_locked()
             self._artifact_cache.clear()
             self._sorted_positions_cache.clear()
@@ -135,6 +138,7 @@ class ResultStore:
         """
         with self._lock:
             self.root_dir.mkdir(parents=True, exist_ok=True)
+            (self.root_dir / "archives").mkdir(exist_ok=True)
             self._cleanup_partial_files_locked()
             self._artifact_cache.clear()
             self._sorted_positions_cache.clear()
@@ -174,7 +178,13 @@ class ResultStore:
         with self._lock:
             return self._pending_jobs_locked()
 
-    def create_ticket(self, *, query_meta: dict | None = None) -> TicketMeta:
+    def create_ticket(
+        self,
+        *,
+        query_meta: dict | None = None,
+        source_ticket_id: str | None = None,
+        archive_format: str | None = None,
+    ) -> TicketMeta:
         self.cleanup_expired()
         with self._lock, self._state_lock():
             self._ensure_started_locked()
@@ -188,6 +198,8 @@ class ResultStore:
                 created_at=now,
                 expires_at=self._clamped_expiry(now, now + timedelta(seconds=self.result_ttl_seconds)),
                 query_meta=dict(query_meta or {}),
+                source_ticket_id=source_ticket_id,
+                archive_format=archive_format,
             )
             self._set_ticket_locked(ticket)
             return ticket
@@ -464,6 +476,67 @@ class ResultStore:
     def _partial_path(self, ticket_id: str) -> Path:
         return self.root_dir / f"{ticket_id}{self.ARTIFACT_SUFFIX}{self.PARTIAL_SUFFIX}"
 
+    def archive_artifact_path(self, ticket_id: str, archive_format: str) -> Path:
+        """Return the filesystem path for an archive artifact."""
+        from api_swedeb.schemas.bulk_archive_schema import (  # pylint: disable=import-outside-toplevel
+            ARCHIVE_SUFFIXES,
+            BulkArchiveFormat,
+        )
+
+        suffix = ARCHIVE_SUFFIXES.get(BulkArchiveFormat(archive_format), f".{archive_format}")
+        return self.root_dir / "archives" / f"{ticket_id}{suffix}"
+
+    def store_archive_ready(
+        self,
+        archive_ticket_id: str,
+        *,
+        artifact_path: Path,
+        manifest_meta: dict | None = None,
+        total_hits: int | None = None,
+    ) -> TicketMeta:
+        """Record a completed archive artifact.
+
+        The caller must have already written the file to *artifact_path* atomically.
+        This method updates the archive ticket to READY and accounts for capacity.
+        """
+        if not artifact_path.exists():
+            raise ResultStoreNotFound("Archive artifact file not found")
+
+        artifact_bytes = artifact_path.stat().st_size
+
+        with self._lock, self._state_lock():
+            self._ensure_started_locked()
+            ticket = self._get_ticket_locked(archive_ticket_id)
+            if ticket is None:
+                artifact_path.unlink(missing_ok=True)
+                raise ResultStoreNotFound("Archive ticket not found or expired")
+
+            self._evict_ready_tickets_locked(required_bytes=artifact_bytes, exclude_ticket_id=archive_ticket_id)
+
+            total_capacity = self._artifact_bytes_locked() + artifact_bytes - (ticket.artifact_bytes or 0)
+            if artifact_bytes > self.max_artifact_bytes or total_capacity > self.max_artifact_bytes:
+                artifact_path.unlink(missing_ok=True)
+                message = "Insufficient result-store capacity for archive artifact"
+                self._set_ticket_locked(replace(ticket, status=TicketStatus.ERROR, error=message))
+                raise ResultStoreCapacityError(message)
+
+            ready_at = datetime.now(UTC)
+            updated = replace(
+                ticket,
+                status=TicketStatus.READY,
+                expires_at=self._clamped_expiry(
+                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                ),
+                artifact_path=artifact_path,
+                artifact_bytes=artifact_bytes,
+                total_hits=total_hits if total_hits is not None else ticket.total_hits,
+                manifest_meta=dict(manifest_meta) if manifest_meta is not None else ticket.manifest_meta,
+                error=None,
+                ready_at=ready_at,
+            )
+            self._set_ticket_locked(updated)
+            return replace(updated)
+
     def _cleanup_partial_files_locked(self) -> None:
         if not self.root_dir.exists():
             return
@@ -471,6 +544,12 @@ class ResultStore:
         for suffix in self.PARTIAL_SUFFIXES:
             for path in self.root_dir.glob(f"*{suffix}"):
                 path.unlink(missing_ok=True)
+
+        archives_dir = self.root_dir / "archives"
+        if archives_dir.exists():
+            for suffix in self.PARTIAL_SUFFIXES:
+                for path in archives_dir.glob(f"*{suffix}"):
+                    path.unlink(missing_ok=True)
 
     def _delete_ticket_locked(self, ticket_id: str) -> None:
         ticket = self._get_ticket_locked(ticket_id)
@@ -611,4 +690,6 @@ class ResultStore:
             manifest_meta=dict(payload["manifest_meta"]) if payload.get("manifest_meta") is not None else None,
             error=payload.get("error"),
             ready_at=datetime.fromisoformat(payload["ready_at"]) if payload.get("ready_at") else None,
+            source_ticket_id=payload.get("source_ticket_id"),
+            archive_format=payload.get("archive_format"),
         )
