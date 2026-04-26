@@ -114,6 +114,7 @@ class ArchiveTicketService:
             source_ticket_id=source_ticket_id,
             archive_format=archive_format.value,
             retry_after=retry_after,
+            expires_at=archive_ticket.expires_at,
         )
 
     def execute_archive_task(

@@ -246,17 +246,17 @@ The following open questions are resolved. Record any future changes here.
 
 ## Open Questions
 
-- Should the `retrieval_url` field be constructed in `ArchiveTicketService.prepare()` or injected by the router from the request base URL? (The router has access to `Request.base_url`; the service does not.)
+~~Should the `retrieval_url` field be constructed in `ArchiveTicketService.prepare()` or injected by the router from the request base URL?~~ **Resolved**: constructed in the router, which has access to `Request.base_url`. The service sets `expires_at` from the created `TicketMeta` and returns it in the prepare response. The router adds `retrieval_url` via `model_copy()` after calling the service.
 
 ## Implementation Checklist
 
 ### Backend — API Schema and Endpoints
 
-- [ ] Add `retrieval_url` and `expires_at` fields to `ArchivePrepareResponse` in `api_swedeb/schemas/bulk_archive_schema.py` (`expires_at` is already on `ArchiveTicketStatus` but not on the prepare response)
+- [x] Add `retrieval_url` and `expires_at` fields to `ArchivePrepareResponse` in `api_swedeb/schemas/bulk_archive_schema.py` (`expires_at` is already on `ArchiveTicketStatus` but not on the prepare response)
 - [x] Machine-facing status endpoint — tool-specific equivalents (`/v1/tools/word_trend_speeches/archive/status/{id}` and `/v1/tools/speeches/archive/status/{id}`) already exist and return `ArchiveTicketStatus` JSON
 - [x] Machine-facing download endpoint — tool-specific equivalents (`/v1/tools/word_trend_speeches/archive/download/{id}` and `/v1/tools/speeches/archive/download/{id}`) already exist
-- [ ] Add `GET /v1/downloads/{download_ticket_id}` endpoint (HTML page or shell page depending on deployment decision)
-- [ ] Register new download-page endpoint in the appropriate router (`tool_router.py` or a new `downloads_router.py`)
+- [x] Add `GET /v1/downloads/{download_ticket_id}` endpoint (JSON status; frontend Vue route serves the HTML page)
+- [x] Register new download-page endpoint in `downloads_router.py` (new file); registered in `app.py`
 - [x] Inject archive service via `Depends()`; `get_archive_ticket_service` is already wired in `dependencies.py`
 
 ### Backend — Service and Ticket Logic
@@ -264,32 +264,32 @@ The following open questions are resolved. Record any future changes here.
 - [x] Read ticket state from the existing store without starting new work — `ArchiveTicketService.get_status()` already does this
 - [x] Resolve ticket state into four states — `TicketStatus` covers pending, ready, and error; missing/expired tickets return 404 from the download endpoints
 - [x] Gate file serving on ticket state and expiry time — already enforced in the download endpoints (409 for pending, 404 for missing/expired)
-- [ ] Construct `retrieval_url` from base URL and ticket ID when a long-running job is accepted — add to `ArchiveTicketService.prepare()` return value
+- [x] Construct `retrieval_url` from base URL and ticket ID when a long-running job is accepted — injected by the router via `Request.base_url`, set on response with `model_copy()`
 - [x] Ticket ID entropy — UUID-based ticket IDs already used
 
 ### Backend — Configuration and Security
 
-- [ ] Decide and document bearer-link vs. signed-URL vs. session-bound access strategy (resolve open question)
+- [x] Decided: bearer link (UUID token) — UUID ticket IDs have sufficient entropy; no auth on Swedeb today; revisit if auth is added
 - [x] Artifact access stops at ticket expiry — already enforced by `ResultStore` and download endpoint logic
 - [x] Error responses do not expose internal stack traces — already enforced via `HTTPException` pattern throughout
 - [x] No new config keys required — existing `result_ttl_seconds` and `max_artifact_bytes` apply
 
 ### Frontend Integration
 
-- [ ] Decide whether the retrieval page is served by FastAPI or by the Vue frontend (resolve open question)
-- [ ] Show or copy the retrieval URL in frontend download feedback when a long-running export starts
-- [ ] Implement the four-state retrieval page: in progress, ready with download link, failed, expired
-- [ ] Add auto-refresh or manual refresh for the pending state (resolve interval open question)
-- [ ] Add i18n keys in both `sv` and `en-US` for all four state messages
+- [x] Decided: retrieval page served by Vue frontend at `/download/:archiveTicketId` under `MainLayout`; calls `GET /v1/downloads/{id}` for status and `GET /v1/downloads/{id}/download` for file
+- [x] Show or copy the retrieval URL in frontend download feedback — "Copy retrieval link" button appears while zip download is in progress in both `wordTrendsSpeechTable.vue` and `speechesTable.vue`
+- [x] Implement the four-state retrieval page (`src/pages/DownloadRetrievalPage.vue`): pending/spinner, ready/download button, failed/error, expired/message
+- [x] Auto-refresh for the pending state — 5 s interval via `setInterval` on mount, cleared on unmount
+- [x] i18n keys added in both `sv/index.js` and `en-US/index.js` (`downloadRetrievalPage.*`)
 
 ### Testing
 
-- [ ] Unit test: pending ticket → in-progress state rendered by retrieval page
-- [ ] Unit test: ready ticket → download link rendered; artifact served
-- [ ] Unit test: failed ticket → safe error message; no stack trace
-- [ ] Unit test: expired or missing ticket → expired/unavailable state; no file access
-- [ ] Unit test: retrieval page does not trigger archive regeneration
-- [ ] Unit test: acceptance response includes `retrieval_url` and `expires_at`
+- [x] Unit test: pending ticket → status endpoint returns pending (`test_downloads_status_returns_pending_for_new_archive_ticket`)
+- [x] Unit test: ready ticket → status endpoint returns ready; artifact served via download endpoint (`test_downloads_status_returns_ready_for_ready_ticket`, `test_downloads_download_returns_artifact_for_ready_ticket`)
+- [x] Unit test: failed/error ticket → download endpoint returns 409 (`test_downloads_download_returns_409_for_error_ticket`)
+- [x] Unit test: expired or missing ticket → 404 from both status and download endpoints
+- [x] Unit test: retrieval page polling does not trigger archive regeneration (`test_downloads_status_does_not_trigger_archive_regeneration`)
+- [x] Unit test: acceptance response includes `retrieval_url` and `expires_at` (`test_prepare_wt_archive_includes_retrieval_url_and_expires_at`, `test_prepare_speeches_archive_includes_retrieval_url`)
 - [ ] Manual: start a long-running export, copy the URL, close the tab, reopen the URL
 - [ ] Manual: refresh the retrieval page while pending
 - [ ] Manual: download the artifact from the ready page
@@ -297,10 +297,10 @@ The following open questions are resolved. Record any future changes here.
 
 ### Documentation and Cleanup
 
-- [ ] Resolve all open questions and record decisions in this document
-- [ ] Update `docs/DESIGN.md` if the new endpoints change the active API surface or routing structure
-- [ ] Update `docs/OPERATIONS.md` if artifact storage, expiry behavior, or cleanup cron configuration changes
-- [ ] Update OpenAPI schema comments/docstrings so `/docs` reflects the new endpoints
+- [x] Resolve all open questions and record decisions in this document
+- [x] Update `docs/DESIGN.md` if the new endpoints change the active API surface or routing structure
+- [x] Update `docs/OPERATIONS.md` if artifact storage, expiry behavior, or cleanup cron configuration changes
+- [x] OpenAPI docstrings on all three new endpoints (`GET /v1/downloads/{id}`, `GET /v1/downloads/{id}/download`, updated prepare endpoints)
 
 ## Final Recommendation
 
