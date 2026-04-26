@@ -414,6 +414,11 @@ def _stream_speech_archive(
     search_service: SearchService,
 ) -> StreamingResponse:
     """Shared helper: validate a ticket and stream its speech text archive as ZIP."""
+    try:
+        result_store.touch_ticket(ticket_id)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
     ticket = _require_ready_ticket(ticket_id, result_store)
     if ticket.speech_ids is None or ticket.manifest_meta is None:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")

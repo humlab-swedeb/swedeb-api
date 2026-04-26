@@ -130,7 +130,8 @@ The `config.yml` structure includes the following operational sections:
 - `bootstrap_corpus_folder` - Prebuilt speech corpus location
 
 **`cache`** - Shared ticket-based paging and export configuration for the async ticketed endpoints
-- `result_ttl_seconds` - Ticket lifetime before expiration (default: `600`)
+- `result_ttl_seconds` - Sliding ticket TTL; the expiry window resets on each page or archive access (default: `600`)
+- `max_absolute_lifetime_seconds` - Hard cap on total ticket lifetime from creation, regardless of access activity; expiry from `touch_ticket` is clamped to `created_at + max_absolute_lifetime_seconds` (default: `3600`)
 - `cleanup_interval_seconds` - Frequency of automatic cleanup (default: `60`)
 - `max_artifact_bytes` - Maximum total storage for all ticket artifacts in bytes (default: `2147483648` = 2GB)
 - `max_pending_jobs` - Maximum concurrent pending tickets (default: `2`)

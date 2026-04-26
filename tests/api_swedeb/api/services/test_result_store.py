@@ -1,6 +1,7 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Barrier
 from unittest.mock import MagicMock, patch
@@ -746,5 +747,164 @@ def test_result_store_store_error_removes_artifact_and_marks_ticket_failed(tmp_p
         assert failed.error == "Task failed"
         assert failed.artifact_path is None
         assert ready.artifact_path.exists() is False
+    finally:
+        asyncio.run(store.shutdown())
+
+
+# ---------------------------------------------------------------------------
+# touch_ticket tests
+# ---------------------------------------------------------------------------
+
+
+def test_touch_ticket_advances_expiry_on_ready_ticket(tmp_path) -> None:
+    ttl = 300
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=ttl,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+        store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "demokrati"}]))
+
+        before = store.require_ticket(ticket.ticket_id).expires_at
+
+        store.touch_ticket(ticket.ticket_id)
+
+        after = store.require_ticket(ticket.ticket_id).expires_at
+
+        assert after >= before
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_touch_ticket_clamps_to_absolute_lifetime(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=7200,
+        max_absolute_lifetime_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "skatt"})
+        store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "skatt"}]))
+
+        store.touch_ticket(ticket.ticket_id)
+
+        updated = store.require_ticket(ticket.ticket_id)
+        cap = updated.created_at + timedelta(seconds=600)
+        assert updated.expires_at <= cap + timedelta(seconds=1)
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_touch_ticket_raises_for_missing_ticket(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        with pytest.raises(ResultStoreNotFound):
+            store.touch_ticket("nonexistent-ticket-id")
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_touch_ticket_raises_for_expired_ticket_without_resurrect(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+        store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "demokrati"}]))
+
+        # Simulate the gap between expiry and the next cleanup pass by
+        # back-dating expires_at directly in the in-memory store, without
+        # running cleanup_expired().
+        live = store.require_ticket(ticket.ticket_id)
+        expired = replace(live, expires_at=datetime.now(UTC) - timedelta(seconds=1))
+        store._tickets[ticket.ticket_id] = expired
+
+        with pytest.raises(ResultStoreNotFound):
+            store.touch_ticket(ticket.ticket_id)
+
+        # The expired ticket must have been deleted, not resurrected.
+        assert store.get_ticket(ticket.ticket_id) is None
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_touch_ticket_does_not_change_status_or_artifact(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "riksdag"})
+        ready = store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "riksdag"}]))
+
+        store.touch_ticket(ticket.ticket_id)
+
+        after = store.require_ticket(ticket.ticket_id)
+        assert after.status == TicketStatus.READY
+        assert after.ready_at == ready.ready_at
+        assert after.artifact_path == ready.artifact_path
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_cleanup_removes_ticket_at_absolute_cap(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=7200,
+        max_absolute_lifetime_seconds=1,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "parti"})
+        store.store_ready(ticket.ticket_id, df=pd.DataFrame([{"node_word": "parti"}]))
+
+        store.touch_ticket(ticket.ticket_id)
+
+        updated = store.require_ticket(ticket.ticket_id)
+        # Manually expire by clamping expires_at to the past.
+        expired = replace(updated, expires_at=datetime.now(UTC) - timedelta(seconds=1))
+        with store._lock, store._state_lock():
+            store._set_ticket_locked(expired)
+
+        store.cleanup_expired()
+        assert store.get_ticket(ticket.ticket_id) is None
     finally:
         asyncio.run(store.shutdown())

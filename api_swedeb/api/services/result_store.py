@@ -66,6 +66,7 @@ class ResultStore:
         *,
         root_dir: str | Path,
         result_ttl_seconds: int,
+        max_absolute_lifetime_seconds: int = 3600,
         cleanup_interval_seconds: int,
         max_artifact_bytes: int,
         max_pending_jobs: int,
@@ -76,6 +77,7 @@ class ResultStore:
     ) -> None:
         self.root_dir = Path(root_dir)
         self.result_ttl_seconds = result_ttl_seconds
+        self.max_absolute_lifetime_seconds = max_absolute_lifetime_seconds
         self.cleanup_interval_seconds = cleanup_interval_seconds
         self.max_artifact_bytes = max_artifact_bytes
         self.max_pending_jobs = max_pending_jobs
@@ -97,6 +99,7 @@ class ResultStore:
         return cls(
             root_dir=ConfigValue("cache.root_dir").resolve(),
             result_ttl_seconds=ConfigValue("cache.result_ttl_seconds").resolve(),
+            max_absolute_lifetime_seconds=ConfigValue("cache.max_absolute_lifetime_seconds", default=3600).resolve(),
             cleanup_interval_seconds=ConfigValue("cache.cleanup_interval_seconds").resolve(),
             max_artifact_bytes=ConfigValue("cache.max_artifact_bytes").resolve(),
             max_pending_jobs=ConfigValue("cache.max_pending_jobs").resolve(),
@@ -183,7 +186,7 @@ class ResultStore:
                 ticket_id=str(uuid4()),
                 status=TicketStatus.PENDING,
                 created_at=now,
-                expires_at=now + timedelta(seconds=self.result_ttl_seconds),
+                expires_at=self._clamped_expiry(now, now + timedelta(seconds=self.result_ttl_seconds)),
                 query_meta=dict(query_meta or {}),
             )
             self._set_ticket_locked(ticket)
@@ -200,6 +203,29 @@ class ResultStore:
         if ticket is None:
             raise ResultStoreNotFound("Ticket not found or expired")
         return ticket
+
+    def touch_ticket(self, ticket_id: str) -> None:
+        """Reset the expiration window for an active ticket.
+
+        Called on every page or archive access so that a ticket stays alive
+        while the user is actively paginating. Raises ResultStoreNotFound if
+        the ticket is missing or already expired. Never extends past the
+        absolute lifetime cap measured from ticket creation.
+        """
+        with self._lock, self._state_lock():
+            self._ensure_started_locked()
+            ticket = self._get_ticket_locked(ticket_id)
+            if ticket is None:
+                raise ResultStoreNotFound("Ticket not found or expired")
+
+            now = datetime.now(UTC)
+            if ticket.expires_at < now:
+                self._delete_ticket_locked(ticket_id)
+                raise ResultStoreNotFound("Ticket not found or expired")
+
+            new_expiry = now + timedelta(seconds=self.result_ttl_seconds)
+            updated = replace(ticket, expires_at=self._clamped_expiry(ticket.created_at, new_expiry))
+            self._set_ticket_locked(updated)
 
     def adopt_ticket(self, ticket_id: str) -> None:
         """Register an externally-created ticket so a worker process can update its state.
@@ -218,7 +244,7 @@ class ResultStore:
                         ticket_id=ticket_id,
                         status=TicketStatus.PENDING,
                         created_at=now,
-                        expires_at=now + timedelta(seconds=self.result_ttl_seconds),
+                        expires_at=self._clamped_expiry(now, now + timedelta(seconds=self.result_ttl_seconds)),
                     )
                 )
 
@@ -240,7 +266,9 @@ class ResultStore:
             ready_at = ticket.ready_at or datetime.now(UTC)
             expires_at = ticket.expires_at
             if ticket.status != TicketStatus.READY:
-                expires_at = ready_at + timedelta(seconds=self.result_ttl_seconds)
+                expires_at = self._clamped_expiry(
+                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                )
 
             updated = replace(
                 ticket,
@@ -384,7 +412,9 @@ class ResultStore:
             updated = replace(
                 ticket,
                 status=TicketStatus.READY,
-                expires_at=ready_at + timedelta(seconds=self.result_ttl_seconds),
+                expires_at=self._clamped_expiry(
+                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                ),
                 query_meta=dict(query_meta or ticket.query_meta),
                 artifact_path=artifact_path,
                 artifact_bytes=artifact_bytes,
@@ -472,6 +502,11 @@ class ResultStore:
             if not ready_tickets:
                 return
             self._delete_ticket_locked(ready_tickets[0].ticket_id)
+
+    def _clamped_expiry(self, created_at: datetime, candidate_expiry: datetime) -> datetime:
+        """Return *candidate_expiry* clamped to the absolute lifetime cap for this ticket."""
+        max_expiry = created_at + timedelta(seconds=self.max_absolute_lifetime_seconds)
+        return min(candidate_expiry, max_expiry)
 
     def _ensure_started_locked(self) -> None:
         if not self._started:
