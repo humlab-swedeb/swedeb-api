@@ -321,11 +321,84 @@ Keep ZIP as a compatibility option, but stop treating synchronous ZIP streaming 
   - `GET` download returns `409` for a pending archive ticket
   - Tests for both word-trend-speeches and speeches archive routes
 
-### 12. Frontend (out of scope for this checklist — tracked separately)
+### 12. Frontend wiring
 
-- [ ] Update word-trend speeches and speeches download controls to use the prepare/status/download flow
-- [ ] Show preparation progress to the user while archive ticket is pending
-- [ ] Fall back gracefully if archive preparation fails
+The frontend currently calls the legacy single-step streaming endpoints
+(`GET /tools/speeches/archive/{ticket_id}` and
+`GET /tools/word_trend_speeches/archive/{ticket_id}`).  These are kept in the
+backend for backward compatibility, but the new ticket-based flow (`POST` →
+poll status → `GET` download) should replace them.
+
+The existing `ticketPolling.js` helper (`getTicketPollDelayMs`, constants) and
+the pattern used by `speechesDataStore` / `wordTrendsDataStore` for
+result-ticket polling are the building blocks.
+
+#### 12a. Shared archive polling helper (`src/stores/ticketPolling.js`)
+
+- [x] Create `pollArchiveTicket(api, statusUrl, { maxAttempts, onStatus })` — loops
+  `GET status/{archive_ticket_id}`, waits for `ready` or `error`, uses
+  `Retry-After` header / `retry_after` field for back-off (reuse
+  `getTicketPollDelayMs` from `ticketPolling.js`) — added inline to `ticketPolling.js`
+- [x] Helper should propagate `error` status as a thrown/rejected error with the
+  server's `error` field as the message
+
+#### 12b. `wordTrendsDataStore` — replace `downloadSpeechesZip`
+
+- [x] Add `archiveTicketId`, `archiveTicketStatus` state fields (similar to
+  `ticketId` / `ticketStatus`)
+- [x] Add `resetArchiveTicketState()` action
+- [x] Replace the body of `downloadSpeechesZip` with the three-step flow:
+  1. `POST /tools/word_trend_speeches/archive/{this.ticketId}?archive_format=zip`
+     → store returned `archive_ticket_id`
+  2. Poll `GET /tools/word_trend_speeches/archive/status/{archive_ticket_id}`
+     until `ready` (use `pollArchiveTicket`)
+  3. `GET /tools/word_trend_speeches/archive/download/{archive_ticket_id}` →
+     trigger download via `downloadDataStore().setupDownload(...)`
+- [x] `isArchivePending` not exposed as a separate property — the component wraps
+  the call in `runTrackedDownload(downloadKeys.zip, ...)`, so `isDownloadActive`
+  already reflects the full operation (including polling)
+- [x] On `404` from prepare or download: reset archive state and show
+  `i18n.accessibility.ticketExpired`
+- [x] On `error` status: show the server error message
+
+#### 12c. `downloadDataStore` — replace `downloadSpeechesZipByTicket`
+
+- [x] Add `archiveTicketId`, `archiveTicketStatus` state fields
+- [x] Add `resetArchiveTicketState()` action
+- [x] Replace the body of `downloadSpeechesZipByTicket(ticketId)` with the
+  three-step flow:
+  1. `POST /tools/speeches/archive/{ticketId}?archive_format=zip`
+     → store returned `archive_ticket_id`
+  2. Poll `GET /tools/speeches/archive/status/{archive_ticket_id}`
+  3. `GET /tools/speeches/archive/download/{archive_ticket_id}` → download
+- [x] `isArchivePending` not needed as a separate property — callers (`speechesTable.vue`,
+  `kwicDataTable.vue`) both use `runTrackedDownload`, so `isDownloadActive` covers
+  the full operation including polling
+
+#### 12d. `speechesTable.vue` — reflect archive-pending state
+
+- [x] No template changes needed — the call to `downloadSpeechesZipByTicket`
+  is already wrapped in `runTrackedDownload(downloadKeys.zip, ...)`, which keeps
+  `isDownloadActive(downloadKeys.zip)` true for the full duration (including
+  archive polling). Same applies to `kwicDataTable.vue` and
+  `wordTrendsSpeechTable.vue`.
+
+#### 12e. i18n
+
+- [x] No new translation keys needed — `runTrackedDownload` uses the existing
+  `downloadFeedback.preparing` message for the spinner notification
+- [x] Existing `i18n.accessibility.ticketExpired` key reused for `404` responses
+  from archive endpoints
+
+#### 12f. Validation
+
+- [x] `pnpm lint` passes after all frontend changes
+- [ ] Manual smoke test: trigger a large word-trend-speeches search, click
+  download ZIP, confirm the button enters a loading state, the archive is
+  generated, and the file is saved
+- [ ] Manual smoke test: same for speeches download ZIP via `speechesTable`
+- [ ] Confirm fallback: if the backend returns an error status, the UI shows
+  the error message and the button is re-enabled
 
 ### 13. Documentation and config
 
