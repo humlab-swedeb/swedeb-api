@@ -496,7 +496,7 @@ async def prepare_word_trend_speeches_bulk_archive(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    celery_enabled: bool = ConfigValue("development.celery_enabled", default=False).resolve()
+    celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
     if celery_enabled:
         import importlib  # pylint: disable=import-outside-toplevel
 
@@ -798,12 +798,12 @@ async def prepare_speeches_bulk_archive(
             archive_format=archive_format,
             result_store=result_store,
         )
-    except ResultStoreNotFound:
-        raise HTTPException(status_code=404, detail="Source ticket not found or expired")
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    celery_enabled: bool = ConfigValue("development.celery_enabled", default=False).resolve()
+    celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
     if celery_enabled:
         import importlib  # pylint: disable=import-outside-toplevel
 
@@ -836,8 +836,8 @@ async def get_speeches_archive_status(
         if status.status == TicketStatus.PENDING.value:
             response.headers.update(_pending_retry_headers())
         return status
-    except ResultStoreNotFound:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired")
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
 
 
 @router.get(
@@ -873,8 +873,8 @@ async def download_speeches_bulk_archive(
     filename: str = f"speeches_archive_{archive_ticket_id}{suffix}"
     try:
         result_store.touch_ticket(archive_ticket_id)
-    except ResultStoreNotFound:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired")
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
     return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
 
 
