@@ -161,7 +161,7 @@ def test_prepare_kwic_archive_returns_retrieval_url(kwic_archive_client):
     assert "retrieval_url" in body
     assert body["retrieval_url"] is not None
     archive_ticket_id = body["archive_ticket_id"]
-    assert archive_ticket_id in body["retrieval_url"]
+    assert f"/v1/downloads/{archive_ticket_id}" in body["retrieval_url"]
 
 
 def test_prepare_kwic_archive_returns_expires_at(kwic_archive_client):

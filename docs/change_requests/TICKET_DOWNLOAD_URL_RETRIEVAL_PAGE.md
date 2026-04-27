@@ -10,17 +10,17 @@
 
 The following infrastructure from `TICKET_BASED_BULK_ARCHIVE_GENERATION.md` is already in place and does not need to be re-implemented here:
 
-| Component | Status |
-|---|---|
-| `BulkArchiveFormat`, `ArchivePrepareResponse`, `ArchiveTicketStatus` schemas | ✅ Done |
+| Component                                                                             | Status |
+|---------------------------------------------------------------------------------------|--------|
+| `BulkArchiveFormat`, `ArchivePrepareResponse`, `ArchiveTicketStatus` schemas          | ✅ Done |
 | `TicketMeta` with `source_ticket_id`, `archive_format`, `artifact_path`, `expires_at` | ✅ Done |
 | `ResultStore`: archive artifact path, `store_archive_ready()`, TTL, cleanup, capacity | ✅ Done |
-| `ArchiveTicketService`: `prepare()`, `execute_archive_task()`, `get_status()` | ✅ Done |
-| Celery task and `dependencies.py` wiring | ✅ Done |
-| Tool-specific status and download endpoints (word trend speeches, speeches) | ✅ Done |
-| HTTP error responses without internal stack traces | ✅ Done |
-| Artifact access gated on ticket state; 409 for pending, 404 for missing/expired | ✅ Done |
-| UUID-based ticket IDs with sufficient entropy | ✅ Done |
+| `ArchiveTicketService`: `prepare()`, `execute_archive_task()`, `get_status()`         | ✅ Done |
+| Celery task and `dependencies.py` wiring                                              | ✅ Done |
+| Tool-specific status and download endpoints (word trend speeches, speeches)           | ✅ Done |
+| HTTP error responses without internal stack traces                                    | ✅ Done |
+| Artifact access gated on ticket state; 409 for pending, 404 for missing/expired       | ✅ Done |
+| UUID-based ticket IDs with sufficient entropy                                         | ✅ Done |
 
 ## Summary
 

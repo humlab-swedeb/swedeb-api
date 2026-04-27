@@ -294,7 +294,7 @@ async def prepare_kwic_bulk_archive(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    retrieval_url = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
     response = response.model_copy(update={"retrieval_url": retrieval_url})
 
     background_tasks.add_task(
@@ -544,7 +544,7 @@ async def prepare_word_trend_speeches_bulk_archive(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    retrieval_url = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
     response = response.model_copy(update={"retrieval_url": retrieval_url})
 
     celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
@@ -833,7 +833,7 @@ async def prepare_speeches_bulk_archive(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    retrieval_url = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
     response = response.model_copy(update={"retrieval_url": retrieval_url})
 
     celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())

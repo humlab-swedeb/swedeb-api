@@ -133,7 +133,7 @@ def test_prepare_wt_archive_includes_retrieval_url_and_expires_at(downloads_clie
     assert "retrieval_url" in body
     assert body["retrieval_url"] is not None
     archive_ticket_id = body["archive_ticket_id"]
-    assert archive_ticket_id in body["retrieval_url"]
+    assert f"/v1/downloads/{archive_ticket_id}" in body["retrieval_url"]
     assert "expires_at" in body
     assert body["expires_at"] is not None
 
@@ -146,7 +146,8 @@ def test_prepare_speeches_archive_includes_retrieval_url(downloads_client):
 
     assert r.status_code == 202
     body = r.json()
-    assert body.get("retrieval_url") is not None
+    archive_ticket_id = body["archive_ticket_id"]
+    assert f"/v1/downloads/{archive_ticket_id}" in body["retrieval_url"]
 
 
 # ---------------------------------------------------------------------------
