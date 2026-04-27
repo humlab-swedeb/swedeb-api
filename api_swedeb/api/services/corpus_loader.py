@@ -11,6 +11,7 @@ All resources are lazily loaded and cached for performance.
 """
 
 from functools import cached_property
+from time import perf_counter
 from typing import Optional
 
 import pandas as pd
@@ -176,6 +177,47 @@ class CorpusLoader:
             return self.document_index['year'].min(), self.document_index['year'].max()
         except Exception:  # pylint: disable=broad-except
             return (1867, 2022)
+
+    def preload(self) -> "CorpusLoader":
+        """Resolve all lazy-loaded members and cached properties eagerly."""
+
+        def resolve_member(name: str, resolver, is_resolved) -> None:
+            if is_resolved():
+                return
+            start = perf_counter()
+            resolver()
+            elapsed = perf_counter() - start
+            print(f"Loaded {name} in {elapsed:.3f}s")
+
+        resolve_member(
+            "document_index",
+            lambda: self.__lazy_document_index.value,
+            lambda: self.__lazy_document_index.is_initialized,
+        )
+        resolve_member(
+            "vectorized_corpus",
+            lambda: self.__lazy_vectorized_corpus.value,
+            lambda: self.__lazy_vectorized_corpus.is_initialized,
+        )
+        resolve_member(
+            "person_codecs", lambda: self.__lazy_person_codecs.value, lambda: self.__lazy_person_codecs.is_initialized
+        )
+        resolve_member(
+            "repository", lambda: self.__lazy_repository.value, lambda: self.__lazy_repository.is_initialized
+        )
+        resolve_member(
+            "prebuilt_speech_index",
+            lambda: self.__lazy_prebuilt_speech_index.value,
+            lambda: self.__lazy_prebuilt_speech_index.is_initialized,
+        )
+        resolve_member(
+            "prebuilt_page_number_index",
+            lambda: self.__lazy_prebuilt_page_number_index.value,
+            lambda: self.__lazy_prebuilt_page_number_index.is_initialized,
+        )
+        resolve_member("decoded_persons", lambda: self.decoded_persons, lambda: "decoded_persons" in self.__dict__)
+        resolve_member("year_range", lambda: self.year_range, lambda: "year_range" in self.__dict__)
+        return self
 
     def protocol_page_range(self, document_name: str) -> tuple[int, int]:
         """Get protocols first/last"""

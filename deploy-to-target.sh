@@ -8,11 +8,41 @@ usage() {
     echo "error: $message" >&2
   fi
   cat >&2 <<USAGE
-usage: $(basename "$0") <target environment> [--image-tag <tag>]
+usage: $(basename "$0") <target environment> [options]
 
-target environment must be one of: staging, production
-production deployments require --image-tag
-USAGE
+Deploys the swedeb-api container to the specified environment by:
+  - Pulling the specified image from GHCR
+  - Reinstalling the quadlet (systemd user container) deployment
+  - Restarting the service under the environment-specific service user
+
+By default, the script connects to the deployment host over SSH and runs the deployment there.
+With --local-deploy, it runs the same steps locally (useful when already on the server).
+
+arguments:
+  <target environment>   staging | production
+
+options:
+  --image-tag <tag>      Image tag to deploy (defaults to environment name)
+                         Required for production deployments
+  --local-deploy         Run deployment locally instead of via SSH
+
+requirements:
+  - Environment file: ~/.vault/.swedeb-<env>.env
+  - Required variables:
+      SWEDEB_DEPLOY_HOST
+      SWEDEB_DEPLOY_SUDO_SECRET
+      SWEDEB_DEPLOY_USER (optional)
+      SWEDEB_DEPLOY_SERVICE_USER (optional)
+  - Env file must have permissions: 600
+
+examples:
+  $(basename "$0") staging
+  $(basename "$0") production --image-tag v1.2.3
+  $(basename "$0") staging --local-deploy
+
+notes:
+  - This script does NOT deploy new configuration files or containers definitions.
+    It only pulls a new image and recreates the existing quadlet setup.USAGE
   exit 2
 }
 
@@ -26,11 +56,12 @@ shift
 case "$g_target_environment" in
   staging | production) ;;
   *)
-    usage "Invalid target environment: $g_target_environment" >&2
+    usage "Invalid target environment: $g_target_environment"
     ;;
 esac
 
 g_image_tag=""
+g_local_deploy=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -46,6 +77,10 @@ while [[ $# -gt 0 ]]; do
       if [[ "$g_image_tag" == "" ]]; then
         usage "Missing value for --image-tag"
       fi
+      shift
+      ;;
+    --local-deploy)
+      g_local_deploy=true
       shift
       ;;
     *)
@@ -69,7 +104,7 @@ fi
 echo "Deploying $g_target_environment..."
 
 g_env_file="${HOME}/.vault/.swedeb-$g_target_environment.env"
-g_deploy_service_user=swedeb_$g_target_environment
+g_deploy_service_user="swedeb_$g_target_environment"
 
 if [[ ! -f "$g_env_file" ]]; then
   echo "Missing $g_target_environment env file: $g_env_file" >&2
@@ -87,8 +122,14 @@ set -a
 source "$g_env_file"
 set +a
 
-g_host="${SWEDEB_DEPLOY_HOST:-${g_host:-}}"
-g_deploy_user="${SWEDEB_DEPLOY_USER:-${g_deploy_user:-${USER:?Missing local USER}}}"
+if [[ "$g_local_deploy" == true ]]; then
+  g_host="$(hostname -f 2>/dev/null || hostname)"
+  g_deploy_user="${USER:?Missing local USER}"
+else
+  g_host="${SWEDEB_DEPLOY_HOST:-${g_host:-}}"
+  g_deploy_user="${SWEDEB_DEPLOY_USER:-${g_deploy_user:-${USER:?Missing local USER}}}"
+fi
+
 g_deploy_service_user="${SWEDEB_DEPLOY_SERVICE_USER:-${g_deploy_service_user:-swedeb_staging}}"
 g_secret="${SWEDEB_DEPLOY_SUDO_SECRET:-${g_secret:-}}"
 
@@ -99,10 +140,7 @@ g_secret="${SWEDEB_DEPLOY_SUDO_SECRET:-${g_secret:-}}"
 echo "info: deploying image tag '$g_image_tag' to $g_target_environment..."
 echo "note: new container files or configuration changes are not deployed..."
 
-{
-  printf '%s\n' "$g_secret"
-
-  cat <<REMOTE_SCRIPT
+g_remote_script="$(cat <<REMOTE_SCRIPT
 set -euo pipefail
 
 deploy_user="$g_deploy_service_user"
@@ -111,9 +149,9 @@ runtime_dir="/run/user/\$deploy_uid"
 
 cd "/srv/\$deploy_user"
 
-sudo -n -u "\$deploy_user" \
-  XDG_RUNTIME_DIR="\$runtime_dir" \
-  DBUS_SESSION_BUS_ADDRESS="unix:path=\$runtime_dir/bus" \
+sudo -n -u "\$deploy_user" \\
+  XDG_RUNTIME_DIR="\$runtime_dir" \\
+  DBUS_SESSION_BUS_ADDRESS="unix:path=\$runtime_dir/bus" \\
   bash -lc '
 set -euo pipefail
 
@@ -127,9 +165,17 @@ manage-quadlet install
 echo "Done."
 '
 REMOTE_SCRIPT
-} | ssh \
-  -T \
-  -o BatchMode=yes \
-  -o ConnectTimeout=10 \
-  "$g_deploy_user@$g_host" \
-  'sudo -S -p "" bash -s'
+)"
+
+if [[ "$g_local_deploy" == true ]]; then
+  printf '%s\n%s\n' "$g_secret" "$g_remote_script" |
+    sudo -S -p "" bash -s
+else
+  printf '%s\n%s\n' "$g_secret" "$g_remote_script" |
+    ssh \
+      -T \
+      -o BatchMode=yes \
+      -o ConnectTimeout=10 \
+      "$g_deploy_user@$g_host" \
+      'sudo -S -p "" bash -s'
+fi
