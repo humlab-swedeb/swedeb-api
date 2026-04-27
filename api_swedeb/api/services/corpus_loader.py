@@ -178,6 +178,29 @@ class CorpusLoader:
         except Exception:  # pylint: disable=broad-except
             return (1867, 2022)
 
+    def preload_kwic(self) -> "CorpusLoader":
+        """Eagerly load only the resources needed by the KWIC worker.
+
+        The multiprocessing (KWIC) worker only needs ``prebuilt_speech_index``.
+        Skipping ``vectorized_corpus`` and ``repository`` saves ~18 s of cold-start
+        time that would otherwise be wasted in a worker that never uses those resources.
+        """
+
+        def resolve_member(name: str, resolver, is_resolved) -> None:
+            if is_resolved():
+                return
+            start = perf_counter()
+            resolver()
+            elapsed = perf_counter() - start
+            print(f"Loaded {name} in {elapsed:.3f}s")
+
+        resolve_member(
+            "prebuilt_speech_index",
+            lambda: self.__lazy_prebuilt_speech_index.value,
+            lambda: self.__lazy_prebuilt_speech_index.is_initialized,
+        )
+        return self
+
     def preload(self) -> "CorpusLoader":
         """Resolve all lazy-loaded members and cached properties eagerly."""
 
