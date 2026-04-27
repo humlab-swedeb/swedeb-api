@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import gzip
-import io
 import json
 import math
 import zipfile
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -186,11 +184,8 @@ class KWICArchiveService:
                 gz.write(line)
 
     def _write_csv_gz(self, data: "pd.DataFrame", dest: Path) -> None:
-        buf = io.BytesIO()
-        with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=1) as gz:
-            csv_str = data.to_csv(index=False)
-            gz.write(csv_str.encode("utf-8"))
-        dest.write_bytes(buf.getvalue())
+        with gzip.open(str(dest), "wt", compresslevel=1, encoding="utf-8") as gz:
+            data.to_csv(gz, index=False)
 
     def _write_xlsx(self, data: "pd.DataFrame", dest: Path) -> None:
 
@@ -204,18 +199,8 @@ class KWICArchiveService:
             raise
 
     def _write_zip_csv(self, data: "pd.DataFrame", dest: Path) -> None:
-        csv_str = data.to_csv(index=False)
         with zipfile.ZipFile(str(dest), "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("kwic_data.csv", csv_str.encode("utf-8"))
+            with zf.open("kwic_data.csv", "w") as entry:
+                data.to_csv(entry, index=False)
 
-    # ------------------------------------------------------------------
-    # Reuse ArchiveTicketService helpers for status / file response
-    # ------------------------------------------------------------------
 
-    def _build_manifest(self, archive_ticket: TicketMeta) -> dict:
-        return {
-            "archive_ticket_id": archive_ticket.ticket_id,
-            "source_ticket_id": archive_ticket.source_ticket_id,
-            "archive_format": archive_ticket.archive_format,
-            "generated_at": datetime.now(UTC).isoformat(),
-        }

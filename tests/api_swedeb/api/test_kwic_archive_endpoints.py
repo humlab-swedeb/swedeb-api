@@ -19,13 +19,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api_swedeb.api.dependencies import (
+    get_archive_ticket_service,
     get_kwic_archive_service,
     get_result_store,
 )
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.result_store import ResultStore, TicketMeta, TicketStatus
-from api_swedeb.api.v1.endpoints import tool_router
+from api_swedeb.api.v1.endpoints import downloads_router, tool_router
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -114,9 +115,11 @@ def _kwic_archive_client(tmp_path: Path) -> Generator[tuple[TestClient, ResultSt
 
     app = FastAPI()
     app.include_router(tool_router.router)
+    app.include_router(downloads_router.router)
 
     app.dependency_overrides[get_result_store] = lambda: store
     app.dependency_overrides[get_kwic_archive_service] = KWICArchiveService
+    app.dependency_overrides[get_archive_ticket_service] = ArchiveTicketService
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -304,10 +307,12 @@ def test_get_kwic_archive_status_via_downloads_router(kwic_archive_client):
     prepare_r = client.post(f"/v1/tools/kwic/archive/{source.ticket_id}")
     archive_ticket_id = prepare_r.json()["archive_ticket_id"]
 
-    # The background task runs inline in TestClient; status may already be ready
-    _ = client.get(f"/v1/downloads/{archive_ticket_id}")
-    # downloads_router is not included in this test app; just verify the archive ticket was created
-    assert archive_ticket_id in store.require_ticket(archive_ticket_id).ticket_id
+    # The background task runs inline in TestClient; status may already be ready or pending
+    status_r = client.get(f"/v1/downloads/{archive_ticket_id}")
+    assert status_r.status_code == 200
+    body = status_r.json()
+    assert body["archive_ticket_id"] == archive_ticket_id
+    assert body["status"] in {"pending", "ready"}
 
 
 # ---------------------------------------------------------------------------
