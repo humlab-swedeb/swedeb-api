@@ -1,3 +1,5 @@
+import asyncio
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -51,8 +53,6 @@ def test_execute_ticket_stores_mapped_artifact_and_manifest(tmp_path):
     )
     request = KWICQueryRequest(search="demokrati")
 
-    import asyncio
-
     asyncio.run(store.startup())
     try:
         ticket = store.create_ticket(query_meta={"search": "demokrati"})
@@ -90,8 +90,6 @@ def test_get_page_result_sorts_with_ticket_row_id_tiebreaker(tmp_path):
         max_page_size=200,
     )
     service = KWICTicketService()
-
-    import asyncio
 
     asyncio.run(store.startup())
     try:
@@ -146,8 +144,6 @@ def test_get_page_result_rejects_out_of_range_page(tmp_path):
         max_page_size=200,
     )
     service = KWICTicketService()
-
-    import asyncio
 
     asyncio.run(store.startup())
     try:
@@ -250,8 +246,6 @@ def test_get_status_uses_celery_success_result(tmp_path):
     )
     celery_result = MagicMock(state="SUCCESS", result={"row_count": 12}, info=None)
 
-    import asyncio
-
     asyncio.run(result_store.startup())
     try:
         ticket = result_store.create_ticket(query_meta={"search": "demokrati"})
@@ -280,8 +274,6 @@ def test_get_status_celery_success_syncs_ready_state_and_releases_pending_capaci
         max_page_size=200,
     )
     service = KWICTicketService()
-
-    import asyncio
 
     asyncio.run(store.startup())
     try:
@@ -318,8 +310,6 @@ def test_get_status_uses_celery_failure_result_and_syncs_error_state(tmp_path):
     )
     celery_result = MagicMock(state="FAILURE", result=None, info=RuntimeError("boom"))
 
-    import asyncio
-
     asyncio.run(result_store.startup())
     try:
         ticket = result_store.create_ticket(query_meta={"search": "demokrati"})
@@ -348,8 +338,6 @@ def test_get_status_celery_raises_for_unknown_ticket(tmp_path):
     )
     service = KWICTicketService()
 
-    import asyncio
-
     asyncio.run(store.startup())
     try:
         celery_result = MagicMock(state="PENDING", result=None, info=None)
@@ -375,8 +363,6 @@ def test_get_page_result_reads_celery_artifact(tmp_path):
     )
 
     celery_result = MagicMock(state="SUCCESS", result={"row_count": 2}, info=None)
-
-    import asyncio
 
     asyncio.run(result_store.startup())
     try:
@@ -427,4 +413,94 @@ def test_get_page_result_reads_celery_artifact(tmp_path):
 def test_speech_ids_returns_empty_list_when_column_missing():
     service = KWICTicketService()
 
-    assert service._speech_ids(pd.DataFrame([{"node_word": "demokrati"}])) == []
+    assert not service._speech_ids(pd.DataFrame([{"node_word": "demokrati"}]))
+
+
+# ---------------------------------------------------------------------------
+# sliding-window TTL: touch_ticket call coverage
+# ---------------------------------------------------------------------------
+
+
+def test_get_page_result_advances_ticket_expiry(tmp_path):
+
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+        store.store_ready(
+            ticket.ticket_id,
+            df=pd.DataFrame(
+                [
+                    {
+                        "left_word": "left",
+                        "node_word": "demokrati",
+                        "right_word": "right",
+                        "year": 1970,
+                        "name": "Alice",
+                        "party_abbrev": "S",
+                        "document_name": "prot-1970--ak--1",
+                        "page_number_start": 10,
+                        "speech_id": "i-1",
+                        "wiki_id": "Q1",
+                        TICKET_ROW_ID: 0,
+                    }
+                ]
+            ),
+        )
+
+        before = store.require_ticket(ticket.ticket_id).expires_at
+
+        service = KWICTicketService()
+        with patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=False):
+            service.get_page_result(
+                ticket_id=ticket.ticket_id,
+                result_store=store,
+                page=1,
+                page_size=50,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+            )
+
+        after = store.require_ticket(ticket.ticket_id).expires_at
+        assert after >= before
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_get_status_does_not_advance_ticket_expiry(tmp_path):
+
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+
+        # Manually set expires_at to a fixed past+future value so we can track changes
+        with store._lock, store._state_lock():
+            fixed_expiry = ticket.expires_at
+            store._set_ticket_locked(replace(ticket, expires_at=fixed_expiry))
+
+        service = KWICTicketService()
+        with patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=False):
+            service.get_status(ticket.ticket_id, store)
+
+        after = store.require_ticket(ticket.ticket_id).expires_at
+        # get_status must NOT modify expires_at
+        assert after == fixed_expiry
+    finally:
+        asyncio.run(store.shutdown())

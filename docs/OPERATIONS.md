@@ -130,7 +130,8 @@ The `config.yml` structure includes the following operational sections:
 - `bootstrap_corpus_folder` - Prebuilt speech corpus location
 
 **`cache`** - Shared ticket-based paging and export configuration for the async ticketed endpoints
-- `result_ttl_seconds` - Ticket lifetime before expiration (default: `600`)
+- `result_ttl_seconds` - Sliding ticket TTL; the expiry window resets on each page or archive access (default: `600`)
+- `max_absolute_lifetime_seconds` - Hard cap on total ticket lifetime from creation, regardless of access activity; expiry from `touch_ticket` is clamped to `created_at + max_absolute_lifetime_seconds` (default: `3600`)
 - `cleanup_interval_seconds` - Frequency of automatic cleanup (default: `60`)
 - `max_artifact_bytes` - Maximum total storage for all ticket artifacts in bytes (default: `2147483648` = 2GB)
 - `max_pending_jobs` - Maximum concurrent pending tickets (default: `2`)
@@ -139,6 +140,13 @@ The `config.yml` structure includes the following operational sections:
 - `ticket_poll_retry_after_seconds` - `Retry-After` hint returned on pending ticket responses so clients back off instead of polling constantly
 - `ticket_state_backend_url` - Shared backend used for ticket metadata and counters; production should point this at the same Redis deployment used by the workers
 - `ticket_state_prefix` - Key prefix for shared ticket metadata; use a deployment-specific namespace when multiple environments share one Redis server
+
+**`cache`** - Bulk archive generation
+- Archive artifacts are stored under `cache.root_dir/archives/` as either `<archive_ticket_id>.jsonl.gz` or `<archive_ticket_id>.zip`, depending on the `archive_format` query parameter
+- Archive artifacts share the same `max_artifact_bytes` capacity pool and `result_ttl_seconds` TTL as feather result artifacts; they are evicted and cleaned up by the same background cleanup loop
+- No separate `archive_ttl_seconds` key is needed; tune `result_ttl_seconds` and `max_artifact_bytes` together to accommodate the expected artifact sizes
+- Prepare responses (`POST .../archive/{ticket_id}`) include a `retrieval_url` of the form `{base_url}/download/{archive_ticket_id}` and an `expires_at` timestamp; these let users or external tools poll or retrieve the archive without re-running the export
+- The retrieval URL is a bearer link (UUID token); no additional authentication is required to poll or download while the ticket is valid — review this policy if authentication is introduced
 
 **`celery`** - Background task queue configuration (required for production ticket execution)
 - `broker_url` - Redis connection URL for task queue
@@ -155,6 +163,9 @@ The `config.yml` structure includes the following operational sections:
 - The `cache.root_dir` volume must be shared between API and Celery worker containers so ticket artifacts are accessible across processes
 - Cache settings apply globally to all ticket-based endpoints (KWIC, speeches, and word-trend speeches)
 - Ticket artifacts are stored as feather files under `cache.root_dir`
+- Archive artifacts are stored as `.jsonl.gz` or `.zip` files under `cache.root_dir/archives/`; this subdirectory is created automatically at startup
+- Both feather and archive artifacts share the same `max_artifact_bytes` capacity pool; size `max_artifact_bytes` to accommodate both (feather files are typically small; a 50k-speech `.jsonl.gz` is approximately 50–200 MB compressed)
+- Partial archive files (`.partial` suffix) written by a failed task are cleaned up automatically on the next startup or background cleanup cycle
 - Cleanup runs automatically at `cleanup_interval_seconds` frequency to remove expired tickets
 - When `ticket_state_backend_url` is set, pending-job counts, artifact-byte limits, and ticket metadata are enforced through that shared backend rather than per-process memory
 - If multiple environments point at the same Redis deployment, `ticket_state_prefix` must differ so ticket state does not collide across environments
@@ -402,6 +413,7 @@ Short operator checklist:
 - Confirm the dedicated multiprocessing worker started and shows as `READY` in its logs.
 - Submit at least one ticketed speeches request and one ticketed word-trend speeches request, then confirm status or page retrieval succeeds from the running environment.
 - If pending responses are observed during smoke tests, confirm they return a sensible `Retry-After` value that matches `cache.ticket_poll_retry_after_seconds`.
+- After a bulk archive prepare request, confirm the response includes `retrieval_url` and `expires_at`, and that the retrieval URL (`GET /v1/downloads/{archive_ticket_id}`) is reachable and returns a valid status response.
 - Review recent service logs for startup, configuration, or asset errors before declaring the rollout complete.
 
 For a fuller operator workflow, use [SMOKE_TEST_CHECKLIST.md](./SMOKE_TEST_CHECKLIST.md).

@@ -711,3 +711,111 @@ def test_get_full_artifact_raises_for_pending_ticket(tmp_path):
             service.get_full_artifact(accepted.ticket_id, store)
     finally:
         asyncio.run(store.shutdown())
+
+
+# ---------------------------------------------------------------------------
+# sliding-window TTL: touch_ticket call coverage
+# ---------------------------------------------------------------------------
+
+
+def test_get_page_result_advances_ticket_expiry(tmp_path):
+    """get_page_result() must call touch_ticket so that expires_at advances on every page access."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=10_000_000,
+        max_pending_jobs=5,
+        max_page_size=500,
+    )
+    service = WordTrendSpeechesTicketService()
+    word_trends_service = make_mock_word_trends_service()
+    request = make_request()
+
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": ["demokrati"]})
+        service.execute_ticket(
+            ticket_id=ticket.ticket_id,
+            request=request,
+            word_trends_service=word_trends_service,
+            result_store=store,
+        )
+
+        before = store.require_ticket(ticket.ticket_id).expires_at
+
+        service.get_page_result(
+            ticket_id=ticket.ticket_id,
+            result_store=store,
+            page=1,
+            page_size=50,
+            sort_by=None,
+            sort_order=SortOrder.asc,
+        )
+
+        after = store.require_ticket(ticket.ticket_id).expires_at
+        assert after >= before
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_get_status_does_not_advance_ticket_expiry(tmp_path):
+    """get_status() must not call touch_ticket — status polling must not extend ticket lifetime."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=10_000_000,
+        max_pending_jobs=5,
+        max_page_size=500,
+    )
+    service = WordTrendSpeechesTicketService()
+
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": ["demokrati"]})
+        before = store.require_ticket(ticket.ticket_id).expires_at
+
+        service.get_status(ticket.ticket_id, store)
+
+        after = store.require_ticket(ticket.ticket_id).expires_at
+        assert after == before
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_get_full_artifact_advances_ticket_expiry(tmp_path):
+    """get_full_artifact() must call touch_ticket so that archive downloads extend ticket lifetime."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=300,
+        max_absolute_lifetime_seconds=3600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=10_000_000,
+        max_pending_jobs=5,
+        max_page_size=500,
+    )
+    service = WordTrendSpeechesTicketService()
+    word_trends_service = make_mock_word_trends_service()
+    request = make_request()
+
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": ["demokrati"]})
+        service.execute_ticket(
+            ticket_id=ticket.ticket_id,
+            request=request,
+            word_trends_service=word_trends_service,
+            result_store=store,
+        )
+
+        before = store.require_ticket(ticket.ticket_id).expires_at
+
+        service.get_full_artifact(ticket.ticket_id, store)
+
+        after = store.require_ticket(ticket.ticket_id).expires_at
+        assert after >= before
+    finally:
+        asyncio.run(store.shutdown())

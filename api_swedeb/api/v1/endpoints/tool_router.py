@@ -3,14 +3,16 @@ from typing import Annotated, Any, Literal
 
 import fastapi
 import pandas as pd
-from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query, Response
+from fastapi import BackgroundTasks, Body, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.dependencies import (
+    get_archive_ticket_service,
     get_corpus_loader,
     get_cwb_corpus,
     get_cwb_corpus_opts,
     get_download_service,
+    get_kwic_archive_service,
     get_kwic_service,
     get_kwic_ticket_service,
     get_result_store,
@@ -20,8 +22,10 @@ from api_swedeb.api.dependencies import (
     get_word_trends_service,
 )
 from api_swedeb.api.params import CommonQueryParams
+from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import DEFAULT_PAGE_SIZE, KWICTicketService
 from api_swedeb.api.services.ngrams_service import NGramsService
@@ -42,6 +46,11 @@ from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.mappers.word_trends import (
     search_hits_to_api_model,
     word_trends_to_api_model,
+)
+from api_swedeb.schemas.bulk_archive_schema import (
+    ArchivePrepareResponse,
+    ArchiveTicketStatus,
+    BulkArchiveFormat,
 )
 from api_swedeb.schemas.kwic_schema import (
     KWICPageResult,
@@ -250,6 +259,53 @@ async def download_kwic_ticket(
     )
 
 
+# ---------------------------------------------------------------------------
+# Async bulk archive: KWIC
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/kwic/archive/{ticket_id}",
+    response_model=ArchivePrepareResponse,
+    status_code=202,
+    summary="Prepare a bulk archive from a KWIC ticket",
+)
+async def prepare_kwic_bulk_archive(
+    ticket_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
+    kwic_archive_service: KWICArchiveService = Depends(get_kwic_archive_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> ArchivePrepareResponse:
+    """Start async archive generation for a ready KWIC ticket.
+
+    Returns 202 with an ``archive_ticket_id`` to poll for completion via
+    ``GET /v1/downloads/{archive_ticket_id}``.
+    """
+    try:
+        response: ArchivePrepareResponse = kwic_archive_service.prepare(
+            source_ticket_id=ticket_id,
+            archive_format=archive_format,
+            result_store=result_store,
+        )
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
+
+    background_tasks.add_task(
+        kwic_archive_service.execute_archive_task,
+        archive_ticket_id=response.archive_ticket_id,
+        result_store=result_store,
+    )
+
+    return response
+
+
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
 async def get_word_trends_result(
     search: str,
@@ -414,6 +470,11 @@ def _stream_speech_archive(
     search_service: SearchService,
 ) -> StreamingResponse:
     """Shared helper: validate a ticket and stream its speech text archive as ZIP."""
+    try:
+        result_store.touch_ticket(ticket_id)
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+
     ticket = _require_ready_ticket(ticket_id, result_store)
     if ticket.speech_ids is None or ticket.manifest_meta is None:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired")
@@ -445,6 +506,97 @@ async def download_word_trend_speeches_archive(
         download_service=download_service,
         result_store=result_store,
         search_service=search_service,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Async bulk archive: word_trend_speeches
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/word_trend_speeches/archive/{ticket_id}",
+    response_model=ArchivePrepareResponse,
+    status_code=202,
+    summary="Prepare a bulk archive from a word trend speeches ticket",
+)
+async def prepare_word_trend_speeches_bulk_archive(
+    ticket_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
+) -> ArchivePrepareResponse:
+    """Start async archive generation for a ready word trend speeches ticket.
+
+    Returns 202 with an ``archive_ticket_id`` to poll for completion.
+    """
+    try:
+        response: ArchivePrepareResponse = archive_ticket_service.prepare(
+            source_ticket_id=ticket_id,
+            archive_format=archive_format,
+            result_store=result_store,
+        )
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
+
+    celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
+    if celery_enabled:
+        import importlib  # pylint: disable=import-outside-toplevel
+
+        celery_tasks = importlib.import_module("api_swedeb.celery_tasks")
+        celery_tasks.execute_archive_task_celery_task.delay(response.archive_ticket_id)
+    else:
+        background_tasks.add_task(
+            archive_ticket_service.execute_archive_task,
+            archive_ticket_id=response.archive_ticket_id,
+            result_store=result_store,
+            search_service=search_service,
+        )
+
+    return response
+
+
+@router.get(
+    "/word_trend_speeches/archive/status/{archive_ticket_id}",
+    response_model=ArchiveTicketStatus,
+    summary="Poll the status of a word trend speeches bulk archive ticket",
+)
+async def get_word_trend_speeches_archive_status(
+    archive_ticket_id: str,
+    response: Response,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> ArchiveTicketStatus:
+    try:
+        status = archive_ticket_service.get_status(archive_ticket_id, result_store)
+        if status.status == TicketStatus.PENDING.value:
+            response.headers.update(_pending_retry_headers())
+        return status
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
+
+
+@router.get(
+    "/word_trend_speeches/archive/download/{archive_ticket_id}",
+    summary="Download a ready word trend speeches bulk archive",
+)
+async def download_word_trend_speeches_bulk_archive(
+    archive_ticket_id: str,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+):
+    return archive_ticket_service.build_file_response(
+        archive_ticket_id=archive_ticket_id,
+        filename_stem="word_trend_speeches_archive",
+        result_store=result_store,
     )
 
 
@@ -643,6 +795,97 @@ async def download_speeches_archive_by_ticket(
         download_service=download_service,
         result_store=result_store,
         search_service=search_service,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Async bulk archive: speeches
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/speeches/archive/{ticket_id}",
+    response_model=ArchivePrepareResponse,
+    status_code=202,
+    summary="Prepare a bulk archive from a speeches ticket",
+)
+async def prepare_speeches_bulk_archive(
+    ticket_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
+) -> ArchivePrepareResponse:
+    """Start async archive generation for a ready speeches ticket.
+
+    Returns 202 with an ``archive_ticket_id`` to poll for completion.
+    """
+    try:
+        response: ArchivePrepareResponse = archive_ticket_service.prepare(
+            source_ticket_id=ticket_id,
+            archive_format=archive_format,
+            result_store=result_store,
+        )
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
+
+    celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
+    if celery_enabled:
+        import importlib  # pylint: disable=import-outside-toplevel
+
+        celery_tasks = importlib.import_module("api_swedeb.celery_tasks")
+        celery_tasks.execute_archive_task_celery_task.delay(response.archive_ticket_id)
+    else:
+        background_tasks.add_task(
+            archive_ticket_service.execute_archive_task,
+            archive_ticket_id=response.archive_ticket_id,
+            result_store=result_store,
+            search_service=search_service,
+        )
+
+    return response
+
+
+@router.get(
+    "/speeches/archive/status/{archive_ticket_id}",
+    response_model=ArchiveTicketStatus,
+    summary="Poll the status of a speeches bulk archive ticket",
+)
+async def get_speeches_archive_status(
+    archive_ticket_id: str,
+    response: Response,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> ArchiveTicketStatus:
+    try:
+        status = archive_ticket_service.get_status(archive_ticket_id, result_store)
+        if status.status == TicketStatus.PENDING.value:
+            response.headers.update(_pending_retry_headers())
+        return status
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
+
+
+@router.get(
+    "/speeches/archive/download/{archive_ticket_id}",
+    summary="Download a ready speeches bulk archive",
+)
+async def download_speeches_bulk_archive(
+    archive_ticket_id: str,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+):
+    return archive_ticket_service.build_file_response(
+        archive_ticket_id=archive_ticket_id,
+        filename_stem="speeches_archive",
+        result_store=result_store,
     )
 
 

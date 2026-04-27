@@ -72,7 +72,6 @@ def make_result_store(tmp_path, *, ticket_state_store=None):
 
 
 def make_mock_search_service(speeches=None):
-    from unittest.mock import MagicMock
 
     service = MagicMock()
     frame = pd.DataFrame(speeches if speeches is not None else SAMPLE_SPEECHES)
@@ -225,3 +224,51 @@ def test_get_celery_page_result_uses_result_store_load_artifact():
     result_store.load_artifact.assert_called_once_with("ticket-1")
     assert isinstance(result, SpeechesPageResult)
     assert [speech.speech_id for speech in result.speech_list] == ["i-1", "i-2"]
+
+
+def test_get_page_result_touches_ticket():
+    """get_page_result() must call touch_ticket so that expires_at advances on every page access."""
+    result_store = MagicMock()
+    service = SpeechesTicketService()
+    ready_ticket = SimpleNamespace(
+        ticket_id="ticket-1",
+        status=TicketStatus.READY,
+        expires_at=datetime.now(UTC),
+        total_hits=2,
+        error=None,
+    )
+    result_store.require_ticket.return_value = ready_ticket
+    result_store.max_page_size = 500
+    result_store.get_ticket.return_value = ready_ticket
+    result_store.load_artifact.return_value = pd.DataFrame(
+        [{**SAMPLE_SPEECHES[0], TICKET_ROW_ID: 0}, {**SAMPLE_SPEECHES[1], TICKET_ROW_ID: 1}]
+    )
+    result_store.get_sorted_positions.return_value = (0, 1)
+
+    service.get_page_result(
+        ticket_id="ticket-1",
+        result_store=result_store,
+        page=1,
+        page_size=10,
+        sort_by=None,
+        sort_order=SortOrder.asc,
+    )
+
+    result_store.touch_ticket.assert_called_once_with("ticket-1")
+
+
+def test_get_status_does_not_touch_ticket():
+    """get_status() must not call touch_ticket — status polling must not extend ticket lifetime."""
+    result_store = MagicMock()
+    service = SpeechesTicketService()
+    result_store.require_ticket.return_value = SimpleNamespace(
+        status=TicketStatus.READY,
+        expires_at=datetime.now(UTC),
+        total_hits=2,
+        error=None,
+        ticket_id="ticket-1",
+    )
+
+    service.get_status("ticket-1", result_store)
+
+    result_store.touch_ticket.assert_not_called()
