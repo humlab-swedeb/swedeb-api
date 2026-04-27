@@ -10,7 +10,7 @@ This service is responsible for the expensive I/O operations required to load:
 All resources are lazily loaded and cached for performance.
 """
 
-from functools import cached_property
+from functools import cached_property, lru_cache
 from time import perf_counter
 from typing import Optional
 
@@ -237,3 +237,18 @@ class CorpusLoader:
             for protocol_name, row in ranges_df.iterrows()
         }
         return page_ranges
+
+
+@lru_cache(maxsize=1)
+def get_worker_corpus_loader() -> CorpusLoader:
+    """Return the shared CorpusLoader singleton for a Celery worker process.
+
+    All per-worker service factories (archive, speeches, word trends, KWIC)
+    call this so that expensive resources (SpeechStore, vectorized corpus, etc.)
+    are loaded at most once per worker process regardless of which task types
+    the worker handles.
+
+    Call ``.preload()`` on the returned instance in the ``worker_init`` signal
+    to front-load corpus I/O before the first task arrives.
+    """
+    return CorpusLoader()

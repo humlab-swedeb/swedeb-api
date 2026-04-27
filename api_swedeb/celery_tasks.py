@@ -27,12 +27,21 @@ from api_swedeb.celery_app import celery_app, configure_celery
 
 @worker_init.connect
 def _on_worker_init(**_kwargs):
-    """Initialise config and Celery settings when a worker process starts."""
+    """Initialise config and Celery settings when a worker process starts.
+
+    After config is ready, eagerly preload the shared CorpusLoader so that
+    SpeechStore, vectorized corpus, and other expensive resources are fully
+    initialised before the first task arrives.  Without preloading, the first
+    archive or speech task in each worker process pays an ~11 s cold-start
+    penalty while CorpusLoader loads those resources on demand.
+    """
+    from api_swedeb.api.services.corpus_loader import get_worker_corpus_loader  # type: ignore[import]
     from api_swedeb.core.configuration import get_config_store  # type: ignore[import]
 
     config_source = os.environ.get("SWEDEB_CONFIG_PATH", "config/config.yml")
     get_config_store().configure_context(source=config_source)
     configure_celery()
+    get_worker_corpus_loader().preload()
 
 
 @celery_app.task(bind=True, name="api_swedeb.execute_kwic_ticket")

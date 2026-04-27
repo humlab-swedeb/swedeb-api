@@ -41,9 +41,9 @@ TICKET_ROW_ID = "_ticket_row_id"
 @lru_cache(maxsize=1)
 def _get_worker_word_trends_service() -> WordTrendsService:
     """Return a WordTrendsService initialised once per Celery worker process."""
-    from api_swedeb.api.services.corpus_loader import CorpusLoader  # type: ignore[import]
+    from api_swedeb.api.services.corpus_loader import get_worker_corpus_loader  # type: ignore[import]
 
-    return WordTrendsService(CorpusLoader())
+    return WordTrendsService(get_worker_corpus_loader())
 
 
 @lru_cache(maxsize=1)
