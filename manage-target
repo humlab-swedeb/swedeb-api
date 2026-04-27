@@ -8,23 +8,24 @@ usage() {
     echo "error: $message" >&2
   fi
   cat >&2 <<USAGE
-usage: $(basename "$0") <target environment> [options]
+usage: $(basename "$0") <target environment> <command> [options]
 
-Deploys the swedeb-api container to the specified environment by:
-  - Pulling the specified image from GHCR
-  - Reinstalling the quadlet (systemd user container) deployment
-  - Restarting the service under the environment-specific service user
-
-By default, the script connects to the deployment host over SSH and runs the deployment there.
-With --local-deploy, it runs the same steps locally (useful when already on the server).
+commands:
+  deploy          Pull a new image and recreate the quadlet deployment
+  logs            Tail the service logs via manage-quadlet logs
+  podman          Run an arbitrary podman command as the service user
+                   (args passed as-is)
+  manage-quadlet  Run an arbitrary manage-quadlet command as the service
+                   user (args passed as-is)
 
 arguments:
   <target environment>   staging | production
+  <command>              deploy | logs | podman | manage-quadlet
 
 options:
-  --image-tag <tag>      Image tag to deploy (defaults to environment name)
-                         Required for production deployments
-  --local-deploy         Run deployment locally instead of via SSH
+  --image-tag <tag>      Image tag to deploy (defaults to environment
+                         name, deploy only). Required for production.
+  --local-deploy         Run the command locally instead of via SSH
 
 requirements:
   - Environment file: ~/.vault/.swedeb-<env>.env
@@ -36,19 +37,24 @@ requirements:
   - Env file must have permissions: 600
 
 examples:
-  $(basename "$0") staging
-  $(basename "$0") production --image-tag v1.2.3
-  $(basename "$0") staging --local-deploy
+  $(basename "$0") staging deploy
+  $(basename "$0") production deploy --image-tag v1.2.3
+  $(basename "$0") staging deploy --local-deploy
+  $(basename "$0") staging logs
+  $(basename "$0") staging podman ps -a
+  $(basename "$0") staging podman logs --follow swedeb-api
+  $(basename "$0") staging manage-quadlet status
+  $(basename "$0") staging manage-quadlet restart swedeb-api
 
 notes:
-  - This script does NOT deploy new configuration files or containers definitions.
-    It only pulls a new image and recreates the existing quadlet setup.
+  - This script does NOT deploy new configuration files or container
+    definitions. It only pulls a new image and recreates the quadlet.
 USAGE
   exit 2
 }
 
-if [[ $# -lt 1 ]]; then
-  usage "Missing target environment"
+if [[ $# -lt 2 ]]; then
+  usage "Missing target environment or command"
 fi
 
 g_target_environment="$1"
@@ -61,45 +67,65 @@ case "$g_target_environment" in
     ;;
 esac
 
+g_command="$1"
+shift
+
+case "$g_command" in
+  deploy | logs | podman | manage-quadlet) ;;
+  *)
+    usage "Invalid command: $g_command"
+    ;;
+esac
+
 g_image_tag=""
 g_local_deploy=false
+g_passthrough_args=()
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --image-tag)
-      if [[ $# -lt 2 || "$2" == "" ]]; then
-        usage "Missing value for --image-tag"
-      fi
-      g_image_tag="$2"
-      shift 2
-      ;;
-    --image-tag=*)
-      g_image_tag="${1#--image-tag=}"
-      if [[ "$g_image_tag" == "" ]]; then
-        usage "Missing value for --image-tag"
-      fi
-      shift
-      ;;
-    --local-deploy)
-      g_local_deploy=true
-      shift
-      ;;
-    *)
-      usage "Unexpected argument: $1"
-      ;;
-  esac
-done
+if [[ "$g_command" == "podman" \
+   || "$g_command" == "manage-quadlet" ]]; then
+  g_passthrough_args=("$@")
+else
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --image-tag)
+        if [[ $# -lt 2 || "$2" == "" ]]; then
+          usage "Missing value for --image-tag"
+        fi
+        g_image_tag="$2"
+        shift 2
+        ;;
+      --image-tag=*)
+        g_image_tag="${1#--image-tag=}"
+        if [[ "$g_image_tag" == "" ]]; then
+          usage "Missing value for --image-tag"
+        fi
+        shift
+        ;;
+      --local-deploy)
+        g_local_deploy=true
+        shift
+        ;;
+      *)
+        usage "Unexpected argument: $1"
+        ;;
+    esac
+  done
+fi
 
-if [[ "$g_target_environment" == "production" && "$g_image_tag" == "" ]]; then
+if [[ "$g_command" == "deploy" \
+   && "$g_target_environment" == "production" \
+   && "$g_image_tag" == "" ]]; then
   usage "Production deployments require --image-tag"
 fi
 
-if [[ "$g_image_tag" == "" ]]; then
-  g_image_tag="$g_target_environment"
-fi
+if [[ "$g_command" != "podman" ]]; then
+  if [[ "$g_image_tag" == "" ]]; then
+    g_image_tag="$g_target_environment"
+  fi
 
-if [[ ! "$g_image_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
-  usage "Invalid image tag: $g_image_tag"
+  if [[ ! "$g_image_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+    usage "Invalid image tag: $g_image_tag"
+  fi
 fi
 
 echo "Deploying $g_target_environment..."
@@ -109,12 +135,13 @@ g_deploy_service_user="swedeb_$g_target_environment"
 
 if [[ ! -f "$g_env_file" ]]; then
   echo "Missing $g_target_environment env file: $g_env_file" >&2
-  echo "Expected variables: SWEDEB_DEPLOY_HOST and SWEDEB_DEPLOY_SUDO_SECRET" >&2
+  echo "Expected variables: SWEDEB_DEPLOY_HOST, SWEDEB_DEPLOY_SUDO_SECRET" >&2
   exit 1
 fi
 
 if [[ "$(stat -c %a "$g_env_file")" != "600" ]]; then
-  echo "$g_target_environment env file must be readable only by you: chmod 600 $g_env_file" >&2
+  echo "$g_target_environment env file must be owner-readable only:" >&2
+  echo "  chmod 600 $g_env_file" >&2
   exit 1
 fi
 
@@ -128,18 +155,42 @@ if [[ "$g_local_deploy" == true ]]; then
   g_deploy_user="${USER:?Missing local USER}"
 else
   g_host="${SWEDEB_DEPLOY_HOST:-${g_host:-}}"
-  g_deploy_user="${SWEDEB_DEPLOY_USER:-${g_deploy_user:-${USER:?Missing local USER}}}"
+  g_deploy_user="${SWEDEB_DEPLOY_USER:-\
+    ${g_deploy_user:-${USER:?Missing local USER}}}"
 fi
 
-g_deploy_service_user="${SWEDEB_DEPLOY_SERVICE_USER:-${g_deploy_service_user:-swedeb_staging}}"
+g_deploy_service_user="${SWEDEB_DEPLOY_SERVICE_USER:-\
+  ${g_deploy_service_user:-swedeb_staging}}"
 g_secret="${SWEDEB_DEPLOY_SUDO_SECRET:-${g_secret:-}}"
 
 : "${g_host:?Missing deployment host}"
 : "${g_secret:?Missing sudo secret}"
 : "${g_deploy_service_user:?Missing deploy service user}"
 
-echo "info: deploying image tag '$g_image_tag' to $g_target_environment..."
-echo "note: new container files or configuration changes are not deployed..."
+g_columns="${COLUMNS:-220}"
+
+if [[ "$g_command" == "deploy" ]]; then
+  echo "info: deploying image tag '$g_image_tag' to $g_target_environment..."
+  echo "note: new container files or configuration changes are not deployed..."
+  g_inner_commands="
+echo \"Pulling $g_target_environment image...\"
+podman pull ghcr.io/humlab-swedeb/swedeb-api:$g_image_tag
+
+echo \"Recreating quadlet deployment...\"
+printf \"y\" | manage-quadlet remove
+manage-quadlet install
+
+echo \"Done.\""
+elif [[ "$g_command" == "logs" ]]; then
+  echo "info: fetching logs for $g_target_environment..."
+  g_inner_commands="manage-quadlet logs"
+elif [[ "$g_command" == "podman" ]]; then
+  echo "info: running podman on $g_target_environment..."
+  g_inner_commands="podman ${g_passthrough_args[*]}"
+else
+  echo "info: running manage-quadlet on $g_target_environment..."
+  g_inner_commands="manage-quadlet ${g_passthrough_args[*]}"
+fi
 
 g_remote_script="$(cat <<REMOTE_SCRIPT
 set -euo pipefail
@@ -153,17 +204,11 @@ cd "/srv/\$deploy_user"
 sudo -n -u "\$deploy_user" \\
   XDG_RUNTIME_DIR="\$runtime_dir" \\
   DBUS_SESSION_BUS_ADDRESS="unix:path=\$runtime_dir/bus" \\
+  COLUMNS="$g_columns" \\
   bash -lc '
 set -euo pipefail
 
-echo "Pulling $g_target_environment image..."
-podman pull ghcr.io/humlab-swedeb/swedeb-api:$g_image_tag
-
-echo "Recreating quadlet deployment..."
-printf "y" | manage-quadlet remove
-manage-quadlet install
-
-echo "Done."
+$g_inner_commands
 '
 REMOTE_SCRIPT
 )"
