@@ -50,6 +50,7 @@ from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.speeches_ticket_service import SpeechesTicketService
 from api_swedeb.api.services.word_trend_speeches_ticket_service import WordTrendSpeechesTicketService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
+from api_swedeb.core.configuration import ConfigValue
 
 
 @dataclass(slots=True)
@@ -73,7 +74,7 @@ class AppContainer:
     def build(cls) -> AppContainer:
         """Construct the default app-scoped service graph."""
         corpus_loader = CorpusLoader()
-        return cls(
+        container = cls(
             corpus_loader=corpus_loader,
             metadata_service=MetadataService(corpus_loader),
             word_trends_service=WordTrendsService(corpus_loader),
@@ -87,6 +88,9 @@ class AppContainer:
             download_service=DownloadService(),
             archive_ticket_service=ArchiveTicketService(),
         )
+        if ConfigValue("startup.preload", default=False).resolve():
+            corpus_loader.preload()
+        return container
 
 
 def get_container(request: Request) -> AppContainer:

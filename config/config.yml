@@ -69,6 +69,9 @@ vrt:
 speech:
   bootstrap_corpus_folder: ./data/v1.4.1/speeches/bootstrap_corpus
 
+startup:
+  preload: false  # When true, all corpus indexes are eagerly loaded at app startup via CorpusLoader.preload()
+
 kwic:
   use_multiprocessing: true  # Enabled when the current process may safely spawn child workers
   num_processes: 8

@@ -306,6 +306,95 @@ class TestCorpusLoaderCaching:
 class TestCorpusLoaderAdditionalBranches:
     """Tests for previously uncovered CorpusLoader branches."""
 
+    @patch('api_swedeb.api.services.corpus_loader.pd.read_feather')
+    @patch('api_swedeb.api.services.corpus_loader.SpeechRepository')
+    @patch('api_swedeb.api.services.corpus_loader.SpeechStore')
+    @patch('api_swedeb.api.services.corpus_loader.load_dtm_corpus')
+    @patch('api_swedeb.api.services.corpus_loader.load_speech_index')
+    @patch('api_swedeb.api.services.corpus_loader.md.PersonCodecs')
+    def test_preload_initializes_lazy_members(
+        self,
+        mock_codecs_class,
+        mock_index,
+        mock_dtm,
+        mock_store_class,
+        mock_repo_class,
+        mock_read_feather,
+        capsys,
+        tmp_path,
+    ):
+        speech_index = pd.DataFrame({"speech_id": ["i-1"], "year": [2000]})
+        mock_index.return_value = speech_index
+
+        mock_corpus = MagicMock()
+        mock_corpus.document_index = speech_index
+        mock_dtm.return_value = mock_corpus
+
+        mock_codecs = MagicMock(spec=PersonCodecs)
+        mock_codecs.persons_of_interest = pd.DataFrame({"person_id": [1]})
+        mock_codecs.decode.return_value = pd.DataFrame({"person_id": [1]})
+        mock_codecs_instance = MagicMock()
+        mock_codecs_instance.load.return_value = mock_codecs
+        mock_codecs_class.return_value = mock_codecs_instance
+
+        mock_store = MagicMock()
+        mock_store_class.return_value = mock_store
+        mock_repo = MagicMock(spec=SpeechRepository)
+        mock_repo_class.return_value = mock_repo
+
+        (tmp_path / "speech_index.feather").touch()
+        mock_read_feather.return_value = pd.DataFrame(
+            {
+                "speech_id": ["i-1"],
+                "protocol_name": ["prot-1"],
+                "page_number_start": [5],
+                "page_number_end": [10],
+            }
+        )
+
+        loader = CorpusLoader(
+            dtm_tag="tag",
+            dtm_folder="folder",
+            metadata_filename="metadata",
+            tagged_corpus_folder="corpus",
+            speech_bootstrap_corpus_folder=str(tmp_path),
+        )
+
+        with patch(
+            'api_swedeb.api.services.corpus_loader.perf_counter',
+            side_effect=[0.0, 0.1, 1.0, 1.2, 2.0, 2.3, 3.0, 3.4, 4.0, 4.5, 5.0, 5.6, 6.0, 6.7, 7.0, 7.8],
+        ):
+            result = loader.preload()
+
+        captured = capsys.readouterr()
+
+        assert result is loader
+        assert loader._CorpusLoader__lazy_document_index.is_initialized
+        assert loader._CorpusLoader__lazy_vectorized_corpus.is_initialized
+        assert loader._CorpusLoader__lazy_person_codecs.is_initialized
+        assert loader._CorpusLoader__lazy_repository.is_initialized
+        assert loader._CorpusLoader__lazy_prebuilt_speech_index.is_initialized
+        assert loader._CorpusLoader__lazy_prebuilt_page_number_index.is_initialized
+        assert "decoded_persons" in loader.__dict__
+        assert "year_range" in loader.__dict__
+
+        mock_index.assert_called_once_with(folder="folder", tag="tag")
+        mock_dtm.assert_called_once_with(folder="folder", tag="tag", prepped_document_index=speech_index)
+        mock_codecs_instance.load.assert_called_once_with(source="metadata")
+        mock_store_class.assert_called_once_with(str(tmp_path))
+        mock_read_feather.assert_called_once_with(str(tmp_path / "speech_index.feather"))
+        assert loader.year_range == (2000, 2000)
+        assert captured.out.splitlines() == [
+            "Loaded document_index in 0.100s",
+            "Loaded vectorized_corpus in 0.200s",
+            "Loaded person_codecs in 0.300s",
+            "Loaded repository in 0.400s",
+            "Loaded prebuilt_speech_index in 0.500s",
+            "Loaded prebuilt_page_number_index in 0.600s",
+            "Loaded decoded_persons in 0.700s",
+            "Loaded year_range in 0.800s",
+        ]
+
     def test_load_prebuilt_speech_index_raises_if_missing(self, tmp_path):
         loader = CorpusLoader(
             dtm_tag="tag",
