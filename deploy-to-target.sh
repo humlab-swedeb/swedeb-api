@@ -42,7 +42,8 @@ examples:
 
 notes:
   - This script does NOT deploy new configuration files or containers definitions.
-    It only pulls a new image and recreates the existing quadlet setup.USAGE
+    It only pulls a new image and recreates the existing quadlet setup.
+USAGE
   exit 2
 }
 
