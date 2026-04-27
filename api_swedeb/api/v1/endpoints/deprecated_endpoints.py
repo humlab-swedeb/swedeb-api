@@ -8,7 +8,7 @@ from typing import Annotated, Any
 
 import fastapi
 import pandas as pd
-from fastapi import Body, Depends, Query
+from fastapi import Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from api_swedeb.api.dependencies import (
@@ -97,6 +97,8 @@ async def get_zip(
     search_service: SearchService = Depends(get_search_service),
 ) -> StreamingResponse:
     """Download speeches as ZIP file. Deprecated: use POST /speeches/download instead."""
+    if not ids:
+        raise HTTPException(status_code=400, detail="Speech ids are required")
     commons = CommonQueryParams(speech_id=ids).resolve()
     streamer = download_service.create_stream(search_service=search_service, commons=commons)
 
