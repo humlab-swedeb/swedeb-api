@@ -57,6 +57,8 @@ class KWICService:
             words_after: Number of words after search term(s)
             p_show: What to display ("word" or "lemma")
             cut_off: Maximum number of hits to return
+            use_multiprocessing: Whether to use multiprocessing (overrides config if not None)
+            n_processes: Number of processes for multiprocessing (overrides config if not None)
 
         Returns:
             DataFrame with KWIC data
