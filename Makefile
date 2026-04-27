@@ -45,6 +45,9 @@ workflow-logs:
 	@gh run list --workflow staging.yml --branch staging --limit 1
 	@gh run view --web
 
+staging-deploy:
+	@./manage-target staging deploy
+
 staging-api-logs:
 	@./manage-target staging podman logs swedeb-api-staging
 
