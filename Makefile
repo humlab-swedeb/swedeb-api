@@ -31,6 +31,21 @@ force-release-action:
 	@git commit --amend -m "fix: force trigger release action"
 	@git push --force-with-lease
 
+.PHONY: trigger-staging
+trigger-staging:
+	@gh workflow run staging.yml --ref staging
+
+.PHONY: workflow-status
+workflow-status:
+	@gh workflow view staging.yml --web
+
+workflow-logs:
+	@gh workflow run staging.yml --ref staging
+	@sleep 5
+	@gh run list --workflow staging.yml --branch staging --limit 1
+	@gh run view --web
+	
+
 .PHONY: lint tidy isort black test pylint
 
 run:       
