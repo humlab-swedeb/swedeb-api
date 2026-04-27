@@ -202,5 +202,3 @@ class KWICArchiveService:
         with zipfile.ZipFile(str(dest), "w", zipfile.ZIP_DEFLATED) as zf:
             with zf.open("kwic_data.csv", "w") as entry:
                 data.to_csv(entry, index=False)
-
-

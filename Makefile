@@ -31,6 +31,30 @@ force-release-action:
 	@git commit --amend -m "fix: force trigger release action"
 	@git push --force-with-lease
 
+.PHONY: trigger-staging
+trigger-staging:
+	@gh workflow run staging.yml --ref staging
+
+.PHONY: workflow-status
+workflow-status:
+	@gh workflow view staging.yml --web
+
+workflow-logs:
+	@gh workflow run staging.yml --ref staging
+	@sleep 5
+	@gh run list --workflow staging.yml --branch staging --limit 1
+	@gh run view --web
+
+staging-api-logs:
+	@./manage-target staging podman logs swedeb-api-staging
+
+staging-celery-worker-logs:
+	@./manage-target staging podman logs swedeb-celery-worker-staging
+
+staging-multiprocessing-worker-logs:
+	@./manage-target staging podman logs swedeb-multiprocessing-worker-staging
+	
+
 .PHONY: lint tidy isort black test pylint
 
 run:       
@@ -80,7 +104,7 @@ requirements.txt: pyproject.toml
 # 		&& git commit -m "📌 updated requirements.txt" \
 # 			&& git push
 
-.PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument profile-zip-pyinstrument profile-word-trends-pyinstrument benchmark-storage-formats
+.PHONY: build-utils profile-utils-cprofile profile-utils-pyinstrument profile-ngrams-pyinstrument profile-zip-pyinstrument profile-archive-pyinstrument profile-word-trends-pyinstrument benchmark-storage-formats
 
 build-utils:
 	@echo "Building lib..."
@@ -128,11 +152,20 @@ profile-zip-pyinstrument:
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_zip_stream.html \
 			tests/profiling/profile_zip_stream.py
 
+# Profile the archive-task hot path (ZipArchiveWriter + get_speeches_text_batch).
 # Override defaults via env vars, e.g.:
-#   make profile-word-trends-pyinstrument WORD=skola START_YEAR=1867 END_YEAR=2022
+#   make profile-archive-pyinstrument WORD=skola START_YEAR=1867 END_YEAR=2022
 WORD        ?= skola
 START_YEAR  ?= 1867
 END_YEAR    ?= 2022
+
+profile-archive-pyinstrument:
+	@echo "Profiling archive task for '$(WORD)' ($(START_YEAR)-$(END_YEAR))..."
+	@mkdir -p tests/output
+	@PYTHONPATH=. uv run pyinstrument --color --show-all \
+		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_archive_task.html \
+			tests/profiling/profile_archive_task.py \
+			--word $(WORD) --start-year $(START_YEAR) --end-year $(END_YEAR)
 
 profile-word-trends-pyinstrument:
 	@echo "Profiling word trends for '$(WORD)' ($(START_YEAR)-$(END_YEAR))..."
