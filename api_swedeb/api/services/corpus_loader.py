@@ -252,9 +252,9 @@ class CorpusLoader:
 
     def _load_prebuilt_page_number_index(self) -> dict[str, tuple[int, int]]:
         """Compute page number ranges for each protocol based on the document index."""
-        ranges_df: pd.DataFrame = self.prebuilt_speech_index.groupby("protocol_name")[
+        ranges_df: pd.DataFrame = self.prebuilt_speech_index.groupby("protocol_name", observed=False)[
             ["page_number_start", "page_number_end"]
-        ].agg({'page_number_start': min, 'page_number_end': max})
+        ].agg({"page_number_start": "min", "page_number_end": "max"})
         page_ranges: dict[str, tuple[int, int]] = {
             str(protocol_name): (int(row['page_number_start']), int(row['page_number_end']))
             for protocol_name, row in ranges_df.iterrows()

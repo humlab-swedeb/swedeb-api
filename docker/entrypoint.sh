@@ -28,4 +28,4 @@ if [ "$#" -gt 0 ]; then
 fi
 
 log "Starting application server on port ${SWEDEB_PORT}"
-exec uvicorn main:app --host 0.0.0.0 --port ${SWEDEB_PORT}
+exec uvicorn main:app --host 0.0.0.0 --port ${SWEDEB_PORT} --proxy-headers --forwarded-allow-ips "*"
