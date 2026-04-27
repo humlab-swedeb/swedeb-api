@@ -128,8 +128,6 @@ if [[ "$g_command" != "podman" ]]; then
   fi
 fi
 
-echo "Deploying $g_target_environment..."
-
 g_env_file="${HOME}/.vault/.swedeb-$g_target_environment.env"
 g_deploy_service_user="swedeb_$g_target_environment"
 
