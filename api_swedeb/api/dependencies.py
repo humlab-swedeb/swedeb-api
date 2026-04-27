@@ -9,6 +9,7 @@ from api_swedeb.api.container import AppContainer, get_container
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import KWICTicketService
 from api_swedeb.api.services.metadata_service import MetadataService
@@ -53,6 +54,11 @@ def get_speeches_ticket_service(container: AppContainer = Depends(get_container)
 
 def get_kwic_ticket_service(container: AppContainer = Depends(get_container)) -> KWICTicketService:
     return container.kwic_ticket_service
+
+
+def get_kwic_archive_service(container: AppContainer = Depends(get_container)) -> KWICArchiveService:
+    """Get the app-scoped KWICArchiveService instance."""
+    return container.kwic_archive_service
 
 
 def get_word_trend_speeches_ticket_service(

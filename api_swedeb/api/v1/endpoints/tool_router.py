@@ -12,6 +12,7 @@ from api_swedeb.api.dependencies import (
     get_cwb_corpus,
     get_cwb_corpus_opts,
     get_download_service,
+    get_kwic_archive_service,
     get_kwic_service,
     get_kwic_ticket_service,
     get_result_store,
@@ -24,6 +25,7 @@ from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.corpus_loader import CorpusLoader
 from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import DEFAULT_PAGE_SIZE, KWICTicketService
 from api_swedeb.api.services.ngrams_service import NGramsService
@@ -46,8 +48,6 @@ from api_swedeb.mappers.word_trends import (
     word_trends_to_api_model,
 )
 from api_swedeb.schemas.bulk_archive_schema import (
-    ARCHIVE_MEDIA_TYPES,
-    ARCHIVE_SUFFIXES,
     ArchivePrepareResponse,
     ArchiveTicketStatus,
     BulkArchiveFormat,
@@ -257,6 +257,53 @@ async def download_kwic_ticket(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="kwic_{ticket_id}.zip"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# Async bulk archive: KWIC
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/kwic/archive/{ticket_id}",
+    response_model=ArchivePrepareResponse,
+    status_code=202,
+    summary="Prepare a bulk archive from a KWIC ticket",
+)
+async def prepare_kwic_bulk_archive(
+    ticket_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
+    kwic_archive_service: KWICArchiveService = Depends(get_kwic_archive_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> ArchivePrepareResponse:
+    """Start async archive generation for a ready KWIC ticket.
+
+    Returns 202 with an ``archive_ticket_id`` to poll for completion via
+    ``GET /v1/downloads/{archive_ticket_id}``.
+    """
+    try:
+        response: ArchivePrepareResponse = kwic_archive_service.prepare(
+            source_ticket_id=ticket_id,
+            archive_format=archive_format,
+            result_store=result_store,
+        )
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Source ticket not found or expired") from e
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/download/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
+
+    background_tasks.add_task(
+        kwic_archive_service.execute_archive_task,
+        archive_ticket_id=response.archive_ticket_id,
+        result_store=result_store,
+    )
+
+    return response
 
 
 @router.get("/word_trends/{search}", response_model=WordTrendsResult)
@@ -543,36 +590,14 @@ async def get_word_trend_speeches_archive_status(
 )
 async def download_word_trend_speeches_bulk_archive(
     archive_ticket_id: str,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ):
-    from fastapi.responses import FileResponse  # pylint: disable=import-outside-toplevel
-
-    try:
-        ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-
-    if ticket.status == TicketStatus.ERROR:
-        raise HTTPException(status_code=409, detail=ticket.error or "Archive preparation failed")
-    if ticket.status != TicketStatus.READY:
-        raise HTTPException(status_code=409, detail="Archive is not ready yet")
-    if ticket.artifact_path is None or not ticket.artifact_path.exists():
-        raise HTTPException(status_code=410, detail="Archive file no longer available")
-
-    archive_format_str: str = ticket.archive_format or BulkArchiveFormat.jsonl_gz.value
-    try:
-        archive_format = BulkArchiveFormat(archive_format_str)
-    except ValueError:
-        archive_format = BulkArchiveFormat.jsonl_gz
-
-    media_type: str = ARCHIVE_MEDIA_TYPES.get(archive_format, "application/octet-stream")
-    suffix: str = ARCHIVE_SUFFIXES.get(archive_format, f".{archive_format_str}")
-    filename: str = f"word_trend_speeches_archive_{archive_ticket_id}{suffix}"
-    try:
-        result_store.touch_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-    return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
+    return archive_ticket_service.build_file_response(
+        archive_ticket_id=archive_ticket_id,
+        filename_stem="word_trend_speeches_archive",
+        result_store=result_store,
+    )
 
 
 @router.get("/word_trend_hits/{search}", response_model=SearchHits)
@@ -854,36 +879,14 @@ async def get_speeches_archive_status(
 )
 async def download_speeches_bulk_archive(
     archive_ticket_id: str,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
     result_store: ResultStore = Depends(get_result_store),
 ):
-    from fastapi.responses import FileResponse  # pylint: disable=import-outside-toplevel
-
-    try:
-        ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-
-    if ticket.status == TicketStatus.ERROR:
-        raise HTTPException(status_code=409, detail=ticket.error or "Archive preparation failed")
-    if ticket.status != TicketStatus.READY:
-        raise HTTPException(status_code=409, detail="Archive is not ready yet")
-    if ticket.artifact_path is None or not ticket.artifact_path.exists():
-        raise HTTPException(status_code=410, detail="Archive file no longer available")
-
-    archive_format_str: str = ticket.archive_format or BulkArchiveFormat.jsonl_gz.value
-    try:
-        archive_format = BulkArchiveFormat(archive_format_str)
-    except ValueError:
-        archive_format = BulkArchiveFormat.jsonl_gz
-
-    media_type: str = ARCHIVE_MEDIA_TYPES.get(archive_format, "application/octet-stream")
-    suffix: str = ARCHIVE_SUFFIXES.get(archive_format, f".{archive_format_str}")
-    filename: str = f"speeches_archive_{archive_ticket_id}{suffix}"
-    try:
-        result_store.touch_ticket(archive_ticket_id)
-    except ResultStoreNotFound as e:
-        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e
-    return FileResponse(path=str(ticket.artifact_path), media_type=media_type, filename=filename)
+    return archive_ticket_service.build_file_response(
+        archive_ticket_id=archive_ticket_id,
+        filename_stem="speeches_archive",
+        result_store=result_store,
+    )
 
 
 @router.post("/speeches/download")

@@ -11,6 +11,7 @@ class BulkArchiveFormat(StrEnum):
     jsonl_gz = "jsonl_gz"
     zip = "zip"
     csv_gz = "csv_gz"
+    xlsx = "xlsx"
 
     @classmethod
     def _missing_(cls, value: object) -> "BulkArchiveFormat | None":
@@ -26,12 +27,14 @@ ARCHIVE_SUFFIXES: dict[BulkArchiveFormat, str] = {
     BulkArchiveFormat.jsonl_gz: ".jsonl.gz",
     BulkArchiveFormat.zip: ".zip",
     BulkArchiveFormat.csv_gz: ".csv.gz",
+    BulkArchiveFormat.xlsx: ".xlsx",
 }
 
 ARCHIVE_MEDIA_TYPES: dict[BulkArchiveFormat, str] = {
     BulkArchiveFormat.jsonl_gz: "application/gzip",
     BulkArchiveFormat.zip: "application/zip",
     BulkArchiveFormat.csv_gz: "application/gzip",
+    BulkArchiveFormat.xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
 
