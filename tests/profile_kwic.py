@@ -31,6 +31,7 @@ import sys
 import time
 import uuid
 
+import ccc
 from loguru import logger
 
 logger.remove()
@@ -71,8 +72,6 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
     use_multiprocessing: bool | None = None if args.num_processes is None else (args.num_processes > 1)
-
-    import ccc
 
     from api_swedeb.api.params import build_common_query_params
     from api_swedeb.api.services.corpus_loader import CorpusLoader
