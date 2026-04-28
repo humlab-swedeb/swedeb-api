@@ -80,8 +80,19 @@ class KWICPageResult(BaseModel):
     page_size: int
     total_hits: int
     total_pages: int
+    display_limited: bool = Field(False, description="True when total_hits is at or above the large-result threshold")
+    display_limit: int | None = Field(
+        None, description="Maximum rows navigable via pagination when display_limited is True"
+    )
     expires_at: datetime
     kwic_list: list[KeywordInContextItem]
+
+
+class KWICEstimateResult(BaseModel):
+    estimated_hits: int | None = Field(
+        None, description="Approximate hit count from DTM; null if word is not in vocabulary"
+    )
+    in_vocabulary: bool = Field(..., description="Whether the word appears in the DTM vocabulary")
 
 
 class SortBy(Enum):

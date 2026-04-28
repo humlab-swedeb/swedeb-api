@@ -53,6 +53,7 @@ from api_swedeb.schemas.bulk_archive_schema import (
     BulkArchiveFormat,
 )
 from api_swedeb.schemas.kwic_schema import (
+    KWICEstimateResult,
     KWICPageResult,
     KWICQueryRequest,
     KWICTicketAccepted,
@@ -115,6 +116,26 @@ def _require_ready_ticket(ticket_id: str, result_store: ResultStore) -> TicketMe
     if ticket.status == TicketStatus.ERROR:
         raise HTTPException(status_code=409, detail=ticket.error or "Ticket failed")
     return ticket
+
+
+@router.get("/kwic/estimate", response_model=KWICEstimateResult)
+async def estimate_kwic_hits(
+    word: Annotated[str, Query(description="Word to estimate hit count for")],
+    commons: CommonParams,
+    word_trends_service: WordTrendsService = Depends(get_word_trends_service),
+) -> KWICEstimateResult:
+    """Return an approximate hit count for a KWIC search word using DTM column sums.
+
+    The estimate is computed from the document-term matrix and respects the same
+    metadata filters as a real search, but does not run a CQP query. Response
+    time is typically under 20 ms for a cached corpus.
+    """
+    filter_opts = commons.get_filter_opts(include_year=True)
+    count = word_trends_service.estimate_hits(word, filter_opts)
+    return KWICEstimateResult(
+        in_vocabulary=count is not None,
+        estimated_hits=count,
+    )
 
 
 @router.post("/kwic/query", response_model=KWICTicketAccepted, status_code=202)

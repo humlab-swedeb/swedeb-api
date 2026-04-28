@@ -504,3 +504,127 @@ def test_get_status_does_not_advance_ticket_expiry(tmp_path):
         assert after == fixed_expiry
     finally:
         asyncio.run(store.shutdown())
+
+
+def _make_store(tmp_path, *, max_page_size: int = 200) -> ResultStore:
+    return ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=10,
+        max_page_size=max_page_size,
+    )
+
+
+def _make_df(n: int) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "left_word": f"left-{i}",
+                "node_word": "word",
+                "right_word": f"right-{i}",
+                "name": "Alice",
+                "speech_id": f"i-{i}",
+                TICKET_ROW_ID: i,
+            }
+            for i in range(n)
+        ]
+    )
+
+
+def test_display_cap_returns_uncapped_when_below_threshold():
+    """_display_cap must not cap when total_hits < threshold."""
+    service = KWICTicketService()
+    from api_swedeb.core.configuration.inject import ConfigStore
+
+    store = ConfigStore()
+    store.configure_context(
+        source={"kwic": {"large_result_threshold": 10000, "large_result_display_limit": 1000}},
+        env_prefix=None,
+    )
+    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
+        limited, limit, pages = service._display_cap(total_hits=5, total_pages=1, page_size=10)
+
+    assert limited is False
+    assert limit is None
+    assert pages == 1
+
+
+def test_display_cap_returns_capped_when_at_or_above_threshold():
+    """_display_cap must cap total_pages when total_hits >= threshold."""
+    service = KWICTicketService()
+    from api_swedeb.core.configuration.inject import ConfigStore
+
+    store = ConfigStore()
+    store.configure_context(
+        source={"kwic": {"large_result_threshold": 10000, "large_result_display_limit": 100}},
+        env_prefix=None,
+    )
+    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
+        limited, limit, pages = service._display_cap(total_hits=15_000, total_pages=1500, page_size=10)
+
+    assert limited is True
+    assert limit == 100
+    assert pages == 10  # ceil(100 / 10)
+
+
+def test_get_page_result_propagates_display_limited_flag(tmp_path):
+    """get_page_result must include display_limited/display_limit from _display_cap."""
+    store = _make_store(tmp_path)
+    service = KWICTicketService()
+
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "test"})
+        store.store_ready(ticket.ticket_id, df=_make_df(5))
+
+        with (
+            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=False),
+            patch.object(service, "_display_cap", return_value=(True, 100, 1)),
+        ):
+            result = service.get_page_result(
+                ticket_id=ticket.ticket_id,
+                result_store=store,
+                page=1,
+                page_size=10,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+            )
+
+        assert isinstance(result, KWICPageResult)
+        assert result.display_limited is True
+        assert result.display_limit == 100
+        assert result.total_pages == 1
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_get_page_result_propagates_uncapped_flag(tmp_path):
+    """get_page_result must pass display_limited=False through when not capped."""
+    store = _make_store(tmp_path)
+    service = KWICTicketService()
+
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "test"})
+        store.store_ready(ticket.ticket_id, df=_make_df(5))
+
+        with (
+            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=False),
+            patch.object(service, "_display_cap", return_value=(False, None, 1)),
+        ):
+            result = service.get_page_result(
+                ticket_id=ticket.ticket_id,
+                result_store=store,
+                page=1,
+                page_size=10,
+                sort_by=None,
+                sort_order=SortOrder.asc,
+            )
+
+        assert isinstance(result, KWICPageResult)
+        assert result.display_limited is False
+        assert result.display_limit is None
+    finally:
+        asyncio.run(store.shutdown())
