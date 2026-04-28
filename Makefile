@@ -120,13 +120,18 @@ profile-utils-pyinstrument: build-utils
 	@uv run pyinstrument tests/profiling/profile_utilities.py
 
 TIMESTAMP_IN_ISO_FORMAT=$(shell date -u +"%Y%m%dT%H%M%SZ")
-
+NUM_PROCESSES ?= 1
 profile-kwic-pyinstrument:
 	@echo "Profiling KWIC..."
 	@mkdir -p tests/output
 	@PYTHONPATH=. pyinstrument --color --show-all \
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_kwic.html \
-			tests/profile_kwic.py
+			tests/profile_kwic.py \
+			--word och \
+			--words-before 5 \
+			--words-after 5 \
+			--cut-off 200000 \
+			--num-processes $(NUM_PROCESSES)
 
 # Benchmark: singleprocess vs. multiprocess KWIC on the full corpus.
 # Override defaults via env vars, e.g.:
@@ -151,7 +156,7 @@ benchmark-kwic:
 profile-zip-pyinstrument:
 	@echo "Profiling create_zip_stream(1970-1975)..."
 	@mkdir -p tests/output
-	@PYTHONPATH=. uv run pyinstrument --color --show-all \
+	@PYTHONPATH=. uv run pyinstrument --color --show-all --num-processes $(NUM_PROCESSES) \
 		-o tests/output/$(TIMESTAMP_IN_ISO_FORMAT)_profile_zip_stream.html \
 			tests/profiling/profile_zip_stream.py
 

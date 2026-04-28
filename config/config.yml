@@ -55,7 +55,7 @@ metadata:
     path: data
 
 cwb:
-  registry_dir: /data/registry
+  registry_dir: ./data/v1.4.1/registry
   corpus_name: RIKSPROT_CORPUS
 
 dtm:

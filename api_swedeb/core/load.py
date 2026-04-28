@@ -77,7 +77,7 @@ def _memory_usage(document_index: pd.DataFrame) -> float:
 def is_invalidated(source_path: str, target_path: str) -> bool:
     if not isfile(target_path):
         return True
-    logger.info(f"Source: {os.path.getmtime(source_path)}, Target: {os.path.getmtime(target_path)}")
+    # logger.info(f"Source: {os.path.getmtime(source_path)}, Target: {os.path.getmtime(target_path)}")
     return os.path.getmtime(source_path) > os.path.getmtime(target_path)
 
 
