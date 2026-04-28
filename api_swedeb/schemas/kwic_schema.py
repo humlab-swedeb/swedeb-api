@@ -80,6 +80,10 @@ class KWICPageResult(BaseModel):
     page_size: int
     total_hits: int
     total_pages: int
+    display_limited: bool = Field(False, description="True when total_hits exceeds the large-result threshold")
+    display_limit: int | None = Field(
+        None, description="Maximum rows navigable via pagination when display_limited is True"
+    )
     expires_at: datetime
     kwic_list: list[KeywordInContextItem]
 

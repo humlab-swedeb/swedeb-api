@@ -251,6 +251,7 @@ class KWICTicketService:
 
         total_hits: int = len(data.index)
         total_pages: int = math.ceil(total_hits / page_size) if total_hits else 0
+        display_limited, display_limit, total_pages = self._display_cap(total_hits, total_pages, page_size)
         ticket: TicketMeta | None = result_store.get_ticket(ticket_id)
         expires_at: datetime = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
 
@@ -278,6 +279,8 @@ class KWICTicketService:
             page_size=page_size,
             total_hits=total_hits,
             total_pages=total_pages,
+            display_limited=display_limited,
+            display_limit=display_limit,
             expires_at=expires_at,
             kwic_list=kwic_api_frame_to_model(page_frame).kwic_list,
         )
@@ -305,6 +308,7 @@ class KWICTicketService:
         data: pd.DataFrame = result_store.load_artifact(ticket_id)
         total_hits: int = len(data.index)
         total_pages: int = math.ceil(total_hits / page_size) if total_hits else 0
+        display_limited, display_limit, total_pages = self._display_cap(total_hits, total_pages, page_size)
         if total_pages == 0:
             if page != 1:
                 raise ValueError("Requested page is out of range")
@@ -329,6 +333,8 @@ class KWICTicketService:
             page_size=page_size,
             total_hits=total_hits,
             total_pages=total_pages,
+            display_limited=display_limited,
+            display_limit=display_limit,
             expires_at=ticket.expires_at,
             kwic_list=kwic_api_frame_to_model(page_frame).kwic_list,
         )
@@ -343,6 +349,19 @@ class KWICTicketService:
             return (TICKET_ROW_ID,), (True,)
 
         return (sort_by.value, TICKET_ROW_ID), (sort_order == SortOrder.asc, True)
+
+    def _display_cap(self, total_hits: int, total_pages: int, page_size: int) -> tuple[bool, int | None, int]:
+        """Return (display_limited, display_limit, effective_total_pages).
+
+        When *total_hits* is below the configured threshold the result is
+        uncapped and the original *total_pages* is returned unchanged.
+        """
+        threshold: int = ConfigValue("kwic.large_result_threshold", default=10000).resolve()
+        if total_hits < threshold:
+            return False, None, total_pages
+        display_limit: int = ConfigValue("kwic.large_result_display_limit", default=1000).resolve()
+        capped_pages: int = math.ceil(display_limit / page_size) if display_limit else 0
+        return True, display_limit, min(capped_pages, total_pages)
 
     def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
         result_store.touch_ticket(ticket_id)
