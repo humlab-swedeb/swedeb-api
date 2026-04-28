@@ -40,6 +40,7 @@ def kwic(  # pylint: disable=too-many-arguments
     cut_off: int | None = None,
     use_multiprocessing: bool = False,
     num_processes: int | None = None,
+    num_shards: int | None = None,
     on_shards_total: Callable[[int], None] | None = None,
     on_shard_complete: Callable[[int, pd.DataFrame], None] | None = None,
 ) -> pd.DataFrame:
@@ -53,7 +54,8 @@ def kwic(  # pylint: disable=too-many-arguments
         p_show (Literal['word', 'lemma'], optional): Target type to display. Defaults to "word".
         cut_off (int, optional): Threshold of number of hits. Defaults to None (unlimited).
         use_multiprocessing (bool, optional): Whether to use multiprocessing. Defaults to False.
-        num_processes (int, optional): Number of processes to use. Defaults to CPU count.
+        num_processes (int, optional): Number of parallel workers (pool size). Defaults to CPU count.
+        num_shards (int, optional): Year-range partitions. Defaults to num_processes when None.
         on_shards_total: Optional callback fired once with the total shard count.
         on_shard_complete: Optional callback fired per shard with (shard_index, normalized_df).
     Returns:
@@ -82,6 +84,7 @@ def kwic(  # pylint: disable=too-many-arguments
             p_show=p_show,
             cut_off=cut_off,
             num_processes=num_processes,
+            num_shards=num_shards,
             on_shards_total=on_shards_total,
             on_shard_complete=wrapped_shard_callback,
         )
@@ -111,6 +114,7 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
     cut_off: int | None = 200000,
     use_multiprocessing: bool = False,
     num_processes: int | None = None,
+    num_shards: int | None = None,
     on_shards_total: Callable[[int], None] | None = None,
     on_shard_complete: Callable[[int, pd.DataFrame], None] | None = None,
 ) -> pd.DataFrame:
@@ -130,7 +134,8 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
         p_show: What to display, ``word`` or ``lemma``. Defaults to "word".
         cut_off: Maximum hits to return. Defaults to 200000.
         use_multiprocessing: Whether to use multiprocessing. Defaults to False.
-        num_processes: Number of processes to use. Defaults to CPU count.
+        num_processes: Number of parallel workers (pool size). Defaults to CPU count.
+        num_shards: Year-range partitions. Defaults to num_processes when None.
         on_shards_total: Optional callback fired once with the total shard count.
         on_shard_complete: Optional callback fired per completed shard with
             (shard_index, decoded_df) where decoded_df has had the speech index
@@ -163,6 +168,7 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
         cut_off=cut_off,
         use_multiprocessing=use_multiprocessing,
         num_processes=num_processes,
+        num_shards=num_shards,
         on_shards_total=on_shards_total,
         on_shard_complete=wrapped_shard_callback,
     )
