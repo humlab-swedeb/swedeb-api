@@ -50,7 +50,7 @@ class ArchivePrepareResponse(BaseModel):
 
 class ArchiveTicketStatus(BaseModel):
     archive_ticket_id: str
-    status: Literal["pending", "ready", "error"]
+    status: Literal["pending", "partial", "ready", "error"]
     source_ticket_id: str | None = None
     archive_format: str | None = None
     speech_count: int | None = None

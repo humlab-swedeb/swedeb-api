@@ -36,8 +36,7 @@ kwic:
   use_multiprocessing: true
   num_processes: 8
   cut_off: 200000
-  large_result_threshold: 10000
-  large_result_display_limit: 1000
+  download_wait_timeout_s: 300
 
 celery:
   broker_url: redis://redis:6379/0

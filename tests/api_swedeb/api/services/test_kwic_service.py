@@ -53,6 +53,8 @@ def test_get_kwic_builds_opts_and_delegates_to_kwic_with_decode():
         cut_off=123,
         use_multiprocessing=True,
         num_processes=4,
+        on_shards_total=None,
+        on_shard_complete=None,
     )
     assert result is expected
 

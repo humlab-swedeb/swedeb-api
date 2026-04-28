@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Literal
 
 import ccc
@@ -29,12 +30,6 @@ S_ATTR_RENAMES: dict[str, str] = {
 }
 
 
-KWIC_REGISTRY: dict[str, Any] = {
-    "singleprocess": execute_kwic_singleprocess,
-    "multiprocess": execute_kwic_multiprocess,
-}
-
-
 def kwic(  # pylint: disable=too-many-arguments
     corpus: ccc.Corpus | CorpusCreateOpts,
     opts: dict[str, Any] | list[dict[str, Any]],
@@ -45,6 +40,8 @@ def kwic(  # pylint: disable=too-many-arguments
     cut_off: int | None = None,
     use_multiprocessing: bool = False,
     num_processes: int | None = None,
+    on_shards_total: Callable[[int], None] | None = None,
+    on_shard_complete: Callable[[int, pd.DataFrame], None] | None = None,
 ) -> pd.DataFrame:
     """Computes n-grams from a corpus segments that contains a keyword specified in opts.
 
@@ -57,20 +54,47 @@ def kwic(  # pylint: disable=too-many-arguments
         cut_off (int, optional): Threshold of number of hits. Defaults to None (unlimited).
         use_multiprocessing (bool, optional): Whether to use multiprocessing. Defaults to False.
         num_processes (int, optional): Number of processes to use. Defaults to CPU count.
+        on_shards_total: Optional callback fired once with the total shard count.
+        on_shard_complete: Optional callback fired per shard with (shard_index, normalized_df).
     Returns:
         pd.DataFrame: dataframe with index speech_id and columns left_word, node_word, right_word.
     """
     kwic_key: str = "multiprocess" if use_multiprocessing else "singleprocess"
     logger.info(f"Using KWIC {kwic_key}ing method.")
-    kwic_data: pd.DataFrame = KWIC_REGISTRY[kwic_key](
-        corpus=corpus,
-        opts=opts,
-        words_before=words_before,
-        words_after=words_after,
-        p_show=p_show,
-        cut_off=cut_off,
-        num_processes=num_processes,
-    )
+
+    # Wrap the shard callback to apply normalize_kwic_df before forwarding
+    wrapped_shard_callback: Callable[[int, pd.DataFrame], None] | None = None
+    if on_shard_complete is not None and use_multiprocessing:
+        _p_show = p_show
+
+        def _normalize_and_forward(shard_index: int, raw_df: pd.DataFrame) -> None:
+            normalized = normalize_kwic_df(raw_df, lexical_form=_p_show)
+            on_shard_complete(shard_index, normalized)
+
+        wrapped_shard_callback = _normalize_and_forward
+
+    if use_multiprocessing:
+        kwic_data = execute_kwic_multiprocess(
+            corpus=corpus,
+            opts=opts,
+            words_before=words_before,
+            words_after=words_after,
+            p_show=p_show,
+            cut_off=cut_off,
+            num_processes=num_processes,
+            on_shards_total=on_shards_total,
+            on_shard_complete=wrapped_shard_callback,
+        )
+    else:
+        kwic_data = execute_kwic_singleprocess(
+            corpus=corpus,
+            opts=opts,
+            words_before=words_before,
+            words_after=words_after,
+            p_show=p_show,
+            cut_off=cut_off,
+        )
+
     # FIXME: Temporary fix to ensure consistent column naming, but why not use S_ATTR_RENAMES?
     kwic_data = normalize_kwic_df(kwic_data, lexical_form=p_show)
     return kwic_data
@@ -87,6 +111,8 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
     cut_off: int | None = 200000,
     use_multiprocessing: bool = False,
     num_processes: int | None = None,
+    on_shards_total: Callable[[int], None] | None = None,
+    on_shard_complete: Callable[[int, pd.DataFrame], None] | None = None,
 ) -> pd.DataFrame:
     """Compute KWIC with decoded speech metadata from the prebuilt speech_index.
 
@@ -105,9 +131,29 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
         cut_off: Maximum hits to return. Defaults to 200000.
         use_multiprocessing: Whether to use multiprocessing. Defaults to False.
         num_processes: Number of processes to use. Defaults to CPU count.
+        on_shards_total: Optional callback fired once with the total shard count.
+        on_shard_complete: Optional callback fired per completed shard with
+            (shard_index, decoded_df) where decoded_df has had the speech index
+            joined and ``speech_id`` column added.
     Returns:
         pd.DataFrame: KWIC results with decoded metadata.
     """
+    # Wrap the shard callback to apply the speech-index join before forwarding
+    wrapped_shard_callback: Callable[[int, pd.DataFrame], None] | None = None
+    if on_shard_complete is not None and use_multiprocessing:
+        _prebuilt = prebuilt_speech_index
+
+        def _join_and_forward(shard_index: int, normalized_df: pd.DataFrame) -> None:
+            if normalized_df.empty:
+                on_shard_complete(shard_index, normalized_df)
+                return
+            joined = normalized_df.join(_prebuilt, how="left")
+            joined.index.name = "speech_id"
+            joined["speech_id"] = joined.index
+            on_shard_complete(shard_index, joined)
+
+        wrapped_shard_callback = _join_and_forward
+
     kwic_data: pd.DataFrame = kwic(
         corpus,
         opts,
@@ -117,6 +163,8 @@ def kwic_with_decode(  # pylint: disable=too-many-arguments
         cut_off=cut_off,
         use_multiprocessing=use_multiprocessing,
         num_processes=num_processes,
+        on_shards_total=on_shards_total,
+        on_shard_complete=wrapped_shard_callback,
     )
     if kwic_data.empty:
         return kwic_data

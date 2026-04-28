@@ -109,6 +109,24 @@ class TicketStateStore:
     def get_artifact_bytes(self) -> int:
         return self._read_counter(self._artifact_bytes_key())
 
+    def set_shards_total(self, ticket_id: str, n: int) -> None:
+        """Record the total shard count for cross-process progress tracking."""
+        self._client.set(self._shard_total_key(ticket_id), n)
+
+    def increment_shards_complete(self, ticket_id: str) -> int:
+        """Atomically increment the shard-complete counter and return the new value."""
+        return int(cast(str, self._client.incr(self._shard_complete_key(ticket_id))))
+
+    def get_shard_progress(self, ticket_id: str) -> tuple[int, int]:
+        """Return ``(shards_complete, shards_total)`` from Redis counters."""
+        complete = self._read_counter(self._shard_complete_key(ticket_id))
+        total = self._read_counter(self._shard_total_key(ticket_id))
+        return complete, total
+
+    def delete_shard_progress(self, ticket_id: str) -> None:
+        """Remove shard counter keys when a ticket is deleted."""
+        self._client.delete(self._shard_complete_key(ticket_id), self._shard_total_key(ticket_id))
+
     def _ticket_key(self, ticket_id: str) -> str:
         return self._key(f"ticket:{ticket_id}")
 
@@ -120,6 +138,12 @@ class TicketStateStore:
 
     def _stats_initialized_key(self) -> str:
         return self._key("stats:initialized")
+
+    def _shard_total_key(self, ticket_id: str) -> str:
+        return self._key(f"shard:total:{ticket_id}")
+
+    def _shard_complete_key(self, ticket_id: str) -> str:
+        return self._key(f"shard:complete:{ticket_id}")
 
     def _key(self, suffix: str) -> str:
         return f"{self._key_prefix}:{suffix}"
@@ -147,7 +171,7 @@ class TicketStateStore:
     def _artifact_bytes_delta(self, payload: dict[str, Any] | None) -> int:
         if payload is None:
             return 0
-        if payload.get("status") != "ready":
+        if payload.get("status") not in ("ready", "partial"):
             return 0
         return int(payload.get("artifact_bytes") or 0)
 

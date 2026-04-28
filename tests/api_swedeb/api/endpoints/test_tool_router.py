@@ -6,7 +6,7 @@ import json
 import zipfile
 from datetime import UTC, datetime
 from typing import Literal
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -745,8 +745,10 @@ class TestWordTrendSpeechesTicketEndpoints:
             (),
             {"status": "ready", "error": None, "manifest_meta": {}, "total_hits": 1, "expires_at": None},
         )()
-        kwic_ticket_service.get_full_artifact.return_value = pd.DataFrame(
-            [{"left_word": "vi", "node_word": "debatt", "right_word": "nu", "speech_id": "i-1"}]
+        kwic_ticket_service.get_full_artifact = AsyncMock(
+            return_value=pd.DataFrame(
+                [{"left_word": "vi", "node_word": "debatt", "right_word": "nu", "speech_id": "i-1"}]
+            )
         )
 
         result = asyncio.run(
