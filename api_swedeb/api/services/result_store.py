@@ -384,7 +384,20 @@ class ResultStore:
             empty[TICKET_ROW_ID] = pd.Series(dtype="int64")
             return empty
 
-        dfs = [pd.read_feather(f) for f in shard_files]
+        try:
+            dfs = [pd.read_feather(f) for f in shard_files]
+        except FileNotFoundError:
+            # A shard file disappeared between the glob and the read.
+            # store_shards_ready() may have merged and removed the shard
+            # directory while transitioning to READY.  Re-read the ticket:
+            # if it is no longer PARTIAL the merged artifact is available.
+            fresh = self.get_ticket(ticket.ticket_id)
+            if fresh is not None and fresh.status != TicketStatus.PARTIAL:
+                return self.load_artifact(ticket.ticket_id)
+            empty = pd.DataFrame()
+            empty[TICKET_ROW_ID] = pd.Series(dtype="int64")
+            return empty
+
         merged = pd.concat(dfs, ignore_index=True)
         merged[TICKET_ROW_ID] = range(len(merged))
 
