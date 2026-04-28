@@ -101,7 +101,7 @@ class WordTrendsService:
             low = year_range.get("low", 0)
             high = year_range.get("high", 9999)
             mask = corpus.document_index["year"].between(low, high)
-            row_indices = corpus.document_index.index[mask].tolist()
+            row_indices = mask.to_numpy().nonzero()[0]
             count = int(corpus.bag_term_matrix[row_indices, token_id].sum())
         else:
             count = int(corpus.bag_term_matrix[:, token_id].sum())
