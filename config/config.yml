@@ -75,6 +75,7 @@ startup:
 kwic:
   use_multiprocessing: true     # Enabled when the current process may safely spawn child workers
   num_processes: 8
+  num_shards: 24                # Year-range partitions; must be >= num_processes for load balancing
   cut_off: 500000               # Maximum concordance hits fetched from CWB per query
   download_wait_timeout_s: 300  # Seconds to wait for READY before download endpoint returns 503
 

@@ -80,6 +80,7 @@ def execute_kwic_multiprocess(
     p_show: Literal["word", "lemma"],
     cut_off: int | None,
     num_processes: int | None,
+    num_shards: int | None = None,
     on_shards_total: Callable[[int], None] | None = None,
     on_shard_complete: Callable[[int, pd.DataFrame], None] | None = None,
 ) -> pd.DataFrame:
@@ -92,7 +93,11 @@ def execute_kwic_multiprocess(
         words_after: Number of words after match
         p_show: What to display ('word' or 'lemma')
         cut_off: Maximum number of results
-        num_processes: Number of processes to use (None = CPU count)
+        num_processes: Number of parallel worker processes (pool size).  None = CPU count.
+        num_shards: Number of year-range partitions to divide the corpus into.
+                    When None, defaults to ``num_processes`` (previous behaviour).
+                    Setting this higher than ``num_processes`` enables finer-grained
+                    partitioning with load balancing across workers.
         on_shards_total: Optional callback invoked once with the total shard count
                          before the pool starts.  Used by the ticket service to
                          pre-register shard metadata.
@@ -106,6 +111,10 @@ def execute_kwic_multiprocess(
     if num_processes is None:
         num_processes = mp.cpu_count()
 
+    # num_shards controls partitioning granularity; defaults to num_processes
+    # when not set so that existing behaviour is preserved.
+    effective_num_shards: int = num_shards if num_shards is not None else num_processes
+
     corpus_opts: CorpusCreateOpts = CorpusCreateOpts.to_opts(corpus)
 
     default_min: int = ConfigValue("kwic.default_min_year", default=1867).resolve()
@@ -114,8 +123,8 @@ def execute_kwic_multiprocess(
     # Extract year range from opts or use defaults
     min_year, max_year = extract_year_range(opts, default_min=default_min, default_max=default_max)
 
-    # Create year chunks
-    year_chunks: list[tuple[int, int]] = create_year_chunks(min_year, max_year, num_processes)
+    # Create year chunks — partitioning driven by num_shards, parallelism by num_processes
+    year_chunks: list[tuple[int, int]] = create_year_chunks(min_year, max_year, effective_num_shards)
 
     # Notify caller of total shard count before pool starts (for capacity reservation)
     if on_shards_total is not None:
