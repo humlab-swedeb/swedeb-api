@@ -120,13 +120,8 @@ def _require_ready_ticket(ticket_id: str, result_store: ResultStore) -> TicketMe
 
 @router.get("/kwic/estimate", response_model=KWICEstimateResult)
 async def estimate_kwic_hits(
-    word: str = Query(..., description="Word to estimate hit count for"),
-    from_year: int | None = Query(None, description="Start year (inclusive)"),
-    to_year: int | None = Query(None, description="End year (inclusive)"),
-    who: list[str] | None = Query(None, description="Speaker person_id filter"),
-    party_id: list[int] | None = Query(None, description="Party ID filter"),
-    gender_id: list[int] | None = Query(None, description="Gender ID filter"),
-    chamber_abbrev: list[str] | None = Query(None, description="Chamber abbreviation filter"),
+    word: Annotated[str, Query(description="Word to estimate hit count for")],
+    commons: CommonParams,
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> KWICEstimateResult:
     """Return an approximate hit count for a KWIC search word using DTM column sums.
@@ -135,16 +130,7 @@ async def estimate_kwic_hits(
     metadata filters as a real search, but does not run a CQP query. Response
     time is typically under 20 ms for a cached corpus.
     """
-    from api_swedeb.api.params import build_filter_opts
-
-    filter_opts = build_filter_opts(
-        from_year=from_year,
-        to_year=to_year,
-        who=who,
-        party_id=party_id,
-        gender_id=gender_id,
-        chamber_abbrev=chamber_abbrev,
-    )
+    filter_opts = commons.get_filter_opts(include_year=True)
     count = word_trends_service.estimate_hits(word, filter_opts)
     return KWICEstimateResult(
         in_vocabulary=count is not None,
