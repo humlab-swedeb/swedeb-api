@@ -31,21 +31,21 @@
 ### Phase 2 — Threshold-based display mode
 
 **Config**
-- [ ] Add `kwic.large_result_threshold` (default: `10000`) to `config/config.yml` and `tests/config.yml`
-- [ ] Add `kwic.large_result_display_limit` (default: `1000`) to both config files
+- [x] Add `kwic.large_result_threshold` (default: `10000`) to `config/config.yml` and `tests/config.yml`
+- [x] Add `kwic.large_result_display_limit` (default: `1000`) to both config files
 
 **Backend**
-- [ ] Read threshold and display limit via `ConfigValue` in `KWICTicketService`
-- [ ] Cap `total_pages` in `get_page_result` when `estimated_hits >= threshold`
-- [ ] Include `display_limited: true` and `display_limit: N` in the page result response schema
-- [ ] Verify archive/download endpoint ignores the display cap
-- [ ] Add tests for the capped and uncapped paths
+- [x] Read threshold and display limit via `ConfigValue` in `KWICTicketService`
+- [x] Cap `total_pages` in `get_page_result` when `total_hits >= threshold`
+- [x] Include `display_limited: true` and `display_limit: N` in the page result response schema
+- [x] Verify archive/download endpoint ignores the display cap
+- [x] Add tests for the capped and uncapped paths
 
 **Frontend**
-- [ ] Consume `display_limited` and `display_limit` from the status/page response
-- [ ] Show a banner: "Sökningen har ~N träffar. Tabellen visar de första M. Ladda ner alla…"
-- [ ] Surface download CTA prominently alongside the banner
-- [ ] Remove the silent `cut_off` fallback path
+- [x] Consume `display_limited` and `display_limit` from the status/page response
+- [x] Show a banner: "Sökningen har ~N träffar. Tabellen visar de första M. Ladda ner alla…"
+- [x] Surface download CTA prominently alongside the banner
+- [x] Remove the silent `cut_off` from `buildKwicTicketPayload`
 
 ---
 
