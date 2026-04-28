@@ -356,11 +356,29 @@ class KWICTicketService:
         When *total_hits* is below the configured threshold the result is
         uncapped and the original *total_pages* is returned unchanged.
         """
-        threshold: int = ConfigValue("kwic.large_result_threshold", default=10000).resolve()
+        default_threshold = 10000
+        default_display_limit = 1000
+
+        try:
+            threshold = int(ConfigValue("kwic.large_result_threshold", default=default_threshold).resolve())
+        except (TypeError, ValueError):
+            threshold = default_threshold
+        if threshold <= 0:
+            threshold = default_threshold
+
         if total_hits < threshold:
             return False, None, total_pages
-        display_limit: int = ConfigValue("kwic.large_result_display_limit", default=1000).resolve()
-        capped_pages: int = math.ceil(display_limit / page_size) if display_limit else 0
+
+        try:
+            display_limit = int(
+                ConfigValue("kwic.large_result_display_limit", default=default_display_limit).resolve()
+            )
+        except (TypeError, ValueError):
+            display_limit = default_display_limit
+        if display_limit <= 0:
+            display_limit = default_display_limit
+
+        capped_pages: int = math.ceil(display_limit / page_size)
         return True, display_limit, min(capped_pages, total_pages)
 
     def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
