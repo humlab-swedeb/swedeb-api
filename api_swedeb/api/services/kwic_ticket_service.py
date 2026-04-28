@@ -305,6 +305,7 @@ class KWICTicketService:
             sort_columns, ascending = self._sort_spec(sort_by=sort_by, sort_order=sort_order)
             sorted_positions = result_store.get_sorted_positions(
                 ticket_id,
+                data=data,
                 sort_columns=sort_columns,
                 ascending=ascending,
             )
@@ -362,6 +363,7 @@ class KWICTicketService:
             sort_columns, ascending = self._sort_spec(sort_by=sort_by, sort_order=sort_order)
             sorted_positions = result_store.get_sorted_positions(
                 ticket_id,
+                data=data,
                 sort_columns=sort_columns,
                 ascending=ascending,
             )

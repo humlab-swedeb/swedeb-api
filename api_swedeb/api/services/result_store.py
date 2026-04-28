@@ -396,13 +396,15 @@ class ResultStore:
         self,
         ticket_id: str,
         *,
+        data: pd.DataFrame,
         sort_columns: Sequence[str],
         ascending: Sequence[bool],
     ) -> tuple[int, ...]:
-        data = self.load_artifact(ticket_id)
-        ticket = self.require_ticket(ticket_id)
-        shards_complete = ticket.shards_complete
-        cache_key = (ticket_id, shards_complete, tuple(sort_columns), tuple(ascending))
+        # Use the row count of the *provided* snapshot as the cache discriminator so
+        # that a caller which already loaded `data` cannot receive positions computed
+        # from a later, larger snapshot (which would produce out-of-bounds indices).
+        row_count = len(data.index)
+        cache_key = (ticket_id, row_count, tuple(sort_columns), tuple(ascending))
 
         with self._lock:
             cached = self._sorted_positions_cache.get(cache_key)
