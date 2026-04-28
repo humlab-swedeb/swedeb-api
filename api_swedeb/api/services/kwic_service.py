@@ -1,6 +1,7 @@
 """KWIC (Keyword In Context) analysis service for parliamentary speech data."""
 
 import multiprocessing as mp
+from collections.abc import Callable
 
 import ccc
 import pandas as pd
@@ -45,6 +46,8 @@ class KWICService:
         cut_off: int | None = 200000,
         use_multiprocessing: bool | None = None,  # None = read from config
         n_processes: int | None = None,
+        on_shards_total: Callable[[int], None] | None = None,
+        on_shard_complete: Callable[[int, pd.DataFrame], None] | None = None,
     ) -> pd.DataFrame:
         """Get keyword in context data from corpus.
 
@@ -59,6 +62,8 @@ class KWICService:
             cut_off: Maximum number of hits to return
             use_multiprocessing: Whether to use multiprocessing (overrides config if not None)
             n_processes: Number of processes for multiprocessing (overrides config if not None)
+            on_shards_total: Optional callback fired once with total shard count (multiprocess only).
+            on_shard_complete: Optional callback fired per decoded shard (multiprocess only).
 
         Returns:
             DataFrame with KWIC data
@@ -84,6 +89,8 @@ class KWICService:
             cut_off=cut_off,
             use_multiprocessing=resolved_use_multiprocessing,
             num_processes=n_processes or ConfigValue("kwic.num_processes", default=8).resolve(),
+            on_shards_total=on_shards_total,
+            on_shard_complete=on_shard_complete,
         )
 
         return data

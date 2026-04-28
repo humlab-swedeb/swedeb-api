@@ -56,7 +56,7 @@ class WordTrendSpeechesTicketAccepted(BaseModel):
 
 class WordTrendSpeechesTicketStatus(BaseModel):
     ticket_id: str
-    status: Literal["pending", "ready", "error"]
+    status: Literal["pending", "partial", "ready", "error"]
     total_hits: int | None = None
     error: str | None = None
     expires_at: datetime

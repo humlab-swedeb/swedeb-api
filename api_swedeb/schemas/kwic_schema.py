@@ -50,7 +50,10 @@ class KWICQueryRequest(BaseModel):
     lemmatized: bool = True
     words_before: int = 2
     words_after: int = 2
-    cut_off: int | None = Field(default_factory=_default_cut_off)
+    cut_off: int | None = Field(
+        default_factory=_default_cut_off,
+        description="Deprecated: ignored by the ticket pipeline in Phase 3. Retained for backward compatibility.",
+    )
     filters: KWICFilterRequest = Field(default_factory=KWICFilterRequest)
 
 
@@ -62,10 +65,12 @@ class KWICTicketAccepted(BaseModel):
 
 class KWICTicketStatus(BaseModel):
     ticket_id: str
-    status: Literal["pending", "ready", "error"]
+    status: Literal["pending", "partial", "ready", "error"]
     total_hits: int | None = None
     error: str | None = None
     expires_at: datetime
+    shards_complete: int = 0
+    shards_total: int = 0
 
 
 class KWICTicketSortBy(str, Enum):
@@ -81,16 +86,14 @@ class KWICTicketSortBy(str, Enum):
 
 class KWICPageResult(BaseModel):
     ticket_id: str
-    status: Literal["ready"]
+    status: Literal["partial", "ready", "error"]
     page: int
     page_size: int
     total_hits: int
     total_pages: int
-    display_limited: bool = Field(False, description="True when total_hits is at or above the large-result threshold")
-    display_limit: int | None = Field(
-        None, description="Maximum rows navigable via pagination when display_limited is True"
-    )
     expires_at: datetime
+    shards_complete: int = 0
+    shards_total: int = 0
     kwic_list: list[KeywordInContextItem]
 
 

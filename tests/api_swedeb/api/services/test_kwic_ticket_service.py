@@ -533,98 +533,85 @@ def _make_df(n: int) -> pd.DataFrame:
     )
 
 
-def test_display_cap_returns_uncapped_when_below_threshold():
-    """_display_cap must not cap when total_hits < threshold."""
-    service = KWICTicketService()
-    from api_swedeb.core.configuration.inject import ConfigStore
+# ---------------------------------------------------------------------------
+# Phase 3 – multiprocess shard delivery integration
+# ---------------------------------------------------------------------------
 
-    store = ConfigStore()
-    store.configure_context(
-        source={"kwic": {"large_result_threshold": 10000, "large_result_display_limit": 1000}},
-        env_prefix=None,
+
+def test_execute_ticket_transitions_through_partial_before_ready(tmp_path) -> None:
+    """execute_ticket emits PARTIAL (via shard callbacks) and then transitions to READY."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
     )
-    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
-        limited, limit, pages = service._display_cap(total_hits=5, total_pages=1, page_size=10)
-
-    assert limited is False
-    assert limit is None
-    assert pages == 1
-
-
-def test_display_cap_returns_capped_when_at_or_above_threshold():
-    """_display_cap must cap total_pages when total_hits >= threshold."""
-    service = KWICTicketService()
-    from api_swedeb.core.configuration.inject import ConfigStore
-
-    store = ConfigStore()
-    store.configure_context(
-        source={"kwic": {"large_result_threshold": 10000, "large_result_display_limit": 100}},
-        env_prefix=None,
-    )
-    with patch("api_swedeb.core.configuration.inject.get_config_store", return_value=store):
-        limited, limit, pages = service._display_cap(total_hits=15_000, total_pages=1500, page_size=10)
-
-    assert limited is True
-    assert limit == 100
-    assert pages == 10  # ceil(100 / 10)
-
-
-def test_get_page_result_propagates_display_limited_flag(tmp_path):
-    """get_page_result must include display_limited/display_limit from _display_cap."""
-    store = _make_store(tmp_path)
-    service = KWICTicketService()
-
     asyncio.run(store.startup())
     try:
-        ticket = store.create_ticket(query_meta={"search": "test"})
-        store.store_ready(ticket.ticket_id, df=_make_df(5))
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
 
-        with (
-            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=False),
-            patch.object(service, "_display_cap", return_value=(True, 100, 1)),
-        ):
-            result = service.get_page_result(
+        # Minimal raw KWIC rows that the mapper can transform
+        def _raw_row(i: int) -> dict:
+            return {
+                "left_word": f"left-{i}",
+                "node_word": "demokrati",
+                "right_word": f"right-{i}",
+                "year": 1970 + i,
+                "name": f"Speaker {i}",
+                "party_abbrev": "S",
+                "document_name": f"prot-{1970 + i}--ak--1",
+                "page_number_start": i,
+                "speech_id": f"i-{i}",
+                "wiki_id": f"Q{i}",
+            }
+
+        df_shard_0 = pd.DataFrame([_raw_row(0)])
+        df_shard_1 = pd.DataFrame([_raw_row(1)])
+        combined = pd.concat([df_shard_0, df_shard_1], ignore_index=True)
+
+        status_transitions: list[TicketStatus] = []
+
+        def fake_get_kwic(
+            *,
+            corpus,
+            commons,
+            keywords,
+            lemmatized,
+            words_before,
+            words_after,
+            cut_off,
+            p_show,
+            on_shards_total=None,
+            on_shard_complete=None,
+        ) -> pd.DataFrame:
+            # Simulate the multiprocess path: announce shard total first, then deliver shards.
+            if on_shards_total is not None:
+                on_shards_total(2)
+                status_transitions.append(store.require_ticket(ticket.ticket_id).status)
+            if on_shard_complete is not None:
+                on_shard_complete(0, df_shard_0)
+                on_shard_complete(1, df_shard_1)
+            return combined
+
+        kwic_service = MagicMock()
+        kwic_service.get_kwic.side_effect = fake_get_kwic
+
+        service = KWICTicketService()
+        with patch.object(service, "_create_corpus", return_value=MagicMock()):
+            service.execute_ticket(
                 ticket_id=ticket.ticket_id,
+                request=KWICQueryRequest(search="demokrati"),
+                cwb_opts={"registry_dir": "/tmp/registry", "corpus_name": "CORPUS", "data_dir": "/tmp/data"},
+                kwic_service=kwic_service,
                 result_store=store,
-                page=1,
-                page_size=10,
-                sort_by=None,
-                sort_order=SortOrder.asc,
             )
 
-        assert isinstance(result, KWICPageResult)
-        assert result.display_limited is True
-        assert result.display_limit == 100
-        assert result.total_pages == 1
-    finally:
-        asyncio.run(store.shutdown())
-
-
-def test_get_page_result_propagates_uncapped_flag(tmp_path):
-    """get_page_result must pass display_limited=False through when not capped."""
-    store = _make_store(tmp_path)
-    service = KWICTicketService()
-
-    asyncio.run(store.startup())
-    try:
-        ticket = store.create_ticket(query_meta={"search": "test"})
-        store.store_ready(ticket.ticket_id, df=_make_df(5))
-
-        with (
-            patch("api_swedeb.api.services.kwic_ticket_service.ConfigValue.resolve", return_value=False),
-            patch.object(service, "_display_cap", return_value=(False, None, 1)),
-        ):
-            result = service.get_page_result(
-                ticket_id=ticket.ticket_id,
-                result_store=store,
-                page=1,
-                page_size=10,
-                sort_by=None,
-                sort_order=SortOrder.asc,
-            )
-
-        assert isinstance(result, KWICPageResult)
-        assert result.display_limited is False
-        assert result.display_limit is None
+        final: TicketMeta = store.require_ticket(ticket.ticket_id)
+        assert final.status == TicketStatus.READY
+        assert final.shards_complete == 2
+        assert final.shards_total == 2
+        assert TicketStatus.PARTIAL in status_transitions, "Ticket must pass through PARTIAL before READY"
     finally:
         asyncio.run(store.shutdown())
