@@ -84,6 +84,13 @@ class KWICPageResult(BaseModel):
     kwic_list: list[KeywordInContextItem]
 
 
+class KWICEstimateResult(BaseModel):
+    estimated_hits: int | None = Field(
+        None, description="Approximate hit count from DTM; null if word is not in vocabulary"
+    )
+    in_vocabulary: bool = Field(..., description="Whether the word appears in the DTM vocabulary")
+
+
 class SortBy(Enum):
     left_word = "left_word"
     node_word = "node_word"

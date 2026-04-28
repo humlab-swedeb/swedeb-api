@@ -8,6 +8,86 @@
 
 ---
 
+## Progress
+
+### Phase 1 — Pre-search estimate
+
+**Backend**
+- [x] Add `KWICEstimateService` (or extend `KWICService`) with a DTM column-sum method that respects the same metadata filters as `WordTrendsService`
+- [x] Add `GET /v1/tools/kwic/estimate` endpoint with query params matching the KWIC search form
+- [x] Return `{ "estimated_hits": N, "in_vocabulary": true/false }` schema
+- [ ] Add `kwic.estimate` section to `config/config.yml` and `tests/config.yml` if needed
+- [x] Add unit test for the estimate method (mocked DTM) — `tests/api_swedeb/api/services/test_estimate_hits.py` (16 tests)
+- [x] Add API test for the estimate endpoint — `tests/api_swedeb/api/endpoints/test_kwic_estimate_endpoint.py` (11 tests)
+
+**Frontend**
+- [x] Add `fetchEstimate(word, filters)` action to `kwicDataStore.js`
+- [x] Debounce estimate call on word input and filter changes (300 ms)
+- [x] Display estimate near the search button with colour-coded guidance
+- [x] Label estimate as approximate; do not block the search
+
+---
+
+### Phase 2 — Threshold-based display mode
+
+**Config**
+- [ ] Add `kwic.large_result_threshold` (default: `10000`) to `config/config.yml` and `tests/config.yml`
+- [ ] Add `kwic.large_result_display_limit` (default: `1000`) to both config files
+
+**Backend**
+- [ ] Read threshold and display limit via `ConfigValue` in `KWICTicketService`
+- [ ] Cap `total_pages` in `get_page_result` when `estimated_hits >= threshold`
+- [ ] Include `display_limited: true` and `display_limit: N` in the page result response schema
+- [ ] Verify archive/download endpoint ignores the display cap
+- [ ] Add tests for the capped and uncapped paths
+
+**Frontend**
+- [ ] Consume `display_limited` and `display_limit` from the status/page response
+- [ ] Show a banner: "Sökningen har ~N träffar. Tabellen visar de första M. Ladda ner alla…"
+- [ ] Surface download CTA prominently alongside the banner
+- [ ] Remove the silent `cut_off` fallback path
+
+---
+
+### Phase 3 — Progressive shard delivery
+
+**Backend — Result store**
+- [ ] Add `PARTIAL` to `TicketStatus` enum
+- [ ] Add `shards_complete: int` and `shards_total: int` to `TicketMeta`
+- [ ] Add `store_shard(ticket_id, shard_index, df)` to `ResultStore`
+- [ ] Change artifact layout to per-ticket directory (`{ticket_id}/shard_NNNN.feather`)
+- [ ] Write shard files atomically (temp file + rename)
+- [ ] Update `load_artifact` to concatenate available shards during `PARTIAL`
+- [ ] Write `merged.feather` at `READY` for the download path
+- [ ] Update cleanup to delete the per-ticket directory
+
+**Backend — Executor**
+- [ ] Change `execute_kwic_multiprocess` to call `store_shard` in `as_completed` loop
+- [ ] Call `store_ready` after all shards are written
+- [ ] Keep single-process path unchanged
+
+**Backend — API**
+- [ ] Expose `shards_complete`, `shards_total`, `total_hits` in the status response
+- [ ] Add `estimated_hits` to the ticket-accepted response (computed at submit time)
+- [ ] Update page response to work correctly during `PARTIAL`
+- [ ] Verify download endpoint waits for `READY` before streaming
+
+**Backend — Tests**
+- [ ] Test `store_shard` writes atomically and advances `shards_complete`
+- [ ] Test `load_artifact` concatenates shards in order during `PARTIAL`
+- [ ] Test `store_ready` produces a `merged.feather` consistent with all shards
+- [ ] Test executor emits `PARTIAL` before `READY`
+
+**Frontend**
+- [ ] Update `waitForTicketReady` poll loop to continue on `partial`
+- [ ] Render rows progressively as new pages arrive during `PARTIAL`
+- [ ] Show a shard progress bar from `shards_complete / shards_total`
+- [ ] Disable column sort controls during `PARTIAL`; re-enable and re-sort at `READY`
+- [ ] Remove Phase 2 display-limit banner and config key reads
+- [ ] Remove the `cut_off` parameter from request construction
+
+---
+
 ## Summary
 
 This proposal has three layers, each independently shippable and each building on the previous:

@@ -31,6 +31,7 @@ import sys
 import time
 import uuid
 
+import ccc
 from loguru import logger
 
 logger.remove()
@@ -76,8 +77,6 @@ def main() -> None:
     from api_swedeb.api.services.corpus_loader import CorpusLoader
     from api_swedeb.api.services.kwic_service import KWICService
     from api_swedeb.core.configuration.inject import ConfigValue, get_config_store
-
-    import ccc
 
     get_config_store().configure_context(source=args.config)
 

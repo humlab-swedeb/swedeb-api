@@ -1,8 +1,11 @@
 """Word trends analysis service for parliamentary speech data."""
 
+from typing import Any
+
 import pandas as pd
 
 from api_swedeb.api.services.corpus_loader import CorpusLoader
+from api_swedeb.core.common.utility import PropertyValueMaskingOpts
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.core.speech_index import get_speeches_by_words
 from api_swedeb.core.utility import replace_by_patterns
@@ -59,6 +62,51 @@ class WordTrendsService:
             if valid_word:
                 filtered_terms.append(valid_word)
         return filtered_terms
+
+    def estimate_hits(self, word: str, filter_opts: dict[str, Any] | None = None) -> int | None:
+        """Estimate KWIC hit count using DTM column sums with metadata filters.
+
+        Returns the approximate number of corpus positions where `word` occurs
+        within the (optionally filtered) document set. Returns None when the
+        word is not in the DTM vocabulary.
+
+        Args:
+            word: Search word (exact match or lowercase fallback).
+            filter_opts: Optional filter dict from ``build_filter_opts``. Year
+                ranges (key ``"year"``) are handled separately from column
+                filters so that ``PropertyValueMaskingOpts`` is not confused by
+                the nested dict structure.
+
+        Returns:
+            Approximate hit count, or None if the word is not in vocabulary.
+        """
+        resolved = self.word_in_vocabulary(word)
+        if resolved is None:
+            return None
+
+        corpus = self._loader.vectorized_corpus
+        token_id: int = corpus.token2id[resolved]
+
+        opts = dict(filter_opts) if filter_opts else {}
+
+        # Year range is handled as a document_index slice, not via PropertyValueMaskingOpts.
+        year_range = opts.pop("year", None)
+
+        # Apply column filters (party_id, gender_id, …) if any remain.
+        if opts:
+            corpus = corpus.filter(PropertyValueMaskingOpts(**opts))
+
+        # Extract the sparse column for the token and select rows by year.
+        if year_range and isinstance(year_range, dict):
+            low = year_range.get("low", 0)
+            high = year_range.get("high", 9999)
+            mask = corpus.document_index["year"].between(low, high)
+            row_indices = mask.to_numpy().nonzero()[0]
+            count = int(corpus.bag_term_matrix[row_indices, token_id].sum())
+        else:
+            count = int(corpus.bag_term_matrix[:, token_id].sum())
+
+        return count
 
     def get_word_trend_results(
         self, search_terms: list[str], filter_opts: dict, normalize: bool = False
