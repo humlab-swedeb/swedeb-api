@@ -75,6 +75,7 @@ startup:
 kwic:
   use_multiprocessing: true  # Enabled when the current process may safely spawn child workers
   num_processes: 8
+  cut_off: 200000             # Maximum concordance hits fetched from CWB per query
   large_result_threshold: 10000   # Total hits at or above this value trigger the display cap
   large_result_display_limit: 1000  # Maximum rows shown in the table when the cap is active
 

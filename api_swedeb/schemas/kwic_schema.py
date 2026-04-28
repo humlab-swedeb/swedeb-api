@@ -4,6 +4,12 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from api_swedeb.core.configuration import ConfigValue
+
+
+def _default_cut_off() -> int | None:
+    return ConfigValue("kwic.cut_off", default=200000).resolve()
+
 
 class KeywordInContextItem(BaseModel):
     left_word: str = Field(..., description="Left context of search hit")
@@ -44,7 +50,7 @@ class KWICQueryRequest(BaseModel):
     lemmatized: bool = True
     words_before: int = 2
     words_after: int = 2
-    cut_off: int | None = 200000
+    cut_off: int | None = Field(default_factory=_default_cut_off)
     filters: KWICFilterRequest = Field(default_factory=KWICFilterRequest)
 
 
