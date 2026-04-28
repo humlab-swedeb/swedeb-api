@@ -83,14 +83,14 @@ class TestEstimateHitsNoFilters:
         # demokrati: col 1 — docs 0,1,2 → 0+3+1 = 4
         assert service.estimate_hits("demokrati") == 4
 
-    def test_lowercase_fallback_matches_vocabulary_word(self):
-        # Put an upper-case key in token2id but the service does lowercase fallback
+    def test_lowercase_query_does_not_match_mixed_case_vocabulary_word(self):
+        # Put a mixed-case key in token2id; a lowercase query should not match it.
         corpus = _make_corpus()
         corpus.token2id = {"Klimat": 0, "demokrati": 1, "budget": 2}
         loader = MagicMock()
         loader.vectorized_corpus = corpus
         service = WordTrendsService(loader=loader)
-        # "klimat" not in token2id directly; "Klimat" also not; no match
+        # "klimat" is not an exact token2id key, so the lookup returns no match.
         assert service.estimate_hits("klimat") is None
 
     def test_exact_match_preferred_over_lowercase(self):
