@@ -40,6 +40,7 @@ Those topics belong in development documentation, operations documentation, test
 ## Scope boundaries
 
 - `docs/DESIGN.md`: architecture, system structure, component responsibilities, key flows, cross-cutting concerns, constraints, and major design decisions
+- `docs/DIAGRAMS.md`: visual design diagrams — sequence diagrams, state diagrams, component diagrams, and other structural or behavioral visualizations of the active runtime; historical diagrams belong in `docs/archive/`
 - `docs/DEVELOPMENT.md`: contributor workflow, local setup, common commands, and day-to-day development practices
 - `docs/TESTING.md`: test strategy, test levels, quality expectations, validation workflow, and repository-specific testing guidance
 - `docs/OPERATIONS.md`: runtime environments, deployment, release flow, rollback, recovery, observability, and operational dependencies

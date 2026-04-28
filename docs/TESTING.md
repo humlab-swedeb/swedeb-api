@@ -252,7 +252,7 @@ The normal pre-PR baseline is:
 ## Manual Smoke Testing
 
 Before handing a deployed or locally staged build over to testers, run the concise
-[manual smoke-test checklist](./SMOKE_TEST_CHECKLIST.md). It covers startup, API documentation, metadata, KWIC,
+[manual smoke-test checklist](./checklists/SMOKE_TEST_CHECKLIST.md). It covers startup, API documentation, metadata, KWIC,
 word trends, n-grams, speech retrieval, ticketed query flows, ZIP downloads, and basic error handling.
 
 ## CI Test Execution
@@ -280,7 +280,7 @@ That means local test execution remains the primary automated validation path be
 
 - [DEVELOPMENT.md](./DEVELOPMENT.md)
 - [DESIGN.md](./DESIGN.md)
-- [SMOKE_TEST_CHECKLIST.md](./SMOKE_TEST_CHECKLIST.md)
+- [SMOKE_TEST_CHECKLIST.md](./checklists/SMOKE_TEST_CHECKLIST.md)
 - [OPERATIONS.md](./OPERATIONS.md)
 - [AGENTS.md](../AGENTS.md)
 - [pyproject.toml](../pyproject.toml)

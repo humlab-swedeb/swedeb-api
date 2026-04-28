@@ -4,7 +4,7 @@
 **Summary**: The Corpus facade class and pass-through util wrappers are gone. Services are injected directly into routes via FastAPI's `Depends()` mechanism, while the old ZIP-backed speech lookup path has been archived under `api_swedeb/legacy/`.
 
 - **Pattern**: Direct service dependency injection with singleton caching (@lru_cache)
-- **Active Services**: CorpusLoader, MetadataService, WordTrendsService, SearchService, NGramsService, KWICService
+- **Active Services**: CorpusLoader, MetadataService, WordTrendsService, SearchService, NGramsService, KWICService, KWICArchiveService
 - **Removed**: `api_swedeb/api/utils/corpus.py` (the monolithic facade wrapper)
 - **Router Changes**: Routes now inject services directly, not a generic corpus object
 - **Archived Runtime**: Legacy speech lookup code now lives in `api_swedeb/legacy/speech_lookup.py` and `api_swedeb/legacy/load.py`
@@ -107,6 +107,7 @@ def configure_config_store():
 ## Documentation & Knowledge Base
 - Consult `docs/DESIGN.md`, `api_swedeb/`, `tests/`, `README.md`, `config/`, and generated FastAPI/OpenAPI definitions before changing design-focused documentation or architecture guidance.
 - Keep `docs/DESIGN.md` focused on system structure, component responsibilities, key flows, external dependencies, data/persistence at a design level, cross-cutting concerns, constraints, major design decisions, and important tradeoffs or technical debt.
+- Use `docs/DIAGRAMS.md` for visual design diagrams: sequence diagrams, state diagrams, component diagrams, and other structural or behavioral visualizations of the active runtime. Proposal-specific diagrams may live in `docs/change_requests/` and be promoted to `docs/DIAGRAMS.md` once implemented.
 - Do not put local setup instructions, deployment/runbook procedures, exhaustive endpoint-by-endpoint API reference, low-level code walkthroughs, or detailed unit-test/CI catalogs into `docs/DESIGN.md`; keep those in `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, generated API docs, or close to the code.
 - Consult `docs/DEVELOPMENT.md`, `README.md`, `pyproject.toml`, `Makefile`, `.github/scripts/`, `docker/`, and `config/` before changing developer-facing documentation or local workflow guidance.
 - Keep `docs/DEVELOPMENT.md` focused on developer-facing content: purpose and audience, prerequisites, local setup, local configuration, project structure, common commands, code quality checks, development workflow, debugging, and related documents.
@@ -114,9 +115,9 @@ def configure_config_store():
 - Consult `docs/TESTING.md`, `tests/`, `pyproject.toml`, `.github/workflows/`, `.github/scripts/`, `Makefile`, `docker/`, and `config/` before changing testing-focused documentation or validation guidance.
 - Keep `docs/TESTING.md` focused on testing strategy, quality expectations, test levels and responsibilities, test environment assumptions, fixture and mocking policy, supported test commands, validation before merge, CI test execution, and testing troubleshooting.
 - Do not put local bootstrap instructions, runtime operations procedures, high-level architecture rationale, exhaustive API reference, or line-by-line inventories of individual test files into `docs/TESTING.md`; keep those in `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/DESIGN.md`, generated API docs, or close to the tests themselves.
-- For proposal work, consult `.github/instructions/proposal-writing-guide.instructions.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
+- For proposal work, consult `.github/instructions/proposal-writing-guide.instructions.md` and `docs/templates/PROPOSAL_TEMPLATE.md`. Place new proposals in `docs/change_requests/`.
 - Keep proposals focused on the decision to be made: problem, scope, recommendation, tradeoffs, risks, and validation expectations. Do not expand proposals into general documentation or full implementation specs unless that level of detail is required.
-- Treat `docs/change_requests/` as design and migration context for proposal work, not as the source of truth for current runtime, development, testing, or operational behavior.
+- Treat `docs/change_requests/` as the home for all design proposals and migration context; it is not the source of truth for current runtime, development, testing, or operational behavior.
 - Consult `docs/OPERATIONS.md` plus current workflow files, scripts, container definitions, and runtime configuration before changing release processes or infrastructure.
 - Keep `docs/OPERATIONS.md` focused on operations: environments, runtime configuration and secrets, operational assumptions, data layout, build artifacts, deployment flow, CI stages, CD triggers/release process, post-deployment verification, rollback, health/observability, and backup/recovery basics.
 - Do not put local development setup, contributor workflow, unit-test patterns, or general Git guidance into `docs/OPERATIONS.md`; keep those in `docs/DEVELOPMENT.md` or other developer-facing docs.

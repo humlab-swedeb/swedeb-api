@@ -127,7 +127,7 @@ Then access:
 
 ### Deprecated Local Testing Workflow
 
-Previous comprehensive local testing scripts (`test-local.sh`, `build-local-image.sh`, etc.) have been removed pending redesign. See [../docs/proposals/local-container-testing-workflow.md](../docs/proposals/local-container-testing-workflow.md) for the intent and future considerations.
+Previous comprehensive local testing scripts (`test-local.sh`, `build-local-image.sh`, etc.) have been removed pending redesign. See [../docs/change_requests/LOCAL-CONTAINER-TESTING-WORKFLOW.md](../docs/change_requests/LOCAL-CONTAINER-TESTING-WORKFLOW.md) for the intent and future considerations.
 
 ## Testing With `act`
 

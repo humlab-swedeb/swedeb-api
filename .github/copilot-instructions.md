@@ -6,8 +6,9 @@ This file should stay small and always-on. Put detailed backend guidance in `.gi
 
 - Trust current runtime and deployment docs in `docs/`.
 - Start with `docs/DESIGN.md`, `docs/OPERATIONS.md`, and `docs/DEVELOPMENT.md`.
-- For proposal work, use `.github/instructions/proposal-writing-guide.instructions.md` and `docs/templates/PROPOSAL_TEMPLATE.md`.
-- Treat `docs/change_requests/` as design and migration context, not source of truth for current behavior, unless the task is explicitly proposal-related.
+- Use `docs/DIAGRAMS.md` for visual design diagrams (sequence, state, component, and other structural or behavioral diagrams of the active runtime). Add new diagrams here after a proposal is implemented.
+- For proposal work, use `.github/instructions/proposal-writing-guide.instructions.md`, `docs/templates/PROPOSAL_TEMPLATE.md`, and place new documents in `docs/change_requests/`.
+- Treat `docs/change_requests/` as the home for all design proposals and migration context. It is not the source of truth for current behavior unless the task is explicitly proposal-related.
 - Ignore `docs/archive/` for implementation decisions.
 
 ## Repository structure

@@ -148,6 +148,13 @@ The `config.yml` structure includes the following operational sections:
 - Prepare responses (`POST .../archive/{ticket_id}`) include a `retrieval_url` of the form `{base_url}/download/{archive_ticket_id}` and an `expires_at` timestamp; these let users or external tools poll or retrieve the archive without re-running the export
 - The retrieval URL is a bearer link (UUID token); no additional authentication is required to poll or download while the ticket is valid — review this policy if authentication is introduced
 
+**`kwic`** - KWIC query and progressive loading settings
+- `use_multiprocessing` - Enable year-range shard parallelism; must be `true` in production and `false` in development/debug mode where `BackgroundTasks` is used
+- `num_processes` - Number of parallel worker processes for multiprocess shard execution (default: `8`)
+- `num_shards` - Number of year-range partitions; must be ≥ `num_processes` for load balancing (default: `24`)
+- `cut_off` - Maximum concordance hits fetched from CWB per query (default: `500000`)
+- `download_wait_timeout_s` - Seconds the download endpoint block-polls for a ticket to reach `READY` before returning `503`; increase for very large queries on slow hardware (default: `300`)
+
 **`celery`** - Background task queue configuration (required for production ticket execution)
 - `broker_url` - Redis connection URL for task queue
 - `result_backend` - Redis connection URL for result storage
@@ -162,7 +169,7 @@ The `config.yml` structure includes the following operational sections:
 **Operational notes:**
 - The `cache.root_dir` volume must be shared between API and Celery worker containers so ticket artifacts are accessible across processes
 - Cache settings apply globally to all ticket-based endpoints (KWIC, speeches, and word-trend speeches)
-- Ticket artifacts are stored as feather files under `cache.root_dir`
+- KWIC ticket artifacts use a per-ticket directory layout: `{cache.root_dir}/{ticket_id}/shard_NNNN.feather` files accumulate atomically during `PARTIAL` status and are merged into `{ticket_id}/merged.feather` at `READY`; the shard files are deleted after merge; the whole directory is removed at TTL expiry. Speeches and word-trend speeches tickets use a single flat feather file per ticket.
 - Archive artifacts are stored as `.jsonl.gz` or `.zip` files under `cache.root_dir/archives/`; this subdirectory is created automatically at startup
 - Both feather and archive artifacts share the same `max_artifact_bytes` capacity pool; size `max_artifact_bytes` to accommodate both (feather files are typically small; a 50k-speech `.jsonl.gz` is approximately 50–200 MB compressed)
 - Partial archive files (`.partial` suffix) written by a failed task are cleaned up automatically on the next startup or background cleanup cycle
@@ -416,7 +423,7 @@ Short operator checklist:
 - After a bulk archive prepare request, confirm the response includes `retrieval_url` and `expires_at`, and that the retrieval URL (`GET /v1/downloads/{archive_ticket_id}`) is reachable and returns a valid status response.
 - Review recent service logs for startup, configuration, or asset errors before declaring the rollout complete.
 
-For a fuller operator workflow, use [SMOKE_TEST_CHECKLIST.md](./SMOKE_TEST_CHECKLIST.md).
+For a fuller operator workflow, use [SMOKE_TEST_CHECKLIST.md](./checklists/SMOKE_TEST_CHECKLIST.md).
 
 Useful commands in current operational material:
 

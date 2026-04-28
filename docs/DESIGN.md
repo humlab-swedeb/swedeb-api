@@ -150,6 +150,7 @@ The entry point is [main.py](../main.py), which builds the app through [api_swed
 - `SpeechesTicketService`
 - `WordTrendSpeechesTicketService`
 - `DownloadService`
+- `KWICArchiveService`
 - `ResultStore`
 - `TicketStateStore`
 - CWB corpus creation helpers
@@ -159,14 +160,15 @@ The key services are:
 - `CorpusLoader`: lazy access to DTM corpus, prebuilt speech index, metadata codecs, and speech repository
 - `MetadataService`: read-only metadata tables
 - `SearchService`: speech listing, speaker lookup, single-speech retrieval, and batch speech access
-- `WordTrendsService`: vocabulary filtering and time-series aggregation over the vectorized corpus
+- `WordTrendsService`: vocabulary filtering, time-series aggregation over the vectorized corpus, and pre-search KWIC hit estimation via `estimate_hits()` (called by `GET /v1/tools/kwic/estimate`)
 - `NGramsService`: CWB-backed n-gram extraction
 - `KWICService`: synchronous KWIC query execution and metadata join
-- `KWICTicketService`: paged KWIC ticket lifecycle; dispatches to Celery (production, multiprocessing) or FastAPI `BackgroundTasks` (development, singleprocessing) based on `development.celery_enabled`
+- `KWICTicketService`: paged KWIC ticket lifecycle; dispatches to Celery (production, multiprocessing) or FastAPI `BackgroundTasks` (development, singleprocessing) based on `development.celery_enabled`; in production mode the multiprocess executor uses `Pool.imap_unordered()` to store results shard-by-shard and advance the ticket through `PARTIAL` status before transitioning to `READY`; status responses include `shards_complete` and `shards_total` during `PARTIAL`; the download endpoint block-polls until `READY` (timeout controlled by `kwic.download_wait_timeout_s`)
 - `SpeechesTicketService`: paged speeches ticket lifecycle; dispatches to the default Celery queue (production) or FastAPI `BackgroundTasks` (development) and stores the resulting speech listing artifact in `ResultStore`
 - `WordTrendSpeechesTicketService`: paged word-trend speeches ticket lifecycle; same dispatch model as `KWICTicketService`, storing results as Feather artifacts in `ResultStore`
 - `DownloadService`: streamed archive generation for speech downloads
-- `ArchiveTicketService`: bulk archive ticket lifecycle — creates archive tickets, dispatches execution to background tasks or Celery, and returns `ArchivePrepareResponse` (including `expires_at`); the calling router injects `retrieval_url` from `Request.base_url`
+- `ArchiveTicketService`: bulk archive ticket lifecycle for speeches and word-trend speeches — creates archive tickets, dispatches execution to background tasks or Celery, and returns `ArchivePrepareResponse` (including `expires_at`); the calling router injects `retrieval_url` from `Request.base_url`
+- `KWICArchiveService`: bulk archive ticket lifecycle for KWIC results — validates the source KWIC ticket, creates an archive ticket, serializes the stored KWIC Feather artifact to CSV, JSONL, or Excel (via `openpyxl`) in a `BackgroundTasks` job, and writes the artifact atomically to `ResultStore`; does not invoke `SearchService` (no speech text re-fetching)
 - `ResultStore`: disk-backed storage for ticket result artifacts plus ticket lifecycle bookkeeping such as paging, expiry, and capacity enforcement
 - `TicketStateStore`: shared ticket metadata and counters backed by `cache.ticket_state_backend_url` when configured, allowing ticket status, pending limits, and artifact accounting to survive process boundaries
 
@@ -224,23 +226,27 @@ The important design choice here is that speaker and speech metadata are joined 
 
 The paged KWIC path is designed for larger or slower queries and operates in one of two modes controlled by `development.celery_enabled`.
 
+**Pre-search estimate**: `GET /v1/tools/kwic/estimate` returns a DTM-based hit count (`estimated_hits`, `in_vocabulary`) via `WordTrendsService.estimate_hits()` without running a CQP query. The frontend debounces this call and shows colour-coded guidance near the search button. The endpoint is independent of the ticket pipeline.
+
 **Production mode** (`celery_enabled: true`, default for `config/config.yml`):
 
 1. the client submits a `KWICQueryRequest`
 2. `KWICTicketService` creates a ticket through `ResultStore`
 3. `celery_app.send_task("api_swedeb.execute_kwic_ticket", ..., queue="multiprocessing")` enqueues the task with the ticket ID as the Celery task ID
 4. a dedicated Celery multiprocessing worker runs with `--pool=solo --queues=multiprocessing`, so the task process itself may safely use `multiprocessing.Pool` (`kwic.use_multiprocessing: true`)
-5. the resulting DataFrame is serialized to Feather in the shared `ResultStore` directory
-6. clients poll ticket status (sourced from `celery_app.AsyncResult`) and fetch paged results from `ResultStore`
+5. the executor uses `Pool.imap_unordered()` over year-range shards; as each shard completes, `ResultStore.store_shard(ticket_id, shard_index, df)` writes the shard atomically to `{cache_dir}/{ticket_id}/shard_NNNN.feather` and advances the ticket to `PARTIAL` status, propagating `shards_complete` and `shards_total` via `TicketStateStore` (Redis)
+6. clients may poll ticket status and receive `partial` with `shards_complete`/`shards_total`; `get_page_result` serves available rows by concatenating completed shard files in index order during `PARTIAL`
+7. after all shards are written, `ResultStore.store_shards_ready()` merges them into `merged.feather`, transitions the ticket to `READY`, and deletes the shard directory
+8. the download endpoint block-polls until `READY` (controlled by `kwic.download_wait_timeout_s`), then streams `merged.feather` with no cut-off
 
 **Development mode** (`celery_enabled: false`, default for `config/debug.config.yml`):
 
 1–2. Same ticket creation.
 3. `BackgroundTasks.add_task(execute_ticket, ...)` schedules in-process execution
-4. the resulting DataFrame is serialized to Feather in the result-store directory
+4. single-process execution skips the `PARTIAL` phase; the full result DataFrame is serialized to Feather and `store_ready()` transitions the ticket directly to `READY`
 5. clients poll ticket status (sourced from `ResultStore`) and fetch paged results
 
-The important design constraint is that `multiprocessing.Pool().map()` deadlocks when called from FastAPI's thread-pool-backed `BackgroundTasks`. Production mode avoids this by moving the query into a true separate process (Celery worker). Development mode disables multiprocessing and relies on `BackgroundTasks`, which enables native debugger support without a Redis dependency.
+The important design constraint is that `multiprocessing.Pool` deadlocks when called from FastAPI's thread-pool-backed `BackgroundTasks`. Production mode avoids this by moving the query into a true separate process (Celery worker). Development mode disables multiprocessing and relies on `BackgroundTasks`, which enables native debugger support without a Redis dependency.
 
 ### 5. Ticketed speeches flow
 
@@ -281,9 +287,9 @@ This direct speech-archive flow is separate from the ticket-backed full-result e
 
 ### 8. Bulk archive retrieval flow
 
-When a client submits a bulk-archive prepare request to either `/v1/tools/speeches/archive/{ticket_id}` or `/v1/tools/word_trend_speeches/archive/{ticket_id}`, the router:
+When a client submits a bulk-archive prepare request to any of `/v1/tools/kwic/archive/{ticket_id}`, `/v1/tools/speeches/archive/{ticket_id}`, or `/v1/tools/word_trend_speeches/archive/{ticket_id}`, the router:
 
-1. calls `ArchiveTicketService.prepare()`, which creates an archive ticket in `ResultStore` and dispatches archive execution to the background
+1. calls `KWICArchiveService.prepare()` (KWIC) or `ArchiveTicketService.prepare()` (speeches / word-trend speeches), which creates an archive ticket in `ResultStore` and dispatches archive execution to the background
 2. constructs a `retrieval_url` of the form `{base_url}/download/{archive_ticket_id}` using `Request.base_url`
 3. returns a `202 ArchivePrepareResponse` containing `archive_ticket_id`, `retrieval_url`, and `expires_at`
 
