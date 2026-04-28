@@ -1,0 +1,124 @@
+# Dockerfile.staging
+#
+# Self-contained staging image: clones both backend and frontend from GitHub
+# (staging branch) and builds them locally — no pre-built wheel or release
+# tarball required.  Use this for rapid staging iteration without going through
+# the GitHub Actions / GHCR pipeline.
+#
+# Build:
+#   docker build -f docker/Dockerfile.staging \
+#     [--build-arg BACKEND_REPO=...] \
+#     [--build-arg FRONTEND_REPO=...] \
+#     -t swedeb-api:staging .
+#
+# Optional build args:
+#   BACKEND_REPO   – full clone URL (default: https://github.com/humlab-swedeb/swedeb-api.git)
+#   FRONTEND_REPO  – full clone URL (default: https://github.com/humlab-swedeb/swedeb_frontend.git)
+#   BRANCH         – branch name for both repos (default: staging)
+#   SWEDEB_PORT    – port the API listens on (default: 8092)
+#   CORPUS_REGISTRY
+#   CONFIG_FILE
+
+# ---------------------------------------------------------------------------
+# Stage 1: build the backend Python wheel
+# ---------------------------------------------------------------------------
+FROM python:3.13-slim AS backend-builder
+
+ARG BACKEND_REPO=https://github.com/humlab-swedeb/swedeb-api.git
+ARG BRANCH=staging
+
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build/backend
+
+RUN git clone --depth 1 --branch "${BRANCH}" "${BACKEND_REPO}" .
+
+# Install uv and build the wheel
+RUN pip install --no-cache-dir uv
+RUN uv build --wheel --out-dir /dist/wheels
+
+# ---------------------------------------------------------------------------
+# Stage 2: build the frontend SPA tarball
+# ---------------------------------------------------------------------------
+FROM node:22-slim AS frontend-builder
+
+ARG FRONTEND_REPO=https://github.com/humlab-swedeb/swedeb_frontend.git
+ARG BRANCH=staging
+
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
+# Install pnpm
+RUN npm install -g pnpm
+
+WORKDIR /build/frontend
+
+RUN git clone --depth 1 --branch "${BRANCH}" "${FRONTEND_REPO}" .
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm build
+
+# Pack into a tarball the same way build-assets.sh does for staging
+RUN tar -czf /dist/frontend-staging.tar.gz -C dist/spa .
+
+# ---------------------------------------------------------------------------
+# Stage 3: final runtime image (identical structure to the GA Dockerfile)
+# ---------------------------------------------------------------------------
+FROM ghcr.io/humlab/cwb-container:latest AS final
+
+LABEL maintainer="Roger Mähler <roger dot mahler at umu dot se>"
+
+ENV APP_USER=cwbuser
+ENV APP_UID=1021
+ENV APP_GID=1021
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+USER root
+
+RUN mkdir -p /app /app/config /data/cwb/data /data/corpus/tagged_frames /data/corpus/dtm /data/corpus/metadata
+
+WORKDIR /app
+
+# Install the wheel built in stage 1
+COPY --from=backend-builder /dist/wheels/*.whl /tmp/
+RUN set -ex; \
+    pip install --no-cache-dir /tmp/*.whl; \
+    rm -rf /tmp/*.whl
+
+# Copy runtime files from the cloned repo (stage 1)
+COPY --from=backend-builder /build/backend/docker/main.py .
+COPY --from=backend-builder /build/backend/docker/entrypoint.sh .
+COPY --from=backend-builder /build/backend/docker/test-network.sh .
+
+# Install frontend assets built in stage 2
+RUN mkdir -p public && chown ${APP_USER}:${APP_USER} public && chmod 755 public
+
+COPY --from=frontend-builder /dist/frontend-staging.tar.gz /tmp/frontend.tar.gz
+RUN set -ex; \
+    tar -xzf /tmp/frontend.tar.gz -C /app/public; \
+    rm /tmp/frontend.tar.gz; \
+    echo "staging" > /app/public/.frontend_version; \
+    echo "Frontend assets installed: $(ls -1 /app/public | wc -l) files"
+
+# Set permissions
+RUN set -ex; \
+    chown -R ${APP_USER}:${APP_USER} /data; \
+    chown -R ${APP_USER}:${APP_USER} /app/public; \
+    chmod +x entrypoint.sh; \
+    chmod +x test-network.sh
+
+USER ${APP_USER}
+
+ENV SHELL=/bin/bash
+ENV HOME=/app
+
+ARG CORPUS_REGISTRY=/data/registry
+ENV CORPUS_REGISTRY=${CORPUS_REGISTRY}
+
+ARG SWEDEB_PORT=8092
+ENV SWEDEB_PORT=${SWEDEB_PORT}
+
+ARG CONFIG_FILE=config/config.yml
+ENV CONFIG_FILE=${CONFIG_FILE}
+
+ENTRYPOINT ["./entrypoint.sh"]
