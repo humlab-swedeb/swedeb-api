@@ -248,7 +248,7 @@ async def download_kwic_ticket(
     ticket = _require_ready_ticket(ticket_id, result_store)
 
     try:
-        data = kwic_ticket_service.get_full_artifact(ticket_id, result_store)
+        data = await kwic_ticket_service.get_full_artifact(ticket_id, result_store)
     except ResultStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="Ticket artifact not found or expired") from exc
 

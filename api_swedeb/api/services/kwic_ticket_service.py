@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import math
 import time
@@ -268,6 +269,8 @@ class KWICTicketService:
 
         if ticket.status == TicketStatus.PENDING:
             return status_model
+        if ticket.status == TicketStatus.ERROR:
+            return status_model
 
         if page < 1:
             raise ValueError("Page must be greater than or equal to 1")
@@ -388,7 +391,7 @@ class KWICTicketService:
 
         return (sort_by.value, TICKET_ROW_ID), (sort_order == SortOrder.asc, True)
 
-    def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
+    async def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
         result_store.touch_ticket(ticket_id)
         celery_enabled = ConfigValue("development.celery_enabled", default=False).resolve()
 
@@ -406,7 +409,7 @@ class KWICTicketService:
                 ticket = result_store.get_ticket(ticket_id)
                 if ticket is not None and ticket.status == TicketStatus.ERROR:
                     raise ResultStoreNotFound("Ticket query failed")
-                time.sleep(2)
+                await asyncio.sleep(2)
             try:
                 data: pd.DataFrame = pd.read_feather(artifact_path)
             except Exception as exc:
@@ -426,7 +429,7 @@ class KWICTicketService:
                         status_code=503,
                         detail="Download timed out waiting for KWIC query to complete",
                     )
-                time.sleep(2)
+                await asyncio.sleep(2)
             data = result_store.load_artifact(ticket_id)
 
         return data.drop(columns=[TICKET_ROW_ID], errors="ignore")

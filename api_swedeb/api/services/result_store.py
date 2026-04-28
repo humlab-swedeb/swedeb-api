@@ -603,6 +603,20 @@ class ResultStore:
                 tmp_path.unlink(missing_ok=True)
                 raise ResultStoreNotFound("Ticket not found or expired")
 
+            self._evict_ready_tickets_locked(required_bytes=artifact_bytes, exclude_ticket_id=ticket_id)
+
+            if (
+                artifact_bytes > self.max_artifact_bytes
+                or self._artifact_bytes_locked() + artifact_bytes - (ticket.artifact_bytes or 0)
+                > self.max_artifact_bytes
+            ):
+                tmp_path.unlink(missing_ok=True)
+                shutil.rmtree(shard_dir, ignore_errors=True)
+                message = "Insufficient result-store capacity for ticket artifact"
+                self._invalidate_ticket_cache_locked(ticket_id)
+                self._set_ticket_locked(replace(ticket, status=TicketStatus.ERROR, error=message))
+                raise ResultStoreCapacityError(message)
+
             tmp_path.replace(artifact_path)
             shutil.rmtree(shard_dir, ignore_errors=True)
 
@@ -777,10 +791,17 @@ class ResultStore:
                 for path in archives_dir.glob(f"*{suffix}"):
                     path.unlink(missing_ok=True)
 
-        # Remove orphaned shard directories (uuid-named dirs that are not "archives")
+        active_partial_ticket_ids = {
+            ticket.ticket_id for ticket in self._list_tickets_locked() if ticket.status == TicketStatus.PARTIAL
+        }
+
+        # Remove only orphaned shard directories; preserve shards for active PARTIAL tickets.
         for candidate in self.root_dir.iterdir():
-            if candidate.is_dir() and candidate.name != "archives":
-                shutil.rmtree(candidate, ignore_errors=True)
+            if not candidate.is_dir() or candidate.name == "archives":
+                continue
+            if candidate.name in active_partial_ticket_ids:
+                continue
+            shutil.rmtree(candidate, ignore_errors=True)
 
     def _delete_ticket_locked(self, ticket_id: str) -> None:
         ticket = self._get_ticket_locked(ticket_id)
