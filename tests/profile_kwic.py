@@ -72,12 +72,12 @@ def main() -> None:
     args = _parse_args()
     use_multiprocessing: bool | None = None if args.num_processes is None else (args.num_processes > 1)
 
+    import ccc
+
     from api_swedeb.api.params import build_common_query_params
     from api_swedeb.api.services.corpus_loader import CorpusLoader
     from api_swedeb.api.services.kwic_service import KWICService
     from api_swedeb.core.configuration.inject import ConfigValue, get_config_store
-
-    import ccc
 
     get_config_store().configure_context(source=args.config)
 
