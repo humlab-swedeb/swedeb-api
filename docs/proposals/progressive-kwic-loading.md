@@ -13,18 +13,18 @@
 ### Phase 1 — Pre-search estimate
 
 **Backend**
-- [ ] Add `KWICEstimateService` (or extend `KWICService`) with a DTM column-sum method that respects the same metadata filters as `WordTrendsService`
-- [ ] Add `GET /v1/tools/kwic/estimate` endpoint with query params matching the KWIC search form
-- [ ] Return `{ "estimated_hits": N, "in_vocabulary": true/false }` schema
+- [x] Add `KWICEstimateService` (or extend `KWICService`) with a DTM column-sum method that respects the same metadata filters as `WordTrendsService`
+- [x] Add `GET /v1/tools/kwic/estimate` endpoint with query params matching the KWIC search form
+- [x] Return `{ "estimated_hits": N, "in_vocabulary": true/false }` schema
 - [ ] Add `kwic.estimate` section to `config/config.yml` and `tests/config.yml` if needed
-- [ ] Add unit test for the estimate method (mocked DTM)
-- [ ] Add API test for the estimate endpoint
+- [x] Add unit test for the estimate method (mocked DTM) — `tests/api_swedeb/api/services/test_estimate_hits.py` (16 tests)
+- [x] Add API test for the estimate endpoint — `tests/api_swedeb/api/endpoints/test_kwic_estimate_endpoint.py` (11 tests)
 
 **Frontend**
-- [ ] Add `fetchEstimate(word, filters)` action to `kwicDataStore.js`
-- [ ] Debounce estimate call on word input and filter changes (300 ms)
-- [ ] Display estimate near the search button with colour-coded guidance
-- [ ] Label estimate as approximate; do not block the search
+- [x] Add `fetchEstimate(word, filters)` action to `kwicDataStore.js`
+- [x] Debounce estimate call on word input and filter changes (300 ms)
+- [x] Display estimate near the search button with colour-coded guidance
+- [x] Label estimate as approximate; do not block the search
 
 ---
 
