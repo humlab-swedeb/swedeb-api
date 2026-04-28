@@ -370,9 +370,7 @@ class KWICTicketService:
             return False, None, total_pages
 
         try:
-            display_limit = int(
-                ConfigValue("kwic.large_result_display_limit", default=default_display_limit).resolve()
-            )
+            display_limit = int(ConfigValue("kwic.large_result_display_limit", default=default_display_limit).resolve())
         except (TypeError, ValueError):
             display_limit = default_display_limit
         if display_limit <= 0:

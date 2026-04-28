@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import multiprocessing as mp
 import os
 import tempfile
@@ -110,10 +109,14 @@ def execute_kwic_multiprocess(
     # Create year chunks
     year_chunks: list[tuple[int, int]] = create_year_chunks(min_year, max_year, num_processes)
 
-    # Divide cut_off across shards so each worker retrieves only its share of rows.
-    # Without this, each worker retrieves the full cut_off independently (e.g. 8 × 500k = 4M
-    # rows retrieved and pickled through IPC, then discarded after merge).
-    shard_cut_off: int | None = math.ceil(cut_off / num_processes) if cut_off is not None else None
+    # Each shard uses the full global cut_off so that no year period is silently
+    # truncated before the merge.  Dividing cut_off by num_processes caused heavy
+    # years (e.g. recent decades for common words) to hit their per-shard ceiling
+    # and return far fewer results than the true corpus count.  The combined result
+    # is trimmed to the global limit after merging, so correctness is preserved.
+    # Worst-case IPC is num_processes × cut_off (e.g. 8 × 200 000 = 1.6 M rows),
+    # which is acceptable for the cut_off values used in practice.
+    shard_cut_off: int | None = cut_off
 
     # Prepare worker arguments
     worker_args: list[tuple[Any, ...]] = [
