@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from unittest.mock import patch
 
 import ccc
@@ -505,12 +505,13 @@ def test_kwic_worker(corpus_opts: CorpusCreateOpts):
         "value": "debatt",
     }
     year_range = (1970, 1975)
-    args = (corpus_opts, opts, year_range, 3, 3, "word", 50)
+    args = (1, corpus_opts, opts, year_range, 3, 3, "word", 50)
 
-    result = kwic_worker(args)
+    result: tuple[int, pd.DataFrame] = kwic_worker(args)
 
-    assert isinstance(result, pd.DataFrame)
-    assert result.index.name == "speech_id"
+    assert isinstance(result, tuple)
+    assert isinstance(result[1], pd.DataFrame)
+    assert cast(pd.DataFrame, result[1]).index.name == "speech_id"
 
 
 def test_execute_kwic_multiprocess_basic(corpus_opts: CorpusCreateOpts):

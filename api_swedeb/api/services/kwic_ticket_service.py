@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import math
+import time
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -10,6 +12,7 @@ from typing import Any
 
 import ccc
 import pandas as pd
+from fastapi import HTTPException
 from loguru import logger
 
 from api_swedeb.api.params import CommonQueryParams, build_common_query_params, build_filter_opts
@@ -129,6 +132,18 @@ class KWICTicketService:
                 speech_id=request.filters.speech_id,
             )
             keywords: str | list[str] = self._keywords(request.search)
+
+            # Shard-delivery callbacks (multiprocess path only)
+            is_multiprocess: list[bool] = [False]
+
+            def on_shards_total(n: int) -> None:
+                is_multiprocess[0] = True
+                result_store.set_shards_total(ticket_id, n)
+
+            def on_shard_complete(shard_index: int, decoded_df: pd.DataFrame) -> None:
+                shard_frame = kwic_to_api_frame(decoded_df).reset_index(drop=True)
+                result_store.store_shard(ticket_id, shard_index, shard_frame)
+
             logger.debug(f"Calling get_kwic for ticket {ticket_id}")
             data: pd.DataFrame = kwic_service.get_kwic(
                 corpus=corpus,
@@ -139,19 +154,33 @@ class KWICTicketService:
                 words_after=request.words_after,
                 cut_off=request.cut_off,
                 p_show="word",
+                on_shards_total=on_shards_total,
+                on_shard_complete=on_shard_complete,
             )
             logger.info(f"KWIC query completed for ticket {ticket_id}, found {len(data)} rows")
             logger.debug(f"Converting to API frame for ticket {ticket_id}")
-            api_frame: pd.DataFrame = kwic_to_api_frame(data).reset_index(drop=True)
-            api_frame[TICKET_ROW_ID] = range(len(api_frame.index))
-            logger.debug(f"Storing results for ticket {ticket_id}")
-            result_store.store_ready(
-                ticket_id,
-                df=api_frame,
-                query_meta=self._query_meta(request),
-                speech_ids=self._speech_ids(api_frame),
-                manifest_meta=self._manifest_meta(ticket_id, request, api_frame),
-            )
+
+            if is_multiprocess[0]:
+                # Shards have been written; merge from disk and transition to READY
+                api_frame: pd.DataFrame = kwic_to_api_frame(data).reset_index(drop=True)
+                logger.debug(f"Merging shards for ticket {ticket_id}")
+                result_store.store_shards_ready(
+                    ticket_id,
+                    query_meta=self._query_meta(request),
+                    speech_ids=self._speech_ids(api_frame),
+                    manifest_meta=self._manifest_meta(ticket_id, request, api_frame),
+                )
+            else:
+                api_frame = kwic_to_api_frame(data).reset_index(drop=True)
+                api_frame[TICKET_ROW_ID] = range(len(api_frame.index))
+                logger.debug(f"Storing results for ticket {ticket_id}")
+                result_store.store_ready(
+                    ticket_id,
+                    df=api_frame,
+                    query_meta=self._query_meta(request),
+                    speech_ids=self._speech_ids(api_frame),
+                    manifest_meta=self._manifest_meta(ticket_id, request, api_frame),
+                )
             logger.info(f"Successfully stored results for ticket {ticket_id}")
         except ResultStoreCapacityError:
             logger.warning(f"Result store capacity error for ticket {ticket_id}")
@@ -190,6 +219,9 @@ class KWICTicketService:
         elif status == TicketStatus.ERROR:
             error: str = str(celery_result.info) if celery_result.info else "Task failed"
             ticket = result_store.sync_external_error(ticket_id, message=error)
+        elif status == TicketStatus.PENDING:
+            # Check if shards have started arriving (PARTIAL)
+            ticket = result_store.sync_external_partial(ticket_id)
 
         return self._status_model(ticket)
 
@@ -233,7 +265,11 @@ class KWICTicketService:
         sort_order: SortOrder,
     ) -> KWICPageResult | KWICTicketStatus:
         status_model: KWICTicketStatus = self._get_celery_status(ticket_id, result_store)
-        if status_model.status != TicketStatus.READY.value:
+        ticket = result_store.require_ticket(ticket_id)
+
+        if ticket.status == TicketStatus.PENDING:
+            return status_model
+        if ticket.status == TicketStatus.ERROR:
             return status_model
 
         if page < 1:
@@ -241,18 +277,20 @@ class KWICTicketService:
         if page_size < 1 or page_size > result_store.max_page_size:
             raise ValueError(f"page_size must be between 1 and {result_store.max_page_size}")
 
-        artifact_path: Path = result_store.artifact_path(ticket_id)
-        if not artifact_path.exists():
-            raise ResultStoreNotFound("Ticket artifact not found or expired")
-        try:
-            data = pd.read_feather(artifact_path)
-        except Exception as exc:
-            raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
+        is_partial = ticket.status == TicketStatus.PARTIAL
+        if is_partial:
+            data = result_store.load_artifact(ticket_id)
+        else:
+            artifact_path: Path = result_store.artifact_path(ticket_id)
+            if not artifact_path.exists():
+                raise ResultStoreNotFound("Ticket artifact not found or expired")
+            try:
+                data = pd.read_feather(artifact_path)
+            except Exception as exc:
+                raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
 
         total_hits: int = len(data.index)
         total_pages: int = math.ceil(total_hits / page_size) if total_hits else 0
-        display_limited, display_limit, total_pages = self._display_cap(total_hits, total_pages, page_size)
-        ticket: TicketMeta | None = result_store.get_ticket(ticket_id)
         expires_at: datetime = ticket.expires_at if ticket is not None else (datetime.now(UTC) + timedelta(seconds=600))
 
         if total_pages == 0:
@@ -274,14 +312,14 @@ class KWICTicketService:
 
         return KWICPageResult(
             ticket_id=ticket_id,
-            status="ready",
+            status=ticket.status.value,
             page=page,
             page_size=page_size,
             total_hits=total_hits,
             total_pages=total_pages,
-            display_limited=display_limited,
-            display_limit=display_limit,
             expires_at=expires_at,
+            shards_complete=ticket.shards_complete,
+            shards_total=ticket.shards_total,
             kwic_list=kwic_api_frame_to_model(page_frame).kwic_list,
         )
 
@@ -297,9 +335,13 @@ class KWICTicketService:
     ) -> KWICPageResult | KWICTicketStatus:
         ticket: TicketMeta = result_store.require_ticket(ticket_id)
         status_model: KWICTicketStatus = self._status_model(ticket)
-        if ticket.status != TicketStatus.READY:
+
+        if ticket.status == TicketStatus.PENDING:
+            return status_model
+        if ticket.status == TicketStatus.ERROR:
             return status_model
 
+        # PARTIAL or READY: serve available data
         if page < 1:
             raise ValueError("Page must be greater than or equal to 1")
         if page_size < 1 or page_size > result_store.max_page_size:
@@ -308,7 +350,6 @@ class KWICTicketService:
         data: pd.DataFrame = result_store.load_artifact(ticket_id)
         total_hits: int = len(data.index)
         total_pages: int = math.ceil(total_hits / page_size) if total_hits else 0
-        display_limited, display_limit, total_pages = self._display_cap(total_hits, total_pages, page_size)
         if total_pages == 0:
             if page != 1:
                 raise ValueError("Requested page is out of range")
@@ -328,14 +369,14 @@ class KWICTicketService:
 
         return KWICPageResult(
             ticket_id=ticket.ticket_id,
-            status="ready",
+            status=ticket.status.value,
             page=page,
             page_size=page_size,
             total_hits=total_hits,
             total_pages=total_pages,
-            display_limited=display_limited,
-            display_limit=display_limit,
             expires_at=ticket.expires_at,
+            shards_complete=ticket.shards_complete,
+            shards_total=ticket.shards_total,
             kwic_list=kwic_api_frame_to_model(page_frame).kwic_list,
         )
 
@@ -350,49 +391,45 @@ class KWICTicketService:
 
         return (sort_by.value, TICKET_ROW_ID), (sort_order == SortOrder.asc, True)
 
-    def _display_cap(self, total_hits: int, total_pages: int, page_size: int) -> tuple[bool, int | None, int]:
-        """Return (display_limited, display_limit, effective_total_pages).
-
-        When *total_hits* is below the configured threshold the result is
-        uncapped and the original *total_pages* is returned unchanged.
-        """
-        default_threshold = 10000
-        default_display_limit = 1000
-
-        try:
-            threshold = int(ConfigValue("kwic.large_result_threshold", default=default_threshold).resolve())
-        except (TypeError, ValueError):
-            threshold = default_threshold
-        if threshold <= 0:
-            threshold = default_threshold
-
-        if total_hits < threshold:
-            return False, None, total_pages
-
-        try:
-            display_limit = int(ConfigValue("kwic.large_result_display_limit", default=default_display_limit).resolve())
-        except (TypeError, ValueError):
-            display_limit = default_display_limit
-        if display_limit <= 0:
-            display_limit = default_display_limit
-
-        capped_pages: int = math.ceil(display_limit / page_size)
-        return True, display_limit, min(capped_pages, total_pages)
-
-    def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
+    async def get_full_artifact(self, ticket_id: str, result_store: ResultStore) -> pd.DataFrame:
         result_store.touch_ticket(ticket_id)
-        if ConfigValue("development.celery_enabled", default=False).resolve():
+        celery_enabled = ConfigValue("development.celery_enabled", default=False).resolve()
+
+        if celery_enabled:
+            # For Celery path, block-poll until the artifact file appears on disk
+            timeout_s = int(ConfigValue("kwic.download_wait_timeout_s", default=300).resolve())
+            deadline = time.monotonic() + timeout_s
             artifact_path: Path = result_store.artifact_path(ticket_id)
-            if not artifact_path.exists():
-                raise ResultStoreNotFound("Ticket artifact not found or expired")
+            while not artifact_path.exists():
+                if time.monotonic() >= deadline:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Download timed out waiting for KWIC query to complete",
+                    )
+                ticket = result_store.get_ticket(ticket_id)
+                if ticket is not None and ticket.status == TicketStatus.ERROR:
+                    raise ResultStoreNotFound("Ticket query failed")
+                await asyncio.sleep(2)
             try:
                 data: pd.DataFrame = pd.read_feather(artifact_path)
             except Exception as exc:
                 raise ResultStoreNotFound("Ticket artifact not found or expired") from exc
         else:
-            ticket: TicketMeta = result_store.require_ticket(ticket_id)
-            if ticket.status != TicketStatus.READY:
-                raise ResultStoreNotFound("Ticket is not ready")
+            # Local path: block-poll until READY (handles both PARTIAL and PENDING)
+            timeout_s = int(ConfigValue("kwic.download_wait_timeout_s", default=300).resolve())
+            deadline = time.monotonic() + timeout_s
+            while True:
+                ticket = result_store.require_ticket(ticket_id)
+                if ticket.status == TicketStatus.READY:
+                    break
+                if ticket.status == TicketStatus.ERROR:
+                    raise ResultStoreNotFound("Ticket query failed")
+                if time.monotonic() >= deadline:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Download timed out waiting for KWIC query to complete",
+                    )
+                await asyncio.sleep(2)
             data = result_store.load_artifact(ticket_id)
 
         return data.drop(columns=[TICKET_ROW_ID], errors="ignore")
@@ -455,6 +492,8 @@ class KWICTicketService:
             total_hits=ticket.total_hits,
             error=ticket.error,
             expires_at=ticket.expires_at,
+            shards_complete=ticket.shards_complete,
+            shards_total=ticket.shards_total,
         )
 
     def _keywords(self, search: str) -> str | list[str]:

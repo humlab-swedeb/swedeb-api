@@ -329,7 +329,10 @@ def test_result_store_evicts_oldest_artifact_cache_entry_when_limit_is_exceeded(
         for ticket in tickets:
             store.load_artifact(ticket.ticket_id)
 
-        assert list(store._artifact_cache.keys()) == [tickets[1].ticket_id, tickets[2].ticket_id]
+        assert list(store._artifact_cache.keys()) == [
+            (tickets[1].ticket_id, 0),
+            (tickets[2].ticket_id, 0),
+        ]
     finally:
         asyncio.run(store.shutdown())
 
@@ -366,7 +369,7 @@ def test_result_store_evicts_oldest_sorted_positions_cache_entry_when_limit_is_e
         store.get_sorted_positions(ticket.ticket_id, sort_columns=second_key, ascending=(True, True))
         store.get_sorted_positions(ticket.ticket_id, sort_columns=third_key, ascending=(True, True))
 
-        cached_sort_keys = [cache_key[1] for cache_key in store._sorted_positions_cache.keys()]
+        cached_sort_keys = [cache_key[2] for cache_key in store._sorted_positions_cache.keys()]
         assert cached_sort_keys == [second_key, third_key]
     finally:
         asyncio.run(store.shutdown())
@@ -906,5 +909,174 @@ def test_cleanup_removes_ticket_at_absolute_cap(tmp_path) -> None:
 
         store.cleanup_expired()
         assert store.get_ticket(ticket.ticket_id) is None
+    finally:
+        asyncio.run(store.shutdown())
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 – shard delivery tests
+# ---------------------------------------------------------------------------
+
+
+def test_store_shard_writes_file_and_advances_shards_complete(tmp_path) -> None:
+    """store_shard writes a feather file per shard and increments shards_complete in ticket state."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=4,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "test"})
+        store.set_shards_total(ticket.ticket_id, n=3)
+
+        df0 = pd.DataFrame([{"node_word": "a", "year": 1970}])
+        df1 = pd.DataFrame([{"node_word": "b", "year": 1971}])
+
+        meta_after_0 = store.store_shard(ticket.ticket_id, shard_index=0, df=df0)
+        assert meta_after_0.status == TicketStatus.PARTIAL
+        assert meta_after_0.shards_complete == 1
+        assert meta_after_0.shards_total == 3
+        assert meta_after_0.total_hits == 1
+        assert store._shard_path(ticket.ticket_id, 0).exists()
+
+        meta_after_1 = store.store_shard(ticket.ticket_id, shard_index=1, df=df1)
+        assert meta_after_1.shards_complete == 2
+        assert meta_after_1.total_hits == 2
+        assert store._shard_path(ticket.ticket_id, 1).exists()
+
+        # require_ticket must reflect the latest shard count
+        live = store.require_ticket(ticket.ticket_id)
+        assert live.shards_complete == 2
+        assert live.shards_total == 3
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_load_artifact_concatenates_shards_in_index_order_during_partial(tmp_path) -> None:
+    """load_artifact during PARTIAL returns shards concatenated in shard-index order."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=4,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "test"})
+        store.set_shards_total(ticket.ticket_id, n=3)
+
+        # Write shards out of arrival order; load_artifact must sort by filename (index order).
+        store.store_shard(ticket.ticket_id, shard_index=2, df=pd.DataFrame([{"node_word": "c", "year": 1972}]))
+        store.store_shard(ticket.ticket_id, shard_index=0, df=pd.DataFrame([{"node_word": "a", "year": 1970}]))
+        store.store_shard(ticket.ticket_id, shard_index=1, df=pd.DataFrame([{"node_word": "b", "year": 1971}]))
+
+        loaded = store.load_artifact(ticket.ticket_id)
+
+        assert list(loaded["node_word"]) == ["a", "b", "c"]
+        assert list(loaded["year"]) == [1970, 1971, 1972]
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_store_shard_invalidates_artifact_cache(tmp_path) -> None:
+    """Each store_shard call must evict any cached PARTIAL artifact for the ticket."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=4,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "test"})
+        store.set_shards_total(ticket.ticket_id, n=2)
+        store.store_shard(ticket.ticket_id, shard_index=0, df=pd.DataFrame([{"node_word": "a"}]))
+
+        # Populate cache: key is (ticket_id, shards_complete==1)
+        store.load_artifact(ticket.ticket_id)
+        ticket_cache_keys_before = [k for k in store._artifact_cache if k[0] == ticket.ticket_id]
+        assert len(ticket_cache_keys_before) == 1
+
+        # Second shard must evict the previous cache entry
+        store.store_shard(ticket.ticket_id, shard_index=1, df=pd.DataFrame([{"node_word": "b"}]))
+
+        ticket_cache_keys_after = [k for k in store._artifact_cache if k[0] == ticket.ticket_id]
+        assert ticket_cache_keys_after == [], "store_shard must invalidate the cached partial artifact"
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_store_shards_ready_merges_shards_transitions_to_ready_and_deletes_shard_dir(tmp_path) -> None:
+    """store_shards_ready produces a merged artifact consistent with all shards and removes the shard directory."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=4,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "test"})
+        store.set_shards_total(ticket.ticket_id, n=2)
+        store.store_shard(ticket.ticket_id, shard_index=0, df=pd.DataFrame([{"node_word": "a", "year": 1970}]))
+        store.store_shard(ticket.ticket_id, shard_index=1, df=pd.DataFrame([{"node_word": "b", "year": 1971}]))
+
+        shard_dir = store._shard_dir(ticket.ticket_id)
+        assert shard_dir.exists()
+
+        ready = store.store_shards_ready(
+            ticket.ticket_id,
+            query_meta={"search": "test"},
+            speech_ids=None,
+            manifest_meta=None,
+        )
+
+        assert ready.status == TicketStatus.READY
+        assert ready.shards_complete == 2
+        assert ready.shards_total == 2
+        assert ready.total_hits == 2
+        assert not shard_dir.exists(), "Shard directory must be deleted after merge"
+        assert ready.artifact_path is not None
+        assert ready.artifact_path.exists()
+
+        merged = store.load_artifact(ticket.ticket_id)
+        assert list(merged["node_word"]) == ["a", "b"]
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_set_shards_total_reserved_bytes_blocks_second_ticket_when_capacity_exhausted(tmp_path) -> None:
+    """Reserved bytes from a PARTIAL ticket count toward capacity; a second large reservation must fail."""
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=4,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        first = store.create_ticket(query_meta={"search": "a"})
+        store.set_shards_total(first.ticket_id, n=3, reserved_bytes=900_000)
+
+        # After reservation, the first ticket holds most of the available capacity.
+        first_meta = store.require_ticket(first.ticket_id)
+        assert first_meta.status == TicketStatus.PARTIAL
+        assert first_meta.artifact_bytes == 900_000
+
+        second = store.create_ticket(query_meta={"search": "b"})
+        with pytest.raises(ResultStoreCapacityError):
+            store.set_shards_total(second.ticket_id, n=1, reserved_bytes=200_000)
     finally:
         asyncio.run(store.shutdown())

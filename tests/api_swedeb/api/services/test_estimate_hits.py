@@ -164,20 +164,20 @@ class TestEstimateHitsColumnFilters:
         return WordTrendsService(loader=loader)
 
     def test_column_filter_delegates_to_corpus_filter(self):
-        service = self._service_with_filter_side_effect()
-        opts = {"party_id": [1]}
+        service: WordTrendsService = self._service_with_filter_side_effect()
+        opts: dict[str, list[int]] = {"party_id": [1]}
         # After filter → rows 0,1 → klimat = 2+0 = 2
-        result = service.estimate_hits("klimat", opts)
+        result: int | None = service.estimate_hits("klimat", opts)
         assert result == 2
-        service._loader.vectorized_corpus.filter.assert_called_once()
+        service._loader.vectorized_corpus.filter.assert_called_once()  # type: ignore[attr-defined]
 
     def test_year_and_column_filter_combined(self):
         """Year filter applied after corpus.filter reduces rows further."""
-        service = self._service_with_filter_side_effect()
+        service: WordTrendsService = self._service_with_filter_side_effect()
         # party_id filter → rows 0,1 (years 1990, 2000)
         # then year 1990–1990 → row 0 only → klimat = 2
-        opts = {"party_id": [1], "year": {"low": 1990, "high": 1990}}
-        result = service.estimate_hits("klimat", opts)
+        opts: dict[str, object] = {"party_id": [1], "year": {"low": 1990, "high": 1990}}
+        result: int | None = service.estimate_hits("klimat", opts)
         assert result == 2
 
     def test_no_column_filter_does_not_call_corpus_filter(self):
