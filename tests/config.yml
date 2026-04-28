@@ -1,3 +1,50 @@
+# NOTE: The following folder structure is assumed:
+# local /data corresponds to hosts corpus version 1.4.1 and metadata version 1.1.3
+# data
+# ├── metadata
+# │    ├── 1.1.3
+# │    │   ├── chair_mp.csv
+# │    │   ├── ...
+# │    │   ├── metadata_version
+# │    │   └── version
+# │    └── riksprot_metadata.v1.1.3.db
+# └── v1.4.1
+#      ├── cwb
+#      │   ├── lemma.corpus.cnt
+#      │   └── ...
+#      ├── config
+#      │   ├── config.yml  <-- THIS FILE
+#      ├── dehyphen
+#      │   └── word-frequencies.pkl
+#      ├── dehyphen_datadir -> /data/swedeb/v1.4.1/dehyphen
+#      ├── dtm
+#      │   ├── lemma
+#      │   └── text
+#      ├── rikdsdagen-records
+#      │   ├── 1867
+#      │   ├── ....
+#      │   ├── 202223
+#      │   ├── prot-ak.xml
+#      │   ├── prot-ek.xml
+#      │   └── prot-fk.xml
+#      ├── registry
+#      │   └── riksprot_corpus
+#      ├── speeches
+#      │   ├── tagged_frames_speeches_lemma.feather
+#      │   ├── tagged_frames_speeches_text.feather
+#      │   ├── text_speeches_base.zip
+#      │   └── text_speeches_dedent_dehyphen.zip
+#      ├── tagged_frames
+#      │   ├── 1867
+#      │   ├── ...
+#      │   ├── 202223
+#      │   ├── tag_config.yml
+#      │   └── version
+#      └── vrt
+#          ├── 1867.vrt.gz
+#          ├── ...
+#          └── 202223.vrt.gz
+# Note! Mount /data/v1.4.1 into the container as :/data to make this work
 
 metadata:
   version: v1.1.3
@@ -135,7 +182,7 @@ mappings:
       type: "decode"
       from_column: "pid"
       to_column: "name"
-    
+
     - table: "gender"
       type: "encode"
       from_column: "gender"
@@ -174,7 +221,7 @@ display:
         "X": "partilös"
       }
       name: { "": "metadata saknas" }
-      
+
   labels:
     speaker:
       unknown: Okänd

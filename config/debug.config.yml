@@ -54,13 +54,6 @@ metadata:
     repository: riksdagen-persons
     path: data
 
-corpus:
-  version: v1.4.1
-  github:
-    user: swerik-project
-    repository: riksdagen-records
-    path: data
-
 cwb:
   registry_dir: ./data/v1.4.1/registry
   corpus_name: RIKSPROT_CORPUS
@@ -76,9 +69,14 @@ vrt:
 speech:
   bootstrap_corpus_folder: ./data/v1.4.1/speeches/bootstrap_corpus
 
+startup:
+  preload: false  # When true, all corpus indexes are eagerly loaded at app startup via CorpusLoader.preload()
+
 kwic:
   use_multiprocessing: false  # Keep disabled for local debugging to avoid extra worker churn
   num_processes: 8
+  cut_off: 500000               # Maximum concordance hits fetched from CWB per query
+  download_wait_timeout_s: 300  # Seconds to wait for READY before download endpoint returns 503
 
 celery:
   broker_url: redis://localhost:6379/0
@@ -93,6 +91,7 @@ development:
 
 cache:
   result_ttl_seconds: 600
+  max_absolute_lifetime_seconds: 3600
   cleanup_interval_seconds: 60
   max_artifact_bytes: 2147483648
   max_pending_jobs: 2
@@ -100,6 +99,9 @@ cache:
   max_page_size: 200
   artifact_cache_max_entries: 16
   sorted_positions_cache_max_entries: 64
+  ticket_poll_retry_after_seconds: 2
+  ticket_state_backend_url: redis://localhost:6379/0
+  ticket_state_prefix: swedeb:ticket-state
 
 fastapi:
   origins:
