@@ -73,9 +73,9 @@ startup:
   preload: false  # When true, all corpus indexes are eagerly loaded at app startup via CorpusLoader.preload()
 
 kwic:
-  use_multiprocessing: true  # Enabled when the current process may safely spawn child workers
+  use_multiprocessing: true     # Enabled when the current process may safely spawn child workers
   num_processes: 8
-  cut_off: 200000             # Maximum concordance hits fetched from CWB per query
+  cut_off: 500000               # Maximum concordance hits fetched from CWB per query
   download_wait_timeout_s: 300  # Seconds to wait for READY before download endpoint returns 503
 
 celery:
