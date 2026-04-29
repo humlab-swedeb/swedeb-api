@@ -247,6 +247,136 @@ class CorpusLoader:
         }
         return page_ranges
 
+    def memory_usage(self) -> None:
+        """Print a detailed memory breakdown of all currently-loaded resources.
+
+        Only initialized lazy members are reported.  Call ``preload()`` first
+        to measure the fully-loaded footprint.
+
+        DataFrame sections include a per-column breakdown.
+        dict sizes are approximate (shallow ``sys.getsizeof`` on keys/values).
+        """
+        import sys  # pylint: disable=import-outside-toplevel
+
+        import scipy.sparse  # pylint: disable=import-outside-toplevel
+
+        def _fmt(n_bytes: int) -> str:
+            return f"{n_bytes / 1024 ** 2:>10,.1f} MB"
+
+        def _dict_bytes(d: dict) -> int:
+            """Estimate size of a flat dict; expands one level of tuple values."""
+            total = sys.getsizeof(d)
+            for k, v in d.items():
+                total += sys.getsizeof(k) + sys.getsizeof(v)
+                if isinstance(v, tuple):
+                    total += sum(sys.getsizeof(item) for item in v)
+            return total
+
+        def _print_df(df: pd.DataFrame, label: str, indent: str = "  ") -> int:
+            mem = df.memory_usage(deep=True)
+            total = int(mem.sum())
+            print(f"{indent}{label} (DataFrame, {len(df):,} rows): {_fmt(total)}")
+            for col, col_bytes in mem.items():
+                if col == "Index":
+                    dtype = str(df.index.dtype)
+                else:
+                    dtype = str(df[col].dtype)
+                print(f"{indent}  {col:<35} {dtype:<18} {_fmt(int(col_bytes))}")
+            return total
+
+        grand_total = 0
+
+        print("=" * 72)
+        print("CorpusLoader Memory Usage")
+        print("=" * 72)
+
+        # ── vectorized_corpus ──────────────────────────────────────────────────
+        if self.__lazy_vectorized_corpus.is_initialized:  # pylint: disable=using-constant-test
+            vc = self.__lazy_vectorized_corpus.value
+            print("\n[vectorized_corpus]")
+
+            btm = vc.bag_term_matrix
+            if scipy.sparse.issparse(btm):
+                data_b = btm.data.nbytes
+                idx_b = btm.indices.nbytes
+                indptr_b = btm.indptr.nbytes
+                btm_total = data_b + idx_b + indptr_b
+                grand_total += btm_total
+                print(
+                    f"  bag_term_matrix ({type(btm).__name__}, dtype={btm.data.dtype},"
+                    f" shape={btm.shape}, nnz={btm.nnz:,}): {_fmt(btm_total)}"
+                )
+                print(f"    data    {_fmt(data_b)}")
+                print(f"    indices {_fmt(idx_b)}")
+                print(f"    indptr  {_fmt(indptr_b)}")
+
+            di = vc.document_index
+            grand_total += _print_df(di, "document_index")
+
+            t2id = vc.token2id
+            t2id_b = _dict_bytes(t2id)
+            grand_total += t2id_b
+            print(f"  token2id (dict, {len(t2id):,} terms): {_fmt(t2id_b)}")
+
+            otf = vc.overridden_term_frequency
+            if otf is not None:
+                otf_b = otf.nbytes if hasattr(otf, "nbytes") else sys.getsizeof(otf)
+                grand_total += otf_b
+                dtype_s = str(otf.dtype) if hasattr(otf, "dtype") else type(otf).__name__
+                print(f"  overridden_term_frequency (ndarray, {dtype_s}, {len(otf):,} entries): {_fmt(otf_b)}")
+
+        # ── prebuilt_speech_index ──────────────────────────────────────────────
+        if self.__lazy_prebuilt_speech_index.is_initialized:  # pylint: disable=using-constant-test
+            print()
+            grand_total += _print_df(self.__lazy_prebuilt_speech_index.value, "[prebuilt_speech_index]", indent="")
+
+        # ── person_codecs ──────────────────────────────────────────────────────
+        if self.__lazy_person_codecs.is_initialized:  # pylint: disable=using-constant-test
+            pc = self.__lazy_person_codecs.value
+            print("\n[person_codecs]")
+            for name, table in pc.store.items():
+                grand_total += _print_df(table, f"store['{name}']")
+            maps_b = sum(_dict_bytes(v) for v in pc.mappings.values()) + sys.getsizeof(pc.mappings)
+            grand_total += maps_b
+            print(f"  mappings (dict, {len(pc.mappings)} codec maps): {_fmt(maps_b)}")
+
+        # ── repository / SpeechStore ───────────────────────────────────────────
+        if self.__lazy_repository.is_initialized:  # pylint: disable=using-constant-test
+            repo = self.__lazy_repository.value
+            store = repo._store
+            print("\n[repository.SpeechStore]")
+            for arr_name in ("_sorted_sids", "_sorted_names", "_sid_ff_codes", "_name_ff_codes", "_sid_fr", "_name_fr"):
+                arr = getattr(store, arr_name)
+                arr_b = arr.nbytes
+                grand_total += arr_b
+                print(f"  {arr_name:<28} (ndarray {arr.dtype}, {len(arr):,} entries): {_fmt(arr_b)}")
+            catalog_b = store._feather_files.nbytes
+            grand_total += catalog_b
+            print(f"  {'_feather_files':<28} (ndarray, {len(store._feather_files)} unique paths): {_fmt(catalog_b)}")
+            if "speaker_note_id2note" in repo.__dict__:
+                sn = repo.speaker_note_id2note
+                sn_b = _dict_bytes(sn)
+                grand_total += sn_b
+                print(f"  speaker_note_id2note (dict, {len(sn):,} entries): {_fmt(sn_b)}")
+
+        # ── decoded_persons ────────────────────────────────────────────────────
+        if "decoded_persons" in self.__dict__:
+            print()
+            grand_total += _print_df(self.decoded_persons, "[decoded_persons]", indent="")
+
+        # ── prebuilt_page_number_index ─────────────────────────────────────────
+        if self.__lazy_prebuilt_page_number_index.is_initialized:  # pylint: disable=using-constant-test
+            pni = self.__lazy_prebuilt_page_number_index.value
+            pni_b = _dict_bytes(pni)
+            grand_total += pni_b
+            print(f"\n[prebuilt_page_number_index] (dict, {len(pni):,} entries): {_fmt(pni_b)}")
+
+        print()
+        print("=" * 72)
+        print(f"TOTAL (measured):  {_fmt(grand_total)}")
+        print("=" * 72)
+        print("Note: dict sizes are approximate; process RSS includes Python interpreter overhead.")
+
 
 @lru_cache(maxsize=1)
 def get_worker_corpus_loader(speech_index_columns: tuple[str, ...] | None = None) -> CorpusLoader:
