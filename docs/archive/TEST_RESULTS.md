@@ -84,15 +84,15 @@ INFO:     Uvicorn running on http://0.0.0.0:8092 (Press CTRL+C to quit)
 
 ## Comparison: Local vs Production
 
-| Aspect | Local Test | Production (Staging) |
-|--------|------------|---------------------|
-| Container tool | Podman | Podman |
-| Filesystem | Overlay | Overlay |
-| User | cwbuser (1021:1021) | cwbuser (1021:1021) |
-| `/app/public` writable? | ✅ Yes | ❌ No (read-only error) |
-| Frontend download | ✅ Success | ✅ Success |
-| Extraction | ✅ Success | ❌ Failed (read-only) |
-| Server startup | ✅ Success | ❌ Failed |
+| Aspect                  | Local Test          | Production (Staging)   |
+|-------------------------|---------------------|------------------------|
+| Container tool          | Podman              | Podman                 |
+| Filesystem              | Overlay             | Overlay                |
+| User                    | cwbuser (1021:1021) | cwbuser (1021:1021)    |
+| `/app/public` writable? | ✅ Yes               | ❌ No (read-only error) |
+| Frontend download       | ✅ Success           | ✅ Success              |
+| Extraction              | ✅ Success           | ❌ Failed (read-only)   |
+| Server startup          | ✅ Success           | ❌ Failed               |
 
 ## Key Findings
 

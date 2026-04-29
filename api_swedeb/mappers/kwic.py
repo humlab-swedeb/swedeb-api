@@ -10,6 +10,23 @@ from api_swedeb.core.speech_utility import (
 from api_swedeb.mappers.cqp_opts import query_params_to_CQP_opts
 from api_swedeb.schemas.kwic_schema import KeywordInContextItem, KeywordInContextResult
 
+# Columns from speech_index.feather consumed by the KWIC join and mapper.
+# Imported by CorpusLoader so the KWIC worker loads only what it needs (~81 MB vs ~264 MB).
+KWIC_SPEECH_INDEX_COLUMNS: list[str] = [
+    "speech_id",  # becomes the index
+    "year",
+    "name",
+    "party_abbrev",
+    "party",
+    "gender",
+    "gender_abbrev",
+    "document_name",
+    "chamber_abbrev",
+    "wiki_id",
+    "speaker_id",
+    "page_number_start",
+]
+
 KWIC_API_COLUMNS: list[str] = [
     "left_word",
     "node_word",

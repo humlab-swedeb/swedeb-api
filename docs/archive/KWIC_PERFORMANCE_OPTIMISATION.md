@@ -8,11 +8,11 @@
 
 ## Baseline (before this work)
 
-| Variant | Procs | Mean (s) | Speedup |
-|---------|-------|----------|---------|
-| singleprocess | 1 | ~87s | 1.00× |
-| multiprocess | 4 | ~43s | ~2.04× |
-| multiprocess | 8 | ~33s | ~2.63× |
+| Variant       | Procs | Mean (s) | Speedup |
+|---------------|-------|----------|---------|
+| singleprocess | 1     | ~87s     | 1.00×   |
+| multiprocess  | 4     | ~43s     | ~2.04×  |
+| multiprocess  | 8     | ~33s     | ~2.63×  |
 
 Query: `[lemma="att"]`, cut_off=500,000, corpus RIKSPROT_CORPUS (19M total matches)
 
@@ -96,11 +96,11 @@ Patched version hoists `p = self.attributes.attribute(p_att, 'p')` outside the l
 
 ## Benchmark after all three fixes
 
-| Variant | Procs | Mean (s) | Speedup | Δ vs baseline |
-|---------|-------|----------|---------|---------------|
-| singleprocess | 1 | 57.4s | 1.00× | −29.6s |
-| multiprocess | 4 | 24.5s | 2.34× | −18.5s |
-| multiprocess | 8 | 15.6s | 3.68× | −17.4s |
+| Variant       | Procs | Mean (s) | Speedup | Δ vs baseline |
+|---------------|-------|----------|---------|---------------|
+| singleprocess | 1     | 57.4s    | 1.00×   | −29.6s        |
+| multiprocess  | 4     | 24.5s    | 2.34×   | −18.5s        |
+| multiprocess  | 8     | 15.6s    | 3.68×   | −17.4s        |
 
 ---
 
@@ -217,12 +217,12 @@ environment — both already present in the Docker image).
 
 ## Files changed (this branch, KWIC-related)
 
-| File | Change |
-|------|--------|
-| `api_swedeb/core/kwic/singleprocess.py` | Bypass `corpus.query()` / SubCorpus NQR |
-| `api_swedeb/core/kwic/multiprocess.py` | `shard_cut_off = ceil(cut_off / num_processes)` |
-| `api_swedeb/core/kwic/patches.py` | New — B2 cache no-ops, B5 dump2patt hoist |
-| `api_swedeb/core/kwic/__init__.py` | Call `apply_patches()` at import time |
+| File                                    | Change                                          |
+|-----------------------------------------|-------------------------------------------------|
+| `api_swedeb/core/kwic/singleprocess.py` | Bypass `corpus.query()` / SubCorpus NQR         |
+| `api_swedeb/core/kwic/multiprocess.py`  | `shard_cut_off = ceil(cut_off / num_processes)` |
+| `api_swedeb/core/kwic/patches.py`       | New — B2 cache no-ops, B5 dump2patt hoist       |
+| `api_swedeb/core/kwic/__init__.py`      | Call `apply_patches()` at import time           |
 
 ---
 

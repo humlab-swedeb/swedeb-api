@@ -55,14 +55,18 @@ def _on_worker_init(**_kwargs):
     """
     from api_swedeb.api.services.corpus_loader import get_worker_corpus_loader  # type: ignore[import]
     from api_swedeb.core.configuration import get_config_store  # type: ignore[import]
+    from api_swedeb.mappers.kwic import KWIC_SPEECH_INDEX_COLUMNS  # type: ignore[import]
 
     config_source = os.environ.get("SWEDEB_CONFIG_PATH", "config/config.yml")
     get_config_store().configure_context(source=config_source)
     configure_celery()
-    loader = get_worker_corpus_loader()
     if _is_kwic_only_worker():
-        loader.preload_kwic()
+        loader = get_worker_corpus_loader(speech_index_columns=tuple(KWIC_SPEECH_INDEX_COLUMNS))
+        # Eagerly warm the slim speech index before the first task arrives.
+        # Skipping vectorized_corpus and repository saves ~18 s of cold-start time.
+        _ = loader.prebuilt_speech_index
     else:
+        loader = get_worker_corpus_loader()
         loader.preload()
 
 

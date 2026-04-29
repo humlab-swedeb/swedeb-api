@@ -55,7 +55,6 @@ class SpeechStore:
 
         self._sid_to_loc: dict[str, tuple[str, int]] = dict(zip(sid_col, zip(ff, fr)))
         self._name_to_loc: dict[str, tuple[str, int]] = dict(zip(name_col, zip(ff, fr)))
-        self._sid_to_name: dict[str, str] = dict(zip(sid_col, name_col))
 
         logger.debug(f"SpeechStore loaded: {len(self._name_to_loc)} speeches from {bootstrap_root}")
 
