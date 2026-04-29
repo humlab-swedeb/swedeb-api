@@ -330,6 +330,8 @@ def load(*, tag: str | None = None, folder: str | None = None, filename: str | N
 
     if os.path.isfile(jj(folder, f"{tag}_vector_data.npz")):
         bag_term_matrix = scipy.sparse.load_npz(jj(folder, f"{tag}_vector_data.npz"))
+        if bag_term_matrix.data.dtype == np.int64:
+            bag_term_matrix.data = bag_term_matrix.data.astype(np.int32)
     else:
         bag_term_matrix = np.load(jj(folder, f"{tag}_vector_data.npy"), allow_pickle=True).item()
 
