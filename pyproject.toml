@@ -28,6 +28,7 @@ dependencies = [
 
 [project.scripts]
 download-speeches = "api_swedeb.scripts.download_speeches:main"
+generate-speech-archive = "api_swedeb.scripts.generate_speech_archive:main"
 
 [project.optional-dependencies]
 dev = [

@@ -712,3 +712,145 @@ sequenceDiagram
 
     Note over MetaStore: Speaker search is lazy:\nGET /v1/metadata/speakers?{query}\nfired on demand from filter input
 ```
+
+---
+
+## Synchronous KWIC Flow (Deprecated)
+
+**Status**: Active but deprecated. The ticketed `POST /kwic/query` path is the recommended replacement. The synchronous path remains for backwards compatibility and is documented here as a baseline comparison.
+
+### Sequence: synchronous KWIC (single request, cut-off enforced)
+
+```mermaid
+sequenceDiagram
+    title Synchronous KWIC Flow (Deprecated)
+
+    actor User
+    participant Frontend as Frontend
+    participant API as API<br/>(deprecated_endpoints)
+    participant KS as KWICService
+    participant Mapper as mappers
+    participant CWB as CWB Corpus<br/>(ccc / CQP)
+    participant SpeechIndex as Prebuilt Speech Index<br/>(CorpusLoader)
+
+    User->>Frontend: submit KWIC search
+    Frontend->>API: GET /v1/tools/kwic/{search}?lemmatized=true&words_before=2&words_after=2&cut_off=200000&…filters
+
+    API->>API: get_cwb_corpus() → ccc.Corpus instance
+    API->>KS: get_kwic(corpus, commons, keywords, lemmatized, cut_off=200000)
+
+    KS->>Mapper: kwic_request_to_CQP_opts(commons, keywords, lemmatized)
+    Mapper-->>KS: CQP opts
+
+    KS->>CWB: execute CQP query
+    Note over CWB: Applies cut_off at CQP level\nreturns at most cut_off concordance rows
+    CWB-->>KS: concordance DataFrame
+
+    KS->>SpeechIndex: join by speech_id to enrich with\nname, party, year, date, chamber…
+    SpeechIndex-->>KS: enriched KWIC DataFrame
+
+    KS-->>API: KWIC DataFrame
+    API->>Mapper: kwic_to_api_model(df)
+    Mapper-->>API: KeywordInContextResult schema
+    API-->>Frontend: 200 {kwic_list: […], total: N}
+
+    Frontend-->>User: render KWIC table
+
+    Note over API,KS: Entire result must fit in one response.\nFor large corpora or broad queries use\nPOST /kwic/query (ticketed path).
+```
+
+---
+
+## ResultStore Artifact Layout
+
+**Status**: Active runtime. Describes disk layout and in-memory caching structures used by `ResultStore`.
+
+### Component: ResultStore storage structure
+
+```mermaid
+flowchart TD
+    subgraph ResultStore["ResultStore (runtime object)"]
+        direction TB
+        tickets["_tickets: dict[ticket_id → TicketMeta]\nin-process, per-worker"]
+        cache["_artifact_cache: LRU dict\ncaches recently read DataFrames"]
+        tss["TicketStateStore\nRedis-backed optional\nshares shards_complete, shards_total\nacross multiple API processes"]
+        tickets --- tss
+    end
+
+    subgraph Disk["Disk: cache.root_dir/"]
+        direction TB
+        pending["{ticket_id}/\n(during KWIC shard execution)"]
+        shards["{ticket_id}/shard_0000.feather\n{ticket_id}/shard_0001.feather\n…"]
+        merged["{ticket_id}/merged.feather\n(after store_shards_ready)"]
+        archive["{archive_ticket_id}.feather\n(or .jsonl.gz / .zip / .xlsx)"]
+
+        pending --> shards
+        shards -->|"all shards done\nmerge + delete shard dir"| merged
+    end
+
+    subgraph Lifecycle["Ticket lifecycle on disk"]
+        direction LR
+        s1[PENDING\nno file yet] --> s2
+        s2[PARTIAL\nshard_*.feather growing] --> s3
+        s3[READY\nmerged.feather present] --> s4
+        s4[EXPIRED\nfiles deleted on cleanup]
+
+        s1_alt[PENDING\nno file yet] -->|"single-process"| s3
+    end
+
+    ResultStore -->|read/write artifacts| Disk
+    cache -->|"populated on GET /page or /download"| merged
+
+    classDef store fill:#e8f0fb,stroke:#5c8ac8,color:#1a2a4a;
+    classDef disk fill:#f0fbe8,stroke:#5ca85c,color:#1a3a1a;
+    classDef state fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    class tickets,cache,tss store;
+    class pending,shards,merged,archive disk;
+    class s1,s2,s3,s4,s1_alt state;
+```
+
+---
+
+## Frontend Store Dependencies
+
+**Status**: Active runtime. Shows which Pinia stores depend on which, and which API endpoint groups each store owns.
+
+### Component: Pinia store graph and API ownership
+
+```mermaid
+flowchart TD
+    subgraph Shared["Shared / cross-cutting"]
+        metaStore["metaDataStore\n─────────────\nGET /v1/metadata/parties\nGET /v1/metadata/genders\nGET /v1/metadata/chambers\nGET /v1/metadata/office_types\nGET /v1/metadata/start_year\nGET /v1/metadata/end_year\nGET /v1/metadata/speakers (lazy)"]
+
+        ticketPolling["ticketPolling\n(utility module)\n─────────────\npollArchiveTicket()\ngetTicketPollDelayMs()"]
+
+        downloadStore["downloadDataStore\n─────────────\nGET /v1/downloads/{id}\nGET /v1/downloads/{id}/download"]
+    end
+
+    subgraph Tools["Tool stores"]
+        kwicStore["kwicDataStore\n─────────────\nGET /v1/tools/kwic/estimate\nPOST /v1/tools/kwic/query\nGET /v1/tools/kwic/status/{id}\nGET /v1/tools/kwic/results/{id}\nGET /v1/tools/kwic/download/{id}\nPOST /v1/tools/kwic/archive/{id}"]
+
+        speechesStore["speechesDataStore\n─────────────\nPOST /v1/tools/speeches/query\nGET /v1/tools/speeches/status/{id}\nGET /v1/tools/speeches/page/{id}\nPOST /v1/tools/speeches/archive/{id}"]
+
+        wtStore["wordTrendsDataStore\n─────────────\nGET /v1/tools/word_trends/{search}\nPOST /v1/tools/word_trend_speeches/query\nGET /v1/tools/word_trend_speeches/status/{id}\nGET /v1/tools/word_trend_speeches/page/{id}\nPOST /v1/tools/word_trend_speeches/archive/{id}"]
+
+        ngramStore["nGramDataStore\n─────────────\nGET /v1/tools/ngrams/{search}"]
+    end
+
+    metaStore -->|getSelectedParams\ngetSelectedKwicTicketFilters| kwicStore
+    metaStore -->|getSelectedParams| speechesStore
+    metaStore -->|getSelectedParams\ngetSelectedKwicTicketFilters| wtStore
+    metaStore -->|getSelectedParams| ngramStore
+
+    ticketPolling -->|pollArchiveTicket| kwicStore
+    ticketPolling -->|pollArchiveTicket| speechesStore
+    ticketPolling -->|pollArchiveTicket| wtStore
+
+    downloadStore -->|pollArchiveTicket| ticketPolling
+    downloadStore -->|getSelectedParams| metaStore
+
+    classDef shared fill:#f0fbe8,stroke:#5ca85c,color:#1a3a1a;
+    classDef tool fill:#e8f0fb,stroke:#5c8ac8,color:#1a2a4a;
+    class metaStore,ticketPolling,downloadStore shared;
+    class kwicStore,speechesStore,wtStore,ngramStore tool;
+```

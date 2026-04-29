@@ -276,6 +276,7 @@ output
 test_data
 *.code-workspace
 deprecated
+archives
 .vscode/settings.json
 data
 tmp
