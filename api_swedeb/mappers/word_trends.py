@@ -18,8 +18,8 @@ def clean_word_trends_dataframe(df: DataFrame) -> DataFrame:
     Returns:
         DataFrame with filter columns removed
     """
-    df = df.loc[:, ~df.columns.str.contains('gender_abbrev')]
-    df = df.loc[:, ~df.columns.str.contains('chamber_abbrev')]
+    drop = [c for c in df.columns if isinstance(c, str) and ('gender_abbrev' in c or 'chamber_abbrev' in c)]
+    df = df.drop(columns=drop)
     return df
 
 
