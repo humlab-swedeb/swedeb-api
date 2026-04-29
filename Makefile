@@ -58,6 +58,15 @@ staging-multiprocessing-worker-logs:
 	@./manage-target staging podman logs swedeb-multiprocessing-worker-staging
 	
 
+staging-podman-stats:
+	@./manage-target staging podman stats --no-stream
+
+staging-podman-inspect:
+	@./manage-target staging podman inspect swedeb-api-staging
+
+staging-mem-usage:
+	@./manage-target staging podman exec swedeb-api-staging python -c 'from api_swedeb.core.load import _memory_usage; _memory_usage()'
+
 .PHONY: lint tidy isort black test pylint
 
 run:       
