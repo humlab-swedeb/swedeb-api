@@ -299,3 +299,416 @@ sequenceDiagram
     API-->>Frontend: 200 {status: ready, shards_complete: N, shards_total: N}
     Frontend-->>User: full result rendered\nsort controls re-enabled
 ```
+
+---
+
+## Application Startup and Component Wiring
+
+**Status**: Active runtime.
+
+### Component: service graph built by AppContainer
+
+```mermaid
+flowchart TD
+    main[main.py] --> create_app
+
+    subgraph create_app["create_app()"]
+        direction TB
+        cfg[Configure ConfigStore] --> lifespan
+        cors[Add CORS middleware]
+        routers[Register routers\ntool / deprecated / metadata / downloads]
+
+        subgraph lifespan["lifespan hook (startup)"]
+            celery_cfg[Configure Celery\nif celery_enabled]
+            container["AppContainer.build()\n→ app.state.container"]
+            rs["ResultStore.from_config()\n→ app.state.result_store"]
+            celery_cfg --> container --> rs
+        end
+    end
+
+    subgraph AppContainer["AppContainer (app-scoped)"]
+        direction TB
+        CL[CorpusLoader]
+        MS[MetadataService]
+        WTS[WordTrendsService]
+        NGS[NGramsService]
+        SS[SearchService]
+        STS[SpeechesTicketService]
+        KS[KWICService]
+        KTS[KWICTicketService]
+        KAS[KWICArchiveService]
+        WTSTS[WordTrendSpeechesTicketService]
+        DS[DownloadService]
+        ATS[ArchiveTicketService]
+
+        CL --> MS
+        CL --> WTS
+        CL --> NGS
+        CL --> SS
+        CL --> STS
+        CL --> KS
+        CL --> KTS
+        CL --> KAS
+        CL --> WTSTS
+        CL --> DS
+        CL --> ATS
+    end
+
+    subgraph CorpusLoader["CorpusLoader (lazy)"]
+        direction TB
+        idx[prebuilt speech_index.feather]
+        dtm[VectorizedCorpus DTM]
+        repo[SpeechRepository\n→ SpeechStore]
+        codecs[PersonCodecs / MetadataCodecs]
+    end
+
+    subgraph ResultStore["ResultStore"]
+        direction TB
+        disk[Disk artifacts\ncache.root_dir/{ticket_id}/]
+        tss[TicketStateStore\nRedis optional]
+        disk --- tss
+    end
+
+    container --> AppContainer
+    rs --> ResultStore
+
+    classDef svc fill:#e8f0fb,stroke:#5c8ac8,color:#1a2a4a;
+    classDef store fill:#f0fbe8,stroke:#5ca85c,color:#1a3a1a;
+    classDef lazy fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    class MS,WTS,NGS,SS,STS,KS,KTS,KAS,WTSTS,DS,ATS svc;
+    class ResultStore,disk,tss store;
+    class idx,dtm,repo,codecs lazy;
+```
+
+---
+
+## Ticket Status Lifecycle
+
+**Status**: Active runtime. Applies to all ticket types: KWIC, speeches, word-trend speeches, and archive tickets.
+
+### State: ticket status transitions
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> Pending : Submit query\n202 Accepted
+
+    Pending --> Partial : First shard written\n(KWIC multiprocess only)
+    Partial --> Ready : All shards merged
+    Pending --> Ready : Job completes\n(single-process or speeches)
+    Pending --> Error : Job fails
+    Partial --> Error : Job fails
+
+    Ready --> Expired : TTL elapsed
+    Error --> Expired : TTL elapsed
+
+    note right of Pending
+        Artifact not yet available
+        Poll GET /status/{id}
+        Retry-After header set
+    end note
+
+    note right of Partial
+        KWIC production mode only
+        Shard files written incrementally
+        Pages servable from completed shards
+        shards_complete / shards_total exposed
+    end note
+
+    note right of Ready
+        Artifact stored as merged.feather
+        Pages and downloads available
+        TTL countdown begins
+    end note
+
+    note right of Error
+        Safe error message stored
+        No stack trace exposed
+        User may re-run query
+    end note
+
+    note right of Expired
+        Ticket removed from ResultStore
+        GET returns 404
+        Artifact deleted from disk
+    end note
+
+    classDef pending fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef partial fill:#e8f0fb,stroke:#5c8ac8,color:#1a2a4a;
+    classDef ready fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+    classDef failed fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+    classDef expired fill:#eeeeee,stroke:#888888,color:#333333;
+
+    class Pending pending;
+    class Partial partial;
+    class Ready ready;
+    class Error failed;
+    class Expired expired;
+```
+
+---
+
+## Production vs Development Execution Mode
+
+**Status**: Active runtime. Controlled by `development.celery_enabled` in `config.yml`.
+
+### Flowchart: ticket execution path selection
+
+```mermaid
+flowchart TD
+    submit[POST /query\nsubmit request] --> create[Create ticket\nResultStore → PENDING]
+    create --> check{celery_enabled?}
+
+    check -- true --> celery[send_task to Celery\nqueue: multiprocessing or default]
+    check -- false --> bg[BackgroundTasks.add_task\nin-process, no Redis]
+
+    celery --> worker[Celery worker process\npool=solo + multiprocessing.Pool]
+    bg --> inline[Runs in FastAPI process\nsingle-threaded, debugger-friendly]
+
+    worker --> shards{KWIC with\nmultiprocessing?}
+    shards -- yes --> partial[Write shards → PARTIAL\nmerge when done → READY]
+    shards -- no --> ready1[Write artifact → READY]
+
+    inline --> ready2[Write artifact → READY]
+
+    partial --> done[Ticket READY\nArtifact in ResultStore]
+    ready1 --> done
+    ready2 --> done
+
+    classDef prod fill:#e8f0fb,stroke:#5c8ac8,color:#1a2a4a;
+    classDef dev fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef common fill:#f5f5f5,stroke:#888888,color:#333333;
+
+    class celery,worker,shards,partial,ready1 prod;
+    class bg,inline,ready2 dev;
+    class submit,create,check,done common;
+```
+
+---
+
+## Synchronous Word Trends Flow
+
+**Status**: Active runtime. The word-trends chart request is synchronous because DTM aggregation is fast (cached corpus, no CQP).
+
+### Sequence: word trends chart
+
+```mermaid
+sequenceDiagram
+    title Synchronous Word Trends
+
+    actor User
+    participant Frontend as Frontend<br/>(wordTrendsStore)
+    participant API as API<br/>(tool_router)
+    participant WTS as WordTrendsService
+    participant DTM as VectorizedCorpus<br/>(DTM, in-memory)
+
+    User->>Frontend: enter search terms + filters, click Sök
+    Frontend->>API: GET /v1/tools/word_trends/{search}?from_year=…&party_id=…&normalize=false
+
+    API->>WTS: get_word_trend_results(terms, filter_opts, normalize)
+    WTS->>DTM: filter corpus by party / gender / chamber / year
+    DTM-->>WTS: filtered document slice
+    WTS->>DTM: sum token counts per year for each term
+    DTM-->>WTS: yearly count DataFrame
+
+    WTS-->>API: DataFrame (year × term counts)
+    API->>API: word_trends_to_api_model(df)
+    API-->>Frontend: 200 WordTrendsResult {words: [{word, data: [{year, count}]}]}
+
+    Frontend-->>User: render frequency chart
+
+    Note over Frontend,API: In parallel, frontend also POSTs\n/word_trend_speeches/query\nfor the speeches tab (ticketed)
+```
+
+---
+
+## Ticketed Speeches Flow
+
+**Status**: Active runtime. Used by the ANFÖRANDEN tool.
+
+### Sequence: speeches query, paging, and download
+
+```mermaid
+sequenceDiagram
+    title Ticketed Speeches Flow
+
+    actor User
+    participant Frontend as Frontend<br/>(speechesStore)
+    participant API as API<br/>(tool_router)
+    participant STS as SpeechesTicketService
+    participant Worker as Celery / BackgroundTasks
+    participant SS as SearchService
+    participant ResultStore as ResultStore<br/>(disk)
+
+    User->>Frontend: set filters, click Sök
+    Frontend->>API: POST /v1/tools/speeches/query {filters}
+
+    API->>STS: submit_query(selections, result_store)
+    STS->>ResultStore: create_ticket() → ticket_id (PENDING)
+    STS-->>API: SpeechesTicketAccepted {ticket_id}
+
+    API->>Worker: dispatch execute_speeches_ticket(ticket_id, selections)
+    API-->>Frontend: 202 {ticket_id}
+
+    activate Worker
+    Worker->>SS: get_speeches(filter_opts)
+    SS-->>Worker: speech DataFrame
+    Worker->>ResultStore: store_ready(ticket_id, df) → READY
+    deactivate Worker
+
+    loop Poll until ready
+        Frontend->>API: GET /v1/tools/speeches/status/{ticket_id}
+        API-->>Frontend: {status: pending | ready}
+    end
+
+    Frontend->>API: GET /v1/tools/speeches/page/{ticket_id}?page=1&page_size=25
+    API->>ResultStore: load_artifact + slice page
+    ResultStore-->>API: page DataFrame
+    API-->>Frontend: 200 SpeechesPageResult {rows, total_hits, page}
+    Frontend-->>User: render speech table
+
+    opt Download speeches ZIP
+        User->>Frontend: click Ladda ner
+        Frontend->>API: POST /v1/tools/speeches/archive/{ticket_id}?format=zip
+        API-->>Frontend: 202 {archive_ticket_id, retrieval_url, expires_at}
+        Note over Frontend,API: archive preparation follows bulk archive flow
+    end
+```
+
+---
+
+## Ticketed Word-Trend Speeches Flow
+
+**Status**: Active runtime. Runs in parallel with the synchronous word-trends chart request so the speeches tab resolves asynchronously while the chart appears immediately.
+
+### Sequence: word-trend speeches query and paging
+
+```mermaid
+sequenceDiagram
+    title Ticketed Word-Trend Speeches Flow
+
+    actor User
+    participant Frontend as Frontend<br/>(wordTrendsStore)
+    participant API as API<br/>(tool_router)
+    participant WTSTS as WordTrendSpeechesTicketService
+    participant Worker as Celery / BackgroundTasks
+    participant WTS as WordTrendsService
+    participant SS as SearchService
+    participant ResultStore as ResultStore<br/>(disk)
+
+    User->>Frontend: enter terms + filters, click Sök
+    Frontend->>API: POST /v1/tools/word_trend_speeches/query {terms, filters}
+
+    API->>WTSTS: submit_query(request, result_store)
+    WTSTS->>ResultStore: create_ticket() → ticket_id (PENDING)
+    WTSTS-->>API: WordTrendSpeechesTicketAccepted {ticket_id}
+
+    API->>Worker: dispatch execute_word_trend_speeches_ticket
+    API-->>Frontend: 202 {ticket_id}
+
+    Note over Frontend,API: Separately, chart request fires in parallel:\nGET /v1/tools/word_trends/{search} → 200 immediately
+
+    activate Worker
+    Worker->>WTS: resolve matching speech IDs for terms + filters
+    WTS-->>Worker: speech_ids[]
+    Worker->>SS: get_speeches(speech_ids)
+    SS-->>Worker: enriched speech DataFrame
+    Worker->>ResultStore: store_ready(ticket_id, df) → READY
+    deactivate Worker
+
+    loop Poll until ready
+        Frontend->>API: GET /v1/tools/word_trend_speeches/status/{ticket_id}
+        API-->>Frontend: {status: pending | ready}
+    end
+
+    Frontend->>API: GET /v1/tools/word_trend_speeches/page/{ticket_id}?page=1
+    API->>ResultStore: load_artifact + slice page
+    ResultStore-->>API: page rows
+    API-->>Frontend: 200 WordTrendSpeechesPageResult
+    Frontend-->>User: render speeches tab
+```
+
+---
+
+## N-grams Flow
+
+**Status**: Active runtime. Uses the CWB/CQP path (distinct from the DTM path used by word trends and the estimate endpoint).
+
+### Sequence: n-gram query
+
+```mermaid
+sequenceDiagram
+    title N-grams Flow (CWB / CQP)
+
+    actor User
+    participant Frontend as Frontend<br/>(nGramDataStore)
+    participant API as API<br/>(tool_router)
+    participant NGS as NGramsService
+    participant Mapper as mappers
+    participant CWB as CWB Corpus<br/>(ccc / CQP)
+
+    User->>Frontend: enter search term + width + mode + filters, click Sök
+    Frontend->>API: GET /v1/tools/ngrams/{search}?width=3&mode=sliding&from_year=…
+
+    API->>API: get_cwb_corpus() → ccc.Corpus instance
+    API->>NGS: get_ngrams(search_term, commons, corpus, width, mode)
+
+    NGS->>Mapper: query_params_to_CQP_opts(commons, word_targets)
+    Mapper-->>NGS: CQP opts list
+
+    NGS->>CWB: execute CQP query via ccc
+    Note over CWB: Full-text index query\nno DTM involved
+    CWB-->>NGS: concordance / frequency data
+
+    NGS->>NGS: compute n-gram frequencies\napply threshold filter
+    NGS-->>API: NGramResult schema
+
+    API-->>Frontend: 200 {ngrams: [{ngram, count}]}
+    Frontend-->>User: render n-gram table
+```
+
+---
+
+## Metadata Bootstrap and Filter Hydration
+
+**Status**: Active runtime. Metadata is fetched once at frontend startup to populate filter dropdowns.
+
+### Sequence: app boot metadata hydration
+
+```mermaid
+sequenceDiagram
+    title Frontend Metadata Bootstrap
+
+    actor User
+    participant App as App.vue / boot
+    participant MetaStore as metaDataStore<br/>(Pinia)
+    participant API as API<br/>(metadata_router)
+    participant MetaSvc as MetadataService
+    participant Codecs as PersonCodecs<br/>(SQLite-backed)
+
+    User->>App: open application in browser
+    App->>MetaStore: initialize()
+
+    par Parallel metadata fetches
+        MetaStore->>API: GET /v1/metadata/parties
+        MetaStore->>API: GET /v1/metadata/genders
+        MetaStore->>API: GET /v1/metadata/chambers
+        MetaStore->>API: GET /v1/metadata/office_types
+        MetaStore->>API: GET /v1/metadata/start_year
+        MetaStore->>API: GET /v1/metadata/end_year
+    end
+
+    API->>MetaSvc: get_parties() / get_genders() / …
+    MetaSvc->>Codecs: read codec tables
+    Codecs-->>MetaSvc: decoded lookup DataFrames
+    MetaSvc-->>API: Pydantic response models
+    API-->>MetaStore: 200 metadata lists
+
+    MetaStore->>MetaStore: populate options\n(party[], gender[], chamber[])\nset default year range
+
+    MetaStore-->>App: filters ready
+    App-->>User: render tool pages with populated filter dropdowns
+
+    Note over MetaStore: Speaker search is lazy:\nGET /v1/metadata/speakers?{query}\nfired on demand from filter input
+```
