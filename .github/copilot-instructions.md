@@ -91,5 +91,9 @@ Use the targeted files under `.github/instructions/` instead of expanding this f
 
 - `python.instructions.md`: backend architecture, config, CWB, testing, and Python change patterns
 - `github-workflow.instructions.md`: issue creation, staging discipline, and commit message rules
-- `operations.instructions.md`: operations-doc scope, environments, runtime config, CI/CD, observability, and recovery documentation
+- `operations.instructions.md`: operations-doc scope, environments, runtime config, CI/CD, observability, and recovery documentation (e.g. in `docs/OPERATIONS.md`)
 - `proposal-writing-guide.instructions.md`: proposal-writing style, scope, and default structure for design/change proposals
+- `design-docs.instructions.md`: design-doc style, scope, and default structure for design documentation (e.g. `docs/DESIGN.md` and `docs/DIAGRAMS.md`)
+- `diagrams.instructions.md`: style guidance for Mermaid diagrams in the repo (e.g. in `docs/DIAGRAMS.md` or proposals)
+- `development.instructions.md`: development environment setup, common commands, and workflow tips (e.g. in `docs/DEVELOPMENT.md`)
+- `testing.instructions.md`: testing scope, patterns, and tips for the active runtime (e.g. in `docs/TESTING.md` and test files)
