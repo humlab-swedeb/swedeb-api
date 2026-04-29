@@ -49,6 +49,7 @@ class CorpusLoader:
         metadata_filename: Optional[str] = None,
         tagged_corpus_folder: Optional[str] = None,
         speech_bootstrap_corpus_folder: Optional[str] = None,
+        speech_index_columns: Optional[list[str]] = None,
     ):
         """
         Initialize the CorpusLoader with configuration values.
@@ -59,6 +60,9 @@ class CorpusLoader:
             metadata_filename: Path to metadata file (defaults from config)
             tagged_corpus_folder: Folder for tagged corpus (defaults from config)
             speech_bootstrap_corpus_folder: Root folder for prebuilt corpus (defaults from config)
+            speech_index_columns: Optional column subset for speech_index.feather.
+                When set, only these columns are loaded, reducing RAM in workers
+                that do not need the full index (e.g. the KWIC multiprocessing worker).
         """
         self.dtm_tag: str = dtm_tag or ConfigValue("dtm.tag").resolve()
         self.dtm_folder: str = dtm_folder or ConfigValue("dtm.folder").resolve()
@@ -67,6 +71,7 @@ class CorpusLoader:
         self.speech_bootstrap_corpus_folder: str = (
             speech_bootstrap_corpus_folder or ConfigValue("speech.bootstrap_corpus_folder", default="").resolve()
         )
+        self.speech_index_columns: Optional[list[str]] = speech_index_columns
 
         # Cache for sharing pre-loaded document index between lazy-loaded resources
         self._cached_document_index: pd.DataFrame | None = None
@@ -89,13 +94,17 @@ class CorpusLoader:
         return self._cached_document_index
 
     def _load_prebuilt_speech_index(self) -> pd.DataFrame:
-        """Load the prebuilt speech_index.feather — fully decoded, indexed by speech_id."""
+        """Load the prebuilt speech_index.feather — fully decoded, indexed by speech_id.
+
+        When ``speech_index_columns`` is set on this loader only those columns are
+        read from disk, reducing RAM for workers that do not need the full index.
+        """
         from pathlib import Path  # pylint: disable=import-outside-toplevel
 
         path = Path(self.speech_bootstrap_corpus_folder) / "speech_index.feather"
         if not path.is_file():
             raise FileNotFoundError(f"prebuilt speech_index.feather not found: {path}")
-        df: pd.DataFrame = pd.read_feather(str(path)).set_index("speech_id")
+        df: pd.DataFrame = pd.read_feather(str(path), columns=self.speech_index_columns).set_index("speech_id")
         return df
 
     def _load_repository(self) -> SpeechRepository:
@@ -178,29 +187,6 @@ class CorpusLoader:
         except Exception:  # pylint: disable=broad-except
             return (1867, 2022)
 
-    def preload_kwic(self) -> "CorpusLoader":
-        """Eagerly load only the resources needed by the KWIC worker.
-
-        The multiprocessing (KWIC) worker only needs ``prebuilt_speech_index``.
-        Skipping ``vectorized_corpus`` and ``repository`` saves ~18 s of cold-start
-        time that would otherwise be wasted in a worker that never uses those resources.
-        """
-
-        def resolve_member(name: str, resolver, is_resolved) -> None:
-            if is_resolved():
-                return
-            start = perf_counter()
-            resolver()
-            elapsed = perf_counter() - start
-            print(f"Loaded {name} in {elapsed:.3f}s")
-
-        resolve_member(
-            "prebuilt_speech_index",
-            lambda: self.__lazy_prebuilt_speech_index.value,
-            lambda: self.__lazy_prebuilt_speech_index.is_initialized,
-        )
-        return self
-
     def preload(self) -> "CorpusLoader":
         """Resolve all lazy-loaded members and cached properties eagerly."""
 
@@ -263,7 +249,7 @@ class CorpusLoader:
 
 
 @lru_cache(maxsize=1)
-def get_worker_corpus_loader() -> CorpusLoader:
+def get_worker_corpus_loader(speech_index_columns: tuple[str, ...] | None = None) -> CorpusLoader:
     """Return the shared CorpusLoader singleton for a Celery worker process.
 
     All per-worker service factories (archive, speeches, word trends, KWIC)
@@ -271,7 +257,12 @@ def get_worker_corpus_loader() -> CorpusLoader:
     are loaded at most once per worker process regardless of which task types
     the worker handles.
 
-    Call ``.preload()`` on the returned instance in the ``worker_init`` signal
-    to front-load corpus I/O before the first task arrives.
+    Pass ``speech_index_columns`` as a tuple to load only a subset of columns from
+    speech_index.feather (e.g. the KWIC-only worker).  The tuple is hashable so
+    lru_cache can distinguish configurations.
+
+    Call ``.preload()`` on the returned instance in the
+    ``worker_init`` signal to front-load corpus I/O before the first task arrives.
     """
-    return CorpusLoader()
+    cols = list(speech_index_columns) if speech_index_columns else None
+    return CorpusLoader(speech_index_columns=cols)
