@@ -154,21 +154,58 @@ The Vue frontend route `/download/:archiveTicketId` (`DownloadRetrievalPage.vue`
 
 ```mermaid
 stateDiagram-v2
-    title: DownloadRetrievalPage — Ticket State Machine
+    direction LR
 
-    [*] --> Pending : POST /v1/tools/.../archive → 202\n(archive ticket created)
+    [*] --> Pending : POST archive<br/>202 Accepted
 
-    Pending --> Ready : background task completes\nResultStore marks ticket ready
-    Pending --> Failed : background task error\nResultStore marks ticket failed
-    Pending --> Expired : TTL elapsed before completion\n(cleanup run removes artifact)
+    Pending --> Ready : Background job completed
+    Pending --> Failed : Background job failed
+    Pending --> Expired : TTL elapsed
 
-    Ready --> Expired : TTL elapsed\n(cleanup run removes artifact or ticket deleted)
-    Failed --> Expired : TTL elapsed\n(cleanup run removes ticket)
+    Ready --> Expired : TTL elapsed
+    Failed --> Expired : TTL elapsed
 
-    Pending : **Pending**\nPage: spinner + "Preparing archive…"\nAuto-refresh every 5 s\nCopy-link button shown immediately
-    Ready : **Ready**\nPage: download button + format + expiry time\nGET /v1/downloads/{id}/download → 200 file stream\nInline flow: download triggers automatically
-    Failed : **Failed**\nPage: safe error message (no stack traces)\n"Return to search and start a new download"
-    Expired : **Expired / Not Found**\nPage: "This download link has expired"\nAPI returns 404; page renders 200 with expiry message\n"Return to search to re-run the query"
+    state "Pending" as Pending
+    state "Ready" as Ready
+    state "Failed" as Failed
+    state "Expired / Not found" as Expired
+
+    note right of Pending
+        Preparing archive
+        Spinner shown
+        Auto-refresh every 5 seconds
+        Copy-link available immediately
+    end note
+
+    note right of Ready
+        Download available
+        Shows format and expiry time
+        GET /v1/downloads/{id}/download
+        returns 200 file stream
+    end note
+
+    note right of Failed
+        Safe user-facing error
+        No stack traces
+        User can return to search
+    end note
+
+    note right of Expired
+        Link has expired
+        API returns 404
+        Page renders expiry message
+        User can re-run the query
+    end note
+
+    classDef pending fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef ready fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+    classDef failed fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+    classDef expired fill:#eeeeee,stroke:#888888,color:#333333;
+
+    class Pending pending;
+    class Ready ready;
+    class Failed failed;
+    class Expired expired;
 ```
 
 ---
@@ -198,7 +235,7 @@ sequenceDiagram
     User->>Frontend: type word / change filter (debounce 300 ms)
     Frontend->>API: GET /v1/tools/kwic/estimate?word=X&from_year=…
     API->>WTS: estimate_hits(word, filter_opts)
-    Note over WTS: DTM column sum with filter applied\n< 20 ms; no CQP query
+    Note over WTS: DTM column sum with filter applied\n< 20 ms, no CQP query
     WTS-->>API: count (int | None)
     API-->>Frontend: 200 {estimated_hits: N, in_vocabulary: true|false}
 
