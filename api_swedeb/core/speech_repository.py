@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
-
 from loguru import logger
 
 from api_swedeb.core.speech import Speech

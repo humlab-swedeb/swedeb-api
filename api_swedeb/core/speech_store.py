@@ -69,9 +69,7 @@ class SpeechStore:
     # Public Lookups
     #####################################################################
 
-    def locations_for_speech_ids(
-        self, speech_ids: list[str]
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def locations_for_speech_ids(self, speech_ids: list[str]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Vectorized lookup for a list of speech_ids.
 
         Returns
