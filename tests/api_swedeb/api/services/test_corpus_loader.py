@@ -382,7 +382,7 @@ class TestCorpusLoaderAdditionalBranches:
         mock_dtm.assert_called_once_with(folder="folder", tag="tag", prepped_document_index=speech_index)
         mock_codecs_instance.load.assert_called_once_with(source="metadata")
         mock_store_class.assert_called_once_with(str(tmp_path))
-        mock_read_feather.assert_called_once_with(str(tmp_path / "speech_index.feather"))
+        mock_read_feather.assert_called_once_with(str(tmp_path / "speech_index.feather"), columns=None)
         assert loader.year_range == (2000, 2000)
         assert captured.out.splitlines() == [
             "Loaded document_index in 0.100s",
@@ -421,7 +421,7 @@ class TestCorpusLoaderAdditionalBranches:
         with patch("api_swedeb.api.services.corpus_loader.pd.read_feather", return_value=decoded) as read_feather:
             result = loader._load_prebuilt_speech_index()
 
-        read_feather.assert_called_once_with(str(tmp_path / "speech_index.feather"))
+        read_feather.assert_called_once_with(str(tmp_path / "speech_index.feather"), columns=None)
         assert result.index.tolist() == ["i-1", "i-2"]
         assert result["name"].tolist() == ["Alice", "Bob"]
 

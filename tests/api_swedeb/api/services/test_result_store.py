@@ -292,11 +292,13 @@ def test_result_store_caches_loaded_artifact_and_sorted_positions(tmp_path) -> N
         with patch.object(store, "_build_sorted_positions", wraps=store._build_sorted_positions) as build_positions:
             first_positions = store.get_sorted_positions(
                 ticket.ticket_id,
+                data=first,
                 sort_columns=("year", "_ticket_row_id"),
                 ascending=(True, True),
             )
             second_positions = store.get_sorted_positions(
                 ticket.ticket_id,
+                data=first,
                 sort_columns=("year", "_ticket_row_id"),
                 ascending=(True, True),
             )
@@ -361,13 +363,15 @@ def test_result_store_evicts_oldest_sorted_positions_cache_entry_when_limit_is_e
             ),
         )
 
+        df = store.load_artifact(ticket.ticket_id)
+
         first_key = ("year", "_ticket_row_id")
         second_key = ("node_word", "_ticket_row_id")
         third_key = ("year", "node_word")
 
-        store.get_sorted_positions(ticket.ticket_id, sort_columns=first_key, ascending=(True, True))
-        store.get_sorted_positions(ticket.ticket_id, sort_columns=second_key, ascending=(True, True))
-        store.get_sorted_positions(ticket.ticket_id, sort_columns=third_key, ascending=(True, True))
+        store.get_sorted_positions(ticket.ticket_id, data=df, sort_columns=first_key, ascending=(True, True))
+        store.get_sorted_positions(ticket.ticket_id, data=df, sort_columns=second_key, ascending=(True, True))
+        store.get_sorted_positions(ticket.ticket_id, data=df, sort_columns=third_key, ascending=(True, True))
 
         cached_sort_keys = [cache_key[2] for cache_key in store._sorted_positions_cache.keys()]
         assert cached_sort_keys == [second_key, third_key]
