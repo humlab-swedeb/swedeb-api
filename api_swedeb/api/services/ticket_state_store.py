@@ -127,6 +127,18 @@ class TicketStateStore:
         """Remove shard counter keys when a ticket is deleted."""
         self._client.delete(self._shard_complete_key(ticket_id), self._shard_total_key(ticket_id))
 
+    def increment_aggregate_version(self, ticket_id: str) -> int:
+        """Atomically increment the n-gram aggregate version and return the new value."""
+        return int(cast(str, self._client.incr(self._aggregate_version_key(ticket_id))))
+
+    def get_aggregate_version(self, ticket_id: str) -> int:
+        """Return the current n-gram aggregate version for a ticket."""
+        return self._read_counter(self._aggregate_version_key(ticket_id))
+
+    def delete_aggregate_version(self, ticket_id: str) -> None:
+        """Remove aggregate version key when a ticket is deleted."""
+        self._client.delete(self._aggregate_version_key(ticket_id))
+
     def _ticket_key(self, ticket_id: str) -> str:
         return self._key(f"ticket:{ticket_id}")
 
@@ -144,6 +156,9 @@ class TicketStateStore:
 
     def _shard_complete_key(self, ticket_id: str) -> str:
         return self._key(f"shard:complete:{ticket_id}")
+
+    def _aggregate_version_key(self, ticket_id: str) -> str:
+        return self._key(f"ngrams:aggregate_version:{ticket_id}")
 
     def _key(self, suffix: str) -> str:
         return f"{self._key_prefix}:{suffix}"

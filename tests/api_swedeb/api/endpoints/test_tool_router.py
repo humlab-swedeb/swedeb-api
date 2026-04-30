@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.result_store import ResultStoreNotFound, ResultStorePendingLimitError
+from api_swedeb.api.v1.endpoints.deprecated_endpoints import get_ngram_results
 from api_swedeb.api.v1.endpoints.tool_router import (
     DownloadFormat,
     download_kwic_ticket,
@@ -23,7 +24,6 @@ from api_swedeb.api.v1.endpoints.tool_router import (
     download_word_trend_speeches,
     get_kwic_ticket_results,
     get_kwic_ticket_status,
-    get_ngram_results,
     get_speech_by_id_result,
     get_speeches_page,
     get_speeches_status,
@@ -341,21 +341,23 @@ class TestToolRouterEndpoints:
     def test_get_ngram_results_splits_search_terms_and_delegates(self):
         commons = MagicMock()
         corpus = MagicMock()
+        ngrams_service = MagicMock()
         expected = NGramResult(ngram_list=[NGramResultItem(ngram="hej världen", count=2, documents=["i-1"])])
+        ngrams_service.get_ngrams.return_value = expected
 
-        with patch("api_swedeb.api.v1.endpoints.tool_router.NGramsService.get_ngrams", return_value=expected) as mocked:
-            result = asyncio.run(
-                get_ngram_results(
-                    search="hej världen",
-                    commons=commons,
-                    width=2,
-                    target="lemma",
-                    mode="sliding",
-                    corpus=corpus,
-                )
+        result = asyncio.run(
+            get_ngram_results(
+                search="hej världen",
+                commons=commons,
+                width=2,
+                target="lemma",
+                mode="sliding",
+                corpus=corpus,
+                ngrams_service=ngrams_service,
             )
+        )
 
-        mocked.assert_called_once_with(
+        ngrams_service.get_ngrams.assert_called_once_with(
             search_term=["hej", "världen"],
             commons=commons,
             corpus=corpus,

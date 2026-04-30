@@ -13,7 +13,9 @@ from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import KWICTicketService
 from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.ngrams_archive_service import NGramsArchiveService
 from api_swedeb.api.services.ngrams_service import NGramsService
+from api_swedeb.api.services.ngrams_ticket_service import NGramsTicketService
 from api_swedeb.api.services.result_store import ResultStore
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.speeches_ticket_service import SpeechesTicketService
@@ -41,6 +43,16 @@ def get_word_trends_service(container: AppContainer = Depends(get_container)) ->
 def get_ngrams_service(container: AppContainer = Depends(get_container)) -> NGramsService:
     """Get the app-scoped NGramsService instance."""
     return container.ngrams_service
+
+
+def get_ngrams_ticket_service(container: AppContainer = Depends(get_container)) -> NGramsTicketService:
+    """Get the app-scoped NGramsTicketService instance."""
+    return container.ngrams_ticket_service
+
+
+def get_ngrams_archive_service(container: AppContainer = Depends(get_container)) -> NGramsArchiveService:
+    """Get the app-scoped NGramsArchiveService instance."""
+    return container.ngrams_archive_service
 
 
 def get_search_service(container: AppContainer = Depends(get_container)) -> SearchService:
@@ -90,8 +102,7 @@ def get_cwb_corpus_opts() -> dict[str, str | None]:
     }
 
 
-def get_cwb_corpus(opts: dict | None = None) -> ccc.Corpus:
-    opts = opts or get_cwb_corpus_opts()
+def get_cwb_corpus(opts: dict = Depends(get_cwb_corpus_opts)) -> ccc.Corpus:
     registry_dir: str = opts.get("registry_dir") or ""
     logger.info(f"Registry dir is {registry_dir}")
     logger.info(f"Exists on disk? {os.path.isdir(registry_dir)}")
