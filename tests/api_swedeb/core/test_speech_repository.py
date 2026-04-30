@@ -298,14 +298,6 @@ def test_store_get_row_missing_feather_file(speech_store):
         speech_store.get_row("nonexistent/protocol.feather", 0)
 
 
-# ---------------------------------------------------------------------------
-# Vectorized lookup regression tests
-# ---------------------------------------------------------------------------
-# These tests verify that the vectorized batch methods (locations_for_speech_ids
-# and locations_for_document_names) return exactly the same (feather_file, row)
-# pairs as the scalar methods, for every combination of found / not-found inputs.
-# ---------------------------------------------------------------------------
-
 _VECTOR_SAMPLE = 20  # speeches sampled for cross-validation
 
 
