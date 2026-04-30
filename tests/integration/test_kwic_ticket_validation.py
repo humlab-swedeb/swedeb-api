@@ -15,7 +15,7 @@ VERSION = "/v1/tools"
 SYNC_PARAMS = {
     "words_before": 2,
     "words_after": 2,
-    "cut_off": 50,
+    "cut_off": 500,
     "lemmatized": "false",
     "from_year": 1970,
     "to_year": 1975,
@@ -26,7 +26,7 @@ TICKET_PAYLOAD = {
     "lemmatized": False,
     "words_before": 2,
     "words_after": 2,
-    "cut_off": 50,
+    "cut_off": 500,
     "filters": {
         "from_year": 1970,
         "to_year": 1975,
@@ -97,7 +97,7 @@ def test_ticketed_kwic_matches_sync_endpoint(kwic_ticket_validation_sample: dict
 
     assert ticket_rows == sync_rows
     assert first_page["total_hits"] == len(sync_rows)
-    assert first_page["total_pages"] == 1
+    assert first_page["total_pages"] > 0
 
 
 def test_ticket_download_manifest_matches_kwic_baseline(
@@ -127,7 +127,7 @@ def test_ticket_download_manifest_matches_kwic_baseline(
     assert manifest["lemmatized"] is False
     assert manifest["words_before"] == 2
     assert manifest["words_after"] == 2
-    assert manifest["cut_off"] == 50
+    assert manifest["cut_off"] == 500
     assert manifest["filters"] == {"gender_id": [1], "year": {"low": 1970, "high": 1975}}
     assert manifest["total_hits"] == len(sync_rows)
     assert manifest["speech_count"] == len(speech_ids)

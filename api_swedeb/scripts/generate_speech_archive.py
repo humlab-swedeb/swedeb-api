@@ -165,10 +165,12 @@ def main(
     }
 
     # Build per-field lookup dicts for the enriched filename
-    _str_col = lambda col: {
-        sid: (str(v) if pd.notna(v) and str(v) else "")
-        for sid, v in zip(speeches_df["speech_id"], speeches_df[col])
-    }
+    def _str_col(col: str) -> dict[str, str]:
+        return {
+            sid: (str(v) if pd.notna(v) and str(v) else "")
+            for sid, v in zip(speeches_df["speech_id"], speeches_df[col])
+        }
+
     id_to_date: dict[str, str] = {
         sid: (str(date).replace("-", "")[:8] if pd.notna(date) and str(date) else id_to_year.get(sid, "unknown"))
         for sid, date in zip(speeches_df["speech_id"], speeches_df["date"])
@@ -202,7 +204,7 @@ def main(
         "feather_file",
         "feather_row",
     }
-    index_df: pd.DataFrame = speeches_df #.reset_index()
+    index_df: pd.DataFrame = speeches_df  # .reset_index()
     index_df = index_df.drop(columns=[c for c in _EXCLUDED_COLUMNS if c in index_df.columns])
     document_index_bytes: bytes = index_df.to_csv(index=False).encode("utf-8")
 

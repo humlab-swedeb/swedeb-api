@@ -27,7 +27,7 @@ def test_get_kwic_builds_opts_and_delegates_to_kwic_with_decode():
     with (
         patch("api_swedeb.api.services.kwic_service.kwic_request_to_CQP_opts", return_value=opts) as to_opts,
         patch("api_swedeb.api.services.kwic_service.simple.kwic_with_decode", return_value=expected) as kwic_fn,
-        patch("api_swedeb.api.services.kwic_service.ConfigValue.resolve", side_effect=[True, 4]),
+        patch("api_swedeb.api.services.kwic_service.ConfigValue.resolve", side_effect=[True, 4, None]),
         patch("api_swedeb.api.services.kwic_service.mp.current_process", return_value=MagicMock(daemon=False)),
     ):
         result = service.get_kwic(
@@ -53,6 +53,7 @@ def test_get_kwic_builds_opts_and_delegates_to_kwic_with_decode():
         cut_off=123,
         use_multiprocessing=True,
         num_processes=4,
+        num_shards=None,
         on_shards_total=None,
         on_shard_complete=None,
     )
@@ -71,7 +72,7 @@ def test_get_kwic_disables_nested_multiprocessing_in_daemon_process():
     with (
         patch("api_swedeb.api.services.kwic_service.kwic_request_to_CQP_opts", return_value=opts),
         patch("api_swedeb.api.services.kwic_service.simple.kwic_with_decode", return_value=expected) as kwic_fn,
-        patch("api_swedeb.api.services.kwic_service.ConfigValue.resolve", side_effect=[True, 4]),
+        patch("api_swedeb.api.services.kwic_service.ConfigValue.resolve", side_effect=[True, 4, None]),
         patch("api_swedeb.api.services.kwic_service.mp.current_process", return_value=MagicMock(daemon=True)),
     ):
         result = service.get_kwic(

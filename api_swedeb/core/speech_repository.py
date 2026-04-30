@@ -16,6 +16,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Callable
 
+import numpy as np
 from loguru import logger
 
 from api_swedeb.core.speech import Speech
@@ -89,56 +90,74 @@ class SpeechRepository:
 
         Each protocol Feather file is loaded at most once per batch, regardless
         of how many speeches from that protocol are in *speech_ids*.
+        Uses a single vectorized searchsorted call to resolve all locations.
         """
-        by_file: dict[str, list[tuple[str, int]]] = {}
+        ids_list: list[str] = list(speech_ids)
+        if not ids_list:
+            return
 
-        for speech_id in speech_ids:
-            loc = self._store.location_for_speech_id(speech_id)
+        ids_arr = np.asarray(ids_list)
+        feather_files, feather_rows, found = self._store.locations_for_speech_ids(ids_list)
 
-            if loc is None:
-                logger.error(f"speech_id {speech_id!r} not found in bootstrap_corpus — data error")
-                yield speech_id, Speech({"name": f"speech {speech_id} not found", "error": "not in bootstrap_corpus"})
-                continue
+        for speech_id in ids_arr[~found]:
+            logger.error(f"speech_id {speech_id!r} not found in bootstrap_corpus — data error")
+            yield str(speech_id), Speech({"name": f"speech {speech_id} not found", "error": "not in bootstrap_corpus"})
 
-            feather_file, feather_row = loc
-            by_file.setdefault(feather_file, []).append((speech_id, feather_row))
+        if not found.any():
+            return
 
-        for feather_file, id_row_pairs in by_file.items():
+        found_ids = ids_arr[found]
+        found_files = feather_files[found]
+        found_rows = feather_rows[found]
+
+        unique_files, inverse = np.unique(found_files, return_inverse=True)
+        for i, ff in enumerate(unique_files):
+            mask = inverse == i
+            batch_ids: list[str] = found_ids[mask].tolist()
+            batch_rows: list[int] = found_rows[mask].tolist()
             try:
-                speech_ids_ordered = [sid for sid, _ in id_row_pairs]
-                row_indices = [fr for _, fr in id_row_pairs]
-                rows = self._store.get_rows_batch(feather_file, row_indices)
-                for speech_id, row in zip(speech_ids_ordered, rows):
+                rows = self._store.get_rows_batch(str(ff), batch_rows)
+                for speech_id, row in zip(batch_ids, rows):
                     yield speech_id, self._row_to_speech(row)
             except FileNotFoundError as ex:
-                for speech_id, _ in id_row_pairs:
-                    yield speech_id, Speech({"name": f"feather {feather_file} not found", "error": str(ex)})
+                for speech_id in batch_ids:
+                    yield speech_id, Speech({"name": f"feather {ff} not found", "error": str(ex)})
 
     def speeches_text_batch(self, speech_ids: Iterable[str]) -> Generator[tuple[str, str], None, None]:
         """Yield ``(speech_id, text)`` pairs — text-only fast path for downloads.
 
         Reads only the ``text`` column from each Feather file, skipping
         all other field conversions and the :class:`Speech` object construction.
+        Uses a single vectorized searchsorted call to resolve all locations.
         """
-        by_file: dict[str, list[tuple[str, int]]] = {}
+        ids_list: list[str] = list(speech_ids)
+        if not ids_list:
+            return
 
-        for speech_id in speech_ids:
-            loc = self._store.location_for_speech_id(speech_id)
-            if loc is None:
-                yield speech_id, ""
-                continue
-            feather_file, feather_row = loc
-            by_file.setdefault(feather_file, []).append((speech_id, feather_row))
+        ids_arr = np.asarray(ids_list)
+        feather_files, feather_rows, found = self._store.locations_for_speech_ids(ids_list)
 
-        for feather_file, id_row_pairs in by_file.items():
+        for speech_id in ids_arr[~found]:
+            yield str(speech_id), ""
+
+        if not found.any():
+            return
+
+        found_ids = ids_arr[found]
+        found_files = feather_files[found]
+        found_rows = feather_rows[found]
+
+        unique_files, inverse = np.unique(found_files, return_inverse=True)
+        for i, ff in enumerate(unique_files):
+            mask = inverse == i
+            batch_ids: list[str] = found_ids[mask].tolist()
+            batch_rows: list[int] = found_rows[mask].tolist()
             try:
-                sids = [sid for sid, _ in id_row_pairs]
-                rows = [fr for _, fr in id_row_pairs]
-                text_list = self._store.get_column_batch(feather_file, rows, "text")
-                for speech_id, text in zip(sids, text_list):
+                text_list = self._store.get_column_batch(str(ff), batch_rows, "text")
+                for speech_id, text in zip(batch_ids, text_list):
                     yield speech_id, text or ""
             except FileNotFoundError:
-                for speech_id, _ in id_row_pairs:
+                for speech_id in batch_ids:
                     yield speech_id, ""
 
     @deprecated

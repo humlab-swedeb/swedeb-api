@@ -364,7 +364,7 @@ flowchart TD
 
     subgraph ResultStore["ResultStore"]
         direction TB
-        disk[Disk artifacts\ncache.root_dir/{ticket_id}/]
+        disk[Disk artifacts\ncache.root_dir ticket_id ]
         tss[TicketStateStore\nRedis optional]
         disk --- tss
     end

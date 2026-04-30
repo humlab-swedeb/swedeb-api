@@ -38,24 +38,24 @@ The backend is built on a containerized architecture, leveraging modern Python t
 
 ```mermaid
 graph TD
-    Browser["Browser / Frontend\n(Vue + Quasar)"]
+    Browser["Browser / Frontend<br/>(Vue + Quasar)"]
 
     subgraph API["API Container (FastAPI)"]
-        Router["Routers\n/v1/tools, /v1/metadata"]
-        Services["Services\nKWICService · WordTrendsService\nNGramsService · SearchService\nMetadataService"]
+        Router["Routers<br/>/v1/tools, /v1/metadata"]
+        Services["Services<br/>KWICService · WordTrendsService<br/>NGramsService · SearchService<br/>MetadataService"]
         Router --> Services
     end
 
-    subgraph Storage["Persistent Storage (shared volume)"]
-        CWB["CWB Corpus\n(VRT / registry)"]
-        Feather["Speech Index\n(Feather / Arrow)"]
-        SQLite["Metadata DB\n(SQLite)"]
-        ResultStore["Result Store\n(disk cache)"]
+    subgraph Storage["Persistent Storage<br/>(shared volume)"]
+        CWB["CWB Corpus<br/>(VRT / registry)"]
+        Feather["Speech Index<br/>(Feather / Arrow)"]
+        SQLite["Metadata DB<br/>(SQLite)"]
+        ResultStore["Result Store<br/>(disk cache)"]
     end
 
     subgraph Background["Background Processing (production)"]
-        Redis["Redis\n(broker + result backend)"]
-        Worker["Celery Worker\nmultiprocessing queue\n(multiprocessing.Pool)"]
+        Redis["Redis<br/>(broker + result backend)"]
+        Worker["Celery Worker<br/>multiprocessing queue<br/>(multiprocessing.Pool)"]
         Redis -->|dequeue task| Worker
         Worker -->|write results| ResultStore
     end
@@ -64,7 +64,7 @@ graph TD
     Services -->|CQP queries| CWB
     Services -->|read| Feather
     Services -->|read| SQLite
-    Services -->|KWIC submit\n(send_task)| Redis
+    Services -->|"KWIC submit<br/>(send_task)"| Redis
     Services -->|poll status / fetch results| ResultStore
 ```
 
