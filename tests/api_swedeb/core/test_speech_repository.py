@@ -93,31 +93,20 @@ def speech_repository(speech_store, metadata_db_path) -> SpeechRepository:
 
 def test_speech_store_loads(speech_store):
     """SpeechStore must index at least one speech."""
-    assert len(speech_store._name_to_loc) > 0
-    assert len(speech_store._sid_to_loc) > 0
-
-
-def test_speech_store_location_by_document_name(speech_store):
-    """Every document_name in the lookup must return a valid location."""
-    name = next(iter(speech_store._name_to_loc))
-    loc = speech_store.location_for_document_name(name)
-    assert loc is not None
-    feather_file, feather_row = loc
-    assert feather_file.endswith(".feather")
-    assert feather_row >= 0
+    assert len(speech_store._sorted_sids) > 0
 
 
 def test_speech_store_location_by_speech_id(speech_store):
     """Every speech_id in the lookup must return a valid location."""
-    sid = next(iter(speech_store._sid_to_loc))
+    sid = speech_store._sorted_sids[0]
     loc = speech_store.location_for_speech_id(sid)
     assert loc is not None
 
 
 def test_speech_store_get_row(speech_store):
     """get_row must return a dict with expected keys."""
-    name = next(iter(speech_store._name_to_loc))
-    feather_file, feather_row = speech_store.location_for_document_name(name)
+    sid = speech_store._sorted_sids[0]
+    feather_file, feather_row = speech_store.location_for_speech_id(sid)
     row = speech_store.get_row(feather_file, feather_row)
     assert "text" in row
     assert "speech_id" in row
@@ -125,9 +114,85 @@ def test_speech_store_get_row(speech_store):
 
 
 def test_speech_store_missing_key(speech_store):
-    """Missing document_name must return None, not raise."""
-    assert speech_store.location_for_document_name("prot-9999--xx--0001_1") is None
+    """Missing speech_id must return None, not raise."""
     assert speech_store.location_for_speech_id("i-NONEXISTENT") is None
+
+
+# ---------------------------------------------------------------------------
+# Scalar lookup regression tests  (searchsorted boundary correctness)
+# ---------------------------------------------------------------------------
+# These tests guard against the class of bug where np.searchsorted returns an
+# in-bounds index whose stored value does NOT match the query — which must be
+# treated as "not found", not silently returned as a wrong location.
+#
+# Boundary cases that can trip a dict → searchsorted migration:
+#   - first element (index 0)
+#   - last element  (index -1)
+#   - a value that sorts before everything  ("\x00…")
+#   - a value that sorts after everything   ("\xff…")
+#   - a value that falls between two valid entries
+# ---------------------------------------------------------------------------
+
+
+def test_scalar_sid_first_and_last_element(speech_store):
+    """location_for_speech_id must find the first and last sorted entries."""
+    first_sid = speech_store._sorted_sids[0]
+    last_sid = speech_store._sorted_sids[-1]
+
+    loc_first = speech_store.location_for_speech_id(first_sid)
+    loc_last = speech_store.location_for_speech_id(last_sid)
+
+    assert loc_first is not None, f"first sid {first_sid!r} not found"
+    assert loc_last is not None, f"last sid {last_sid!r} not found"
+    assert loc_first[0].endswith(".feather")
+    assert loc_last[0].endswith(".feather")
+    assert loc_first[1] >= 0
+    assert loc_last[1] >= 0
+
+
+def test_scalar_sid_before_first_returns_none(speech_store):
+    """A value lexicographically before the first entry must return None, not a wrong hit."""
+    first_sid = speech_store._sorted_sids[0]
+    before_first = "\x00" + first_sid  # guaranteed to sort before every real id
+    assert speech_store.location_for_speech_id(before_first) is None
+
+
+def test_scalar_sid_after_last_returns_none(speech_store):
+    """A value lexicographically after the last entry must return None, not a wrong hit."""
+    last_sid = speech_store._sorted_sids[-1]
+    after_last = last_sid + "\xff"  # guaranteed to sort after every real id
+    assert speech_store.location_for_speech_id(after_last) is None
+
+
+def test_scalar_sid_between_entries_returns_none(speech_store):
+    """A value that falls between two adjacent entries must return None."""
+    if len(speech_store._sorted_sids) < 2:
+        pytest.skip("corpus too small for between-entry test")
+    a = speech_store._sorted_sids[0]
+    b = speech_store._sorted_sids[1]
+    # Build something strictly between a and b: extend a with \xff so it sorts
+    # after a but — if b doesn't start with the same prefix + higher char — before b.
+    candidate = a + "\xff"
+    if candidate >= b:
+        pytest.skip("adjacent entries too close for synthetic between-value")
+    assert speech_store.location_for_speech_id(candidate) is None
+
+
+def test_scalar_sid_all_entries_found(speech_store):
+    """Every speech_id in the index must resolve to a non-None location."""
+    for sid in speech_store._sorted_sids:
+        loc = speech_store.location_for_speech_id(sid)
+        assert loc is not None, f"speech_id {sid!r} unexpectedly not found"
+
+
+def test_scalar_location_row_is_valid_index(speech_store):
+    """Returned feather_row must be a non-negative integer for every entry."""
+    for sid in speech_store._sorted_sids:
+        loc = speech_store.location_for_speech_id(sid)
+        assert loc is not None
+        feather_file, feather_row = loc
+        assert isinstance(feather_row, int), f"feather_row for {sid!r} is {type(feather_row)}, not int"
+        assert feather_row >= 0, f"negative feather_row {feather_row} for {sid!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +202,7 @@ def test_speech_store_missing_key(speech_store):
 
 def test_fast_repo_speech_by_speech_id_from_store(speech_repository, speech_store):
     """speech() must return a valid Speech for a known speech_id."""
-    sid = next(iter(speech_store._sid_to_loc))
+    sid = speech_store._sorted_sids[0]
     speech = speech_repository.speech(sid)
     assert isinstance(speech, Speech)
     assert speech.error is None, f"Unexpected error: {speech.error}"
@@ -146,7 +211,7 @@ def test_fast_repo_speech_by_speech_id_from_store(speech_repository, speech_stor
 
 def test_fast_repo_speech_by_speech_id(speech_repository, speech_store):
     """speech() must resolve an i-* speech_id correctly."""
-    sid = next(iter(speech_store._sid_to_loc))
+    sid = speech_store._sorted_sids[0]
     speech = speech_repository.speech(sid)
     assert isinstance(speech, Speech)
     assert speech.error is None, f"Unexpected error for {sid}: {speech.error}"
@@ -219,7 +284,7 @@ def test_fast_repo_batch_unknown_speech_id(speech_repository):
 
 def test_fast_repo_batch_mixed_valid_and_invalid(speech_repository, speech_store):
     """speeches_batch() must handle a mix of valid and invalid speech_ids gracefully."""
-    valid_speech_id = next(iter(speech_store._sid_to_loc))
+    valid_speech_id = speech_store._sorted_sids[0]
     results = dict(speech_repository.speeches_batch([valid_speech_id, "i-missing-1", "i-missing-2"]))
     assert valid_speech_id in results
     assert results[valid_speech_id].error is None
@@ -233,6 +298,117 @@ def test_store_get_row_missing_feather_file(speech_store):
         speech_store.get_row("nonexistent/protocol.feather", 0)
 
 
+_VECTOR_SAMPLE = 20  # speeches sampled for cross-validation
+
+
+def _make_mixed_sid_list(speech_store: SpeechStore, n_valid: int = 10) -> list[str]:
+    """Return a list with n_valid real speech_ids interleaved with 3 fake ones."""
+    valid = speech_store._sorted_sids[:n_valid].tolist()
+    fake = ["i-FAKE-0001", "i-FAKE-0002", "i-FAKE-0003"]
+    # interleave so ordering edge-cases are exercised
+    result = []
+    for i, sid in enumerate(valid):
+        result.append(sid)
+        if i < len(fake):
+            result.append(fake[i])
+    return result
+
+
+def test_vectorized_sids_matches_scalar(speech_store):
+    """locations_for_speech_ids must agree with location_for_speech_id for each entry."""
+    sample_ids = speech_store._sorted_sids[:_VECTOR_SAMPLE].tolist()
+    feather_files, feather_rows, found = speech_store.locations_for_speech_ids(sample_ids)
+
+    assert len(feather_files) == len(sample_ids)
+    assert len(feather_rows) == len(sample_ids)
+    assert len(found) == len(sample_ids)
+
+    for i, sid in enumerate(sample_ids):
+        scalar_loc = speech_store.location_for_speech_id(sid)
+        assert found[i], f"speech_id {sid!r} unexpectedly not found in vectorized result"
+        assert scalar_loc is not None, f"scalar lookup missed {sid!r}"
+        assert str(feather_files[i]) == scalar_loc[0], f"feather_file mismatch for {sid!r}"
+        assert int(feather_rows[i]) == scalar_loc[1], f"feather_row mismatch for {sid!r}"
+
+
+def test_vectorized_sids_not_found(speech_store):
+    """locations_for_speech_ids must mark fake speech_ids as not-found."""
+    fake_ids = ["i-FAKE-A", "i-FAKE-B", "i-FAKE-C"]
+    _, _, found = speech_store.locations_for_speech_ids(fake_ids)
+    assert not found.any(), "Expected all fake ids to be not-found"
+
+
+def test_vectorized_sids_empty_input(speech_store):
+    """locations_for_speech_ids with an empty list must return three empty arrays."""
+    feather_files, feather_rows, found = speech_store.locations_for_speech_ids([])
+    assert len(feather_files) == 0
+    assert len(feather_rows) == 0
+    assert len(found) == 0
+
+
+def test_vectorized_sids_mixed_found_and_not_found(speech_store):
+    """locations_for_speech_ids must correctly partition found vs not-found in a mixed list."""
+    mixed = _make_mixed_sid_list(speech_store, n_valid=10)
+    feather_files, feather_rows, found = speech_store.locations_for_speech_ids(mixed)
+
+    assert len(found) == len(mixed)
+
+    for i, sid in enumerate(mixed):
+        scalar_loc = speech_store.location_for_speech_id(sid)
+        if scalar_loc is None:
+            assert not found[i], f"Expected {sid!r} to be not-found in vectorized result"
+        else:
+            assert found[i], f"Expected {sid!r} to be found in vectorized result"
+            assert str(feather_files[i]) == scalar_loc[0]
+            assert int(feather_rows[i]) == scalar_loc[1]
+
+
+# ---------------------------------------------------------------------------
+# speeches_text_batch tests
+# ---------------------------------------------------------------------------
+
+
+def test_text_batch_returns_nonempty_strings(speech_repository, speech_store):
+    """speeches_text_batch must return non-empty text for every known speech_id."""
+    sample_ids = speech_store._sorted_sids[:_VECTOR_SAMPLE].tolist()
+    results = dict(speech_repository.speeches_text_batch(sample_ids))
+
+    assert set(results.keys()) == set(sample_ids)
+    for sid, text in results.items():
+        assert isinstance(text, str), f"text for {sid!r} is not a str"
+        assert len(text) > 0, f"text for {sid!r} is unexpectedly empty"
+
+
+def test_text_batch_unknown_id_yields_empty_string(speech_repository):
+    """speeches_text_batch must yield an empty string for an unknown speech_id."""
+    results = list(speech_repository.speeches_text_batch(["i-NONEXISTENT-0001"]))
+    assert len(results) == 1
+    speech_id, text = results[0]
+    assert speech_id == "i-NONEXISTENT-0001"
+    assert text == ""
+
+
+def test_text_batch_empty_input(speech_repository):
+    """speeches_text_batch with empty input must produce no output."""
+    results = list(speech_repository.speeches_text_batch([]))
+    assert results == []
+
+
+def test_text_batch_matches_speech_text(speech_repository, speech_store):
+    """speeches_text_batch text must equal Speech.text from speeches_batch for same ids."""
+    sample_ids = speech_store._sorted_sids[:_VECTOR_SAMPLE].tolist()
+
+    text_results = dict(speech_repository.speeches_text_batch(sample_ids))
+    speech_results = dict(speech_repository.speeches_batch(sample_ids))
+
+    for sid in sample_ids:
+        assert sid in text_results
+        assert sid in speech_results
+        batch_text = text_results[sid]
+        speech_text = speech_results[sid].text or ""
+        assert batch_text == speech_text, f"Text mismatch for {sid!r}"
+
+
 # ---------------------------------------------------------------------------
 # Performance benchmarks (fast backend only)
 # ---------------------------------------------------------------------------
@@ -243,7 +419,7 @@ _SAMPLE_N = 50  # scaled to small test corpus
 
 def _sample_speech_ids(speech_store: SpeechStore, n: int) -> list[str]:
     """Return n speech_ids, cycling through the corpus if smaller than n."""
-    ids = list(speech_store._sid_to_loc.keys())
+    ids = speech_store._sorted_sids.tolist()
     if len(ids) >= n:
         return ids[:n]
     return (ids * ((n // len(ids)) + 1))[:n]
@@ -279,7 +455,7 @@ def test_benchmark_batch_retrieval(speech_repository, speech_store):
 
     Reports speeches/sec. Passes unconditionally.
     """
-    batch_ids = list(speech_store._sid_to_loc.keys())
+    batch_ids = speech_store._sorted_sids.tolist()
 
     t0 = time.perf_counter()
     results = list(speech_repository.speeches_batch(batch_ids))
@@ -293,7 +469,7 @@ def test_benchmark_batch_retrieval(speech_repository, speech_store):
 
 def test_benchmark_worker_memory(speech_repository, speech_store):
     """Capture peak process RSS after loading all test speeches."""
-    batch_ids = list(speech_store._sid_to_loc.keys())
+    batch_ids = speech_store._sorted_sids.tolist()
     list(speech_repository.speeches_batch(batch_ids))
 
     rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss

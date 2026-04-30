@@ -236,6 +236,6 @@ display:
 
 global:
   corpus:
-    folder: /data/riksdagen_corpus_data/riksdagen-records/data
+    folder: /data/swerik/riksdagen-records/data
   metadata:
-    folder: /data/riksdagen_corpus_data/riksdagen-persons/data
+    folder: /data/swerik/riksdagen-persons/data

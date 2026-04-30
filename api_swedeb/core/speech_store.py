@@ -14,6 +14,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pyarrow as pa
 from loguru import logger
 from pyarrow import feather
@@ -48,27 +49,51 @@ class SpeechStore:
         lookup_table = feather.read_table(str(lookup_path))
         lookup_df = lookup_table.to_pandas()
 
-        ff = lookup_df["feather_file"].astype(str)
-        fr = lookup_df["feather_row"].astype(int)
-        sid_col = lookup_df["speech_id"].astype(str)
-        name_col = lookup_df["document_name"].astype(str)
+        # Encode feather_file as a compact catalog + int16 codes instead of
+        # storing full path strings in every dict entry.
+        ff_cat = lookup_df["feather_file"].astype("category")
+        self._feather_files: np.ndarray = ff_cat.cat.categories.to_numpy()  # unique paths
+        ff_codes = ff_cat.cat.codes.to_numpy(dtype=np.int16)
+        fr = lookup_df["feather_row"].to_numpy(dtype=np.int32)
 
-        self._sid_to_loc: dict[str, tuple[str, int]] = dict(zip(sid_col, zip(ff, fr)))
-        self._name_to_loc: dict[str, tuple[str, int]] = dict(zip(name_col, zip(ff, fr)))
+        # Sort by speech_id for O(log n) binary search via np.searchsorted.
+        sid_arr = lookup_df["speech_id"].to_numpy()
+        sid_order = np.argsort(sid_arr, kind="stable")
+        self._sorted_sids: np.ndarray = sid_arr[sid_order]
+        self._sid_ff_codes: np.ndarray = ff_codes[sid_order]
+        self._sid_fr: np.ndarray = fr[sid_order]
 
-        logger.debug(f"SpeechStore loaded: {len(self._name_to_loc)} speeches from {bootstrap_root}")
+        logger.debug(f"SpeechStore loaded: {len(self._sorted_sids)} speeches from {bootstrap_root}")
 
     #####################################################################
     # Public Lookups
     #####################################################################
 
+    def locations_for_speech_ids(self, speech_ids: list[str]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Vectorized lookup for a list of speech_ids.
+
+        Returns
+        -------
+        feather_files : ndarray[str], shape (n,)
+            Resolved feather file path for each entry (undefined where found=False).
+        feather_rows : ndarray[int32], shape (n,)
+            Row index within the feather file (undefined where found=False).
+        found : ndarray[bool], shape (n,)
+            True where the corresponding speech_id was found in the index.
+        """
+        query = np.asarray(speech_ids)
+        positions = np.searchsorted(self._sorted_sids, query)
+        clipped = np.clip(positions, 0, len(self._sorted_sids) - 1)
+        found = self._sorted_sids[clipped] == query
+        ff_codes = self._sid_ff_codes[clipped]
+        return self._feather_files[ff_codes], self._sid_fr[clipped], found
+
     def location_for_speech_id(self, speech_id: str) -> tuple[str, int] | None:
         """Return (feather_file, feather_row) for a speech_id, or None."""
-        return self._sid_to_loc.get(speech_id)
-
-    def location_for_document_name(self, document_name: str) -> tuple[str, int] | None:
-        """Return (feather_file, feather_row) for a document_name, or None."""
-        return self._name_to_loc.get(document_name)
+        i = np.searchsorted(self._sorted_sids, speech_id)
+        if i < len(self._sorted_sids) and self._sorted_sids[i] == speech_id:
+            return str(self._feather_files[self._sid_ff_codes[i]]), int(self._sid_fr[i])
+        return None
 
     def get_row(self, feather_file: str, feather_row: int) -> dict[str, Any]:
         """Read a single speech row from a protocol Feather file.
