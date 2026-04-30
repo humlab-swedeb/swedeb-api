@@ -27,7 +27,10 @@ FROM python:3.13-slim AS backend-builder
 ARG BACKEND_REPO=https://github.com/humlab-swedeb/swedeb-api.git
 ARG BRANCH=staging
 
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates git \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build/backend
 
@@ -45,7 +48,10 @@ FROM node:22-slim AS frontend-builder
 ARG FRONTEND_REPO=https://github.com/humlab-swedeb/swedeb_frontend.git
 ARG BRANCH=staging
 
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates git \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -58,7 +64,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
 # Pack into a tarball the same way build-assets.sh does for staging
-RUN tar -czf /dist/frontend-staging.tar.gz -C dist/spa .
+RUN mkdir -p /dist && tar -czf /dist/frontend-staging.tar.gz -C dist/spa .
 
 # ---------------------------------------------------------------------------
 # Stage 3: final runtime image (identical structure to the GA Dockerfile)
