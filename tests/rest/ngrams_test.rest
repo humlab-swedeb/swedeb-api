@@ -1,0 +1,154 @@
+### N-gram endpoints — debug mode (FastAPI: backend only, port 8000)
+### Run requests in order: estimate → query → status → page → archive
+### Copy a ticket_id from the query response and paste it into the @ticketId variable below.
+
+@baseUrl = http://localhost:8000/v1/tools
+@ticketId = f0c1e66e-9556-4bd0-9c4b-fe9169c5e26b
+@archiveTicketId = PASTE_ARCHIVE_TICKET_ID_HERE
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Estimate hits before submitting a query
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Estimate — word in vocabulary, no filters
+GET {{baseUrl}}/ngrams/estimate?word=statsminister
+Accept: application/json
+
+###
+
+### Estimate — word in vocabulary with year filter
+GET {{baseUrl}}/ngrams/estimate?word=statsminister&from_year=1970&to_year=1990
+Accept: application/json
+
+###
+
+### Estimate — word likely not in vocabulary
+GET {{baseUrl}}/ngrams/estimate?word=xyzzy_notaword
+Accept: application/json
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Submit a query — returns 202 with ticket_id
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Query — sliding window, width 2, no filters
+POST {{baseUrl}}/ngrams/query
+Content-Type: application/json
+
+{
+  "search": "statsminister",
+  "width": 2,
+  "target": "word",
+  "mode": "sliding",
+  "filters": {}
+}
+
+###
+
+### Query — left-aligned, width 3, year range filter
+POST {{baseUrl}}/ngrams/query
+Content-Type: application/json
+
+{
+  "search": "statsminister",
+  "width": 3,
+  "target": "word",
+  "mode": "left-aligned",
+  "filters": {
+    "from_year": 1970,
+    "to_year": 1990
+  }
+}
+
+###
+
+### Query — lemma target with chamber filter
+POST {{baseUrl}}/ngrams/query
+Content-Type: application/json
+
+{
+  "search": "arbeta",
+  "width": 2,
+  "target": "lemma",
+  "mode": "sliding",
+  "filters": {
+    "chamber_abbrev": ["AK"]
+  }
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Poll status — paste ticket_id from query response into @ticketId above
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Status — check ticket (pending → ready)
+GET {{baseUrl}}/ngrams/status/{{ticketId}}
+Accept: application/json
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Fetch a results page — ticket must be READY
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Page 1, default page size (50 rows), sorted by count descending
+GET {{baseUrl}}/ngrams/page/{{ticketId}}?page=1&sort_by=window_count&sort_order=desc
+Accept: application/json
+
+###
+
+### Page 1, 10 rows, sorted by ngram ascending
+GET {{baseUrl}}/ngrams/page/{{ticketId}}?page=1&page_size=10&sort_by=ngram&sort_order=asc
+Accept: application/json
+
+###
+
+### Page 2, 25 rows, sorted by count descending
+GET {{baseUrl}}/ngrams/page/{{ticketId}}?page=2&page_size=25&sort_by=window_count&sort_order=desc
+Accept: application/json
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. Prepare an archive for download — ticket must be READY
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Archive — CSV (gzipped)
+POST {{baseUrl}}/ngrams/archive/{{ticketId}}?archive_format=csv_gz
+Content-Type: application/json
+
+###
+
+### Archive — Excel
+POST {{baseUrl}}/ngrams/archive/{{ticketId}}?archive_format=xlsx
+Content-Type: application/json
+
+###
+
+### Archive — JSONL (gzipped)
+POST {{baseUrl}}/ngrams/archive/{{ticketId}}?archive_format=jsonl_gz
+Content-Type: application/json
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. Download the archive — paste archive_ticket_id from archive response
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Download archive (retrieval_url from archive response)
+GET http://localhost:8000/v1/downloads/{{archiveTicketId}}
+Accept: */*
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. Legacy synchronous endpoint (deprecated, kept for comparison)
+# ─────────────────────────────────────────────────────────────────────────────
+
+### Legacy GET — synchronous n-gram result, sliding window width 2
+GET {{baseUrl}}/ngrams/statsminister?width=2&target=word&mode=sliding
+Accept: application/json
+
+###
