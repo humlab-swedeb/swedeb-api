@@ -29,6 +29,7 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
     - [6. Ticketed word-trend speeches flow](#6-ticketed-word-trend-speeches-flow)
     - [7. Speech download flow](#7-speech-download-flow)
     - [8. Bulk archive retrieval flow](#8-bulk-archive-retrieval-flow)
+    - [9. Ticketed n-grams flow](#9-ticketed-n-grams-flow)
   - [Data and Persistence Design](#data-and-persistence-design)
     - [Configuration](#configuration)
     - [Read-only runtime data](#read-only-runtime-data)
@@ -145,6 +146,8 @@ The entry point is [main.py](../main.py), which builds the app through [api_swed
 - `SearchService`
 - `WordTrendsService`
 - `NGramsService`
+- `NGramsTicketService`
+- `NGramsArchiveService`
 - `KWICService`
 - `KWICTicketService`
 - `SpeechesTicketService`
@@ -160,8 +163,10 @@ The key services are:
 - `CorpusLoader`: lazy access to DTM corpus, prebuilt speech index, metadata codecs, and speech repository
 - `MetadataService`: read-only metadata tables
 - `SearchService`: speech listing, speaker lookup, single-speech retrieval, and batch speech access
-- `WordTrendsService`: vocabulary filtering, time-series aggregation over the vectorized corpus, and pre-search KWIC hit estimation via `estimate_hits()` (called by `GET /v1/tools/kwic/estimate`)
+- `WordTrendsService`: vocabulary filtering, time-series aggregation over the vectorized corpus, and pre-search hit estimation via `estimate_hits()` (called by `GET /v1/tools/kwic/estimate` and `GET /v1/tools/ngrams/estimate`)
 - `NGramsService`: CWB-backed n-gram extraction
+- `NGramsTicketService`: paged n-gram ticket lifecycle; dispatches to Celery (production, multiprocessing) or FastAPI `BackgroundTasks` (development, single-process) based on `development.celery_enabled`; in production mode uses `Pool.imap_unordered()` over year-range shards and maintains a running aggregate per ticket (`current_aggregate.feather`), advancing through `PARTIAL` with `shards_complete`, `shards_total`, and `aggregate_version` before transitioning to `READY` (`merged.feather`); development mode skips `PARTIAL` and writes the full result directly
+- `NGramsArchiveService`: bulk archive ticket lifecycle for n-gram results — validates the source n-gram ticket, creates an archive ticket, serializes the stored n-gram Feather artifact to CSV, JSONL, or Excel in a `BackgroundTasks` job, and writes the artifact atomically to `ResultStore`
 - `KWICService`: synchronous KWIC query execution and metadata join
 - `KWICTicketService`: paged KWIC ticket lifecycle; dispatches to Celery (production, multiprocessing) or FastAPI `BackgroundTasks` (development, singleprocessing) based on `development.celery_enabled`; in production mode the multiprocess executor uses `Pool.imap_unordered()` to store results shard-by-shard and advance the ticket through `PARTIAL` status before transitioning to `READY`; status responses include `shards_complete` and `shards_total` during `PARTIAL`; the download endpoint block-polls until `READY` (timeout controlled by `kwic.download_wait_timeout_s`)
 - `SpeechesTicketService`: paged speeches ticket lifecycle; dispatches to the default Celery queue (production) or FastAPI `BackgroundTasks` (development) and stores the resulting speech listing artifact in `ResultStore`
@@ -180,6 +185,7 @@ The main core subsystems are:
 - `core/load.py`: DTM and speech-index loading, Feather invalidation checks, and index slimming
 - `core/cwb/`: CQP expression compilation and CWB helpers
 - `core/kwic/`: single-process and multiprocessing KWIC execution
+- `core/n_grams/`: multiprocess n-gram execution with running-aggregate shard model
 - `core/speech_store.py`: low-level Feather storage access for prebuilt speech data
 - `core/speech_repository.py`: higher-level speech retrieval built on `SpeechStore`
 - `core/speech_utility.py`: formatting and URL/link derivation used by API mappers
@@ -302,6 +308,33 @@ The frontend renders this link as a copyable retrieval URL. Separately, the Vue 
 
 Polling the status endpoint never triggers re-execution of the archive job. The downloads router is tool-agnostic and reads any archive ticket from the shared `ResultStore`.
 
+### 9. Ticketed n-grams flow
+
+The n-gram ticket flow mirrors the ticketed KWIC flow and delivers three layered capabilities: a pre-search DTM estimate, a single-process ticket path (development mode), and a progressive multiprocess running-aggregate path (production mode).
+
+**Pre-search estimate**: `GET /v1/tools/ngrams/estimate` returns a DTM-based hit count (`estimated_hits`, `in_vocabulary`) via `WordTrendsService.estimate_hits()` without running a CQP query. For multi-token inputs, the first whitespace-separated token is used as a proxy (the result is a loose upper bound for phrase queries and wide n-gram widths). The frontend debounces this call and shows colour-coded guidance near the search button, consistent with the KWIC UX.
+
+**Production mode** (`celery_enabled: true`):
+
+1. the client POSTs a `NGramsQueryRequest` via `POST /v1/tools/ngrams/query`
+2. `NGramsTicketService.submit_query()` creates a ticket through `ResultStore`
+3. `celery_app.send_task("api_swedeb.execute_ngrams_ticket", ..., queue="celery")` enqueues the task
+4. the Celery worker uses `Pool.imap_unordered()` over year-range shards; as each shard completes, `execute_ticket` merges it into the running aggregate via `groupby ngram → sum window_count, union documents` and atomically replaces `current_aggregate.feather` (write to `.tmp`, rename); `shards_complete` and `aggregate_version` are incremented in `TicketStateStore` (Redis); the ticket advances to `PARTIAL` after the first shard
+5. clients poll `GET /v1/tools/ngrams/status/{ticket_id}` and detect `aggregate_version` advances; when the version advances, the frontend silently re-fetches the current page — not page 1 — so the user continues browsing while aggregation is in progress
+6. pages served during `PARTIAL` read `current_aggregate.feather`; total counts are approximate (counts only increase); sort-by-ngram is fully stable at all phases; sort-by-count is approximate and the frontend shows an "Approximate" badge on the count column
+7. after all shards are merged, the worker renames `current_aggregate.feather` to `merged.feather` and transitions the ticket to `READY`
+8. on `READY`, pages are served from `merged.feather`; the "Approximate" badge disappears and all sort options are fully consistent
+
+**Development mode** (`celery_enabled: false`):
+
+1–2. Same ticket creation.
+3. `BackgroundTasks.add_task(execute_ticket, ...)` schedules in-process execution.
+4. Single-process execution skips the `PARTIAL` phase; the full aggregated result is written directly via `store_ready()`.
+
+The important design difference from KWIC is the **running-aggregate model**: KWIC accumulates N independent shard files that are concatenated on read during `PARTIAL` and merged once at `READY`. N-grams require summing `window_count` and unioning `documents` across shards because the same n-gram may appear in multiple year-range shards. A single running aggregate file is therefore maintained and updated atomically after each shard rather than collecting N shard files.
+
+The synchronous `GET /v1/tools/ngrams/{search}` endpoint has been moved to `deprecated_endpoints.py` and is preserved for backwards compatibility only.
+
 ## Data and Persistence Design
 
 ### Configuration
@@ -373,8 +406,8 @@ Performance-related design choices are visible throughout the runtime:
 - Feather/Arrow storage for fast columnar access
 - precomputed speech metadata in the bootstrap corpus
 - batched protocol reads in `SpeechStore`
-- optional multiprocessing for KWIC
-- ticketed/paged KWIC to avoid forcing every large query into one synchronous response
+- optional multiprocessing for KWIC and n-grams
+- ticketed/paged KWIC and n-grams to avoid forcing large queries into synchronous responses
 
 ### Security and access model
 
