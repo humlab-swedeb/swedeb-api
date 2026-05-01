@@ -75,8 +75,8 @@ FROM python:${PYTHON_VERSION}-slim-bookworm AS backend-builder
 ARG BACKEND_REPO=https://github.com/humlab-swedeb/swedeb-api.git
 ARG BACKEND_BRANCH=staging
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git \
+RUN apt-get update -qq \
+    && apt-get install -qq -y --no-install-recommends ca-certificates git \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -96,8 +96,8 @@ FROM node:22-slim AS frontend-builder
 ARG FRONTEND_REPO=https://github.com/humlab-swedeb/swedeb_frontend.git
 ARG FRONTEND_BRANCH=staging
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git \
+RUN apt-get update -qq \
+    && apt-get install -qq -y --no-install-recommends ca-certificates git \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -132,8 +132,8 @@ ENV LANG=C.UTF-8
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
 # Install CWB runtime dependencies
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && apt-get install -y -qq --no-install-recommends \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+    && apt-get install -qq -y --no-install-recommends \
         libpcre3 libglib2.0-0 libncurses5 libreadline8 readline-common \
         git less gzip bzip2 curl wget \
     && rm -rf /var/lib/apt/lists/*
