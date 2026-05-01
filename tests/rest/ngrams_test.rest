@@ -138,7 +138,7 @@ Content-Type: application/json
 # ─────────────────────────────────────────────────────────────────────────────
 
 ### Download archive (retrieval_url from archive response)
-GET http://localhost:8000/v1/downloads/{{archiveTicketId}}
+GET http://localhost:8000/v1/downloads/{{archiveTicketId}}/download
 Accept: */*
 
 ###

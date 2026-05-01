@@ -140,22 +140,28 @@ class NGramsTicketService:
             use_multiprocess: bool = ConfigValue("development.celery_enabled", default=False).resolve()
             is_multiprocess: list[bool] = [False]
 
-            # Running aggregate maintained across shard callbacks
+            # Running aggregate updated by on_shard_complete with the pre-merged result from the orchestrator
             running_aggregate: list[pd.DataFrame] = [pd.DataFrame(columns=["ngram", "window_count", "documents"])]
+            # Local completion counter: incremented per callback so ordering of shard_index
+            # from imap_unordered does not affect the count.
+            local_shards_complete: list[int] = [0]
+            local_shards_total: list[int] = [0]
 
             def on_shards_total(n: int) -> None:
                 is_multiprocess[0] = True
+                local_shards_total[0] = n
                 if result_store.ticket_state_store is not None:
                     result_store.ticket_state_store.set_shards_total(ticket_id, n)
 
-            def on_shard_complete(shard_index: int, shard_df: pd.DataFrame) -> None:
-                from api_swedeb.core.n_grams.multiprocess import _merge_ngrams_aggregate  # noqa: PLC0415
-
-                running_aggregate[0] = _merge_ngrams_aggregate(running_aggregate[0], shard_df)
-                shards_complete = (shard_index + 1) if result_store.ticket_state_store is None else (
+            def on_shard_complete(shard_index: int, updated_aggregate: pd.DataFrame) -> None:
+                running_aggregate[0] = updated_aggregate
+                local_shards_complete[0] += 1
+                shards_complete = (
                     result_store.ticket_state_store.increment_shards_complete(ticket_id)
+                    if result_store.ticket_state_store is not None
+                    else local_shards_complete[0]
                 )
-                shards_total = result_store.require_ticket(ticket_id).shards_total or 0
+                shards_total = local_shards_total[0]
                 result_store.store_ngrams_aggregate(
                     ticket_id,
                     df=running_aggregate[0],
@@ -204,21 +210,12 @@ class NGramsTicketService:
                     else pd.DataFrame(columns=["ngram", "window_count", "documents"])
                 )
 
-            if is_multiprocess[0]:
-                # Shards have been progressively written; finalize.
-                final_aggregate[TICKET_ROW_ID] = range(len(final_aggregate))
-                result_store.store_ready(
-                    ticket_id,
-                    df=final_aggregate,
-                    query_meta=self._query_meta(request),
-                )
-            else:
-                final_aggregate[TICKET_ROW_ID] = range(len(final_aggregate))
-                result_store.store_ready(
-                    ticket_id,
-                    df=final_aggregate,
-                    query_meta=self._query_meta(request),
-                )
+            final_aggregate[TICKET_ROW_ID] = range(len(final_aggregate))
+            result_store.store_ready(
+                ticket_id,
+                df=final_aggregate,
+                query_meta=self._query_meta(request),
+            )
             logger.info(f"Stored n-gram results for ticket {ticket_id} ({len(final_aggregate)} rows)")
 
         except ResultStoreCapacityError:

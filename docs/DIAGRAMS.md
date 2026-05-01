@@ -728,7 +728,7 @@ sequenceDiagram
     Note over Frontend,ResultStore: Sort by ngram: stable at all phases\nSort by count: approximate during PARTIAL (counts only increase)
 
     opt Export
-        Frontend->>API: POST /v1/tools/ngrams/archive/{ticket_id}?format=csv
+        Frontend->>API: POST /v1/tools/ngrams/archive/{ticket_id}?format=csv_gz
         API-->>Frontend: 202 {archive_ticket_id, retrieval_url, expires_at}
         Note over Frontend,API: archive preparation follows bulk archive flow
     end

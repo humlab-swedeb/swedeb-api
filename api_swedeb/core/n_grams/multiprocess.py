@@ -182,6 +182,6 @@ def execute_ngrams_multiprocess(
         for shard_index, shard_df in pool.imap_unordered(ngrams_worker, worker_args):
             aggregate = _merge_ngrams_aggregate(aggregate, shard_df)
             if on_shard_complete is not None:
-                on_shard_complete(shard_index, shard_df)
+                on_shard_complete(shard_index, aggregate)
 
     return aggregate

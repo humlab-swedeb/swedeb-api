@@ -15,6 +15,7 @@ import csv
 import gzip
 import io
 import json
+from typing import Generator
 
 import pytest
 from fastapi import FastAPI
@@ -84,13 +85,6 @@ def _fetch_all_ticket_items(client: TestClient, ticket_id: str) -> tuple[list[di
     return all_items, first_page
 
 
-def _ngram_key(item: dict) -> tuple[str, int, frozenset[str]]:
-    """Normalised comparison key: (ngram, count, frozenset of document ids)."""
-    docs = item.get("documents", [])
-    if isinstance(docs, str):
-        docs = [d for d in docs.split(",") if d]
-    return (item["ngram"], item["count"], frozenset(docs))
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -98,7 +92,7 @@ def _ngram_key(item: dict) -> tuple[str, int, frozenset[str]]:
 
 
 @pytest.fixture(scope="module")
-def ngrams_validation_client(fastapi_app: FastAPI) -> TestClient:
+def ngrams_validation_client(fastapi_app: FastAPI) -> Generator[TestClient, None, None]:
     with TestClient(fastapi_app) as client:
         yield client
 

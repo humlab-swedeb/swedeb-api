@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class NGramResultItem(BaseModel):
@@ -39,7 +39,7 @@ class NGramsQueryRequest(BaseModel):
     width: int = 2
     target: Literal["word", "lemma"] = "word"
     mode: Literal["sliding", "left-aligned", "right-aligned"] = "sliding"
-    filters: NGramsFilterRequest = NGramsFilterRequest()
+    filters: NGramsFilterRequest = Field(default_factory=NGramsFilterRequest)
 
 
 class NGramsTicketAccepted(BaseModel):
