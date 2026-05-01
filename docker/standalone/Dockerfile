@@ -38,12 +38,17 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_PROGRESS_BAR=off
 ENV PIP_ROOT_USER_ACTION=ignore
 
-RUN apt-get update -qq \
-    && apt-get install -y -qq --no-install-recommends \
+RUN set -e; \
+    apt_log=/tmp/apt-step.log; \
+    { \
+      apt-get update -qq; \
+      apt-get install -y -qq --no-install-recommends \
         build-essential apt-utils pkg-config autoconf bison flex subversion tar wget \
         libpcre3-dev libglib2.0-dev libncurses-dev libncurses5-dev \
-        libreadline-dev libc6-dev \
-    && rm -rf /var/lib/apt/lists/*
+        libreadline-dev libc6-dev; \
+    } >"$apt_log" 2>&1 || { cat "$apt_log"; exit 1; }; \
+    rm -f "$apt_log"; \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
@@ -85,10 +90,15 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_PROGRESS_BAR=off
 ENV PIP_ROOT_USER_ACTION=ignore
 
-RUN apt-get update -qq \
-    && apt-get install -qq -y --no-install-recommends ca-certificates git \
-    && update-ca-certificates >/dev/null \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -e; \
+    apt_log=/tmp/apt-step.log; \
+    { \
+      apt-get update -qq; \
+      apt-get install -qq -y --no-install-recommends ca-certificates git; \
+      update-ca-certificates; \
+    } >"$apt_log" 2>&1 || { cat "$apt_log"; exit 1; }; \
+    rm -f "$apt_log"; \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build/backend
 
@@ -106,10 +116,15 @@ FROM node:22-slim AS frontend-builder
 ARG FRONTEND_REPO=https://github.com/humlab-swedeb/swedeb_frontend.git
 ARG FRONTEND_BRANCH=staging
 
-RUN apt-get update -qq \
-    && apt-get install -qq -y --no-install-recommends ca-certificates git \
-    && update-ca-certificates >/dev/null \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -e; \
+    apt_log=/tmp/apt-step.log; \
+    { \
+      apt-get update -qq; \
+      apt-get install -qq -y --no-install-recommends ca-certificates git; \
+      update-ca-certificates; \
+    } >"$apt_log" 2>&1 || { cat "$apt_log"; exit 1; }; \
+    rm -f "$apt_log"; \
+    rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN npm install -g --silent pnpm
@@ -149,11 +164,16 @@ ENV PIP_PROGRESS_BAR=off
 ENV PIP_ROOT_USER_ACTION=ignore
 
 # Install CWB runtime dependencies
-RUN DEBIAN_FRONTEND=noninteractive apt-get update -qq \
-    && apt-get install -qq -y --no-install-recommends \
+RUN set -e; \
+    apt_log=/tmp/apt-step.log; \
+    { \
+      DEBIAN_FRONTEND=noninteractive apt-get update -qq; \
+      DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
         libpcre3 libglib2.0-0 libncurses5 libreadline8 readline-common \
-        git less gzip bzip2 curl wget \
-    && rm -rf /var/lib/apt/lists/*
+        git less gzip bzip2 curl wget; \
+    } >"$apt_log" 2>&1 || { cat "$apt_log"; exit 1; }; \
+    rm -f "$apt_log"; \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy CWB binaries, libraries, and Python wheels from the cwb-builder stage
 COPY --from=cwb-builder /usr/local/bin/ /usr/local/bin/

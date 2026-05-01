@@ -7,7 +7,7 @@ FRONTEND_BRANCH=staging
 .PHONY: image
 image:
 	@echo "Building image using podman"
-	@podman build \
+	@podman build --no-cache \
 		--build-arg BACKEND_BRANCH="$(BACKEND_BRANCH)" \
 		--build-arg FRONTEND_BRANCH="$(FRONTEND_BRANCH)" \
 		-t "$(IMAGE_NAME):$(IMAGE_TAG)" \
