@@ -1,0 +1,303 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  local message="${1:-}"
+
+  if [[ "$message" != "" ]]; then
+    echo "error: $message" >&2
+  fi
+  cat >&2 <<USAGE
+usage: $(basename "$0") <target environment> <local file> <remote path> [<local file> <remote path> ...]
+
+arguments:
+  <target environment>   staging | production
+  <local file>           Local regular file to upload
+  <remote path>          Destination path relative to /srv/<deploy-service-user>
+
+requirements:
+  - Environment file: ~/.vault/.swedeb-<env>.env
+  - Required variables:
+      SWEDEB_DEPLOY_HOST
+      SWEDEB_DEPLOY_SUDO_SECRET
+      SWEDEB_DEPLOY_USER (optional)
+      SWEDEB_DEPLOY_SERVICE_USER (optional)
+  - Env file must have permissions: 600
+
+examples:
+  $(basename "$0") staging ./config/config.yml configuration/secrets/config.yml
+  $(basename "$0") staging \\
+    docker/quadlets/redis.container configuration/quadlets/redis.container \\
+    docker/quadlets/celery-worker.container configuration/quadlets/celery-worker.container
+
+notes:
+  - Remote paths must be relative file paths below /srv/<deploy-service-user>.
+  - Absolute paths, empty path components, "." and ".." are rejected.
+  - Existing destination symlinks are rejected.
+USAGE
+  exit 2
+}
+
+validate_remote_relative_path() {
+  local path="$1"
+
+  if [[ "$path" == "" ]]; then
+    usage "Remote path must not be empty"
+  fi
+  if [[ "$path" == /* ]]; then
+    usage "Remote path must be relative: $path"
+  fi
+  if [[ "$path" == */ ]]; then
+    usage "Remote path must name a file, not a directory: $path"
+  fi
+  if [[ "$path" == *$'\n'* || "$path" == *$'\r'* || "$path" == *$'\t'* ]]; then
+    usage "Remote path must not contain control whitespace: $path"
+  fi
+
+  local part
+  local -a parts=()
+  local old_ifs="$IFS"
+  IFS="/"
+  read -r -a parts <<<"$path"
+  IFS="$old_ifs"
+
+  for part in "${parts[@]}"; do
+    if [[ "$part" == "" || "$part" == "." || "$part" == ".." ]]; then
+      usage "Remote path contains an unsafe component: $path"
+    fi
+  done
+}
+
+if [[ $# -lt 3 ]]; then
+  usage "Missing target environment or file mapping"
+fi
+
+g_target_environment="$1"
+shift
+
+case "$g_target_environment" in
+  staging | production) ;;
+  *)
+    usage "Invalid target environment: $g_target_environment"
+    ;;
+esac
+
+if (( $# % 2 != 0 )); then
+  usage "File mappings must be pairs: <local file> <remote path>"
+fi
+
+g_env_file="${HOME}/.vault/.swedeb-$g_target_environment.env"
+g_deploy_service_user="swedeb_$g_target_environment"
+
+if [[ -f "$g_env_file" ]]; then
+  if [[ "$(stat -c %a "$g_env_file")" != "600" ]]; then
+    echo "$g_target_environment env file must be owner-readable only:" >&2
+    echo "  chmod 600 $g_env_file" >&2
+    exit 1
+  fi
+  set -a
+  # shellcheck source=/dev/null
+  source "$g_env_file"
+  set +a
+else
+  echo "Missing $g_target_environment env file: $g_env_file" >&2
+  echo "Expected variables: SWEDEB_DEPLOY_HOST, SWEDEB_DEPLOY_SUDO_SECRET" >&2
+  exit 1
+fi
+
+g_host="${SWEDEB_DEPLOY_HOST:-${g_host:-}}"
+g_deploy_user="${SWEDEB_DEPLOY_USER:-${g_deploy_user:-${USER:?Missing local USER}}}"
+g_deploy_service_user="${SWEDEB_DEPLOY_SERVICE_USER:-${g_deploy_service_user:-swedeb_staging}}"
+g_secret="${SWEDEB_DEPLOY_SUDO_SECRET:-${g_secret:-}}"
+
+: "${g_host:?Missing deployment host}"
+: "${g_deploy_service_user:?Missing deploy service user}"
+
+if [[ ! "$g_deploy_service_user" =~ ^[A-Za-z_][A-Za-z0-9_-]*[$]?$ ]]; then
+  usage "Invalid deploy service user: $g_deploy_service_user"
+fi
+
+if [[ -z "$g_secret" ]]; then
+  read -rsp "sudo password for $g_target_environment: " g_secret </dev/tty
+  echo >&2
+fi
+
+g_manifest=""
+g_file_count=0
+declare -a g_local_files=()
+declare -a g_stage_names=()
+
+while [[ $# -gt 0 ]]; do
+  g_local_file="$1"
+  g_remote_path="$2"
+  shift 2
+
+  validate_remote_relative_path "$g_remote_path"
+
+  if [[ ! -f "$g_local_file" ]]; then
+    usage "Local path is not a regular file: $g_local_file"
+  fi
+
+  g_local_abs="$(realpath "$g_local_file")"
+  g_mode="$(stat -c %a "$g_local_abs")"
+
+  if [[ ! "$g_mode" =~ ^[0-7]{3,4}$ ]]; then
+    usage "Unsupported local file mode for $g_local_file: $g_mode"
+  fi
+
+  g_file_count=$((g_file_count + 1))
+  g_stage_name="$(printf 'file-%06d' "$g_file_count")"
+
+  g_local_files+=("$g_local_abs")
+  g_stage_names+=("$g_stage_name")
+  g_manifest+="$g_stage_name"$'\t'"$g_mode"$'\t'"$g_remote_path"$'\n'
+done
+
+g_manifest_b64="$(printf '%s' "$g_manifest" | base64 -w0)"
+g_remote_tmp=""
+g_cleanup_remote_tmp=false
+
+cleanup_remote_tmp() {
+  if [[ "$g_cleanup_remote_tmp" == true && "$g_remote_tmp" != "" ]]; then
+    ssh \
+      -T \
+      -o BatchMode=yes \
+      -o ConnectTimeout=10 \
+      "$g_deploy_user@$g_host" \
+      "rm -rf -- '$g_remote_tmp'" >/dev/null 2>&1 || true
+  fi
+}
+
+trap cleanup_remote_tmp EXIT
+
+echo "info: creating remote staging directory on $g_target_environment..."
+g_remote_tmp="$(
+  ssh \
+    -T \
+    -o BatchMode=yes \
+    -o ConnectTimeout=10 \
+    "$g_deploy_user@$g_host" \
+    "mktemp -d /tmp/swedeb-push-$g_target_environment.XXXXXXXXXX"
+)"
+g_cleanup_remote_tmp=true
+
+for i in "${!g_local_files[@]}"; do
+  echo "info: staging ${g_local_files[$i]}..."
+  scp \
+    -p \
+    -q \
+    "${g_local_files[$i]}" \
+    "$g_deploy_user@$g_host:$g_remote_tmp/${g_stage_names[$i]}"
+done
+
+g_remote_script="$(cat <<REMOTE_SCRIPT
+set -euo pipefail
+
+die() {
+  echo "error: \$*" >&2
+  exit 1
+}
+
+validate_relative_path() {
+  local path="\$1"
+
+  [[ "\$path" != "" ]] || die "Remote path must not be empty"
+  [[ "\$path" != /* ]] || die "Remote path must be relative: \$path"
+  [[ "\$path" != */ ]] || die "Remote path must name a file, not a directory: \$path"
+  [[ "\$path" != *\$'\\n'* && "\$path" != *\$'\\r'* && "\$path" != *\$'\\t'* ]] || \\
+    die "Remote path must not contain control whitespace: \$path"
+
+  local part
+  local -a parts=()
+  local old_ifs="\$IFS"
+  IFS="/"
+  read -r -a parts <<<"\$path"
+  IFS="\$old_ifs"
+
+  for part in "\${parts[@]}"; do
+    [[ "\$part" != "" && "\$part" != "." && "\$part" != ".." ]] || \\
+      die "Remote path contains an unsafe component: \$path"
+  done
+}
+
+ensure_safe_parent_dir() {
+  local rel_path="\$1"
+  local dir_rel="\${rel_path%/*}"
+
+  if [[ "\$dir_rel" == "\$rel_path" ]]; then
+    return
+  fi
+
+  local current="\$deploy_root"
+  local part
+  local -a dir_parts=()
+  local old_ifs="\$IFS"
+  IFS="/"
+  read -r -a dir_parts <<<"\$dir_rel"
+  IFS="\$old_ifs"
+
+  for part in "\${dir_parts[@]}"; do
+    current="\$current/\$part"
+
+    [[ ! -L "\$current" ]] || die "Refusing to use symlinked directory: \$current"
+
+    if [[ -e "\$current" ]]; then
+      [[ -d "\$current" ]] || die "Parent path exists but is not a directory: \$current"
+    else
+      mkdir "\$current"
+      chown "\$deploy_user:\$deploy_group" "\$current"
+      chmod 0750 "\$current"
+    fi
+  done
+}
+
+stage_dir="$g_remote_tmp"
+deploy_user="$g_deploy_service_user"
+deploy_root="/srv/\$deploy_user"
+manifest_b64="$g_manifest_b64"
+
+trap 'rm -rf -- "\$stage_dir"' EXIT
+
+id "\$deploy_user" >/dev/null 2>&1 || die "Unknown deploy user: \$deploy_user"
+deploy_group="\$(id -gn "\$deploy_user")"
+[[ -d "\$deploy_root" ]] || die "Deploy root does not exist: \$deploy_root"
+[[ ! -L "\$deploy_root" ]] || die "Deploy root must not be a symlink: \$deploy_root"
+[[ "\$stage_dir" == /tmp/swedeb-push-$g_target_environment.* ]] || die "Unsafe stage dir: \$stage_dir"
+[[ -d "\$stage_dir" ]] || die "Stage dir does not exist: \$stage_dir"
+
+echo "info: installing files into \$deploy_root..."
+
+while IFS=\$'\\t' read -r stage_name mode rel_path; do
+  [[ "\$stage_name" != "" ]] || continue
+  [[ "\$stage_name" =~ ^file-[0-9]{6}\$ ]] || die "Invalid staged filename: \$stage_name"
+  [[ "\$mode" =~ ^[0-7]{3,4}\$ ]] || die "Invalid mode for \$rel_path: \$mode"
+
+  validate_relative_path "\$rel_path"
+
+  src="\$stage_dir/\$stage_name"
+  target="\$deploy_root/\$rel_path"
+
+  [[ -f "\$src" ]] || die "Staged file is missing: \$src"
+  ensure_safe_parent_dir "\$rel_path"
+
+  [[ ! -d "\$target" || -L "\$target" ]] || die "Destination is a directory: \$target"
+  [[ ! -L "\$target" ]] || die "Refusing to replace symlink: \$target"
+
+  rm -f -- "\$target"
+  install -m "\$mode" -o "\$deploy_user" -g "\$deploy_group" "\$src" "\$target"
+  echo "info: installed \$target"
+done < <(printf '%s' "\$manifest_b64" | base64 -d)
+
+echo "Done."
+REMOTE_SCRIPT
+)"
+
+printf '%s\n%s\n' "$g_secret" "$g_remote_script" |
+  ssh \
+    -T \
+    -o BatchMode=yes \
+    -o ConnectTimeout=10 \
+    "$g_deploy_user@$g_host" \
+    'sudo -S -p "" bash -s'
+
+g_cleanup_remote_tmp=false

@@ -296,6 +296,20 @@ Use the environment-appropriate `<tag>`:
 - `test` or `{version}-test` for test
 - a specific release version such as `0.7.0` for production
 
+The repository includes helper scripts for remote Quadlet environments:
+
+- `./manage-target <environment> deploy` pulls the image and recreates the Quadlet deployment.
+- `./push-files <environment> <local file> <remote relative path>` stages selected local files on the remote host, installs them below `/srv/<deploy-service-user>`, and assigns deploy-service-user ownership.
+
+Example staging configuration update:
+
+```bash
+./push-files staging ./config/config.yml configuration/secrets/config.yml
+./manage-target staging manage-quadlet install
+```
+
+`push-files` accepts only relative destination file paths. For staging, `configuration/secrets/config.yml` resolves to `/srv/swedeb_staging/configuration/secrets/config.yml`; absolute paths and `..` components are rejected.
+
 ## CI Pipeline Stages
 
 ### Test and staging workflows

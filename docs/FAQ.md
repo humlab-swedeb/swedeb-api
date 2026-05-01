@@ -10,15 +10,19 @@ root@pdf-server:/srv/swedeb_staging# manage-quadlet shell
 
 ## Update Quadlet configuration
 
-The Swedeb Quadlet container files are version controlled in the backend's docker folder/quadlets. Please make changes to these files, then copy then to the target environment.
+The Swedeb Quadlet container files are version controlled in the backend's `docker/quadlets` folder. Make changes locally, then push the selected files into the target environment with `push-files`.
 
 ```bash
-swedeb_staging@you:~$ scp -R youruser@mydevserver:/path/to/quadlets .
-swedeb_staging@you:~$ scp youruser@mydevserver:/path/to/config.yml config.yml
-swedeb_staging@you:~$ sudo cp quadlets/* /srv/swedeb_staging/configuration/quadlets
-swedeb_staging@you:~$ sudo chown -R swedeb_staging:swedeb_staging /srv/swedeb_staging/configuration/quadlets
-swedeb_staging@pdf-server:~$ manage-quadlet install
+./push-files staging \
+  docker/quadlets/redis.container configuration/quadlets/redis.container \
+  docker/quadlets/celery-worker.container configuration/quadlets/celery-worker.container \
+  docker/quadlets/multiprocessing-worker.container configuration/quadlets/multiprocessing-worker.container
+
+./manage-target staging manage-quadlet install
 ```
+
+The destination path is relative to `/srv/swedeb_staging`; absolute paths and `..` path components are rejected.
+
 Or manual emergency edit:
 ```bash
 swedeb_staging@pdf-server:~$ vi configuration/quadlets/swedeb-staging-app.container
