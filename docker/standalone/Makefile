@@ -9,7 +9,7 @@ BACKEND_COMMIT=$(shell \
 	git ls-remote "$(BACKEND_REPO)" "refs/heads/$(BACKEND_BRANCH)" | cut -f1 \
 )
 
-FRONTEND_BRANCH=staging
+FRONTEND_BRANCH=dev
 FRONTEND_REPO=https://github.com/humlab-swedeb/swedeb_frontend.git
 FRONTEND_COMMIT=$(shell \
 	GIT_TERMINAL_PROMPT=0 \
