@@ -4,7 +4,7 @@ All endpoints in this module have ticketed or otherwise improved equivalents.
 They will be removed in a future release.
 """
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import fastapi
 import pandas as pd
@@ -15,18 +15,21 @@ from api_swedeb.api.dependencies import (
     get_cwb_corpus,
     get_download_service,
     get_kwic_service,
+    get_ngrams_service,
     get_search_service,
     get_word_trends_service,
 )
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.kwic_service import KWICService
+from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.mappers.kwic import kwic_to_api_model
 from api_swedeb.mappers.speeches import speeches_to_api_model
 from api_swedeb.mappers.word_trends import word_trend_speeches_to_api_model
 from api_swedeb.schemas.kwic_schema import KeywordInContextResult
+from api_swedeb.schemas.ngrams_schema import NGramResult
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultWT
 
 # pylint: disable=import-outside-toplevel
@@ -106,4 +109,32 @@ async def get_zip(
         streamer(),
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=speeches.zip"},
+    )
+
+
+@router.get("/ngrams/{search}", response_model=NGramResult, deprecated=True)
+async def get_ngram_results(
+    search: str,
+    commons: CommonParams,
+    width: int = Query(default=3, description="Width of n-gram"),
+    target: Literal["word", "lemma"] = Query(default="word", description="Target for n-gram (word/lemma)"),
+    mode: Literal["sliding", "left-aligned", "right-aligned"] = Query(
+        default="sliding", description="Mode for n-gram (sliding/left-aligned/right-aligned)"
+    ),
+    corpus: Any = Depends(get_cwb_corpus),
+    ngrams_service: NGramsService = Depends(get_ngrams_service),
+) -> NGramResult:
+    """Get n-grams from corpus. Deprecated: use POST /ngrams/query instead."""
+    keywords: str | list[str] = search
+    if isinstance(keywords, str):
+        keywords = keywords.split()
+
+    return ngrams_service.get_ngrams(
+        search_term=keywords,
+        commons=commons,
+        corpus=corpus,
+        n_gram_width=width,
+        search_target=target,
+        display_target=target,
+        mode=mode,
     )

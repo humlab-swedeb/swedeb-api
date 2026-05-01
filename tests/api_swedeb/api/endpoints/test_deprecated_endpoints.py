@@ -9,10 +9,12 @@ from fastapi import HTTPException
 
 from api_swedeb.api.v1.endpoints.deprecated_endpoints import (
     get_kwic_results,
+    get_ngram_results,
     get_speeches_result,
     get_word_trend_speeches_result,
     get_zip,
 )
+from api_swedeb.schemas.ngrams_schema import NGramResult, NGramResultItem
 from api_swedeb.schemas.speeches_schema import SpeechesResult, SpeechesResultItem
 
 
@@ -142,3 +144,33 @@ class TestDeprecatedEndpoints:
 
         assert excinfo.value.status_code == 400
         assert excinfo.value.detail == "Speech ids are required"
+
+    def test_get_ngram_results_splits_search_terms_and_delegates(self):
+        commons = MagicMock()
+        corpus = MagicMock()
+        ngrams_service = MagicMock()
+        expected = NGramResult(ngram_list=[NGramResultItem(ngram="hej världen", count=2, documents=["i-1"])])
+        ngrams_service.get_ngrams.return_value = expected
+
+        result = asyncio.run(
+            get_ngram_results(
+                search="hej världen",
+                commons=commons,
+                width=2,
+                target="lemma",
+                mode="sliding",
+                corpus=corpus,
+                ngrams_service=ngrams_service,
+            )
+        )
+
+        ngrams_service.get_ngrams.assert_called_once_with(
+            search_term=["hej", "världen"],
+            commons=commons,
+            corpus=corpus,
+            n_gram_width=2,
+            search_target="lemma",
+            display_target="lemma",
+            mode="sliding",
+        )
+        assert result == expected

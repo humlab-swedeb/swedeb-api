@@ -340,10 +340,14 @@ flowchart TD
         WTSTS[WordTrendSpeechesTicketService]
         DS[DownloadService]
         ATS[ArchiveTicketService]
+        NGTS[NGramsTicketService]
+        NGAS[NGramsArchiveService]
 
         CL --> MS
         CL --> WTS
         CL --> NGS
+        CL --> NGTS
+        CL --> NGAS
         CL --> SS
         CL --> STS
         CL --> KS
@@ -375,7 +379,7 @@ flowchart TD
     classDef svc fill:#e8f0fb,stroke:#5c8ac8,color:#1a2a4a;
     classDef store fill:#f0fbe8,stroke:#5ca85c,color:#1a3a1a;
     classDef lazy fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
-    class MS,WTS,NGS,SS,STS,KS,KTS,KAS,WTSTS,DS,ATS svc;
+    class MS,WTS,NGS,NGTS,NGAS,SS,STS,KS,KTS,KAS,WTSTS,DS,ATS svc;
     class ResultStore,disk,tss store;
     class idx,dtm,repo,codecs lazy;
 ```
@@ -384,7 +388,7 @@ flowchart TD
 
 ## Ticket Status Lifecycle
 
-**Status**: Active runtime. Applies to all ticket types: KWIC, speeches, word-trend speeches, and archive tickets.
+**Status**: Active runtime. Applies to all ticket types: KWIC, n-grams, speeches, word-trend speeches, and archive tickets.
 
 ### State: ticket status transitions
 
@@ -394,7 +398,7 @@ stateDiagram-v2
 
     [*] --> Pending : Submit query\n202 Accepted
 
-    Pending --> Partial : First shard written\n(KWIC multiprocess only)
+    Pending --> Partial : First shard or aggregate written\n(KWIC and n-grams multiprocess only)
     Partial --> Ready : All shards merged
     Pending --> Ready : Job completes\n(single-process or speeches)
     Pending --> Error : Job fails
@@ -410,10 +414,12 @@ stateDiagram-v2
     end note
 
     note right of Partial
-        KWIC production mode only
-        Shard files written incrementally
-        Pages servable from completed shards
+        KWIC and n-grams in production mode
+        KWIC: shard files written incrementally
+        N-grams: running aggregate updated per shard
+        Pages servable while processing continues
         shards_complete / shards_total exposed
+        N-grams also expose aggregate_version
     end note
 
     note right of Ready
@@ -466,8 +472,8 @@ flowchart TD
     celery --> worker[Celery worker process\npool=solo + multiprocessing.Pool]
     bg --> inline[Runs in FastAPI process\nsingle-threaded, debugger-friendly]
 
-    worker --> shards{KWIC with\nmultiprocessing?}
-    shards -- yes --> partial[Write shards → PARTIAL\nmerge when done → READY]
+    worker --> shards{multiprocessing\nquery?\n(KWIC / N-grams)}
+    shards -- yes --> partial[Write shard or running aggregate → PARTIAL\nfinalize when done → READY]
     shards -- no --> ready1[Write artifact → READY]
 
     inline --> ready2[Write artifact → READY]
@@ -633,17 +639,114 @@ sequenceDiagram
 
 ## N-grams Flow
 
-**Status**: Active runtime. Uses the CWB/CQP path (distinct from the DTM path used by word trends and the estimate endpoint).
+**Status**: Active runtime. Three-phase delivery: pre-search estimate (Phase 1), single-process ticketed path (Phase 2), and progressive multiprocess running aggregate (Phase 3). See [docs/change_requests/done/PAGED_NGRAM_RESULTS_DESIGN.md](change_requests/done/PAGED_NGRAM_RESULTS_DESIGN.md) for the full proposal.
 
-### Sequence: n-gram query
+The synchronous `GET /v1/tools/ngrams/{search}` endpoint has been moved to `deprecated_endpoints.py`; the ticketed path is the primary flow. The pre-search estimate reuses `WordTrendsService.estimate_hits()` (DTM column sum), consistent with the KWIC estimate endpoint. The ticket query itself uses the CWB/CQP path.
+
+### Sequence: N-gram pre-search estimate
 
 ```mermaid
 sequenceDiagram
-    title N-grams Flow (CWB / CQP)
+    title N-gram Pre-Search Estimate
 
     actor User
     participant Frontend as Frontend<br/>(nGramDataStore)
     participant API as API<br/>(tool_router)
+    participant WTS as WordTrendsService<br/>(estimate_hits)
+
+    User->>Frontend: type word / change filter (debounce)
+    Frontend->>API: GET /v1/tools/ngrams/estimate?word=X&from_year=…
+    API->>WTS: estimate_hits(proxy_token, filter_opts)
+    Note over WTS: DTM column sum with filter applied\n< 20 ms, no CQP query\nFor phrases: first whitespace-split token used as proxy
+    WTS-->>API: count (int | None)
+    API-->>Frontend: 200 {estimated_hits: N, in_vocabulary: true|false}
+
+    alt in_vocabulary: false
+        Frontend-->>User: grey "not in vocabulary" banner
+    else estimated_hits < threshold (10 000)
+        Frontend-->>User: green "~N träffar förväntade" banner
+    else estimated_hits ≥ threshold
+        Frontend-->>User: amber "~N träffar — stor träffmängd" banner
+    end
+
+    Note over Frontend: estimate does not block the search\nFor multi-token input, estimate is a loose upper bound
+```
+
+### Sequence: Async n-gram ticket flow — progressive running aggregate (production mode)
+
+```mermaid
+sequenceDiagram
+    title Async N-gram Ticket Flow — Progressive Running Aggregate (Production Mode)
+
+    actor User
+    participant Frontend as Frontend<br/>(nGramDataStore)
+    participant API as API<br/>(tool_router / NGramsTicketService)
+    participant Celery as Celery Worker<br/>(celery queue)
+    participant Pool as Pool.imap_unordered<br/>(year-range shards)
+    participant ResultStore as ResultStore<br/>(disk + TicketStateStore)
+
+    User->>Frontend: enter term + width + mode + filters, click Sök
+    Frontend->>API: POST /v1/tools/ngrams/query {search, width, mode, filters}
+    API->>ResultStore: create_ticket() → ticket_id (PENDING)
+    API->>Celery: send_task(execute_ngrams_ticket, ticket_id)
+    API-->>Frontend: 202 {ticket_id, expires_at}
+
+    activate Celery
+    Celery->>Pool: Pool.imap_unordered(year-range shards)
+    Celery->>ResultStore: set_shards_total(ticket_id, N)
+
+    loop As each shard completes (unordered)
+        Pool-->>Celery: (shard_index, shard_df)
+        Note over Celery: groupby ngram → sum window_count, union documents\nmerge shard into running aggregate
+        Celery->>ResultStore: store_ngrams_aggregate(ticket_id, df)\nwrites current_aggregate.feather atomically (.tmp → rename)
+        ResultStore->>ResultStore: ticket status → PARTIAL\nincrement shards_complete and aggregate_version\nvia TicketStateStore (Redis)
+    end
+
+    loop Frontend polls (every 2 s)
+        Frontend->>API: GET /v1/tools/ngrams/status/{ticket_id}
+        API-->>Frontend: {status: partial, shards_complete: K, aggregate_version: V}
+        alt aggregate_version advanced
+            Frontend->>API: GET /v1/tools/ngrams/page/{ticket_id}?page=P
+            API->>ResultStore: load_artifact → current_aggregate.feather (PARTIAL)
+            ResultStore-->>API: running aggregate DataFrame (K shards merged)
+            API-->>Frontend: page rows (total_hits approximate during PARTIAL)
+            Frontend-->>User: update table in-place\n"Approximate" badge on count column
+        end
+    end
+
+    Celery->>ResultStore: rename current_aggregate.feather → merged.feather\ndelete temp files, status → READY
+    deactivate Celery
+
+    Frontend->>API: GET /v1/tools/ngrams/status/{ticket_id}
+    API-->>Frontend: {status: ready, aggregate_version: final}
+    Frontend->>API: GET /v1/tools/ngrams/page/{ticket_id}?page=P
+    API->>ResultStore: load_artifact → merged.feather (READY)
+    ResultStore-->>API: final aggregated DataFrame
+    API-->>Frontend: page rows (total_hits final)
+    Frontend-->>User: full result, "Approximate" badge removed
+
+    Note over Frontend,ResultStore: Sort by ngram: stable at all phases\nSort by count: approximate during PARTIAL (counts only increase)
+
+    opt Export
+        Frontend->>API: POST /v1/tools/ngrams/archive/{ticket_id}?format=csv_gz
+        API-->>Frontend: 202 {archive_ticket_id, retrieval_url, expires_at}
+        Note over Frontend,API: archive preparation follows bulk archive flow
+    end
+```
+
+**Development mode** (`celery_enabled: false`): `BackgroundTasks` dispatches single-process execution; the `PARTIAL` phase is skipped and the full aggregated result is written directly via `store_ready()`.
+
+### Sequence: Synchronous n-gram query (deprecated)
+
+**Status**: Deprecated. Moved to `deprecated_endpoints.py`. Use `POST /v1/tools/ngrams/query` instead.
+
+```mermaid
+sequenceDiagram
+    title N-grams Flow — Synchronous (Deprecated)
+
+    actor User
+    participant Frontend as Frontend<br/>(nGramDataStore)
+    participant API as API<br/>(deprecated_endpoints)
     participant NGS as NGramsService
     participant Mapper as mappers
     participant CWB as CWB Corpus<br/>(ccc / CQP)
