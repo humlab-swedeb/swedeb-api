@@ -18,7 +18,7 @@ FRONTEND_COMMIT=$(shell \
 .PHONY: image
 image:
 	@echo "Building image using podman"
-	@podman build \
+	@podman build --no-cache \
 		--build-arg BACKEND_BRANCH="$(BACKEND_BRANCH)" \
 		--build-arg FRONTEND_BRANCH="$(FRONTEND_BRANCH)" \
 		--build-arg FRONTEND_COMMIT="$(FRONTEND_COMMIT)" \
