@@ -85,11 +85,13 @@ async def submit_ngrams_query(
     if ConfigValue("development.celery_enabled", default=False).resolve():
         from api_swedeb.celery_app import celery_app  # pylint: disable=import-outside-toplevel
 
+        from api_swedeb.celery_app import get_multiprocessing_queue_name  # pylint: disable=import-outside-toplevel
+
         celery_app.send_task(
             "api_swedeb.execute_ngrams_ticket",
             args=[accepted.ticket_id, request.model_dump(mode="json"), cwb_opts],
             task_id=accepted.ticket_id,
-            queue="celery",
+            queue=get_multiprocessing_queue_name(),
         )
     else:
         background_tasks.add_task(
