@@ -137,7 +137,7 @@ class NGramsTicketService:
             )
             keywords = request.search.split() if isinstance(request.search, str) else request.search
 
-            use_multiprocess: bool = ConfigValue("development.celery_enabled", default=False).resolve()
+            use_multiprocess: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
             is_multiprocess: list[bool] = [False]
 
             # Running aggregate updated by on_shard_complete with the pre-merged result from the orchestrator
@@ -153,7 +153,7 @@ class NGramsTicketService:
                 if result_store.ticket_state_store is not None:
                     result_store.ticket_state_store.set_shards_total(ticket_id, n)
 
-            def on_shard_complete(shard_index: int, updated_aggregate: pd.DataFrame) -> None:
+            def on_shard_complete(shard_index: int, updated_aggregate: pd.DataFrame) -> None:  # pylint: disable=unused-argument
                 running_aggregate[0] = updated_aggregate
                 local_shards_complete[0] += 1
                 shards_complete = (
@@ -205,9 +205,7 @@ class NGramsTicketService:
                     for item in result.ngram_list
                 ]
                 final_aggregate = (
-                    pd.DataFrame(rows)
-                    if rows
-                    else pd.DataFrame(columns=["ngram", "window_count", "documents"])
+                    pd.DataFrame(rows) if rows else pd.DataFrame(columns=["ngram", "window_count", "documents"])
                 )
 
             final_aggregate[TICKET_ROW_ID] = range(len(final_aggregate))

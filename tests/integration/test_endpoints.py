@@ -113,15 +113,6 @@ def test_ngrams_non_existing_word(fastapi_client):
     assert json['ngram_list'] == []
 
 
-def test_topics(fastapi_client):
-    response = fastapi_client.get(f"{version}/tools/topics")
-    assert response.status_code == status.HTTP_200_OK
-
-    json = response.json()
-    assert 'message' in json
-    assert json['message'] == 'Not implemented yet'
-
-
 def test_start_year(fastapi_client):
     response = fastapi_client.get(f"{version}/metadata/start_year")
     assert response.status_code == status.HTTP_200_OK

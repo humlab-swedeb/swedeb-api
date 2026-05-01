@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.result_store import ResultStoreNotFound, TicketMeta, TicketStatus
-from api_swedeb.api.v1.endpoints.tool_router import get_speeches_download_result
+from api_swedeb.api.v1.endpoints.speeches_router import get_speeches_download_result
 
 
 async def _collect_streaming_response(response: StreamingResponse) -> bytes:

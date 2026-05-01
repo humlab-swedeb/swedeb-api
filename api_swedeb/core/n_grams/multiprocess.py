@@ -28,10 +28,10 @@ from api_swedeb.core.kwic.utility import create_year_chunks, extract_year_range,
 
 from .compute import n_grams as _compute_n_grams
 
-
 # ---------------------------------------------------------------------------
 # Internal helper: merge two shard DataFrames into a running aggregate
 # ---------------------------------------------------------------------------
+
 
 def _merge_ngrams_aggregate(current: pd.DataFrame, new_shard: pd.DataFrame) -> pd.DataFrame:
     """Merge *new_shard* into *current* by summing counts and unioning document IDs.
@@ -59,6 +59,7 @@ def _merge_ngrams_aggregate(current: pd.DataFrame, new_shard: pd.DataFrame) -> p
 # ---------------------------------------------------------------------------
 # Worker
 # ---------------------------------------------------------------------------
+
 
 def ngrams_worker(args: tuple) -> tuple[int, pd.DataFrame]:
     """Worker function for multiprocessing n-gram queries.
@@ -117,6 +118,7 @@ def ngrams_worker(args: tuple) -> tuple[int, pd.DataFrame]:
 # Orchestrator
 # ---------------------------------------------------------------------------
 
+
 def execute_ngrams_multiprocess(
     corpus: ccc.Corpus | CorpusCreateOpts,
     opts: dict[str, Any] | list[dict[str, Any]],
@@ -172,8 +174,7 @@ def execute_ngrams_multiprocess(
         on_shards_total(len(year_chunks))
 
     worker_args: list[tuple[Any, ...]] = [
-        (i, corpus_opts, opts, year_range, n, p_show, mode)
-        for i, year_range in enumerate(year_chunks)
+        (i, corpus_opts, opts, year_range, n, p_show, mode) for i, year_range in enumerate(year_chunks)
     ]
 
     aggregate = pd.DataFrame(columns=["ngram", "window_count", "documents"])

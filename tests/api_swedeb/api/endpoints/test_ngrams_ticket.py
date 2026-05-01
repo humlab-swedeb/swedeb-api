@@ -19,7 +19,7 @@ import gzip
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Generator
+from typing import Generator, cast
 from unittest.mock import MagicMock
 
 import pandas as pd
@@ -45,7 +45,7 @@ from api_swedeb.api.services.result_store import (
     TicketStatus,
 )
 from api_swedeb.api.v1.endpoints import downloads_router, tool_router
-from api_swedeb.api.v1.endpoints.tool_router import (
+from api_swedeb.api.v1.endpoints.ngrams_router import (
     estimate_ngrams_hits,
     get_ngrams_ticket_page,
     get_ngrams_ticket_status,
@@ -56,6 +56,7 @@ from api_swedeb.schemas.ngrams_schema import (
     NGramResultItem,
     NGramsPage,
     NGramsQueryRequest,
+    NGramsTicketAccepted,
     NGramsTicketStatus,
 )
 
@@ -181,9 +182,9 @@ class TestSubmitNgramsQuery:
         )
 
     def test_creates_ticket_and_returns_202_payload(self):
-        ticket_svc = MagicMock()
+        ticket_svc = MagicMock(spec=NGramsTicketService)
         ticket_svc.submit_query.return_value = MagicMock(ticket_id="t-1", status="pending", expires_at=None)
-        result = self._run_submit(ticket_svc)
+        result = cast(NGramsTicketAccepted, self._run_submit(ticket_svc))
         assert result.ticket_id == "t-1"
         assert result.status == "pending"
 
@@ -244,7 +245,7 @@ class TestGetNgramsTicketStatus:
         return svc
 
     def test_maps_ready_status_from_service(self):
-        result = self._run_status(self._ready_svc())
+        result = cast(NGramsTicketStatus, self._run_status(self._ready_svc()))
         assert result.ticket_id == "t-1"
         assert result.status == "ready"
         assert result.total_hits == 3
@@ -359,7 +360,7 @@ def _ngrams_client(tmp_path: Path) -> Generator[tuple[TestClient, ResultStore], 
     app.dependency_overrides[get_ngrams_ticket_service] = NGramsTicketService
     app.dependency_overrides[get_ngrams_archive_service] = NGramsArchiveService
     app.dependency_overrides[get_ngrams_service] = lambda: mock_ngrams_service
-    app.dependency_overrides[get_cwb_corpus] = lambda: MagicMock()
+    app.dependency_overrides[get_cwb_corpus] = MagicMock
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -491,6 +492,7 @@ class TestExecuteNgramsArchiveTask:
 
         source = make_ready_ngram_ticket(store)
         archive = make_ready_ngram_archive(store, source.ticket_id, fmt="jsonl_gz")
+        assert archive.artifact_path is not None and archive.artifact_path.exists()
 
         records = [json.loads(line) for line in gzip.decompress(archive.artifact_path.read_bytes()).splitlines()]
         for record in records:

@@ -85,7 +85,6 @@ def _fetch_all_ticket_items(client: TestClient, ticket_id: str) -> tuple[list[di
     return all_items, first_page
 
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -156,26 +155,23 @@ def test_ticketed_ngrams_counts_match_sync(ngrams_validation_sample: dict):
     ticket_by_ngram: dict[str, int] = {item["ngram"]: item["count"] for item in ticket_items}
 
     for ngram, expected_count in sync_by_ngram.items():
-        assert ticket_by_ngram[ngram] == expected_count, (
-            f"Count mismatch for '{ngram}': sync={expected_count}, ticket={ticket_by_ngram[ngram]}"
-        )
+        assert (
+            ticket_by_ngram[ngram] == expected_count
+        ), f"Count mismatch for '{ngram}': sync={expected_count}, ticket={ticket_by_ngram[ngram]}"
 
 
 def test_ticketed_ngrams_documents_match_sync(ngrams_validation_sample: dict):
     sync_items = ngrams_validation_sample["sync_items"]
     ticket_items = ngrams_validation_sample["ticket_items"]
 
-    sync_docs: dict[str, frozenset[str]] = {
-        item["ngram"]: frozenset(item.get("documents", [])) for item in sync_items
-    }
+    sync_docs: dict[str, frozenset[str]] = {item["ngram"]: frozenset(item.get("documents", [])) for item in sync_items}
     ticket_docs: dict[str, frozenset[str]] = {
         item["ngram"]: frozenset(item.get("documents", [])) for item in ticket_items
     }
 
     for ngram, expected_docs in sync_docs.items():
         assert ticket_docs[ngram] == expected_docs, (
-            f"Document mismatch for '{ngram}': "
-            f"sync={sorted(expected_docs)}, ticket={sorted(ticket_docs[ngram])}"
+            f"Document mismatch for '{ngram}': " f"sync={sorted(expected_docs)}, ticket={sorted(ticket_docs[ngram])}"
         )
 
 
@@ -219,15 +215,16 @@ def test_ngrams_csv_archive_matches_ticket_rows(
         }
 
     ticket_by_ngram: dict[str, tuple[int, frozenset[str]]] = {
-        item["ngram"]: (item["count"], frozenset(item.get("documents", [])))
-        for item in ticket_items
+        item["ngram"]: (item["count"], frozenset(item.get("documents", []))) for item in ticket_items
     }
 
     assert set(csv_rows.keys()) == set(ticket_by_ngram.keys()), "CSV ngram set differs from ticket page ngram set"
     for ngram, (csv_count, csv_docs) in csv_rows.items():
         ticket_count, ticket_docs = ticket_by_ngram[ngram]
         assert csv_count == ticket_count, f"Count mismatch for '{ngram}': csv={csv_count}, ticket={ticket_count}"
-        assert csv_docs == ticket_docs, f"Docs mismatch for '{ngram}': csv={sorted(csv_docs)}, ticket={sorted(ticket_docs)}"
+        assert (
+            csv_docs == ticket_docs
+        ), f"Docs mismatch for '{ngram}': csv={sorted(csv_docs)}, ticket={sorted(ticket_docs)}"
 
 
 def test_ngrams_jsonl_archive_matches_ticket_rows(
@@ -255,13 +252,16 @@ def test_ngrams_jsonl_archive_matches_ticket_rows(
     jsonl_by_ngram: dict[str, tuple[int, frozenset[str]]] = {
         row["ngram"]: (
             row["window_count"],
-            frozenset(d for d in row["documents"].split(",") if d) if isinstance(row["documents"], str) else frozenset(row["documents"]),
+            (
+                frozenset(d for d in row["documents"].split(",") if d)
+                if isinstance(row["documents"], str)
+                else frozenset(row["documents"])
+            ),
         )
         for row in jsonl_rows
     }
     ticket_by_ngram: dict[str, tuple[int, frozenset[str]]] = {
-        item["ngram"]: (item["count"], frozenset(item.get("documents", [])))
-        for item in ticket_items
+        item["ngram"]: (item["count"], frozenset(item.get("documents", []))) for item in ticket_items
     }
 
     assert set(jsonl_by_ngram.keys()) == set(ticket_by_ngram.keys())
