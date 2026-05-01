@@ -84,6 +84,7 @@ FROM python:${PYTHON_VERSION}-slim-bookworm AS backend-builder
 
 ARG BACKEND_REPO=https://github.com/humlab-swedeb/swedeb-api.git
 ARG BACKEND_BRANCH=staging
+ARG BACKEND_COMMIT=
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PIP_NO_CACHE_DIR=1
@@ -102,7 +103,10 @@ RUN set -e; \
 
 WORKDIR /build/backend
 
-RUN git clone --quiet --depth 1 --branch "${BACKEND_BRANCH}" "${BACKEND_REPO}" .
+RUN test -n "$BACKEND_COMMIT" && \
+    git clone --quiet --depth 1 --branch "${BACKEND_BRANCH}" "${BACKEND_REPO}" . && \
+    git fetch --quiet --depth 1 origin "${BACKEND_COMMIT}" && \
+    git checkout --quiet "${BACKEND_COMMIT}"
 
 # Install uv and build the wheel
 RUN pip install -q uv \
@@ -115,6 +119,7 @@ FROM node:22-slim AS frontend-builder
 
 ARG FRONTEND_REPO=https://github.com/humlab-swedeb/swedeb_frontend.git
 ARG FRONTEND_BRANCH=staging
+ARG FRONTEND_COMMIT=
 
 RUN set -e; \
     apt_log=/tmp/apt-step.log; \
@@ -131,7 +136,10 @@ RUN npm install -g --silent pnpm
 
 WORKDIR /build/frontend
 
-RUN git clone --quiet --depth 1 --branch "${FRONTEND_BRANCH}" "${FRONTEND_REPO}" .
+RUN test -n "$FRONTEND_COMMIT" && \
+    git clone --quiet --depth 1 --branch "$FRONTEND_BRANCH" "$FRONTEND_REPO" . && \
+    git fetch --quiet --depth 1 origin "$FRONTEND_COMMIT" && \
+    git checkout --quiet "$FRONTEND_COMMIT"
 
 RUN pnpm --reporter=silent install --frozen-lockfile
 RUN pnpm --reporter=silent build
