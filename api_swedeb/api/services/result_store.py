@@ -368,7 +368,12 @@ class ResultStore:
         return artifact
 
     def _load_partial_artifact(self, ticket: TicketMeta) -> pd.DataFrame:
-        """Concatenate available shard files and return a DataFrame with temporary row IDs."""
+        """Return the partial artifact DataFrame for a PARTIAL ticket.
+
+        For n-gram tickets (running-aggregate model): reads ``current_aggregate.feather``
+        from the shard directory.
+        For KWIC tickets (per-shard model): concatenates ``shard_*.feather`` files.
+        """
         shards_complete = ticket.shards_complete
         with self._lock:
             cache_key = (ticket.ticket_id, shards_complete)
@@ -378,6 +383,23 @@ class ResultStore:
                 return cached
 
         shard_dir = self._shard_dir(ticket.ticket_id)
+
+        # N-gram running-aggregate path: a single pre-merged feather file.
+        agg_path = shard_dir / "current_aggregate.feather"
+        if agg_path.exists():
+            try:
+                merged = pd.read_feather(agg_path)
+            except FileNotFoundError:
+                # Raced with store_ready() renaming the file; re-fetch the ticket.
+                fresh = self.get_ticket(ticket.ticket_id)
+                if fresh is not None and fresh.status != TicketStatus.PARTIAL:
+                    return self.load_artifact(ticket.ticket_id)
+                merged = pd.DataFrame(columns=["ngram", "window_count", "documents"])
+            merged[TICKET_ROW_ID] = range(len(merged))
+            with self._lock:
+                self._cache_artifact_locked(ticket.ticket_id, shards_complete, merged)
+            return merged
+
         shard_files = sorted(shard_dir.glob("shard_*.feather"))
         if not shard_files:
             empty = pd.DataFrame()
@@ -654,6 +676,63 @@ class ResultStore:
             )
             self._set_ticket_locked(updated)
             return replace(updated)
+
+    def ngrams_aggregate_path(self, ticket_id: str) -> Path:
+        """Path to the running n-gram aggregate file for a PARTIAL ticket."""
+        return self._shard_dir(ticket_id) / "current_aggregate.feather"
+
+    def store_ngrams_aggregate(
+        self,
+        ticket_id: str,
+        *,
+        df: pd.DataFrame,
+        shards_complete: int,
+        shards_total: int,
+    ) -> TicketMeta:
+        """Atomically replace the running n-gram aggregate and transition ticket to PARTIAL.
+
+        Writes to a ``.tmp`` file then renames so concurrent readers always see a
+        complete feather file.  The *df* should have columns ``[ngram, window_count,
+        documents]`` (without ``TICKET_ROW_ID``; that is added at read time by
+        ``_load_partial_artifact``).
+
+        Called from ``on_shard_complete`` inside ``NGramsTicketService.execute_ticket``.
+        """
+        shard_dir = self._shard_dir(ticket_id)
+        shard_dir.mkdir(parents=True, exist_ok=True)
+
+        agg_path = shard_dir / "current_aggregate.feather"
+        tmp_path = shard_dir / "current_aggregate.feather.tmp"
+
+        df.to_feather(tmp_path, compression="lz4")
+        tmp_path.replace(agg_path)
+
+        with self._lock, self._state_lock():
+            self._ensure_started_locked()
+            ticket = self._get_ticket_locked(ticket_id)
+            if ticket is None:
+                agg_path.unlink(missing_ok=True)
+                raise ResultStoreNotFound("Ticket not found or expired")
+
+            updated = replace(
+                ticket,
+                status=TicketStatus.PARTIAL,
+                shards_complete=shards_complete,
+                shards_total=shards_total,
+                total_hits=len(df.index),
+            )
+            self._invalidate_ticket_cache_locked(ticket_id)
+            self._set_ticket_locked(updated)
+            return replace(updated)
+
+    def get_aggregate_version(self, ticket_id: str) -> int:
+        """Return the current n-gram aggregate version from the shared state store.
+
+        Returns 0 when no shared state store is configured (dev / non-Celery mode).
+        """
+        if self.ticket_state_store is None:
+            return 0
+        return self.ticket_state_store.get_aggregate_version(ticket_id)
 
     def sync_external_partial(self, ticket_id: str) -> TicketMeta:
         """Update in-memory shard progress from Redis (Celery path).
@@ -944,6 +1023,8 @@ class ResultStore:
             return
 
         self.ticket_state_store.delete_ticket(ticket_id)
+        self.ticket_state_store.delete_shard_progress(ticket_id)
+        self.ticket_state_store.delete_aggregate_version(ticket_id)
 
     def _state_lock(self):
         if self.ticket_state_store is None:

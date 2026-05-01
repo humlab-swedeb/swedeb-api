@@ -14,6 +14,7 @@ from celery.signals import worker_init
 
 from api_swedeb.api.services.archive_ticket_service import execute_archive_task as _execute_archive_task
 from api_swedeb.api.services.kwic_ticket_service import execute_ticket_task as _execute_ticket_task
+from api_swedeb.api.services.ngrams_ticket_service import execute_ticket_task as _execute_ngrams_ticket_task
 from api_swedeb.api.services.speeches_ticket_service import (
     execute_speeches_ticket_task as _execute_speeches_ticket_task,
 )
@@ -108,3 +109,14 @@ def execute_archive_task_celery_task(self, archive_ticket_id: str) -> dict:
     """
     self.update_state(state="PROGRESS", meta={"archive_ticket_id": archive_ticket_id})
     return _execute_archive_task(archive_ticket_id)
+
+
+@celery_app.task(bind=True, name="api_swedeb.execute_ngrams_ticket")
+def execute_ngrams_ticket_celery_task(self, ticket_id: str, request_data: dict, cwb_opts: dict) -> dict:
+    """Celery-wrapped n-gram ticket execution.
+
+    Delegates to ``execute_ticket_task`` which initialises per-worker singletons
+    (NGramsService, ResultStore) and runs the multiprocess n-gram pipeline.
+    """
+    self.update_state(state="PROGRESS", meta={"ticket_id": ticket_id})
+    return _execute_ngrams_ticket_task(ticket_id, request_data, cwb_opts)
