@@ -15,10 +15,14 @@ FRONTEND_COMMIT=$(shell \
 	GIT_TERMINAL_PROMPT=0 \
 	git ls-remote "$(FRONTEND_REPO)" "refs/heads/$(FRONTEND_BRANCH)" | cut -f1 \
 )
+
+# OPTS=--no-cache
+OPTS=
+
 .PHONY: image
-image:
+image: info
 	@echo "Building image using podman"
-	@podman build --no-cache \
+	@podman build $(OPTS) \
 		--build-arg BACKEND_BRANCH="$(BACKEND_BRANCH)" \
 		--build-arg FRONTEND_BRANCH="$(FRONTEND_BRANCH)" \
 		--build-arg FRONTEND_COMMIT="$(FRONTEND_COMMIT)" \
