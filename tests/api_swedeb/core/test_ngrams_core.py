@@ -2,6 +2,7 @@ import io
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 from ccc import Corpus, SubCorpus
 
 from api_swedeb.core import n_grams as ng
@@ -69,16 +70,33 @@ def test_to_n_grams():
 def test_to_n_grams_edge_cases():
     """Test to_n_grams with edge cases."""
     # Empty phrase
-    assert list(ng.to_n_grams("", 2)) == []
+    assert not list(ng.to_n_grams("", 2))
 
     # Single word, n=1
     assert list(ng.to_n_grams("word", 1)) == ["word"]
 
     # n larger than phrase length
-    assert list(ng.to_n_grams("a b", 3)) == []
+    assert not list(ng.to_n_grams("a b", 3))
 
     # n equal to phrase length
     assert list(ng.to_n_grams("a b c", 3)) == ["a b c"]
+
+
+def test_to_ngrams_dataframe_keeps_source_segments():
+    """Test row expansion keeps the source DataFrame index for each n-gram."""
+    windows = pd.DataFrame(
+        {
+            'window': ['alpha beta gamma', 'delta epsilon'],
+        },
+        index=[10, 20],
+    )
+
+    result = ng.to_ngrams_dataframe(windows, n=2)
+
+    assert result.to_dict('list') == {
+        'segment': [10, 10, 20],
+        'ngram': ['alpha beta', 'beta gamma', 'delta epsilon'],
+    }
 
 
 def test_compile_n_grams_empty_input():
@@ -107,7 +125,35 @@ def test_compile_n_grams_with_threshold():
     assert n_grams.loc['e b', 'window_count'] == 5
 
 
-@patch("api_swedeb.core.cwb.to_cqp_exprs", lambda *_, **__: 'apa')
+@pytest.mark.parametrize(
+    ("query_or_opts", "expected_error", "expected_message"),
+    [
+        (None, ValueError, "query_or_opts cannot be None"),
+        (123, TypeError, "query_or_opts must be a string, a dictionary or a list of dictionaries"),
+    ],
+)
+def test_query_keyword_windows_rejects_invalid_query_options(query_or_opts, expected_error, expected_message):
+    corpus: MagicMock = corpus_mock(SUPER_SIMPLE_CONCORDANCE)
+
+    with pytest.raises(expected_error, match=expected_message):
+        ng.query_keyword_windows(corpus, query_or_opts=query_or_opts, context_size=1, p_show="word")
+
+
+@pytest.mark.parametrize(
+    ("context_size", "expected_error", "expected_message"),
+    [
+        ("1", TypeError, "context_size must be an integer or a tuple of two integers"),
+        ((1,), ValueError, "context_size tuple must have exactly two integer elements"),
+        ((1, "2"), ValueError, "context_size tuple must have exactly two integer elements"),
+    ],
+)
+def test_query_keyword_windows_rejects_invalid_context_size(context_size, expected_error, expected_message):
+    corpus: MagicMock = corpus_mock(SUPER_SIMPLE_CONCORDANCE)
+
+    with pytest.raises(expected_error, match=expected_message):
+        ng.query_keyword_windows(corpus, query_or_opts="noop", context_size=context_size, p_show="word")
+
+
 def test_query_keyword_windows():
     corpus: MagicMock = corpus_mock(SUPER_SIMPLE_CONCORDANCE)
 
@@ -124,6 +170,58 @@ def test_query_keyword_windows():
     result = result.sort_values(by='window').reset_index(drop=True)
 
     assert result.equals(expected_result)
+
+
+def test_query_keyword_windows_returns_empty_grouped_frame():
+    corpus: MagicMock = corpus_mock("word\tspeech_id\n")
+
+    result: pd.DataFrame = ng.query_keyword_windows(corpus, query_or_opts="'missing'%c", context_size=3, p_show="word")
+
+    corpus.query.assert_called_once_with(cqp_query="'missing'%c", context=2)
+    assert result.to_dict('list') == {'window': [], 'count': [], 'documents': []}
+
+
+def test_query_keyword_windows_uses_enough_context_for_all_sliding_positions():
+    corpus: MagicMock = corpus_mock("word\tspeech_id\nbefore focus after\tA\n")
+
+    ng.query_keyword_windows(corpus, query_or_opts="'focus'%c", context_size=3, p_show="word")
+
+    corpus.query.assert_called_once_with(cqp_query="'focus'%c", context=2)
+
+
+def test_query_keyword_windows_adjusts_context_for_multi_token_query():
+    corpus: MagicMock = corpus_mock("word\tspeech_id\nfocus word after\tA\n")
+    query_options = [{"target": "focus"}, {"target": "word"}]
+
+    with patch("api_swedeb.core.n_grams.compute.to_cqp_exprs", return_value='"focus"%c "word"%c'):
+        ng.query_keyword_windows(corpus, query_or_opts=query_options, context_size=3, p_show="word")
+
+    corpus.query.assert_called_once_with(cqp_query='"focus"%c "word"%c', context=1)
+
+
+def test_query_keyword_windows_compiles_options_and_uses_tuple_context():
+    corpus: MagicMock = corpus_mock("lemma\tspeech_id\nalpha beta\tB\nalpha beta\tA\n")
+    query_options = {"target": "alpha"}
+
+    with patch("api_swedeb.core.n_grams.compute.to_cqp_exprs", return_value='[lemma="alpha"]') as to_cqp_exprs:
+        result: pd.DataFrame = ng.query_keyword_windows(
+            corpus,
+            query_or_opts=query_options,
+            context_size=(1, 2),
+            p_show="lemma",
+        )
+
+    to_cqp_exprs.assert_called_once_with(query_options, within="speech")
+    corpus.query.assert_called_once_with(cqp_query='[lemma="alpha"]', context_left=1, context_right=2)
+    subcorpus = corpus.query.return_value
+    subcorpus.concordance.assert_called_once_with(
+        form="simple",
+        p_show=["lemma"],
+        s_show=['speech_id'],
+        order="first",
+        cut_off=None,
+    )
+    assert result.to_dict('records') == [{'window': 'alpha beta', 'count': 2, 'documents': 'A,B'}]
 
 
 def test_compute_n_grams_with_sliding_window():
@@ -158,3 +256,70 @@ def test_compute_n_grams_with_locked_window():
         'window_count': [2, 4, 3, 2],
         'documents': ['A', 'B,C', 'A,B', 'D'],
     }
+
+
+def test_compile_n_grams_filters_locked_windows_with_threshold():
+    windows: pd.DataFrame = pd.read_csv(io.StringIO(SUPER_SIMPLE_CONCORDANCE_GROUPED), sep="\t")
+
+    n_grams: pd.DataFrame = ng.compile_n_grams(windows, n=2, threshold=3, mode="locked")
+
+    assert n_grams.reset_index().to_dict('list') == {
+        'ngram': ['f e n', 'n e b'],
+        'window_count': [4, 3],
+        'documents': ['B,C', 'A,B'],
+    }
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected_context_size", "expected_compile_mode"),
+    [
+        ("sliding", 3, "sliding"),
+        ("left-aligned", (0, 1), "locked"),
+        ("right-aligned", (1, 0), "locked"),
+    ],
+)
+def test_n_grams_translates_modes_to_context_and_compile_mode(mode, expected_context_size, expected_compile_mode):
+    corpus: MagicMock = MagicMock(spec=Corpus)
+    windows = pd.DataFrame(
+        {
+            'window': ['alpha beta gamma'],
+            'count': [2],
+            'documents': ['A'],
+        }
+    )
+    expected = pd.DataFrame({'window_count': [2], 'documents': ['A']}, index=pd.Index(['alpha beta'], name='ngram'))
+
+    with (
+        patch("api_swedeb.core.n_grams.compute.query_keyword_windows", return_value=windows) as query_windows,
+        patch("api_swedeb.core.n_grams.compute.compile_n_grams", return_value=expected) as compile_n_grams,
+    ):
+        result = ng.n_grams(corpus, [{"target": "alpha"}, {"target": "beta"}], n=3, threshold=2, mode=mode)
+
+    query_windows.assert_called_once_with(
+        corpus,
+        [{"target": "alpha"}, {"target": "beta"}],
+        context_size=expected_context_size,
+        p_show="word",
+    )
+    compile_n_grams.assert_called_once_with(windows, n=3, threshold=2, mode=expected_compile_mode)
+    assert result is expected
+
+
+def test_n_grams_width_three_sliding_returns_focus_in_all_positions():
+    corpus: MagicMock = corpus_mock("word\tspeech_id\nleft2 left1 focus right1 right2\tA\n")
+
+    result = ng.n_grams(corpus, "'focus'%c", n=3, mode="sliding")
+
+    corpus.query.assert_called_once_with(cqp_query="'focus'%c", context=2)
+    assert set(result.index) == {
+        "left2 left1 focus",
+        "left1 focus right1",
+        "focus right1 right2",
+    }
+
+
+def test_n_grams_rejects_invalid_query_options():
+    corpus: MagicMock = MagicMock(spec=Corpus)
+
+    with pytest.raises(TypeError, match="query_or_opts must be a string, a dictionary or a list of dictionaries"):
+        ng.n_grams(corpus, MagicMock())

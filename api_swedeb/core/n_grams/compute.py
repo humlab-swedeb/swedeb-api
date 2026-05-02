@@ -122,16 +122,13 @@ def query_keyword_windows(
         if len(context_size) != 2 or not all(isinstance(x, int) for x in context_size):
             raise ValueError("context_size tuple must have exactly two integer elements")
 
-    # FIXME: If query_or_opts is a list of dicts, we need to count the number of words in the query
-    # to adjust context width accordingly, that is, unless CWB/CQP can handle that internally.
-    # n_words_in_query: int = 1 if not isinstance(query_or_opts, list) else len(query_or_opts)
+    n_words_in_query: int = 1 if not isinstance(query_or_opts, list) else len(query_or_opts)
 
     if isinstance(query_or_opts, str):
         query = query_or_opts
     else:
         query = to_cqp_exprs(query_or_opts, within="speech")
 
-    # FIXME: Handle of context_size must be verified! Should we divide context_size by two if an integer?
     # Example where w_k is the keyword
     # context_size = 2
     #   w_1 w_k w_2 => n-grams [(w_1, w_k), (w_k, w_2)]
@@ -139,7 +136,7 @@ def query_keyword_windows(
     # w_1 w_2 w_k w_3 w_4 => n-grams [(w_1, w_2, w_k), (w_2, w_k, w_3), (w_k, w_3, w_4)]
 
     subcorpus: SubCorpus | str = (
-        corpus.query(cqp_query=query, context=context_size // 2)
+        corpus.query(cqp_query=query, context=context_size - n_words_in_query)
         if isinstance(context_size, int)
         else corpus.query(cqp_query=query, context_left=context_size[0], context_right=context_size[1])
     )
