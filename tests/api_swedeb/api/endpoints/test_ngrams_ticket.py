@@ -152,13 +152,21 @@ class TestEstimateNgramsHits:
         assert result.in_vocabulary is False
         assert result.estimated_hits is None
 
-    def test_uses_first_token_of_phrase_as_proxy(self):
+    def test_phrase_estimate_is_unavailable(self):
         svc = _make_word_trends_service_mock(count=50)
-        asyncio.run(
+        result = asyncio.run(
             estimate_ngrams_hits(word="social demokrati", commons=_make_commons_mock(), word_trends_service=svc)
         )
-        call_args = svc.estimate_hits.call_args
-        assert call_args[0][0] == "social"
+        assert result.in_vocabulary is None
+        assert result.estimated_hits is None
+        svc.estimate_hits.assert_not_called()
+
+    def test_whitespace_only_estimate_is_unavailable(self):
+        svc = _make_word_trends_service_mock(count=50)
+        result = asyncio.run(estimate_ngrams_hits(word="   ", commons=_make_commons_mock(), word_trends_service=svc))
+        assert result.in_vocabulary is None
+        assert result.estimated_hits is None
+        svc.estimate_hits.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

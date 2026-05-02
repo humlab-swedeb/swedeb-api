@@ -42,21 +42,22 @@ router = fastapi.APIRouter()
 
 @router.get("/ngrams/estimate", response_model=NGramsEstimateResult)
 async def estimate_ngrams_hits(
-    word: Annotated[str, Query(description="Word (or first token of phrase) to estimate hit count for")],
+    word: Annotated[str, Query(description="Single word to estimate hit count for")],
     commons: CommonParams,
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> NGramsEstimateResult:
     """Return an approximate hit count for an n-gram search word using DTM column sums.
 
-    For multi-token searches the first whitespace-separated token is used as the proxy;
-    the returned estimate is therefore a loose upper bound for phrase queries and wide
-    n-gram widths.  The estimate respects the same metadata filters as a real search
-    but does not run a CQP query.
+    Phrase estimates are not available from the DTM-backed estimator because it
+    only counts individual token columns.  The estimate respects the same metadata
+    filters as a real search but does not run a CQP query.
     """
-    # Use only the first token as the proxy for multi-token inputs.
-    proxy_token = word.split()[0] if word else word
+    tokens = word.split()
+    if len(tokens) != 1:
+        return NGramsEstimateResult(in_vocabulary=None, estimated_hits=None)
+
     filter_opts = commons.get_filter_opts(include_year=True)
-    count = word_trends_service.estimate_hits(proxy_token, filter_opts)
+    count = word_trends_service.estimate_hits(tokens[0], filter_opts)
     return NGramsEstimateResult(
         in_vocabulary=count is not None,
         estimated_hits=count,
@@ -83,9 +84,10 @@ async def submit_ngrams_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import celery_app  # pylint: disable=import-outside-toplevel
-
-        from api_swedeb.celery_app import get_multiprocessing_queue_name  # pylint: disable=import-outside-toplevel
+        from api_swedeb.celery_app import (
+            celery_app,  # pylint: disable=import-outside-toplevel
+            get_multiprocessing_queue_name,  # pylint: disable=import-outside-toplevel
+        )
 
         celery_app.send_task(
             "api_swedeb.execute_ngrams_ticket",

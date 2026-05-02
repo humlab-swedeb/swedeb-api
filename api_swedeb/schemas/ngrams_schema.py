@@ -16,7 +16,7 @@ class NGramResult(BaseModel):
 
 
 class NGramsEstimateResult(BaseModel):
-    in_vocabulary: bool
+    in_vocabulary: bool | None
     estimated_hits: int | None = None
 
 
