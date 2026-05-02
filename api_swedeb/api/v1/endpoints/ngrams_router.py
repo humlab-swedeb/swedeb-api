@@ -84,9 +84,9 @@ async def submit_ngrams_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import (
+        from api_swedeb.celery_app import (  # pylint: disable=import-outside-toplevel
             celery_app,  # pylint: disable=import-outside-toplevel
-            get_multiprocessing_queue_name,  # pylint: disable=import-outside-toplevel
+            get_multiprocessing_queue_name,
         )
 
         celery_app.send_task(
