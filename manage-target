@@ -17,6 +17,8 @@ usage() {
 usage: $(basename "$0") <target environment> <command> [options]
 
 commands:
+  build           Build the Docker image using the Makefile
+  reinstall       Reinstall the quadlet deployment with the current image (pulls new image if tag is specified)
   deploy          Pull a new image and recreate the quadlet deployment
   logs            Tail the service logs via manage-quadlet logs
   podman          Run an arbitrary podman command as the service user
@@ -27,7 +29,7 @@ commands:
 
 arguments:
   <target environment>   staging | production
-  <command>              deploy | logs | podman | manage-quadlet
+  <command>              build | reinstall | deploy | logs | podman | manage-quadlet
 
 options:
   --image-tag <tag>      Image tag to deploy (defaults to environment
@@ -82,7 +84,7 @@ g_command="$1"
 shift
 
 case "$g_command" in
-  deploy | logs | podman | manage-quadlet | build) ;;
+  reinstall | deploy | logs | podman | manage-quadlet | build) ;;
   *)
     usage "Invalid command: $g_command"
     ;;
@@ -181,7 +183,14 @@ fi
 # Main logic
 #######################################################################################################
 
-if [[ "$g_command" == "deploy" ]]; then
+if [[ "$g_command" == "reinstall" ]]; then
+  echo "info: deploying image tag '$g_image_tag' to $g_target_environment..."
+  echo "note: new container files or configuration changes are not deployed..."
+  g_inner_commands="
+printf \"y\" | manage-quadlet remove
+manage-quadlet install
+echo \"Done.\""
+elif [[ "$g_command" == "deploy" ]]; then
   echo "info: deploying image tag '$g_image_tag' to $g_target_environment..."
   echo "note: new container files or configuration changes are not deployed..."
   g_inner_commands="
@@ -195,7 +204,7 @@ manage-quadlet install
 echo \"Done.\""
 elif [[ "$g_command" == "build" ]]; then
   echo "info: running build on $g_target_environment..."
-  g_inner_commands="make -f build/Makefile ${g_passthrough_args[*]}"
+  g_inner_commands="cd build && make -f Makefile ${g_passthrough_args[*]}"
 elif [[ "$g_command" == "logs" ]]; then
   echo "info: fetching logs for $g_target_environment..."
   g_inner_commands="manage-quadlet logs"
