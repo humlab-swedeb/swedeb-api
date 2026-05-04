@@ -19,7 +19,7 @@ from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.configuration.inject import ConfigValue
 
 if TYPE_CHECKING:
-    from api_swedeb.api.v1.endpoints.tool_router import CommonParams
+    from api_swedeb.api.v1.endpoints._router_common import CommonParams
 
 
 class _StreamingBuffer(io.RawIOBase):

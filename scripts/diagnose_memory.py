@@ -15,6 +15,8 @@ import argparse
 import os
 import sys
 
+from api_swedeb.api.services.diagnostics import memory_usage
+
 # Ensure package root is importable when run directly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -39,7 +41,8 @@ def main() -> None:
     loader.preload()
 
     print()
-    loader.memory_usage()
+    
+    memory_usage(loader)
 
 
 if __name__ == "__main__":
