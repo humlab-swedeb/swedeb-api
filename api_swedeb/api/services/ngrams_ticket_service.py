@@ -153,7 +153,9 @@ class NGramsTicketService:
                 if result_store.ticket_state_store is not None:
                     result_store.ticket_state_store.set_shards_total(ticket_id, n)
 
-            def on_shard_complete(shard_index: int, updated_aggregate: pd.DataFrame) -> None:  # pylint: disable=unused-argument
+            def on_shard_complete(
+                shard_index: int, updated_aggregate: pd.DataFrame  # pylint: disable=unused-argument
+            ) -> None:
                 running_aggregate[0] = updated_aggregate
                 local_shards_complete[0] += 1
                 shards_complete = (

@@ -61,7 +61,7 @@ class NGramsTicketStatus(BaseModel):
 
 class NGramsTicketSortBy(str, Enum):
     ngram = "ngram"
-    count = "window_count"
+    count = "window_count"  # type: ignore
 
 
 class NGramsPageItem(BaseModel):
