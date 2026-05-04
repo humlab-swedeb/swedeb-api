@@ -4,6 +4,7 @@ import pandas as pd
 import scipy.sparse
 
 from api_swedeb.core.dtm.interface import IVectorizedCorpus
+from api_swedeb.core.person_codecs import PersonCodecs
 from api_swedeb.core.speech_repository import SpeechRepository
 from api_swedeb.core.speech_store import SpeechStore
 
@@ -38,7 +39,7 @@ def dict_mem_usage(d: dict) -> int:
 
 
 def dtm_memory_usage(corpus_loader: CorpusLoader) -> int:
-    vc: IVectorizedCorpus = corpus_loader.__lazy_vectorized_corpus.value
+    vc: IVectorizedCorpus = corpus_loader._lazy_vectorized_corpus.value
     print("\n[vectorized_corpus]")
     total: int = 0
 
@@ -76,7 +77,7 @@ def dtm_memory_usage(corpus_loader: CorpusLoader) -> int:
 
 
 def speech_repository_mem_usage(corpus_loader: CorpusLoader) -> int:
-    repo: SpeechRepository = corpus_loader.__lazy_repository.value
+    repo: SpeechRepository = corpus_loader._lazy_repository.value
     store: SpeechStore = repo._store
     print("\n[repository.SpeechStore]")
     total = 0
@@ -85,13 +86,13 @@ def speech_repository_mem_usage(corpus_loader: CorpusLoader) -> int:
         arr_b = arr.nbytes
         total += arr_b
         print(f"  {arr_name:<28} (ndarray {arr.dtype}, {len(arr):,} entries): {format_megabytes(arr_b)}")
-    catalog_b = store._feather_files.nbytes
+    catalog_b: int = store._feather_files.nbytes
     total += catalog_b
     print(
         f"  {'_feather_files':<28} (ndarray, {len(store._feather_files)} unique paths): {format_megabytes(catalog_b)}"
     )
     if "speaker_note_id2note" in repo.__dict__:
-        sn = repo.speaker_note_id2note
+        sn: dict[str, str | None] = repo.speaker_note_id2note
         sn_b: int = dict_mem_usage(sn)
         total += sn_b
         print(f"  speaker_note_id2note (dict, {len(sn):,} entries): {format_megabytes(sn_b)}")
@@ -100,12 +101,12 @@ def speech_repository_mem_usage(corpus_loader: CorpusLoader) -> int:
 
 
 def person_codec_mem_usage(corpus_loader: CorpusLoader) -> int:
-    pc = corpus_loader.__lazy_person_codecs.value
+    pc: PersonCodecs = corpus_loader._lazy_person_codecs.value
     print("\n[person_codecs]")
     total: int = 0
     for name, table in pc.store.items():
         total += dataframe_mem_usage(table, f"store['{name}']")
-    maps_b = sum(dict_mem_usage(v) for v in pc.mappings.values()) + sys.getsizeof(pc.mappings)
+    maps_b: int = sum(dict_mem_usage(v) for v in pc.mappings.values()) + sys.getsizeof(pc.mappings)
     total += maps_b
     print(f"  mappings (dict, {len(pc.mappings)} codec maps): {format_megabytes(maps_b)}")
 
@@ -129,22 +130,22 @@ def memory_usage(corpus_loader: CorpusLoader) -> None:
     print("=" * 72)
 
     # ── vectorized_corpus ──────────────────────────────────────────────────
-    if corpus_loader.__lazy_vectorized_corpus.is_initialized:  # pylint: disable=using-constant-test
+    if corpus_loader._lazy_vectorized_corpus.is_initialized:  # pylint: disable=using-constant-test
         grand_total += dtm_memory_usage(corpus_loader)
 
     # ── prebuilt_speech_index ──────────────────────────────────────────────
-    if corpus_loader.__lazy_prebuilt_speech_index.is_initialized:  # pylint: disable=using-constant-test
+    if corpus_loader._lazy_prebuilt_speech_index.is_initialized:  # pylint: disable=using-constant-test
         print()
         grand_total += dataframe_mem_usage(
-            corpus_loader.__lazy_prebuilt_speech_index.value, "[prebuilt_speech_index]", indent=""
+            corpus_loader._lazy_prebuilt_speech_index.value, "[prebuilt_speech_index]", indent=""
         )
 
     # ── person_codecs ──────────────────────────────────────────────────────
-    if corpus_loader.__lazy_person_codecs.is_initialized:  # pylint: disable=using-constant-test
+    if corpus_loader._lazy_person_codecs.is_initialized:  # pylint: disable=using-constant-test
         grand_total += person_codec_mem_usage(corpus_loader)
 
     # ── repository / SpeechStore ───────────────────────────────────────────
-    if corpus_loader.__lazy_repository.is_initialized:  # pylint: disable=using-constant-test
+    if corpus_loader._lazy_repository.is_initialized:  # pylint: disable=using-constant-test
         grand_total += speech_repository_mem_usage(corpus_loader)
 
     # ── decoded_persons ────────────────────────────────────────────────────
@@ -153,9 +154,9 @@ def memory_usage(corpus_loader: CorpusLoader) -> None:
         grand_total += dataframe_mem_usage(corpus_loader.decoded_persons, "[decoded_persons]", indent="")
 
     # ── prebuilt_page_number_index ─────────────────────────────────────────
-    if corpus_loader.__lazy_prebuilt_page_number_index.is_initialized:  # pylint: disable=using-constant-test
-        pni = corpus_loader.__lazy_prebuilt_page_number_index.value
-        pni_b = dict_mem_usage(pni)
+    if corpus_loader._lazy_prebuilt_page_number_index.is_initialized:  # pylint: disable=using-constant-test
+        pni: dict[str, tuple[int, int]] = corpus_loader._lazy_prebuilt_page_number_index.value
+        pni_b: int = dict_mem_usage(pni)
         grand_total += pni_b
         print(f"\n[prebuilt_page_number_index] (dict, {len(pni):,} entries): {format_megabytes(pni_b)}")
 

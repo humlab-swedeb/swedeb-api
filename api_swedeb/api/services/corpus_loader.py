@@ -77,14 +77,14 @@ class CorpusLoader:
         self._cached_document_index: pd.DataFrame | None = None
 
         # Lazy-loaded resources
-        self.__lazy_vectorized_corpus: Lazy[IVectorizedCorpus] = Lazy[IVectorizedCorpus](self._load_vectorized_corpus)
-        self.__lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy[md.PersonCodecs](
+        self._lazy_vectorized_corpus: Lazy[IVectorizedCorpus] = Lazy[IVectorizedCorpus](self._load_vectorized_corpus)
+        self._lazy_person_codecs: Lazy[md.PersonCodecs] = Lazy[md.PersonCodecs](
             lambda: md.PersonCodecs().load(source=self.metadata_filename),
         )
-        self.__lazy_repository: Lazy[SpeechRepository] = Lazy(self._load_repository)
-        self.__lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_document_index)
-        self.__lazy_prebuilt_speech_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_prebuilt_speech_index)
-        self.__lazy_prebuilt_page_number_index: Lazy[dict[str, tuple[int, int]]] = Lazy[dict[str, tuple[int, int]]](
+        self._lazy_repository: Lazy[SpeechRepository] = Lazy(self._load_repository)
+        self._lazy_document_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_document_index)
+        self._lazy_prebuilt_speech_index: Lazy[pd.DataFrame] = Lazy[pd.DataFrame](self._load_prebuilt_speech_index)
+        self._lazy_prebuilt_page_number_index: Lazy[dict[str, tuple[int, int]]] = Lazy[dict[str, tuple[int, int]]](
             self._load_prebuilt_page_number_index
         )
 
@@ -133,7 +133,7 @@ class CorpusLoader:
     @property
     def vectorized_corpus(self) -> IVectorizedCorpus:
         """Get the vectorized corpus (lazy-loaded on first access)."""
-        return self.__lazy_vectorized_corpus.value
+        return self._lazy_vectorized_corpus.value
 
     @property
     def document_index(self) -> pd.DataFrame:
@@ -144,21 +144,21 @@ class CorpusLoader:
         otherwise returns cached instance if loaded separately,
         otherwise loads it separately for better performance.
         """
-        if self.__lazy_vectorized_corpus.is_initialized:  # pylint: disable=using-constant-test
+        if self._lazy_vectorized_corpus.is_initialized:
             return self.vectorized_corpus.document_index
         if self._cached_document_index is not None:
             return self._cached_document_index
-        return self.__lazy_document_index.value
+        return self._lazy_document_index.value
 
     @property
     def person_codecs(self) -> md.PersonCodecs:
         """Get the person codecs (lazy-loaded on first access)."""
-        return self.__lazy_person_codecs.value
+        return self._lazy_person_codecs.value
 
     @property
     def repository(self) -> SpeechRepository:
         """Get the speech repository (lazy-loaded on first access)."""
-        return self.__lazy_repository.value
+        return self._lazy_repository.value
 
     @property
     def prebuilt_speech_index(self) -> pd.DataFrame:
@@ -167,12 +167,12 @@ class CorpusLoader:
         Contains fully decoded speaker metadata (name, gender, party, office, wiki_id)
         materialised at build time — no codec lookups required at query time.
         """
-        return self.__lazy_prebuilt_speech_index.value
+        return self._lazy_prebuilt_speech_index.value
 
     @property
     def prebuilt_page_number_index(self) -> dict[str, tuple[int, int]]:
         """Get the precomputed protocol page number ranges (lazy-loaded on first access)."""
-        return self.__lazy_prebuilt_page_number_index.value
+        return self._lazy_prebuilt_page_number_index.value
 
     @cached_property
     def decoded_persons(self) -> pd.DataFrame:
@@ -200,29 +200,29 @@ class CorpusLoader:
 
         resolve_member(
             "document_index",
-            lambda: self.__lazy_document_index.value,
-            lambda: self.__lazy_document_index.is_initialized,
+            lambda: self._lazy_document_index.value,
+            lambda: self._lazy_document_index.is_initialized,
         )
         resolve_member(
             "vectorized_corpus",
-            lambda: self.__lazy_vectorized_corpus.value,
-            lambda: self.__lazy_vectorized_corpus.is_initialized,
+            lambda: self._lazy_vectorized_corpus.value,
+            lambda: self._lazy_vectorized_corpus.is_initialized,
         )
         resolve_member(
-            "person_codecs", lambda: self.__lazy_person_codecs.value, lambda: self.__lazy_person_codecs.is_initialized
+            "person_codecs", lambda: self._lazy_person_codecs.value, lambda: self._lazy_person_codecs.is_initialized
         )
         resolve_member(
-            "repository", lambda: self.__lazy_repository.value, lambda: self.__lazy_repository.is_initialized
+            "repository", lambda: self._lazy_repository.value, lambda: self._lazy_repository.is_initialized
         )
         resolve_member(
             "prebuilt_speech_index",
-            lambda: self.__lazy_prebuilt_speech_index.value,
-            lambda: self.__lazy_prebuilt_speech_index.is_initialized,
+            lambda: self._lazy_prebuilt_speech_index.value,
+            lambda: self._lazy_prebuilt_speech_index.is_initialized,
         )
         resolve_member(
             "prebuilt_page_number_index",
-            lambda: self.__lazy_prebuilt_page_number_index.value,
-            lambda: self.__lazy_prebuilt_page_number_index.is_initialized,
+            lambda: self._lazy_prebuilt_page_number_index.value,
+            lambda: self._lazy_prebuilt_page_number_index.is_initialized,
         )
         resolve_member("decoded_persons", lambda: self.decoded_persons, lambda: "decoded_persons" in self.__dict__)
         resolve_member("year_range", lambda: self.year_range, lambda: "year_range" in self.__dict__)
