@@ -211,9 +211,7 @@ class CorpusLoader:
         resolve_member(
             "person_codecs", lambda: self._lazy_person_codecs.value, lambda: self._lazy_person_codecs.is_initialized
         )
-        resolve_member(
-            "repository", lambda: self._lazy_repository.value, lambda: self._lazy_repository.is_initialized
-        )
+        resolve_member("repository", lambda: self._lazy_repository.value, lambda: self._lazy_repository.is_initialized)
         resolve_member(
             "prebuilt_speech_index",
             lambda: self._lazy_prebuilt_speech_index.value,
