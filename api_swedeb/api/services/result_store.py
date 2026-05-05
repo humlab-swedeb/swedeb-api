@@ -68,6 +68,7 @@ class ResultStore:
     ARTIFACT_SUFFIX = ".feather"
     PARTIAL_SUFFIX = ".partial"
     PARTIAL_SUFFIXES = (PARTIAL_SUFFIX, ".tmp")
+    STALE_PARTIAL_FILE_SECONDS = 24 * 60 * 60
 
     def __init__(
         self,
@@ -875,15 +876,16 @@ class ResultStore:
         if not self.root_dir.exists():
             return
 
+        now = datetime.now(UTC).timestamp()
         for suffix in self.PARTIAL_SUFFIXES:
             for path in self.root_dir.glob(f"*{suffix}"):
-                path.unlink(missing_ok=True)
+                self._unlink_stale_partial_file(path, now)
 
         archives_dir = self.root_dir / "archives"
         if archives_dir.exists():
             for suffix in self.PARTIAL_SUFFIXES:
                 for path in archives_dir.glob(f"*{suffix}"):
-                    path.unlink(missing_ok=True)
+                    self._unlink_stale_partial_file(path, now)
 
         active_partial_ticket_ids = {
             ticket.ticket_id for ticket in self._list_tickets_locked() if ticket.status == TicketStatus.PARTIAL
@@ -896,6 +898,14 @@ class ResultStore:
             if candidate.name in active_partial_ticket_ids:
                 continue
             shutil.rmtree(candidate, ignore_errors=True)
+
+    def _unlink_stale_partial_file(self, path: Path, now: float) -> None:
+        try:
+            age_seconds = now - path.stat().st_mtime
+        except FileNotFoundError:
+            return
+        if age_seconds > self.STALE_PARTIAL_FILE_SECONDS:
+            path.unlink(missing_ok=True)
 
     def _delete_ticket_locked(self, ticket_id: str) -> None:
         ticket = self._get_ticket_locked(ticket_id)

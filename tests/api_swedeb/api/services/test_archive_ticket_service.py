@@ -6,6 +6,8 @@ import asyncio
 import csv
 import gzip
 import json
+import os
+import time
 import zipfile
 from dataclasses import replace
 from pathlib import Path
@@ -208,7 +210,23 @@ def test_create_ticket_stores_source_ticket_id_and_archive_format(tmp_path):
         asyncio.run(store.shutdown())
 
 
-def test_cleanup_partial_archive_files_on_startup(tmp_path):
+def test_cleanup_stale_partial_archive_files_on_startup(tmp_path):
+    archives_dir = tmp_path / "archives"
+    archives_dir.mkdir(parents=True)
+    partial = archives_dir / "some-ticket.jsonl.gz.partial"
+    partial.write_bytes(b"incomplete")
+    stale_timestamp = time.time() - ResultStore.STALE_PARTIAL_FILE_SECONDS - 1
+    os.utime(partial, (stale_timestamp, stale_timestamp))
+
+    store = make_result_store(tmp_path)
+    asyncio.run(store.startup())
+    try:
+        assert not partial.exists()
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_cleanup_preserves_recent_partial_archive_files_on_startup(tmp_path):
     archives_dir = tmp_path / "archives"
     archives_dir.mkdir(parents=True)
     partial = archives_dir / "some-ticket.jsonl.gz.partial"
@@ -217,7 +235,7 @@ def test_cleanup_partial_archive_files_on_startup(tmp_path):
     store = make_result_store(tmp_path)
     asyncio.run(store.startup())
     try:
-        assert not partial.exists()
+        assert partial.exists()
     finally:
         asyncio.run(store.shutdown())
 

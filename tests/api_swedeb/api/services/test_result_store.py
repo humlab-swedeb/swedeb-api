@@ -1,4 +1,5 @@
 import asyncio
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -151,13 +152,16 @@ def test_result_store_evicts_oldest_ready_ticket_when_budget_is_exceeded(tmp_pat
         asyncio.run(store.shutdown())
 
 
-def test_result_store_startup_keeps_artifacts_and_removes_only_partial_files(tmp_path) -> None:
+def test_result_store_startup_keeps_artifacts_and_removes_only_stale_partial_files(tmp_path) -> None:
     stale_artifact = Path(tmp_path) / "stale.feather"
     stale_partial = Path(tmp_path) / "stale.feather.partial"
     stale_tmp = Path(tmp_path) / "stale.tmp"
     stale_artifact.write_bytes(b"artifact")
     stale_partial.write_bytes(b"partial")
     stale_tmp.write_bytes(b"tmp")
+    stale_timestamp = datetime.now(UTC).timestamp() - ResultStore.STALE_PARTIAL_FILE_SECONDS - 1
+    os.utime(stale_partial, (stale_timestamp, stale_timestamp))
+    os.utime(stale_tmp, (stale_timestamp, stale_timestamp))
 
     store = ResultStore(
         root_dir=tmp_path,
@@ -173,6 +177,29 @@ def test_result_store_startup_keeps_artifacts_and_removes_only_partial_files(tmp
         assert stale_artifact.exists() is True
         assert stale_partial.exists() is False
         assert stale_tmp.exists() is False
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_startup_preserves_recent_partial_files(tmp_path) -> None:
+    recent_partial = Path(tmp_path) / "recent.feather.partial"
+    recent_tmp = Path(tmp_path) / "recent.tmp"
+    recent_partial.write_bytes(b"partial")
+    recent_tmp.write_bytes(b"tmp")
+
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+
+    asyncio.run(store.startup())
+    try:
+        assert recent_partial.exists() is True
+        assert recent_tmp.exists() is True
     finally:
         asyncio.run(store.shutdown())
 
