@@ -25,6 +25,7 @@ from api_swedeb.api.services.result_store import (
 )
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.v1.endpoints._router_common import CommonParams, _pending_retry_headers
+from api_swedeb.celery_app import celery_app, get_multiprocessing_queue_name
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.schemas.bulk_archive_schema import ArchivePrepareResponse, BulkArchiveFormat
 from api_swedeb.schemas.ngrams_schema import (
@@ -84,10 +85,6 @@ async def submit_ngrams_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import (  # pylint: disable=import-outside-toplevel
-            celery_app,  # pylint: disable=import-outside-toplevel
-            get_multiprocessing_queue_name,
-        )
 
         celery_app.send_task(
             "api_swedeb.execute_ngrams_ticket",
