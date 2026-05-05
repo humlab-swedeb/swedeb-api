@@ -15,26 +15,29 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.services.download_service import DownloadService
 from api_swedeb.api.services.result_store import ResultStoreNotFound, ResultStorePendingLimitError
-from api_swedeb.api.v1.endpoints.tool_router import (
-    DownloadFormat,
+from api_swedeb.api.v1.endpoints._router_common import DownloadFormat
+from api_swedeb.api.v1.endpoints.deprecated_endpoints import get_ngram_results
+from api_swedeb.api.v1.endpoints.kwic_router import (
     download_kwic_ticket,
-    download_speeches_archive_by_ticket,
-    download_speeches_by_ticket,
-    download_word_trend_speeches,
     get_kwic_ticket_results,
     get_kwic_ticket_status,
-    get_ngram_results,
+    submit_kwic_query,
+)
+from api_swedeb.api.v1.endpoints.speeches_router import (
+    download_speeches_archive_by_ticket,
+    download_speeches_by_ticket,
     get_speech_by_id_result,
     get_speeches_page,
     get_speeches_status,
-    get_topics,
+    submit_speeches_query,
+)
+from api_swedeb.api.v1.endpoints.tool_router import get_year_range
+from api_swedeb.api.v1.endpoints.word_trends_router import (
+    download_word_trend_speeches,
     get_word_hits,
     get_word_trend_speeches_page,
     get_word_trend_speeches_status,
     get_word_trends_result,
-    get_year_range,
-    submit_kwic_query,
-    submit_speeches_query,
     submit_word_trend_speeches_query,
 )
 from api_swedeb.core.speech import Speech
@@ -343,7 +346,9 @@ class TestToolRouterEndpoints:
         corpus = MagicMock()
         expected = NGramResult(ngram_list=[NGramResultItem(ngram="hej världen", count=2, documents=["i-1"])])
 
-        with patch("api_swedeb.api.v1.endpoints.tool_router.NGramsService.get_ngrams", return_value=expected) as mocked:
+        with patch(
+            "api_swedeb.api.v1.endpoints.deprecated_endpoints.NGramsService.get_ngrams", return_value=expected
+        ) as mocked:
             result = asyncio.run(
                 get_ngram_results(
                     search="hej världen",
@@ -383,10 +388,6 @@ class TestToolRouterEndpoints:
         assert result.speech_text == "speech text"
         assert result.page_number == 12
         assert result.speaker_note == "speaker note"
-
-    def test_get_topics_returns_not_implemented_message(self):
-        result = asyncio.run(get_topics())
-        assert result == {"message": "Not implemented yet"}
 
     def test_get_year_range_returns_loader_year_range(self):
         corpus_loader = MagicMock()
