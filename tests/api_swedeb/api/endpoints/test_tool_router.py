@@ -103,7 +103,7 @@ class TestToolRouterEndpoints:
         result_store = MagicMock(cleanup_interval_seconds=60)
 
         with (
-            patch("api_swedeb.api.v1.endpoints.tool_router.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.api.v1.endpoints.kwic_router.ConfigValue.resolve", return_value=True),
             patch("api_swedeb.celery_app.celery_app.send_task") as send_task,
         ):
             result = asyncio.run(
@@ -344,23 +344,23 @@ class TestToolRouterEndpoints:
     def test_get_ngram_results_splits_search_terms_and_delegates(self):
         commons = MagicMock()
         corpus = MagicMock()
+        ngrams_service = MagicMock()
         expected = NGramResult(ngram_list=[NGramResultItem(ngram="hej världen", count=2, documents=["i-1"])])
+        ngrams_service.get_ngrams.return_value = expected
 
-        with patch(
-            "api_swedeb.api.v1.endpoints.deprecated_endpoints.NGramsService.get_ngrams", return_value=expected
-        ) as mocked:
-            result = asyncio.run(
-                get_ngram_results(
-                    search="hej världen",
-                    commons=commons,
-                    width=2,
-                    target="lemma",
-                    mode="sliding",
-                    corpus=corpus,
-                )
+        result = asyncio.run(
+            get_ngram_results(
+                search="hej världen",
+                commons=commons,
+                width=2,
+                target="lemma",
+                mode="sliding",
+                corpus=corpus,
+                ngrams_service=ngrams_service,
             )
+        )
 
-        mocked.assert_called_once_with(
+        ngrams_service.get_ngrams.assert_called_once_with(
             search_term=["hej", "världen"],
             commons=commons,
             corpus=corpus,
@@ -459,7 +459,7 @@ class TestWordTrendSpeechesTicketEndpoints:
         wt_service.submit_query.return_value = self._make_accepted()
 
         with (
-            patch("api_swedeb.api.v1.endpoints.tool_router.ConfigValue") as mock_config,
+            patch("api_swedeb.api.v1.endpoints.word_trends_router.ConfigValue") as mock_config,
             patch("api_swedeb.celery_app.celery_app.send_task") as send_task,
         ):
             mock_config.return_value.resolve.return_value = True
@@ -975,7 +975,7 @@ class TestSpeechesTicketEndpoints:
         result_store = MagicMock(cleanup_interval_seconds=60)
 
         with (
-            patch("api_swedeb.api.v1.endpoints.tool_router.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.api.v1.endpoints.speeches_router.ConfigValue.resolve", return_value=True),
             patch("api_swedeb.celery_app.celery_app.send_task") as send_task,
         ):
             result = asyncio.run(
