@@ -369,12 +369,12 @@ class TestCorpusLoaderAdditionalBranches:
         captured = capsys.readouterr()
 
         assert result is loader
-        assert loader._CorpusLoader__lazy_document_index.is_initialized  # type: ignore
-        assert loader._CorpusLoader__lazy_vectorized_corpus.is_initialized  # type: ignore
-        assert loader._CorpusLoader__lazy_person_codecs.is_initialized  # type: ignore
-        assert loader._CorpusLoader__lazy_repository.is_initialized  # type: ignore
-        assert loader._CorpusLoader__lazy_prebuilt_speech_index.is_initialized  # type: ignore
-        assert loader._CorpusLoader__lazy_prebuilt_page_number_index.is_initialized  # type: ignore
+        assert loader._lazy_document_index.is_initialized  # type: ignore
+        assert loader._lazy_vectorized_corpus.is_initialized  # type: ignore
+        assert loader._lazy_person_codecs.is_initialized  # type: ignore
+        assert loader._lazy_repository.is_initialized  # type: ignore
+        assert loader._lazy_prebuilt_speech_index.is_initialized  # type: ignore
+        assert loader._lazy_prebuilt_page_number_index.is_initialized  # type: ignore
         assert "decoded_persons" in loader.__dict__
         assert "year_range" in loader.__dict__
 
