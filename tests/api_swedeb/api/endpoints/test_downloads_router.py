@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import gzip
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Generator
 from unittest.mock import MagicMock
@@ -207,6 +208,39 @@ def test_downloads_status_does_not_trigger_archive_regeneration(downloads_client
 
     # The search service must not have been called (no execution happened)
     search_service.get_speeches_text_batch.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Tests: POST /v1/downloads/{archive_ticket_id}/copy-link
+# ---------------------------------------------------------------------------
+
+
+def test_downloads_copy_link_extends_archive_and_source_ticket(downloads_client):
+    client, store, _ = downloads_client
+    source = make_ready_source_ticket(store)
+    archive_ticket = store.create_ticket(
+        source_ticket_id=source.ticket_id,
+        archive_format="jsonl_gz",
+    )
+
+    r = client.post(f"/v1/downloads/{archive_ticket.ticket_id}/copy-link")
+
+    assert r.status_code == 200
+    minimum_expiry = datetime.now(UTC) + timedelta(hours=23, minutes=59)
+    assert datetime.fromisoformat(r.json()["expires_at"]) >= minimum_expiry
+    archive = store.require_ticket(archive_ticket.ticket_id)
+    retained_source = store.require_ticket(source.ticket_id)
+    assert archive.expires_at >= minimum_expiry
+    assert archive.retention_until is not None
+    assert retained_source.expires_at >= minimum_expiry
+
+
+def test_downloads_copy_link_returns_404_for_missing_ticket(downloads_client):
+    client, *_ = downloads_client
+
+    r = client.post("/v1/downloads/nonexistent-ticket-id/copy-link")
+
+    assert r.status_code == 404
 
 
 # ---------------------------------------------------------------------------

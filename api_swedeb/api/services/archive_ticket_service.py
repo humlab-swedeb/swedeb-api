@@ -83,6 +83,8 @@ def execute_archive_task(archive_ticket_id: str) -> dict:
 
 
 class ArchiveTicketService:
+    COPIED_RETRIEVAL_URL_TTL_SECONDS = 24 * 60 * 60
+
     def prepare(
         self,
         *,
@@ -235,6 +237,24 @@ class ArchiveTicketService:
 
     def get_status(self, archive_ticket_id: str, result_store: ResultStore) -> ArchiveTicketStatus:
         ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
+        return self._status_model(ticket)
+
+    def retain_copied_retrieval_link(self, archive_ticket_id: str, result_store: ResultStore) -> ArchiveTicketStatus:
+        ttl_seconds: int = ConfigValue(
+            "cache.copied_retrieval_url_ttl_seconds",
+            default=self.COPIED_RETRIEVAL_URL_TTL_SECONDS,
+        ).resolve()
+        ticket: TicketMeta = result_store.retain_ticket(archive_ticket_id, ttl_seconds=ttl_seconds)
+
+        # If archive generation is still pending, the worker may still need the
+        # source ticket/artifact to build the downloadable archive.
+        if ticket.source_ticket_id is not None:
+            try:
+                result_store.retain_ticket(ticket.source_ticket_id, ttl_seconds=ttl_seconds)
+            except ResultStoreNotFound:
+                if ticket.status != TicketStatus.READY:
+                    raise
+
         return self._status_model(ticket)
 
     def _status_model(self, ticket: TicketMeta) -> ArchiveTicketStatus:

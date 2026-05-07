@@ -132,6 +132,7 @@ The `config.yml` structure includes the following operational sections:
 **`cache`** - Shared ticket-based paging and export configuration for the async ticketed endpoints
 - `result_ttl_seconds` - Sliding ticket TTL; the expiry window resets on each page or archive access (default: `600`)
 - `max_absolute_lifetime_seconds` - Hard cap on total ticket lifetime from creation, regardless of access activity; expiry from `touch_ticket` is clamped to `created_at + max_absolute_lifetime_seconds` (default: `3600`)
+- `copied_retrieval_url_ttl_seconds` - Retention window applied when a frontend copy-link action calls `POST /v1/downloads/{archive_ticket_id}/copy-link`; this can extend archive and source tickets beyond `max_absolute_lifetime_seconds` so copied retrieval links remain usable (default: `86400`)
 - `cleanup_interval_seconds` - Frequency of automatic cleanup (default: `60`)
 - `max_artifact_bytes` - Maximum total storage for all ticket artifacts in bytes (default: `2147483648` = 2GB)
 - `max_pending_jobs` - Maximum concurrent pending tickets (default: `2`)
@@ -143,8 +144,8 @@ The `config.yml` structure includes the following operational sections:
 
 **`cache`** - Bulk archive generation
 - Archive artifacts are stored under `cache.root_dir/archives/` as either `<archive_ticket_id>.jsonl.gz` or `<archive_ticket_id>.zip`, depending on the `archive_format` query parameter
-- Archive artifacts share the same `max_artifact_bytes` capacity pool and `result_ttl_seconds` TTL as feather result artifacts; they are evicted and cleaned up by the same background cleanup loop
-- No separate `archive_ttl_seconds` key is needed; tune `result_ttl_seconds` and `max_artifact_bytes` together to accommodate the expected artifact sizes
+- Archive artifacts share the same `max_artifact_bytes` capacity pool and normal `result_ttl_seconds` TTL as feather result artifacts unless a retrieval link has been copied; copied links use `copied_retrieval_url_ttl_seconds`, and retained tickets are skipped by capacity eviction until that retention window has passed
+- Tune `copied_retrieval_url_ttl_seconds` and `max_artifact_bytes` together to accommodate the expected retained artifact sizes
 - Prepare responses (`POST .../archive/{ticket_id}`) include a `retrieval_url` of the form `{base_url}/download/{archive_ticket_id}` and an `expires_at` timestamp; these let users or external tools poll or retrieve the archive without re-running the export
 - The retrieval URL is a bearer link (UUID token); no additional authentication is required to poll or download while the ticket is valid — review this policy if authentication is introduced
 

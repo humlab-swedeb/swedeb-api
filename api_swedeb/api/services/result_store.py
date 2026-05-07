@@ -44,6 +44,7 @@ class TicketMeta:
     ready_at: datetime | None = None
     source_ticket_id: str | None = None
     archive_format: str | None = None
+    retention_until: datetime | None = None
     shards_complete: int = 0
     shards_total: int = 0
 
@@ -203,7 +204,11 @@ class ResultStore:
                 ticket_id=str(uuid4()),
                 status=TicketStatus.PENDING,
                 created_at=now,
-                expires_at=self._clamped_expiry(now, now + timedelta(seconds=self.result_ttl_seconds)),
+                expires_at=self._ticket_expiry(
+                    retention_until=None,
+                    created_at=now,
+                    candidate_expiry=now + timedelta(seconds=self.result_ttl_seconds),
+                ),
                 query_meta=dict(query_meta or {}),
                 source_ticket_id=source_ticket_id,
                 archive_format=archive_format,
@@ -243,8 +248,48 @@ class ResultStore:
                 raise ResultStoreNotFound("Ticket not found or expired")
 
             new_expiry = now + timedelta(seconds=self.result_ttl_seconds)
-            updated = replace(ticket, expires_at=self._clamped_expiry(ticket.created_at, new_expiry))
+            updated = replace(
+                ticket,
+                expires_at=self._ticket_expiry(
+                    retention_until=ticket.retention_until,
+                    created_at=ticket.created_at,
+                    candidate_expiry=new_expiry,
+                ),
+            )
             self._set_ticket_locked(updated)
+
+    def retain_ticket(self, ticket_id: str, *, ttl_seconds: int) -> TicketMeta:
+        """Keep a ticket available for at least *ttl_seconds* from now.
+
+        This is intentionally separate from ``touch_ticket()``. Normal access uses
+        the short sliding TTL and absolute lifetime cap; explicit retrieval-link
+        retention may extend beyond that cap so copied archive links remain usable.
+        """
+        if ttl_seconds <= 0:
+            raise ValueError("ttl_seconds must be positive")
+
+        with self._lock, self._state_lock():
+            self._ensure_started_locked()
+            ticket = self._get_ticket_locked(ticket_id)
+            if ticket is None:
+                raise ResultStoreNotFound("Ticket not found or expired")
+
+            now = datetime.now(UTC)
+            if ticket.expires_at < now:
+                self._delete_ticket_locked(ticket_id)
+                raise ResultStoreNotFound("Ticket not found or expired")
+
+            retention_until = now + timedelta(seconds=ttl_seconds)
+            if ticket.retention_until is not None:
+                retention_until = max(ticket.retention_until, retention_until)
+
+            updated = replace(
+                ticket,
+                retention_until=retention_until,
+                expires_at=max(ticket.expires_at, retention_until),
+            )
+            self._set_ticket_locked(updated)
+            return replace(updated)
 
     def adopt_ticket(self, ticket_id: str) -> None:
         """Register an externally-created ticket so a worker process can update its state.
@@ -263,7 +308,11 @@ class ResultStore:
                         ticket_id=ticket_id,
                         status=TicketStatus.PENDING,
                         created_at=now,
-                        expires_at=self._clamped_expiry(now, now + timedelta(seconds=self.result_ttl_seconds)),
+                        expires_at=self._ticket_expiry(
+                            retention_until=None,
+                            created_at=now,
+                            candidate_expiry=now + timedelta(seconds=self.result_ttl_seconds),
+                        ),
                     )
                 )
 
@@ -285,8 +334,10 @@ class ResultStore:
             ready_at = ticket.ready_at or datetime.now(UTC)
             expires_at = ticket.expires_at
             if ticket.status != TicketStatus.READY:
-                expires_at = self._clamped_expiry(
-                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                expires_at = self._ticket_expiry(
+                    retention_until=ticket.retention_until,
+                    created_at=ticket.created_at,
+                    candidate_expiry=ready_at + timedelta(seconds=self.result_ttl_seconds),
                 )
 
             updated = replace(
@@ -501,8 +552,10 @@ class ResultStore:
             updated = replace(
                 ticket,
                 status=TicketStatus.READY,
-                expires_at=self._clamped_expiry(
-                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                expires_at=self._ticket_expiry(
+                    retention_until=ticket.retention_until,
+                    created_at=ticket.created_at,
+                    candidate_expiry=ready_at + timedelta(seconds=self.result_ttl_seconds),
                 ),
                 query_meta=dict(query_meta or ticket.query_meta),
                 artifact_path=artifact_path,
@@ -663,8 +716,10 @@ class ResultStore:
             updated = replace(
                 ticket,
                 status=TicketStatus.READY,
-                expires_at=self._clamped_expiry(
-                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                expires_at=self._ticket_expiry(
+                    retention_until=ticket.retention_until,
+                    created_at=ticket.created_at,
+                    candidate_expiry=ready_at + timedelta(seconds=self.result_ttl_seconds),
                 ),
                 query_meta=dict(query_meta or ticket.query_meta),
                 artifact_path=artifact_path,
@@ -859,8 +914,10 @@ class ResultStore:
             updated = replace(
                 ticket,
                 status=TicketStatus.READY,
-                expires_at=self._clamped_expiry(
-                    ticket.created_at, ready_at + timedelta(seconds=self.result_ttl_seconds)
+                expires_at=self._ticket_expiry(
+                    retention_until=ticket.retention_until,
+                    created_at=ticket.created_at,
+                    candidate_expiry=ready_at + timedelta(seconds=self.result_ttl_seconds),
                 ),
                 artifact_path=artifact_path,
                 artifact_bytes=artifact_bytes,
@@ -927,12 +984,15 @@ class ResultStore:
         if required_bytes <= 0:
             return
 
+        now = datetime.now(UTC)
         while self._artifact_bytes_locked() + required_bytes > self.max_artifact_bytes:
             ready_tickets = sorted(
                 (
                     ticket
                     for ticket in self._list_tickets_locked()
-                    if ticket.ticket_id != exclude_ticket_id and ticket.status == TicketStatus.READY
+                    if ticket.ticket_id != exclude_ticket_id
+                    and ticket.status == TicketStatus.READY
+                    and (ticket.retention_until is None or ticket.retention_until < now)
                 ),
                 key=lambda ticket: (ticket.ready_at or ticket.created_at, ticket.created_at),
             )
@@ -944,6 +1004,18 @@ class ResultStore:
         """Return *candidate_expiry* clamped to the absolute lifetime cap for this ticket."""
         max_expiry = created_at + timedelta(seconds=self.max_absolute_lifetime_seconds)
         return min(candidate_expiry, max_expiry)
+
+    def _ticket_expiry(
+        self,
+        *,
+        retention_until: datetime | None,
+        created_at: datetime,
+        candidate_expiry: datetime,
+    ) -> datetime:
+        expiry = self._clamped_expiry(created_at, candidate_expiry)
+        if retention_until is not None:
+            return max(expiry, retention_until)
+        return expiry
 
     def _ensure_started_locked(self) -> None:
         if not self._started:
@@ -1057,6 +1129,9 @@ class ResultStore:
             ready_at=datetime.fromisoformat(payload["ready_at"]) if payload.get("ready_at") else None,
             source_ticket_id=payload.get("source_ticket_id"),
             archive_format=payload.get("archive_format"),
+            retention_until=(
+                datetime.fromisoformat(payload["retention_until"]) if payload.get("retention_until") else None
+            ),
             shards_complete=int(payload.get("shards_complete") or 0),
             shards_total=int(payload.get("shards_total") or 0),
         )
