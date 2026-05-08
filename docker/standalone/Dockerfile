@@ -120,6 +120,7 @@ FROM node:22-slim AS frontend-builder
 ARG FRONTEND_REPO=https://github.com/humlab-swedeb/swedeb_frontend.git
 ARG FRONTEND_BRANCH=staging
 ARG FRONTEND_COMMIT=
+ARG PNPM_VERSION=10.12.1
 
 RUN set -e; \
     apt_log=/tmp/apt-step.log; \
@@ -131,8 +132,10 @@ RUN set -e; \
     rm -f "$apt_log"; \
     rm -rf /var/lib/apt/lists/*
 
-# Install pnpm
-RUN npm install -g --silent pnpm
+# Install a known-compatible pnpm version. The latest pnpm 11 fails this
+# frontend lockfile with ERR_PNPM_IGNORED_BUILDS unless build approvals are
+# recorded in the frontend project.
+RUN npm install -g --silent pnpm@${PNPM_VERSION}
 
 WORKDIR /build/frontend
 
