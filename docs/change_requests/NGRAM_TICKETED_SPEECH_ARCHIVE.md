@@ -197,13 +197,13 @@ This keeps the query path lean, matches the current architecture, and avoids mix
 
 ## Progress Checklist
 
-- [ ] Confirm the product contract is whole-search archive, not row-scoped archive
-- [ ] Add `NGramSpeechesArchiveService`
-- [ ] Add backend helper to extract ordered unique speech IDs from n-gram `documents`
-- [ ] Add `POST /v1/tools/ngrams/speeches/archive/{ticket_id}`
-- [ ] Reuse existing archive ticket creation and execution flow
-- [ ] Return `retrieval_url` from the prepare response
-- [ ] Wire frontend n-gram speech archive action in `src/stores/nGramDataStore.js`
-- [ ] Add copy-link retention call for the new archive flow
-- [ ] Add backend tests for prepare, extraction, archive generation, and empty-source behavior
+- [x] Confirm the product contract is whole-search archive, not row-scoped archive
+- [x] Add `NGramSpeechesArchiveService`
+- [x] Add backend helper to extract ordered unique speech IDs from n-gram `documents`
+- [x] Add `POST /v1/tools/ngrams/speeches/archive/{ticket_id}`
+- [x] Reuse existing archive ticket creation and execution flow
+- [x] Return `retrieval_url` from the prepare response
+- [x] Wire frontend n-gram speech archive action in `src/stores/nGramDataStore.js`
+- [x] Add copy-link retention call for the new archive flow
+- [x] Add backend tests for prepare, extraction, archive generation, and empty-source behavior
 - [ ] Add frontend validation for archive start, poll, and download flow

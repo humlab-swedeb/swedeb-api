@@ -7,12 +7,20 @@ from fastapi import BackgroundTasks, Depends, HTTPException, Query, Request, Res
 from fastapi.responses import JSONResponse
 
 from api_swedeb.api.dependencies import (
+    get_archive_ticket_service,
     get_cwb_corpus_opts,
+    get_ngram_speeches_archive_service,
     get_ngrams_archive_service,
     get_ngrams_service,
     get_ngrams_ticket_service,
     get_result_store,
+    get_search_service,
     get_word_trends_service,
+)
+from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
+from api_swedeb.api.services.ngram_speeches_archive_service import (
+    EmptyNGramSpeechArchiveError,
+    NGramSpeechesArchiveService,
 )
 from api_swedeb.api.services.ngrams_archive_service import NGramsArchiveService
 from api_swedeb.api.services.ngrams_service import NGramsService
@@ -23,6 +31,7 @@ from api_swedeb.api.services.result_store import (
     ResultStoreNotFound,
     ResultStorePendingLimitError,
 )
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.v1.endpoints._router_common import CommonParams, _pending_retry_headers
 from api_swedeb.celery_app import celery_app, get_multiprocessing_queue_name
@@ -181,4 +190,48 @@ async def prepare_ngrams_archive(
         archive_ticket_id=response.archive_ticket_id,
         result_store=result_store,
     )
+    return response
+
+
+@router.post("/ngrams/speeches/archive/{ticket_id}", response_model=ArchivePrepareResponse, status_code=202)
+async def prepare_ngrams_speeches_archive(
+    ticket_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    archive_format: BulkArchiveFormat = Query(BulkArchiveFormat.zip, description="Speech archive format"),
+    ngram_speeches_archive_service: NGramSpeechesArchiveService = Depends(get_ngram_speeches_archive_service),
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
+) -> ArchivePrepareResponse:
+    """Prepare a speech archive from the union of speeches referenced by an n-gram ticket."""
+    try:
+        response = ngram_speeches_archive_service.prepare(
+            source_ticket_id=ticket_id,
+            archive_format=archive_format,
+            result_store=result_store,
+        )
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    except EmptyNGramSpeechArchiveError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
+
+    celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
+    if celery_enabled:
+        import importlib  # pylint: disable=import-outside-toplevel
+
+        celery_tasks = importlib.import_module("api_swedeb.celery_tasks")
+        celery_tasks.execute_archive_task_celery_task.delay(response.archive_ticket_id)
+    else:
+        background_tasks.add_task(
+            archive_ticket_service.execute_archive_task,
+            archive_ticket_id=response.archive_ticket_id,
+            result_store=result_store,
+            search_service=search_service,
+        )
     return response

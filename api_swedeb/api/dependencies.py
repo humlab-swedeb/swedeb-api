@@ -13,6 +13,7 @@ from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
 from api_swedeb.api.services.kwic_service import KWICService
 from api_swedeb.api.services.kwic_ticket_service import KWICTicketService
 from api_swedeb.api.services.metadata_service import MetadataService
+from api_swedeb.api.services.ngram_speeches_archive_service import NGramSpeechesArchiveService
 from api_swedeb.api.services.ngrams_archive_service import NGramsArchiveService
 from api_swedeb.api.services.ngrams_service import NGramsService
 from api_swedeb.api.services.ngrams_ticket_service import NGramsTicketService
@@ -53,6 +54,13 @@ def get_ngrams_ticket_service(container: AppContainer = Depends(get_container)) 
 def get_ngrams_archive_service(container: AppContainer = Depends(get_container)) -> NGramsArchiveService:
     """Get the app-scoped NGramsArchiveService instance."""
     return container.ngrams_archive_service
+
+
+def get_ngram_speeches_archive_service(
+    container: AppContainer = Depends(get_container),
+) -> NGramSpeechesArchiveService:
+    """Get the app-scoped NGramSpeechesArchiveService instance."""
+    return container.ngram_speeches_archive_service
 
 
 def get_search_service(container: AppContainer = Depends(get_container)) -> SearchService:

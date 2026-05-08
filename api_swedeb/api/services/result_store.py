@@ -192,6 +192,8 @@ class ResultStore:
         query_meta: dict | None = None,
         source_ticket_id: str | None = None,
         archive_format: str | None = None,
+        speech_ids: list[str] | None = None,
+        manifest_meta: dict | None = None,
     ) -> TicketMeta:
         self.cleanup_expired()
         with self._lock, self._state_lock():
@@ -212,6 +214,8 @@ class ResultStore:
                 query_meta=dict(query_meta or {}),
                 source_ticket_id=source_ticket_id,
                 archive_format=archive_format,
+                speech_ids=list(speech_ids) if speech_ids is not None else None,
+                manifest_meta=dict(manifest_meta) if manifest_meta is not None else None,
             )
             self._set_ticket_locked(ticket)
             return ticket

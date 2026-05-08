@@ -160,12 +160,12 @@ class ArchiveTicketService:
 
             archive_format = BulkArchiveFormat(archive_format_str)
             source_ticket: TicketMeta = result_store.require_ticket(source_ticket_id)
-            if source_ticket.speech_ids is None:
+            speech_ids: list[str] | None = archive_ticket.speech_ids or source_ticket.speech_ids
+            if speech_ids is None:
                 raise ValueError("Source ticket has no speech IDs")
 
-            speech_ids: list[str] = source_ticket.speech_ids
             dest_path: Path = result_store.archive_artifact_path(archive_ticket_id, archive_format_str)
-            manifest_meta: dict = self._build_manifest(archive_ticket, source_ticket)
+            manifest_meta: dict = archive_ticket.manifest_meta or self._build_manifest(archive_ticket, source_ticket)
 
             TicketedDownloadService.for_format(archive_format).write(
                 speech_ids=speech_ids,
