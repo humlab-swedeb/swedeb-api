@@ -33,8 +33,12 @@ from api_swedeb.api.services.result_store import (
 )
 from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.api.v1.endpoints._router_common import CommonParams, _pending_retry_headers
-from api_swedeb.celery_app import celery_app, get_multiprocessing_queue_name
+from api_swedeb.api.v1.endpoints._router_common import (
+    CommonParams,
+    _dispatch_celery_ticket,
+    _pending_retry_headers,
+)
+from api_swedeb.celery_app import get_multiprocessing_queue_name
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.schemas.bulk_archive_schema import ArchivePrepareResponse, BulkArchiveFormat
 from api_swedeb.schemas.ngrams_schema import (
@@ -94,10 +98,10 @@ async def submit_ngrams_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-
-        celery_app.send_task(
-            "api_swedeb.execute_ngrams_ticket",
-            args=[accepted.ticket_id, request.model_dump(mode="json"), cwb_opts],
+        _dispatch_celery_ticket(
+            result_store=result_store,
+            task_name="api_swedeb.execute_ngrams_ticket",
+            task_args=[accepted.ticket_id, request.model_dump(mode="json"), cwb_opts],
             task_id=accepted.ticket_id,
             queue=get_multiprocessing_queue_name(),
         )

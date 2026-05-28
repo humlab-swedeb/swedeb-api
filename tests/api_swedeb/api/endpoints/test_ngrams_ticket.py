@@ -22,7 +22,7 @@ import zipfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Generator, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -244,6 +244,30 @@ class TestSubmitNgramsQuery:
         )
         bt.add_task.assert_called_once()
         assert bt.add_task.call_args[0][0] == ticket_svc.execute_ticket
+
+    def test_rolls_back_ticket_when_celery_dispatch_fails(self):
+        ticket_svc = MagicMock(spec=NGramsTicketService)
+        ticket_svc.submit_query.return_value = MagicMock(ticket_id="t-3", status="pending", expires_at=None)
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        with (
+            patch("api_swedeb.api.v1.endpoints.ngrams_router.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.send_task", side_effect=RuntimeError("broker unavailable")),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                asyncio.run(
+                    submit_ngrams_query(
+                        request=_SAMPLE_REQUEST,
+                        background_tasks=BackgroundTasks(),
+                        ngrams_service=_make_ngrams_service_mock(),
+                        ngrams_ticket_service=ticket_svc,
+                        result_store=result_store,
+                        cwb_opts=self._MOCK_CWB_OPTS,
+                    )
+                )
+
+        assert exc_info.value.status_code == 503
+        result_store.delete_ticket.assert_called_once_with("t-3")
 
 
 # ---------------------------------------------------------------------------

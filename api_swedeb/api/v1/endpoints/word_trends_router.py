@@ -28,6 +28,7 @@ from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.v1.endpoints._router_common import (
     CommonParams,
     DownloadFormat,
+    _dispatch_celery_ticket,
     _pending_retry_headers,
     _stream_speech_archive,
 )
@@ -91,11 +92,12 @@ async def submit_word_trend_speeches_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import celery_app, get_default_queue_name  # type: ignore[import]
+        from api_swedeb.celery_app import get_default_queue_name  # type: ignore[import]
 
-        celery_app.send_task(
-            "api_swedeb.execute_word_trend_speeches_ticket",
-            args=[accepted.ticket_id, request.model_dump(mode="json")],
+        _dispatch_celery_ticket(
+            result_store=result_store,
+            task_name="api_swedeb.execute_word_trend_speeches_ticket",
+            task_args=[accepted.ticket_id, request.model_dump(mode="json")],
             task_id=accepted.ticket_id,
             queue=get_default_queue_name(),
         )
@@ -263,7 +265,7 @@ async def prepare_word_trend_speeches_bulk_archive(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    retrieval_url = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
+    retrieval_url: str = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
     response = response.model_copy(update={"retrieval_url": retrieval_url})
 
     celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())

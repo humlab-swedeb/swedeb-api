@@ -64,6 +64,32 @@ def test_result_store_enforces_pending_job_limit(tmp_path) -> None:
         asyncio.run(store.shutdown())
 
 
+def test_result_store_delete_ticket_updates_shared_pending_counter(tmp_path) -> None:
+    fake_redis = fakeredis.FakeRedis(decode_responses=True)
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=10_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+        ticket_state_store=TicketStateStore(client=fake_redis, key_prefix="test:result-store:delete"),
+    )
+    asyncio.run(store.startup())
+
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+
+        assert store.pending_jobs == 1
+
+        store.delete_ticket(ticket.ticket_id)
+
+        assert store.pending_jobs == 0
+        assert store.get_ticket(ticket.ticket_id) is None
+    finally:
+        asyncio.run(store.shutdown())
+
+
 def test_result_store_persists_and_loads_ready_artifact(tmp_path) -> None:
     store = ResultStore(
         root_dir=tmp_path,

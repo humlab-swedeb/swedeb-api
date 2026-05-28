@@ -29,6 +29,7 @@ from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.v1.endpoints._router_common import (
     CommonParams,
     DownloadFormat,
+    _dispatch_celery_ticket,
     _pending_retry_headers,
     _require_ready_ticket,
 )
@@ -86,14 +87,12 @@ async def submit_kwic_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        # Production mode: delegate to Celery worker (supports multiprocessing).
-        # Use send_task() by name so this module never imports celery_tasks at startup,
-        # keeping the FastAPI process free of a Redis dependency.
-        from api_swedeb.celery_app import celery_app, get_multiprocessing_queue_name  # type: ignore[import]
+        from api_swedeb.celery_app import get_multiprocessing_queue_name  # type: ignore[import]
 
-        celery_app.send_task(
-            "api_swedeb.execute_kwic_ticket",
-            args=[accepted.ticket_id, request.model_dump(mode="json"), dict(cwb_opts)],
+        _dispatch_celery_ticket(
+            result_store=result_store,
+            task_name="api_swedeb.execute_kwic_ticket",
+            task_args=[accepted.ticket_id, request.model_dump(mode="json"), dict(cwb_opts)],
             task_id=accepted.ticket_id,
             queue=get_multiprocessing_queue_name(),
         )

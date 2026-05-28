@@ -12,7 +12,7 @@ from fastapi import BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from api_swedeb.api.services.download_service import DownloadService
-from api_swedeb.api.services.result_store import ResultStoreNotFound
+from api_swedeb.api.services.result_store import ResultStoreNotFound, ResultStorePendingLimitError
 from api_swedeb.api.v1.endpoints._router_common import DownloadFormat
 from api_swedeb.api.v1.endpoints.speeches_router import (
     download_speeches_archive_by_ticket,
@@ -247,6 +247,53 @@ class TestSpeechesTicketEndpoints:
             task_id="speech-ticket-1",
             queue="celery",
         )
+
+    def test_submit_speeches_query_returns_429_when_pending_limit_reached(self):
+        commons = MagicMock()
+        commons.get_filter_opts.return_value = {"from_year": 1960, "to_year": 1975}
+        speeches_ticket_service = MagicMock()
+        speeches_ticket_service.submit_query.side_effect = ResultStorePendingLimitError("Too many pending jobs")
+        result_store = MagicMock(cleanup_interval_seconds=45)
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(
+                submit_speeches_query(
+                    commons=commons,
+                    background_tasks=BackgroundTasks(),
+                    search_service=MagicMock(),
+                    speeches_ticket_service=speeches_ticket_service,
+                    result_store=result_store,
+                )
+            )
+
+        assert excinfo.value.status_code == 429
+        assert excinfo.value.headers == {"Retry-After": "45"}
+
+    def test_submit_speeches_query_rolls_back_ticket_when_celery_dispatch_fails(self):
+        commons = MagicMock()
+        commons.get_filter_opts.return_value = {"from_year": 1960, "to_year": 1975}
+        background_tasks = BackgroundTasks()
+        speeches_ticket_service = MagicMock()
+        speeches_ticket_service.submit_query.return_value = self._make_accepted()
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        with (
+            patch("api_swedeb.api.v1.endpoints.speeches_router.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.send_task", side_effect=RuntimeError("broker unavailable")),
+        ):
+            with pytest.raises(HTTPException) as excinfo:
+                asyncio.run(
+                    submit_speeches_query(
+                        commons=commons,
+                        background_tasks=background_tasks,
+                        search_service=MagicMock(),
+                        speeches_ticket_service=speeches_ticket_service,
+                        result_store=result_store,
+                    )
+                )
+
+        assert excinfo.value.status_code == 503
+        result_store.delete_ticket.assert_called_once_with("speech-ticket-1")
 
     def test_get_speeches_status_uses_service(self):
         service = MagicMock()

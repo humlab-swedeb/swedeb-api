@@ -25,6 +25,7 @@ from api_swedeb.api.services.speeches_ticket_service import SpeechesTicketServic
 from api_swedeb.api.v1.endpoints._router_common import (
     CommonParams,
     DownloadFormat,
+    _dispatch_celery_ticket,
     _pending_retry_headers,
     _require_ready_ticket,
     _stream_speech_archive,
@@ -67,11 +68,12 @@ async def submit_speeches_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import celery_app, get_default_queue_name  # type: ignore[import]
+        from api_swedeb.celery_app import get_default_queue_name  # type: ignore[import]
 
-        celery_app.send_task(
-            "api_swedeb.execute_speeches_ticket",
-            args=[accepted.ticket_id, dict(selections)],
+        _dispatch_celery_ticket(
+            result_store=result_store,
+            task_name="api_swedeb.execute_speeches_ticket",
+            task_args=[accepted.ticket_id, dict(selections)],
             task_id=accepted.ticket_id,
             queue=get_default_queue_name(),
         )

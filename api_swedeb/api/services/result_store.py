@@ -232,6 +232,10 @@ class ResultStore:
             raise ResultStoreNotFound("Ticket not found or expired")
         return ticket
 
+    def delete_ticket(self, ticket_id: str) -> None:
+        with self._lock, self._state_lock():
+            self._delete_ticket_locked(ticket_id)
+
     def touch_ticket(self, ticket_id: str) -> None:
         """Reset the expiration window for an active ticket.
 

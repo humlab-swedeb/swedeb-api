@@ -120,6 +120,36 @@ class TestKWICRouterEndpoints:
         assert excinfo.value.status_code == 429
         assert excinfo.value.headers == {"Retry-After": "45"}
 
+    def test_submit_kwic_query_rolls_back_ticket_when_celery_dispatch_fails(self):
+        request = KWICQueryRequest(search="demokrati")
+        background_tasks = BackgroundTasks()
+        kwic_ticket_service = MagicMock()
+        kwic_ticket_service.submit_query.return_value = type(
+            "Accepted",
+            (),
+            {"ticket_id": "ticket-1", "status": "pending", "expires_at": "2026-01-01T00:00:00Z"},
+        )()
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        with (
+            patch("api_swedeb.api.v1.endpoints.kwic_router.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.send_task", side_effect=RuntimeError("broker unavailable")),
+        ):
+            with pytest.raises(HTTPException) as excinfo:
+                asyncio.run(
+                    submit_kwic_query(
+                        request=request,
+                        background_tasks=background_tasks,
+                        kwic_service=MagicMock(),
+                        kwic_ticket_service=kwic_ticket_service,
+                        result_store=result_store,
+                        cwb_opts={"registry_dir": "/tmp/registry", "corpus_name": "CORPUS", "data_dir": "/tmp/data"},
+                    )
+                )
+
+        assert excinfo.value.status_code == 503
+        result_store.delete_ticket.assert_called_once_with("ticket-1")
+
     def test_get_kwic_ticket_status_maps_service_result(self):
         kwic_ticket_service = MagicMock()
         kwic_ticket_service.get_status.return_value = KWICTicketStatus(
