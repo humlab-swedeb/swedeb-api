@@ -96,7 +96,7 @@ cache:
   copied_retrieval_url_ttl_seconds: 86400
   cleanup_interval_seconds: 60
   max_artifact_bytes: 2147483648
-  max_pending_jobs: 2
+  max_pending_jobs: 8
   root_dir: /tmp/swedeb-kwic-cache
   max_page_size: 200
   artifact_cache_max_entries: 16
