@@ -86,16 +86,16 @@ class ResultStore:
         ticket_state_store: TicketStateStore | None = None,
     ) -> None:
         self.root_dir = Path(root_dir)
-        self.result_ttl_seconds = result_ttl_seconds
-        self.max_absolute_lifetime_seconds = max_absolute_lifetime_seconds
-        self.cleanup_interval_seconds = cleanup_interval_seconds
-        self.max_artifact_bytes = max_artifact_bytes
-        self.max_pending_jobs = max_pending_jobs
-        self.max_page_size = max_page_size
-        self.artifact_cache_max_entries = max(0, artifact_cache_max_entries)
-        self.sorted_positions_cache_max_entries = max(0, sorted_positions_cache_max_entries)
-        self.ticket_state_store = ticket_state_store
-        self._lock = Lock()
+        self.result_ttl_seconds: int = result_ttl_seconds
+        self.max_absolute_lifetime_seconds: int = max_absolute_lifetime_seconds
+        self.cleanup_interval_seconds: int = cleanup_interval_seconds
+        self.max_artifact_bytes: int = max_artifact_bytes
+        self.max_pending_jobs: int = max_pending_jobs
+        self.max_page_size: int = max_page_size
+        self.artifact_cache_max_entries: int = max(0, artifact_cache_max_entries)
+        self.sorted_positions_cache_max_entries: int = max(0, sorted_positions_cache_max_entries)
+        self.ticket_state_store: TicketStateStore | None = ticket_state_store
+        self._lock: Lock = Lock()
         self._started = False
         self._tickets: dict[str, TicketMeta] = {}
         self._cleanup_task: asyncio.Task[None] | None = None
@@ -159,7 +159,7 @@ class ResultStore:
         self.cleanup_expired()
 
     async def shutdown(self) -> None:
-        cleanup_task = self._cleanup_task
+        cleanup_task: asyncio.Task[None] | None = self._cleanup_task
         self._cleanup_task = None
         if cleanup_task is not None:
             cleanup_task.cancel()
