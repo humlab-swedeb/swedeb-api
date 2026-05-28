@@ -42,7 +42,7 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
     - [Performance](#performance)
     - [Security and access model](#security-and-access-model)
   - [Constraints and Assumptions](#constraints-and-assumptions)
-  - [Design Decisions and Tradeoffs](#design-decisions-and-tradeoffs)
+  - [Spring 2026 Refactoring Design Decisions and Tradeoffs](#spring-2026-refactoring-design-decisions-and-tradeoffs)
   - [Known Limitations or Technical Debt](#known-limitations-or-technical-debt)
   - [Related Documents](#related-documents)
 
@@ -444,20 +444,20 @@ Bulk archive retrieval URLs (`/v1/downloads/{archive_ticket_id}`) use a bearer-l
 - Multi-process correctness depends on both a shared `cache.root_dir` and a shared ticket-state backend when `cache.ticket_state_backend_url` is enabled.
 - The active backend design centers on the prebuilt repository path, not the archived ZIP-based legacy runtime.
 
-## Design Decisions and Tradeoffs
+## Spring 2026 Refactoring Design Decisions and Tradeoffs
 
-- Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through an explicit app-scoped container built during FastAPI lifespan.
+- Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through an explicit app-scoped container with a lifecycle aligned with FastAPI lifespan.
 - Prebuilt speech corpus instead of runtime ZIP parsing: much faster speech retrieval and cleaner batch access, but it adds a required offline build artifact and version-alignment constraint.
 - DataFrame-centric service boundaries: efficient for analytical operations and mapper projection, but it keeps much of the domain logic tied to pandas and Arrow-style structures.
-- Celery + Redis for production multiprocessing-capable ticket execution: moves heavyweight ticket queries into a separate worker process so `multiprocessing.Pool` can be used safely. Adds Redis and a dedicated worker container to the deployment while keeping the default queue available for lighter jobs. A `development.celery_enabled` toggle preserves the simpler `BackgroundTasks` path for local development without Redis.
-- Disk-backed ticket artifacts alongside Celery: Redis holds only small task metadata; large KWIC DataFrames remain in the filesystem `ResultStore`. This keeps Redis memory bounded and reuses the existing artifact lifecycle management.
+- Celery + Redis for multiprocessing-capable ticket execution: moves heavyweight ticket queries into a separate worker process so `multiprocessing.Pool` can be used safely. Adds Redis and a dedicated worker container to the deployment while keeping the default queue available for lighter jobs. A `development.celery_enabled` toggle preserves the simpler `BackgroundTasks` path for local development without Redis.
+- Disk-backed ticket artifacts alongside Celery: Redis holds only small task metadata; large KWIC DataFrames remain in the filesystem `ResultStore`. This keeps Redis memory usage low and reuses the existing artifact lifecycle management.
 - Shared ticket metadata alongside disk artifacts: `TicketStateStore` moves pending-job counting, artifact-byte accounting, and ticket status lookup out of process-local memory, which makes API multi-worker and worker-churn scenarios correct but adds a Redis-backed control-plane dependency in production.
 - Archived legacy runtime kept in-repo: useful for compatibility and rollback analysis, but it creates a second code path that must be clearly excluded from new feature work.
 
 ## Known Limitations or Technical Debt
 
 - `ResultStore` is still host-local and filesystem-backed, so ticket execution and artifact lookup are not designed for deployment shapes that do not share the same `cache.root_dir` volume.
-- The current shared-state design assumes one Redis-reachable deployment unit. It has been validated for multi-process and staged multi-worker setups, but not yet for a fully horizontally scaled multi-host artifact store.
+- The current shared-state design assumes one Redis-reachable deployment container. It has been validated for multi-process and staged multi-worker setups, but not yet for a fully horizontally scaled multi-host artifact store.
 - Multiprocessing-capable queries require Celery workers in production. Development mode (`celery_enabled: false`) disables multiprocessing to avoid deadlocking FastAPI's `BackgroundTasks` thread pool.
 - There is no built-in authentication/authorization layer in the backend.
 - The `/v1/tools/topics` endpoint is still a stub.
