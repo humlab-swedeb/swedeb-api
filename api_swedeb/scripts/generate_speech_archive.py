@@ -224,8 +224,8 @@ def main(
                 if gender.lower() in ("okänd", "okand", "unknown"):
                     gender = "-"
                 chamber: str = id_to_chamber.get(speech_id, "")
-                party = id_to_party.get(speech_id, "")
-                stem = "_".join(
+                party: str = id_to_party.get(speech_id, "")
+                stem: str = "_".join(
                     _safe(part) for part in [date, speaker, party, gender, chamber, speech_id] if part
                 ).lower()
                 filename = f"{year}/{stem}.txt"
