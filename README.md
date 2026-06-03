@@ -259,6 +259,14 @@ Backend containers automatically detect which frontend version to download based
 
 You can override this by setting the `FRONTEND_VERSION` environment variable.
 
+### Quick Deploy of API & Frontend (local dev build)
+
+1.
+```bash
+./manage-target staging build && ./manage-target staging reinstall
+```
+
+
 ### Quick Deploy of API & Frontend (staging)
 
 ```bash
@@ -281,7 +289,7 @@ You can override this by setting the `FRONTEND_VERSION` environment variable.
 
 Push new PR to `staging` -> triggers a new release being built on Github. Check that the asset was built successfully at [swedeb_frontend/releases] (https://github.com/humlab-swedeb/swedeb_frontend/releases).
 
-The enter swedeb_staging (as above) and restart ontinaer
+The enter swedeb_staging (as above) and restart container
 ```bash
 λ podman compose restart 
 # ...or...
