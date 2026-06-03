@@ -254,6 +254,7 @@ def test_resolve_pdf_links_for_speeches_uses_configured_base_url_when_not_explic
 
         result = resolve_pdf_links_for_speeches("prot-1970--ak--029_001", page_nr=5)
 
+    assert isinstance(result, str)
     assert result == "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_005.pdf"
 
 
