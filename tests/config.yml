@@ -119,6 +119,7 @@ fastapi:
 
 pdf_server:
   base_url: "https://pdf.swedeb.se/riksdagen-records-pdf/"
+  years_with_four_digit_nr_padding: ["199091", "199192", "199293", "199394"]
 
 mappings:
 

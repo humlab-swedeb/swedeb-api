@@ -89,6 +89,14 @@ def legacy_format_speech_name(selected_protocol: str) -> str:
 #####################################################################################################
 
 
+def _page_pdf_4_digit_padding_years() -> set[str]:
+    try:
+        configured_years = ConfigValue("pdf_server.years_with_four_digit_nr_padding").resolve()
+    except ValueError:
+        configured_years = None
+    return {str(y) for y in (configured_years or {})}
+
+
 def resolve_wiki_url_for_speaker(wiki_id: str | pd.Series) -> str | pd.Series:
     unknown = ConfigValue("display.labels.speaker.unknown").resolve()
     prefix = "https://www.wikidata.org/wiki/"
@@ -109,11 +117,18 @@ def resolve_wiki_url_for_speaker(wiki_id: str | pd.Series) -> str | pd.Series:
 def resolve_pdf_link_for_speech(
     speech_name: str, base_url: str, page_nr: Any, target: Literal["full-pdf", "page-pdf"] = "page-pdf"
 ) -> str:
-    year: str = speech_name.split('-')[1]
-    protocol_name: str = speech_name.split('_')[0]
+
+    year: str = speech_name.split("-")[1]
+    protocol_name: str = speech_name.split("_")[0]
+
     if target == "full-pdf":
         return f"{base_url}{year}/{protocol_name}.pdf#page={page_nr}"
-    return f"{base_url}{year}/{protocol_name}/{protocol_name}_{page_nr:03}.pdf"
+
+    page_pdf_4_digit_padding_years: set[str] = _page_pdf_4_digit_padding_years()
+    padding_width: int = 4 if year in page_pdf_4_digit_padding_years else 3
+    page_str: str = str(page_nr).zfill(padding_width)
+
+    return f"{base_url}{year}/{protocol_name}/{protocol_name}_{page_str}.pdf"
 
 
 def _resolve_pdf_links_for_speeches(
@@ -125,24 +140,38 @@ def _resolve_pdf_links_for_speeches(
     """Create a series of speech links from document names and page numbers.
 
     Expected speech name formats:
-        'prot-YYYY--KK--NNN_MMM' => "https://{base_url}/YYYY/prot-YYYY--KK--NNN.pdf#page={page_nrs}" (for "full-pdf")
-        'prot-YYYY--KK--NNN_MMM' => "https://{base_url}/YYYY/prot-YYYY--KK--NNN/prot-YYYY--KK--NNN_{page_nrs:03}.pdf" (for "page-pdf")
-    where YYYY is between 4 and 8 digits (e.g. "1999", "199900", "19992000"),
-    zero-padded protocol number, and MMM is ignored (a sequence number).
+        'prot-YYYY--KK--NNN_MMM'
+            => "https://{base_url}/YYYY/prot-YYYY--KK--NNN.pdf#page={page_nrs}"
+               for "full-pdf"
+
+        'prot-YYYY--KK--NNN_MMM'
+            => "https://{base_url}/YYYY/prot-YYYY--KK--NNN/prot-YYYY--KK--NNN_{page_nrs:03}.pdf"
+               for "page-pdf"
+
+    For selected years, configured via `page_pdf_4_digit_padding_years`, page PDF
+    filenames use 4-digit page padding instead of 3-digit padding.
+
+    where YYYY is between 4 and 8 digits, e.g. "1999", "199900", "19992000".
     """
+
+    if target not in {"full-pdf", "page-pdf"}:
+        raise ValueError(f"Unsupported target: {target}")
+
     parts: pd.DataFrame = speech_names.str.extract(r"^(?P<base>[^-]+-(?P<year>[0-9]{4,8})[^_]+)_", expand=True)
     protocol_name: pd.Series = parts["base"]
     year: pd.Series = parts["year"]
 
     if isinstance(page_nrs, pd.Series):
-        page_str = page_nrs.astype(str)
-        if target == "page-pdf":
-            # We need to zero-pad the page number to match the API contract and the PDF server's expected format.
-            page_str = page_str.str.zfill(3)
+        page_str: pd.Series = page_nrs.astype(str)
     else:
-        page_str = str(page_nrs)
-        if target == "page-pdf":
-            page_str = page_str.zfill(3)
+        page_str = pd.Series(str(page_nrs), index=speech_names.index)
+
+    if target == "page-pdf":
+        page_pdf_4_digit_padding_years: set[str] = _page_pdf_4_digit_padding_years()
+        use_4_digit_padding: pd.Series = year.isin(page_pdf_4_digit_padding_years)
+
+        page_str = page_str.str.zfill(3)
+        page_str.loc[use_4_digit_padding] = page_str.loc[use_4_digit_padding].str.zfill(4)
 
     if target == "full-pdf":
         return base_url + year + "/" + protocol_name + ".pdf#page=" + page_str
