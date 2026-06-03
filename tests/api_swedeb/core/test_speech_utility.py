@@ -5,12 +5,14 @@ import pytest
 import requests
 
 from api_swedeb.core.speech_utility import (
+    _resolve_pdf_links_for_speeches,
     create_pdf_links,
     create_wiki_reference_links,
     format_speech_name,
     format_speech_names,
     legacy_format_speech_name,
     normalize_document_names,
+    resolve_pdf_link_for_speech,
     resolve_pdf_links_for_speeches,
     resolve_wiki_url_for_speaker,
 )
@@ -163,54 +165,78 @@ def test_person_wiki_link_categorical_series():
         pd.testing.assert_series_equal(result, expected)
 
 
-@patch('api_swedeb.core.speech_utility.ConfigValue')
-def test_speech_link_single_document_page_pdf(mock_config_value):
-    """Test speech_link defaults to a per-page PDF URL for a single document."""
-    mock_config_value.return_value.resolve.return_value = "https://example.com/"
+def test_resolve_pdf_link_for_speech_uses_three_digit_padding_by_default():
+    """Test resolve_pdf_link_for_speech pads page numbers to three digits by default."""
+    result = resolve_pdf_link_for_speech("prot-1970--ak--029_001", "https://example.com/", 5)
 
-    result = resolve_pdf_links_for_speeches("prot-1970--ak--029_001", page_nr=5)
-    expected = "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_005.pdf"
+    assert result == "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_005.pdf"
+
+
+def test_resolve_pdf_link_for_speech_uses_four_digit_padding_for_configured_years():
+    """Test resolve_pdf_link_for_speech uses four-digit padding for configured years."""
+    with patch("api_swedeb.core.speech_utility._page_pdf_4_digit_padding_years", return_value={"199091"}):
+        result = resolve_pdf_link_for_speech("prot-199091--001_001", "https://example.com/", 5)
+
+    assert result == "https://example.com/199091/prot-199091--001/prot-199091--001_0005.pdf"
+
+
+def test_resolve_pdf_link_for_speech_can_target_full_pdf():
+    """Test resolve_pdf_link_for_speech can point at the full protocol PDF."""
+    result = resolve_pdf_link_for_speech("prot-1970--ak--029_001", "https://example.com/", 5, target="full-pdf")
+
+    assert result == "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
+
+
+@patch("api_swedeb.core.speech_utility.ConfigValue")
+def test_resolve_wiki_url_for_speaker_single_value(mock_config_value):
+    """Test resolve_wiki_url_for_speaker maps a single wiki id."""
+    mock_config_value.return_value.resolve.return_value = "Unknown Speaker"
+
+    result: str | pd.Series = resolve_wiki_url_for_speaker("Q123456")
     assert isinstance(result, str)
-    assert result == expected
+
+    assert result == "https://www.wikidata.org/wiki/Q123456"
 
 
-@patch('api_swedeb.core.speech_utility.ConfigValue')
-def test_speech_link_single_document_full_pdf(mock_config_value):
-    """Test speech_link can target the full protocol PDF for a single document."""
-    mock_config_value.return_value.resolve.return_value = "https://example.com/"
+def test_resolve_pdf_links_for_speeches_delegates_to_scalar_helper_for_single_value():
+    """Test resolve_pdf_links_for_speeches resolves single values via the scalar helper."""
+    with patch("api_swedeb.core.speech_utility.ConfigValue") as mock_config_value:
+        mock_config_value.return_value.resolve.return_value = "https://example.com/"
 
-    result = resolve_pdf_links_for_speeches("prot-1970--ak--029_001", page_nr=5, target="full-pdf")
-    expected = "https://example.com/1970/prot-1970--ak--029.pdf#page=5"
+        result: str | pd.Series = resolve_pdf_links_for_speeches("prot-1970--ak--029_001", page_nr=5)
+
     assert isinstance(result, str)
-    assert result == expected
+
+    assert result == "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_005.pdf"
 
 
-def test_speech_link_series_page_pdf():
-    """Test speech_link builds per-page PDF URLs for a pandas Series."""
+def test__resolve_pdf_links_for_speeches_page_pdf_uses_scalar_and_series_page_numbers():
+    """Test _resolve_pdf_links_for_speeches builds page PDFs for mixed page number inputs."""
     base_url: str = "https://example.com/"
+    documents = pd.Series(["prot-1970--ak--029_001", "prot-1980--ak--029_002"], index=[10, 20])
 
-    documents = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'])
-    pages = pd.Series([1, 2])
+    with patch("api_swedeb.core.speech_utility._page_pdf_4_digit_padding_years", return_value={"1980"}):
+        result = _resolve_pdf_links_for_speeches(documents, base_url, page_nrs=pd.Series([1, 2], index=documents.index))
 
-    result = resolve_pdf_links_for_speeches(documents, page_nr=pages, base_url=base_url)
     expected = pd.Series(
         [
             "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_001.pdf",
-            "https://example.com/1980/prot-1980--ak--029/prot-1980--ak--029_002.pdf",
-        ]
+            "https://example.com/1980/prot-1980--ak--029/prot-1980--ak--029_0002.pdf",
+        ],
+        index=documents.index,
     )
     assert isinstance(result, pd.Series)
     pd.testing.assert_series_equal(result, expected)
 
 
-def test_speech_link_series_full_pdf():
-    """Test speech_link can build full-protocol PDF URLs for a pandas Series."""
+def test__resolve_pdf_links_for_speeches_can_build_full_pdf_series():
+    """Test _resolve_pdf_links_for_speeches can build full-protocol PDF URLs for a Series."""
     base_url: str = "https://example.com/"
-
-    documents = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'])
+    documents = pd.Series(["prot-1970--ak--029_001", "prot-1980--ak--029_002"])
     pages = pd.Series([1, 2])
 
-    result = resolve_pdf_links_for_speeches(documents, page_nr=pages, base_url=base_url, target="full-pdf")
+    result = _resolve_pdf_links_for_speeches(documents, base_url, page_nrs=pages, target="full-pdf")
+
     expected = pd.Series(
         [
             "https://example.com/1970/prot-1970--ak--029.pdf#page=1",
@@ -221,12 +247,40 @@ def test_speech_link_series_full_pdf():
     pd.testing.assert_series_equal(result, expected)
 
 
-def test_speech_link_series_with_scalar_page_number_page_pdf():
-    """Test speech_link applies a scalar page number to every Series row for per-page PDFs."""
-    base_url: str = "https://example.com/"
-    documents: pd.Series = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'], index=[10, 20])
+def test_resolve_pdf_links_for_speeches_uses_configured_base_url_when_not_explicit():
+    """Test resolve_pdf_links_for_speeches resolves base_url from configuration."""
+    with patch("api_swedeb.core.speech_utility.ConfigValue") as mock_config_value:
+        mock_config_value.return_value.resolve.return_value = "https://example.com/"
 
-    result = resolve_pdf_links_for_speeches(documents, page_nr="12", base_url=base_url)
+        result = resolve_pdf_links_for_speeches("prot-1970--ak--029_001", page_nr=5)
+
+    assert result == "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_005.pdf"
+
+
+def test_resolve_pdf_links_for_speeches_series_page_pdf():
+    """Test resolve_pdf_links_for_speeches builds per-page PDF URLs for a pandas Series."""
+    base_url: str = "https://example.com/"
+    documents = pd.Series(["prot-1970--ak--029_001", "prot-1980--ak--029_002"])
+    pages = pd.Series([1, 2])
+
+    result = resolve_pdf_links_for_speeches(documents, page_nr=pages, base_url=base_url)
+
+    assert isinstance(result, pd.Series)
+    expected: pd.Series = pd.Series(
+        [
+            "https://example.com/1970/prot-1970--ak--029/prot-1970--ak--029_001.pdf",
+            "https://example.com/1980/prot-1980--ak--029/prot-1980--ak--029_002.pdf",
+        ]
+    )
+    pd.testing.assert_series_equal(result, expected)
+
+
+def test_resolve_pdf_links_for_speeches_series_with_scalar_page_number_page_pdf():
+    """Test resolve_pdf_links_for_speeches applies a scalar page number to a Series for page PDFs."""
+    base_url: str = "https://example.com/"
+    documents: pd.Series = pd.Series(["prot-1970--ak--029_001", "prot-1980--ak--029_002"], index=[10, 20])
+
+    result = resolve_pdf_links_for_speeches(documents, page_nr="12", base_url=base_url, target="page-pdf")
 
     assert isinstance(result, pd.Series)
 
@@ -240,10 +294,10 @@ def test_speech_link_series_with_scalar_page_number_page_pdf():
     pd.testing.assert_series_equal(result, expected)
 
 
-def test_speech_link_series_with_scalar_page_number_full_pdf():
-    """Test speech_link applies a scalar page number to every Series row for full PDFs."""
+def test_resolve_pdf_links_for_speeches_series_with_scalar_page_number_full_pdf():
+    """Test resolve_pdf_links_for_speeches applies a scalar page number to a Series for full PDFs."""
     base_url: str = "https://example.com/"
-    documents: pd.Series = pd.Series(['prot-1970--ak--029_001', 'prot-1980--ak--029_002'], index=[10, 20])
+    documents: pd.Series = pd.Series(["prot-1970--ak--029_001", "prot-1980--ak--029_002"], index=[10, 20])
 
     result = resolve_pdf_links_for_speeches(documents, page_nr="12", base_url=base_url, target="full-pdf")
 
