@@ -355,6 +355,8 @@ class TestWordTrendSpeechesTicketEndpoints:
             [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
         )
         download_service = DownloadService()
+        result_store = MagicMock()
+        result_store.require_ticket.return_value = MagicMock(manifest_meta=None, query_meta=None)
 
         result = asyncio.run(
             download_word_trend_speeches(
@@ -362,7 +364,8 @@ class TestWordTrendSpeechesTicketEndpoints:
                 file_format=DownloadFormat.csv,
                 wt_speeches_ticket_service=wt_service,
                 download_service=download_service,
-                result_store=MagicMock(),
+                result_store=result_store,
+                metadata_service=MagicMock(),
             )
         )
 
@@ -385,6 +388,8 @@ class TestWordTrendSpeechesTicketEndpoints:
             [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
         )
         download_service = DownloadService()
+        result_store = MagicMock()
+        result_store.require_ticket.return_value = MagicMock(manifest_meta=None, query_meta=None)
 
         result = asyncio.run(
             download_word_trend_speeches(
@@ -392,7 +397,8 @@ class TestWordTrendSpeechesTicketEndpoints:
                 file_format=DownloadFormat.json,
                 wt_speeches_ticket_service=wt_service,
                 download_service=download_service,
-                result_store=MagicMock(),
+                result_store=result_store,
+                metadata_service=MagicMock(),
             )
         )
 

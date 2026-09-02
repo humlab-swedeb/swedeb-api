@@ -8,13 +8,16 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from api_swedeb.api.dependencies import (
     get_archive_ticket_service,
     get_download_service,
+    get_metadata_service,
     get_result_store,
     get_search_service,
     get_word_trend_speeches_ticket_service,
     get_word_trends_service,
 )
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
+from api_swedeb.api.services.download_metadata import build_metadata_text_from_query_meta
 from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreNotFound,
@@ -178,6 +181,7 @@ async def download_word_trend_speeches(
     wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
     download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),
+    metadata_service: MetadataService = Depends(get_metadata_service),
 ) -> StreamingResponse:
     """Download the full speech list from a ready word trend speeches ticket."""
     try:
@@ -186,8 +190,11 @@ async def download_word_trend_speeches(
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
 
     ticket_meta: dict | None = None
+    query_meta: dict | None = None
     try:
-        ticket_meta = result_store.require_ticket(ticket_id).manifest_meta
+        ticket = result_store.require_ticket(ticket_id)
+        ticket_meta = ticket.manifest_meta
+        query_meta = ticket.query_meta
     except ResultStoreNotFound:
         pass
 
@@ -201,12 +208,14 @@ async def download_word_trend_speeches(
     manifest = download_service.build_download_manifest(
         ticket_meta={**(ticket_meta or {}), "file_format": file_format.value, "row_count": len(data)}
     )
+    metadata_text = build_metadata_text_from_query_meta(query_meta, metadata_service)
 
     return StreamingResponse(
         download_service.create_single_file_zip_stream(
             archive_filename=inner_filename,
             content=content,
             manifest=manifest,
+            metadata_text=metadata_text,
         )(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.zip"'},

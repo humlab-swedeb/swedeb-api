@@ -173,6 +173,7 @@ async def prepare_ngrams_archive(
     archive_format: BulkArchiveFormat = Query(BulkArchiveFormat.csv_gz, description="Archive format"),
     ngrams_archive_service: NGramsArchiveService = Depends(get_ngrams_archive_service),
     result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
 ) -> ArchivePrepareResponse:
     """Prepare a bulk archive of n-gram results for download."""
     try:
@@ -193,6 +194,7 @@ async def prepare_ngrams_archive(
         ngrams_archive_service.execute_archive_task,
         archive_ticket_id=response.archive_ticket_id,
         result_store=result_store,
+        search_service=search_service,
     )
     return response
 

@@ -224,11 +224,14 @@ class DownloadService:
         archive_filename: str,
         content: bytes,
         manifest: dict | None = None,
+        metadata_text: str | None = None,
     ) -> Callable[[], Generator[bytes, None, None]]:
         """Return a generator function that yields a ZIP archive with one file.
 
         If *manifest* is provided it is serialised as ``manifest.json`` and
         included as a second entry in the archive alongside *archive_filename*.
+        If *metadata_text* is provided it is written as ``metadata.txt``, a
+        human-readable description of the query that produced the download.
         """
         manifest_bytes: bytes | None = (
             json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8") if manifest is not None else None
@@ -246,6 +249,12 @@ class DownloadService:
             ) as zf:
                 if manifest_bytes is not None:
                     zf.writestr("manifest.json", manifest_bytes)
+                    chunk = writer.pop()
+                    if chunk:
+                        yield chunk
+
+                if metadata_text:
+                    zf.writestr("metadata.txt", metadata_text)
                     chunk = writer.pop()
                     if chunk:
                         yield chunk

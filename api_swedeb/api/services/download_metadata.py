@@ -16,8 +16,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -151,7 +150,6 @@ class DownloadMetadataBuilder:
             if not names:
                 return "Alla"
 
-            # Sort and join with comma
             return ", ".join(sorted(names))
         except Exception as e:
             logger.warning(f"Error resolving speakers: {e}")
@@ -179,7 +177,6 @@ class DownloadMetadataBuilder:
             if not names:
                 return "Alla"
 
-            # Sort and join with comma
             return ", ".join(sorted(names))
         except Exception as e:
             logger.warning(f"Error resolving parties: {e}")
@@ -207,7 +204,6 @@ class DownloadMetadataBuilder:
             if not labels:
                 return "Alla"
 
-            # Sort and join with comma
             return ", ".join(sorted(labels))
         except Exception as e:
             logger.warning(f"Error resolving genders: {e}")
@@ -235,7 +231,6 @@ class DownloadMetadataBuilder:
             if not names:
                 return "Alla"
 
-            # Sort and join with comma
             return ", ".join(sorted(names))
         except Exception as e:
             logger.warning(f"Error resolving chambers: {e}")
@@ -273,4 +268,63 @@ class DownloadMetadataRenderer:
         lines.append(f"Nedladdat från: {metadata.frontend_url}")
 
         return "\n".join(lines)
+
+
+def build_metadata_text_from_query_meta(
+    query_meta: dict[str, Any] | None,
+    metadata_service: MetadataService | None,
+) -> str | None:
+    """Build and render Swedish download metadata from a stored ticket's query_meta.
+
+    Shared by all ticket-backed download flows (speech archives, n-gram archives,
+    word trend speeches) since they all store query_meta as ``{"search": ..., "filters": {...}}``.
+
+    Returns None if query_meta is empty or metadata generation fails for any reason.
+    """
+    try:
+        query_meta = query_meta or {}
+        if not query_meta:
+            return None
+
+        filters = query_meta.get("filters", {}) or {}
+        search_text = query_meta.get("search")
+
+        year_opts = filters.get("year", {}) or {}
+        from_year = year_opts.get("low")
+        to_year = year_opts.get("high")
+
+        party_ids = filters.get("party_id")
+        gender_ids = filters.get("gender_id")
+        chamber_abbrevs = filters.get("chamber_abbrev")
+        person_ids = filters.get("person_id")
+
+        builder = DownloadMetadataBuilder(metadata_service)
+
+        # Convert chamber abbreviations to IDs for the builder
+        chamber_ids = None
+        if chamber_abbrevs and metadata_service is not None:
+            try:
+                chamber_meta = metadata_service.get_chamber_meta()
+                chamber_ids = []
+                for abbrev in chamber_abbrevs:
+                    matching = chamber_meta[chamber_meta["chamber_abbrev"] == abbrev]
+                    if not matching.empty:
+                        chamber_ids.append(matching.iloc[0]["chamber_id"])
+            except Exception as e:
+                logger.debug(f"Failed to map chamber abbreviations to IDs: {e}")
+
+        metadata = builder.build(
+            party_ids=party_ids,
+            gender_ids=gender_ids,
+            chamber_ids=chamber_ids,
+            person_ids=person_ids,
+            from_year=from_year,
+            to_year=to_year,
+            search_text=search_text,
+        )
+
+        return DownloadMetadataRenderer.render(metadata)
+    except Exception as e:
+        logger.warning(f"Failed to generate download metadata: {e}")
+        return None
 
