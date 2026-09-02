@@ -207,6 +207,10 @@ mappings:
       id_name: "pid"
 
 
+provenance:
+  records_repository_url: "https://github.com/swerik-project/riksdagen-records"
+  frontend_url: "https://riksdagsdebatter.se"
+
 display:
   speech_index:
     updates:

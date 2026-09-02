@@ -47,6 +47,7 @@ class ArchiveWriter(ABC):
         search_service: SearchService,
         dest_path: Path,
         manifest_meta: dict | None = None,
+        metadata_text: str | None = None,
         compresslevel: int = 1,
     ) -> int:
         """Write archive atomically to *dest_path*.
@@ -64,7 +65,9 @@ class ArchiveWriter(ABC):
 class JsonlGzArchiveWriter(ArchiveWriter):
     """Write speeches as a gzip-compressed JSONL file.
 
-    Each line is a JSON object with ``speech_id`` and ``text`` keys.
+    Each line is a JSON object. The first line contains metadata with
+    ``record_type: "metadata"`` if metadata is provided. All speech lines
+    have ``record_type: "speech"``, ``speech_id`` and ``text`` keys.
     """
 
     def write(
@@ -72,15 +75,30 @@ class JsonlGzArchiveWriter(ArchiveWriter):
         speech_ids: list[str],
         search_service: SearchService,
         dest_path: Path,
-        manifest_meta: dict | None = None,  # noqa: ARG002 (not included in JSONL format)
+        manifest_meta: dict | None = None,
+        metadata_text: str | None = None,
         compresslevel: int = 1,
     ) -> int:
         partial = Path(str(dest_path) + ".partial")
         partial.parent.mkdir(parents=True, exist_ok=True)
         try:
             with gzip.open(str(partial), "wb", compresslevel=compresslevel) as gz:
+                # Write metadata record first if provided
+                if metadata_text:
+                    metadata_record = {
+                        "record_type": "metadata",
+                        "content": metadata_text,
+                    }
+                    line = (json.dumps(metadata_record, ensure_ascii=False) + "\n").encode("utf-8")
+                    gz.write(line)
+
+                # Write speech records
                 for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
-                    record: dict = {"speech_id": speech_id, "text": text}
+                    record: dict = {
+                        "record_type": "speech",
+                        "speech_id": speech_id,
+                        "text": text,
+                    }
                     line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
                     gz.write(line)
             partial.replace(dest_path)
@@ -94,6 +112,7 @@ class ZipArchiveWriter(ArchiveWriter):
     """Write speeches as a ZIP file, one ``.txt`` entry per speech.
 
     A ``manifest.json`` entry is prepended when *manifest_meta* is provided.
+    A ``metadata.txt`` entry is prepended when *metadata_text* is provided.
     """
 
     def write(
@@ -102,6 +121,7 @@ class ZipArchiveWriter(ArchiveWriter):
         search_service: SearchService,
         dest_path: Path,
         manifest_meta: dict | None = None,
+        metadata_text: str | None = None,
         compresslevel: int = 1,
     ) -> int:
         unknown: str = ConfigValue("display.labels.speaker.unknown", default="unknown").resolve()
@@ -118,6 +138,8 @@ class ZipArchiveWriter(ArchiveWriter):
             ) as zf:
                 if manifest_meta is not None:
                     zf.writestr("manifest.json", json.dumps(manifest_meta, indent=2, ensure_ascii=False))
+                if metadata_text is not None:
+                    zf.writestr("metadata.txt", metadata_text.encode("utf-8"))
                 for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
                     speaker = speaker_names.get(speech_id, unknown)
                     filename = f"{_safe_filename_part(speaker)}_{speech_id}.txt"
@@ -132,6 +154,9 @@ class ZipArchiveWriter(ArchiveWriter):
 class CsvArchiveWriter(ArchiveWriter):
     """Write speeches as a gzip-compressed CSV file.
 
+    If *metadata_text* is provided, it is written as ``##``-prefixed comment lines
+    before the CSV header. Consumers can pass ``comment="#"`` when reading.
+
     Columns: ``speech_id``, ``speaker_name``, ``text``.  Fields are quoted
     only when necessary (commas, newlines, or embedded quotes).
     """
@@ -141,7 +166,8 @@ class CsvArchiveWriter(ArchiveWriter):
         speech_ids: list[str],
         search_service: SearchService,
         dest_path: Path,
-        manifest_meta: dict | None = None,  # noqa: ARG002 (not included in CSV format)
+        manifest_meta: dict | None = None,
+        metadata_text: str | None = None,
         compresslevel: int = 1,
     ) -> int:
         unknown: str = ConfigValue("display.labels.speaker.unknown", default="unknown").resolve()
@@ -150,6 +176,12 @@ class CsvArchiveWriter(ArchiveWriter):
         partial.parent.mkdir(parents=True, exist_ok=True)
         try:
             with gzip.open(partial, "wt", encoding="utf-8", newline="", compresslevel=compresslevel) as gz:
+                # Write metadata as comment lines if provided
+                if metadata_text:
+                    for line in metadata_text.split("\n"):
+                        gz.write(f"## {line}\n")
+
+                # Write CSV header and data
                 writer = csv.writer(gz, quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(["speech_id", "speaker_name", "text"])
                 for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
@@ -225,6 +257,7 @@ class TicketedDownloadService:
         search_service: SearchService,
         dest_path: Path,
         manifest_meta: dict | None = None,
+        metadata_text: str | None = None,
     ) -> int:
         """Write the archive to *dest_path* atomically.
 
@@ -235,5 +268,6 @@ class TicketedDownloadService:
             search_service=search_service,
             dest_path=dest_path,
             manifest_meta=manifest_meta,
+            metadata_text=metadata_text,
             compresslevel=self.compresslevel,
         )

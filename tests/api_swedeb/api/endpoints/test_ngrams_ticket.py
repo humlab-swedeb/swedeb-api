@@ -643,7 +643,8 @@ class TestPrepareNgramSpeechesArchive:
         with zipfile.ZipFile(io.BytesIO(download.content), "r") as archive:
             names = archive.namelist()
             assert "manifest.json" in names
-            assert len([name for name in names if name.endswith(".txt")]) == 6
+            assert "metadata.txt" in names  # Metadata now included in ZIP archives
+            assert len([name for name in names if name.endswith(".txt") and name != "metadata.txt"]) == 6
             first_text = archive.read(next(name for name in names if name.endswith("doc-1.txt"))).decode("utf-8")
             assert first_text == "Speech text for doc-1"
 

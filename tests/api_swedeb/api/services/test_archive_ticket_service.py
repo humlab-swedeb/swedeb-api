@@ -399,8 +399,11 @@ def test_execute_archive_task_jsonl_gz_output_is_valid(tmp_path):
             for line in gz:
                 records.append(json.loads(line))
 
-        assert [r["speech_id"] for r in records] == [sid for sid, _ in SAMPLE_SPEECHES_TEXT]
-        assert [r["text"] for r in records] == [text for _, text in SAMPLE_SPEECHES_TEXT]
+        # Filter to speech records only (skip metadata record if present)
+        speech_records = [r for r in records if r.get("record_type") == "speech"]
+
+        assert [r["speech_id"] for r in speech_records] == [sid for sid, _ in SAMPLE_SPEECHES_TEXT]
+        assert [r["text"] for r in speech_records] == [text for _, text in SAMPLE_SPEECHES_TEXT]
     finally:
         asyncio.run(store.shutdown())
 
@@ -473,8 +476,13 @@ def test_execute_archive_task_csv_gz_output_is_valid(tmp_path):
 
         ready = store.require_ticket(archive_ticket.ticket_id)
         with gzip.open(str(ready.artifact_path), "rt", encoding="utf-8", newline="") as gz:
-            rows = list(csv.reader(gz))
+            content = gz.read()
 
+        # Filter out metadata comment lines (starting with "##")
+        lines = content.split("\n")
+        csv_lines = [line for line in lines if line and not line.startswith("##")]
+
+        rows = list(csv.reader(csv_lines))
         header, *data_rows = rows
         assert header == ["speech_id", "speaker_name", "text"]
         assert [r[0] for r in data_rows] == [sid for sid, _ in SAMPLE_SPEECHES_TEXT]
@@ -610,5 +618,155 @@ def test_get_status_raises_for_unknown_ticket(tmp_path):
     try:
         with pytest.raises(ResultStoreNotFound):
             service.get_status("nonexistent", store)
+    finally:
+        asyncio.run(store.shutdown())
+
+
+# ---------------------------------------------------------------------------
+# Metadata-specific tests
+# ---------------------------------------------------------------------------
+
+
+def test_execute_archive_task_jsonl_gz_includes_metadata_record(tmp_path):
+    """Test that JSONL archives include a metadata record as the first record."""
+    store = make_result_store(tmp_path)
+    service = ArchiveTicketService()
+    search_service = make_mock_search_service()
+
+    asyncio.run(store.startup())
+    try:
+        source = make_ready_source_ticket(store)
+        archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="jsonl_gz")
+
+        service.execute_archive_task(
+            archive_ticket_id=archive_ticket.ticket_id,
+            result_store=store,
+            search_service=search_service,
+        )
+
+        ready = store.require_ticket(archive_ticket.ticket_id)
+        records = []
+        with gzip.open(str(ready.artifact_path), "rb") as gz:
+            for line in gz:
+                records.append(json.loads(line))
+
+        # First record should be metadata with record_type="metadata"
+        assert len(records) > 0
+        first_record = records[0]
+        assert first_record.get("record_type") == "metadata"
+        assert "content" in first_record
+        metadata_text = first_record["content"]
+
+        # Verify metadata contains expected Swedish field labels
+        assert "Valda talare:" in metadata_text
+        assert "Valda partier:" in metadata_text
+        assert "Valda kön:" in metadata_text
+        assert "Valda kammare:" in metadata_text
+        assert "Årsintervall:" in metadata_text
+        assert "Data-version:" in metadata_text
+        assert "SWERIK-records:" in metadata_text
+        assert "SWERIK-persons:" in metadata_text
+        assert "Nedladdat från:" in metadata_text
+
+        # Verify subsequent records are speech records
+        for record in records[1:]:
+            assert record.get("record_type") == "speech"
+            assert "speech_id" in record
+            assert "text" in record
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_execute_archive_task_zip_includes_metadata_file(tmp_path):
+    """Test that ZIP archives include a metadata.txt file."""
+    store = make_result_store(tmp_path)
+    service = ArchiveTicketService()
+    search_service = make_mock_search_service()
+
+    asyncio.run(store.startup())
+    try:
+        source = make_ready_source_ticket(store)
+        archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="zip")
+
+        service.execute_archive_task(
+            archive_ticket_id=archive_ticket.ticket_id,
+            result_store=store,
+            search_service=search_service,
+        )
+
+        ready = store.require_ticket(archive_ticket.ticket_id)
+        with zipfile.ZipFile(str(ready.artifact_path), "r") as zf:
+            file_list = zf.namelist()
+
+            # Verify metadata.txt is present
+            assert "metadata.txt" in file_list
+
+            # Verify metadata.txt contains expected content
+            metadata_text = zf.read("metadata.txt").decode("utf-8")
+            assert "Valda talare:" in metadata_text
+            assert "Valda partier:" in metadata_text
+            assert "Valda kön:" in metadata_text
+            assert "Valda kammare:" in metadata_text
+            assert "Årsintervall:" in metadata_text
+            assert "Data-version:" in metadata_text
+
+            # Verify manifest.json is also present
+            assert "manifest.json" in file_list
+
+            # Verify speech files are present
+            speech_files = [f for f in file_list if f.endswith(".txt") and f != "metadata.txt"]
+            assert len(speech_files) > 0
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_execute_archive_task_csv_gz_includes_metadata_comments(tmp_path):
+    """Test that CSV archives include metadata as comment lines."""
+    store = make_result_store(tmp_path)
+    service = ArchiveTicketService()
+    search_service = make_mock_search_service()
+
+    asyncio.run(store.startup())
+    try:
+        source = make_ready_source_ticket(store)
+        archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="csv_gz")
+
+        service.execute_archive_task(
+            archive_ticket_id=archive_ticket.ticket_id,
+            result_store=store,
+            search_service=search_service,
+        )
+
+        ready = store.require_ticket(archive_ticket.ticket_id)
+
+        # Parse CSV with comment handling
+        with gzip.open(str(ready.artifact_path), "rt") as gz:
+            content = gz.read()
+
+        lines = content.split("\n")
+
+        # Verify metadata comment lines are present at the beginning
+        metadata_lines = [line for line in lines if line.startswith("## ")]
+        assert len(metadata_lines) > 0
+
+        metadata_text = "\n".join([line[3:] for line in metadata_lines])
+        assert "Valda talare:" in metadata_text
+        assert "Valda partier:" in metadata_text
+        assert "Valda kön:" in metadata_text
+        assert "Valda kammare:" in metadata_text
+        assert "Årsintervall:" in metadata_text
+        assert "Data-version:" in metadata_text
+
+        # Verify CSV header is present after metadata
+        csv_lines = [line for line in lines if line and not line.startswith("## ")]
+        assert len(csv_lines) > 0
+
+        # Try parsing as CSV to verify format is valid
+        reader = csv.DictReader(
+            csv_lines,
+            fieldnames=csv_lines[0].split(",") if csv_lines else [],
+        )
+        rows = list(reader)
+        assert len(rows) > 0
     finally:
         asyncio.run(store.shutdown())

@@ -219,7 +219,10 @@ def test_download_wt_archive_returns_file_for_ready_ticket(archive_client):
     assert r.headers["content-type"].startswith("application/gzip")
     # Verify it is valid jsonl.gz
     records = [json.loads(line) for line in gzip.decompress(r.content).splitlines()]
-    assert len(records) == len(SAMPLE_SPEECH_IDS)
+    
+    # Filter to speech records only (skip metadata record if present)
+    speech_records = [r for r in records if r.get("record_type") == "speech"]
+    assert len(speech_records) == len(SAMPLE_SPEECH_IDS)
 
 
 def test_download_speeches_archive_returns_file_for_ready_ticket(archive_client):

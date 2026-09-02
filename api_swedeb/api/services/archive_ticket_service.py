@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from api_swedeb.api.services.download_metadata import (
+    DownloadMetadataBuilder,
+    DownloadMetadataRenderer,
+)
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreCapacityError,
@@ -167,11 +172,15 @@ class ArchiveTicketService:
             dest_path: Path = result_store.archive_artifact_path(archive_ticket_id, archive_format_str)
             manifest_meta: dict = archive_ticket.manifest_meta or self._build_manifest(archive_ticket, source_ticket)
 
+            # Generate human-readable metadata from source query
+            metadata_text: str | None = self._build_metadata_text(source_ticket, search_service)
+
             TicketedDownloadService.for_format(archive_format).write(
                 speech_ids=speech_ids,
                 search_service=search_service,
                 dest_path=dest_path,
                 manifest_meta=manifest_meta,
+                metadata_text=metadata_text,
             )
 
             result_store.store_archive_ready(
@@ -278,3 +287,63 @@ class ArchiveTicketService:
             "corpus_version": os.environ.get("CORPUS_VERSION", "unknown"),
             "source_query": source_ticket.query_meta,
         }
+
+    def _build_metadata_text(self, source_ticket: TicketMeta, search_service: SearchService) -> str | None:
+        """Build human-readable metadata text from source ticket query_meta.
+
+        Returns None if query_meta is empty or metadata cannot be generated.
+        """
+        try:
+            query_meta = source_ticket.query_meta or {}
+            if not query_meta:
+                return None
+
+            # Extract query parameters
+            filters = query_meta.get("filters", {})
+            search_text = query_meta.get("search")
+
+            # Extract year range from filters
+            year_opts = filters.get("year", {})
+            from_year = year_opts.get("low") if year_opts else None
+            to_year = year_opts.get("high") if year_opts else None
+
+            # Extract categorical filters
+            party_ids = filters.get("party_id")
+            gender_ids = filters.get("gender_id")
+            chamber_abbrevs = filters.get("chamber_abbrev")
+            person_ids = filters.get("person_id")
+
+            # Build metadata
+            metadata_service = MetadataService(search_service.loader)
+            builder = DownloadMetadataBuilder(metadata_service)
+
+            # Convert chamber abbreviations to IDs for builder
+            chamber_ids = None
+            if chamber_abbrevs:
+                try:
+                    # Map abbreviations to chamber IDs
+                    chamber_meta = metadata_service.get_chamber_meta()
+                    chamber_ids = []
+                    for abbrev in chamber_abbrevs:
+                        matching = chamber_meta[chamber_meta["chamber_abbrev"] == abbrev]
+                        if not matching.empty:
+                            chamber_ids.append(matching.iloc[0]["chamber_id"])
+                except Exception as e:
+                    logger.debug(f"Failed to map chamber abbreviations to IDs: {e}")
+
+            metadata = builder.build(
+                party_ids=party_ids,
+                gender_ids=gender_ids,
+                chamber_ids=chamber_ids,
+                person_ids=person_ids,
+                from_year=from_year,
+                to_year=to_year,
+                search_text=search_text,
+            )
+
+            # Render to Swedish text
+            return DownloadMetadataRenderer.render(metadata)
+        except Exception as e:
+            logger.warning(f"Failed to generate download metadata: {e}")
+            return None
+

@@ -236,6 +236,10 @@ display:
       "unknown": "metadata saknas"
     }
 
+provenance:
+  records_repository_url: "https://github.com/swerik-project/riksdagen-records"
+  frontend_url: "https://riksdagsdebatter.se"
+
 global:
   corpus:
     folder: /data/swerik/riksdagen-records/data
