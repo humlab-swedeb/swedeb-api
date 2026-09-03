@@ -14,7 +14,6 @@ The canonical model is format-agnostic and includes:
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -49,7 +48,7 @@ class DownloadMetadata:
     search_text: str | None = None
 
     # Versions and links
-    corpus_version: str = field(default_factory=lambda: os.environ.get("CORPUS_VERSION", "unknown"))
+    corpus_version: str = field(default_factory=lambda:  ConfigValue("provenance.corpus_version").resolve())
     metadata_version: str = field(
         default_factory=lambda: ConfigValue("metadata.version").resolve()
     )
@@ -57,7 +56,7 @@ class DownloadMetadata:
         default_factory=lambda: ConfigValue("provenance.records_repository_url").resolve()
     )
     persons_repository_url: str = field(
-        default_factory=lambda: ConfigValue("metadata.github.user").resolve()
+        default_factory=lambda: ConfigValue("provenance.persons_repository_url").resolve()
     )
     frontend_url: str = field(
         default_factory=lambda: ConfigValue("provenance.frontend_url").resolve()
@@ -264,7 +263,7 @@ class DownloadMetadataRenderer:
         # Versions and links
         lines.append(f"Data-version: SWERIK-records {metadata.corpus_version}, SWERIK-persons {metadata.metadata_version}")
         lines.append(f"SWERIK-records: {metadata.records_repository_url}")
-        lines.append(f"SWERIK-persons: https://github.com/{metadata.persons_repository_url}/riksdagen-persons")
+        lines.append(f"SWERIK-persons: {metadata.persons_repository_url}")
         lines.append(f"Nedladdat från: {metadata.frontend_url}")
 
         return "\n".join(lines)

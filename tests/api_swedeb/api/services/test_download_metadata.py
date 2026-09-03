@@ -25,7 +25,7 @@ class TestDownloadMetadataRenderer:
             corpus_version="1.4.1",
             metadata_version="1.1.3",
             records_repository_url="https://github.com/swerik-project/riksdagen-records",
-            persons_repository_url="swerik-project",
+            persons_repository_url="https://github.com/swerik-project/riksdagen-persons",
             frontend_url="https://riksdagsdebatter.se",
         )
 

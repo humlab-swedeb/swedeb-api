@@ -211,7 +211,9 @@ mappings:
 
 provenance:
   records_repository_url: "https://github.com/swerik-project/riksdagen-records"
+  persons_repository_url: "https://github.com/swerik-project/riksdagen-persons"
   frontend_url: "https://riksdagsdebatter.se"
+  corpus_version: "v1.4.1"
 
 display:
   speech_index:

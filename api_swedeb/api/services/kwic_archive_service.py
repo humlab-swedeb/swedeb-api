@@ -12,6 +12,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from api_swedeb.api.services.download_metadata import build_metadata_text_from_query_meta
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreCapacityError,
@@ -19,6 +21,7 @@ from api_swedeb.api.services.result_store import (
     TicketMeta,
     TicketStatus,
 )
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.schemas.bulk_archive_schema import (
     ArchivePrepareResponse,
@@ -92,6 +95,7 @@ class KWICArchiveService:
         *,
         archive_ticket_id: str,
         result_store: ResultStore,
+        search_service: SearchService | None = None,
     ) -> None:
         """Serialize the KWIC Feather artifact and mark the archive ticket ready or failed."""
         logger.info(f"Starting KWIC execute_archive_task for archive ticket {archive_ticket_id}")
@@ -123,10 +127,12 @@ class KWICArchiveService:
             cols = [c for c in _ARCHIVE_COLUMNS if c in data.columns]
             data = data[cols]
 
+            metadata_text: str | None = self._build_metadata_text(source_ticket_id, result_store, search_service)
+
             dest_path: Path = result_store.archive_artifact_path(archive_ticket_id, archive_format_str)
             dest_path.parent.mkdir(parents=True, exist_ok=True)
 
-            self._write(data, archive_format, dest_path)
+            self._write(data, archive_format, dest_path, metadata_text=metadata_text)
 
             result_store.store_archive_ready(
                 archive_ticket_id,
@@ -149,11 +155,28 @@ class KWICArchiveService:
     # Private serialization helpers
     # ------------------------------------------------------------------
 
+    def _build_metadata_text(
+        self,
+        source_ticket_id: str,
+        result_store: ResultStore,
+        search_service: SearchService | None,
+    ) -> str | None:
+        """Build human-readable download metadata from the source KWIC ticket's query_meta."""
+        if search_service is None:
+            return None
+        try:
+            source_ticket: TicketMeta = result_store.require_ticket(source_ticket_id)
+        except ResultStoreNotFound:
+            return None
+        metadata_service = MetadataService(search_service.loader)
+        return build_metadata_text_from_query_meta(source_ticket.query_meta, metadata_service)
+
     def _write(
         self,
         data: "pd.DataFrame",  # noqa: F821
         archive_format: BulkArchiveFormat,
         dest_path: Path,
+        metadata_text: str | None = None,
     ) -> None:
 
         partial = Path(str(dest_path) + ".partial")
@@ -161,44 +184,56 @@ class KWICArchiveService:
 
         try:
             if archive_format == BulkArchiveFormat.jsonl_gz:
-                self._write_jsonl_gz(data, partial)
+                self._write_jsonl_gz(data, partial, metadata_text)
             elif archive_format == BulkArchiveFormat.csv_gz:
-                self._write_csv_gz(data, partial)
+                self._write_csv_gz(data, partial, metadata_text)
             elif archive_format == BulkArchiveFormat.xlsx:
-                self._write_xlsx(data, partial)
+                self._write_xlsx(data, partial, metadata_text)
             elif archive_format == BulkArchiveFormat.zip:
-                self._write_zip_csv(data, partial)
+                self._write_zip_csv(data, partial, metadata_text)
             else:
-                self._write_jsonl_gz(data, partial)
+                self._write_jsonl_gz(data, partial, metadata_text)
 
             partial.replace(dest_path)
         except Exception:
             partial.unlink(missing_ok=True)
             raise
 
-    def _write_jsonl_gz(self, data: "pd.DataFrame", dest: Path) -> None:
+    def _write_jsonl_gz(self, data: "pd.DataFrame", dest: Path, metadata_text: str | None) -> None:
         with gzip.open(str(dest), "wb", compresslevel=1) as gz:
+            if metadata_text:
+                metadata_record = {"record_type": "metadata", "content": metadata_text}
+                gz.write((json.dumps(metadata_record, ensure_ascii=False) + "\n").encode("utf-8"))
             for record in data.to_dict(orient="records"):
                 cleaned = {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in record.items()}
                 line = (json.dumps(cleaned, ensure_ascii=False, default=str) + "\n").encode("utf-8")
                 gz.write(line)
 
-    def _write_csv_gz(self, data: "pd.DataFrame", dest: Path) -> None:
+    def _write_csv_gz(self, data: "pd.DataFrame", dest: Path, metadata_text: str | None) -> None:
         with gzip.open(str(dest), "wt", compresslevel=1, encoding="utf-8") as gz:
+            if metadata_text:
+                for line in metadata_text.split("\n"):
+                    gz.write(f"## {line}\n")
             data.to_csv(gz, index=False)
 
-    def _write_xlsx(self, data: "pd.DataFrame", dest: Path) -> None:
+    def _write_xlsx(self, data: "pd.DataFrame", dest: Path, metadata_text: str | None) -> None:
 
         # pandas/openpyxl validates the file extension, so we must use .xlsx for the temp file
         tmp = dest.parent / (dest.name.replace(".partial", ".tmp.xlsx"))
         try:
-            data.to_excel(str(tmp), index=False, engine="openpyxl")
+            with pd.ExcelWriter(str(tmp), engine="openpyxl") as writer:
+                data.to_excel(writer, index=False, sheet_name="Data")
+                if metadata_text:
+                    metadata_df = pd.DataFrame({"metadata": metadata_text.split("\n")})
+                    metadata_df.to_excel(writer, index=False, header=False, sheet_name="Metadata")
             tmp.replace(dest)
         except Exception:
             tmp.unlink(missing_ok=True)
             raise
 
-    def _write_zip_csv(self, data: "pd.DataFrame", dest: Path) -> None:
+    def _write_zip_csv(self, data: "pd.DataFrame", dest: Path, metadata_text: str | None) -> None:
         with zipfile.ZipFile(str(dest), "w", zipfile.ZIP_DEFLATED) as zf:
+            if metadata_text:
+                zf.writestr("metadata.txt", metadata_text)
             with zf.open("kwic_data.csv", "w") as entry:
                 data.to_csv(entry, index=False)
