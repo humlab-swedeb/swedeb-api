@@ -81,6 +81,8 @@ class JsonlGzArchiveWriter(ArchiveWriter):
     ) -> int:
         partial = Path(str(dest_path) + ".partial")
         partial.parent.mkdir(parents=True, exist_ok=True)
+        resolved_names: dict[str, str] =  search_service.get_speaker_names(speech_ids=speech_ids)
+        unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         try:
             with gzip.open(str(partial), "wb", compresslevel=compresslevel) as gz:
                 # Write metadata record first if provided
@@ -94,9 +96,11 @@ class JsonlGzArchiveWriter(ArchiveWriter):
 
                 # Write speech records
                 for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
+                    speaker=resolved_names.get(speech_id, unknown)
                     record: dict = {
                         "record_type": "speech",
                         "speech_id": speech_id,
+                        "talare":speaker,
                         "text": text,
                     }
                     line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
