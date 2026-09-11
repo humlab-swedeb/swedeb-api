@@ -160,6 +160,24 @@ class SearchService:
         names: pd.Series = prebuilt.reindex(ids_list)["name"].fillna(unknown)
         return {k: (v if v and v != "Okänt" else unknown) for k, v in zip(ids_list, names)}
 
+    def get_document_names(self, speech_ids: list[str]) -> dict[str, str]:
+        """Return {speech_id: document_name} for all given speech_ids using a single prebuilt index lookup.
+
+        Only canonical speech_ids (i-* format) are accepted. Raises ValueError otherwise.
+        """
+        unknown: str = ConfigValue("display.labels.document_name.unknown").resolve()
+
+        ids_list: list[str] = [str(s) for s in speech_ids]
+        if not ids_list:
+            return {}
+
+        if not ids_list[0].startswith("i-"):
+            raise ValueError(f"get_speaker_names only accepts speech_ids (i-* format), got: {ids_list[0]!r}")
+
+        prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
+        names: pd.Series = prebuilt.reindex(ids_list)["document_name"].fillna(unknown)
+        return {k: (v if v and v != "Okänt" else unknown) for k, v in zip(ids_list, names)}
+
     def get_speech(self, speech_id: str) -> Speech:
         """Get a single speech by speech ID.
 

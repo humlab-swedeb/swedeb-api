@@ -225,6 +225,8 @@ display:
   labels:
     speaker:
       unknown: Okänd
+    document_name:
+      unknown: Okänt
 
   headers:
     translations: {

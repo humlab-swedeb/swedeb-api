@@ -100,7 +100,7 @@ class JsonlGzArchiveWriter(ArchiveWriter):
                     record: dict = {
                         "record_type": "speech",
                         "speech_id": speech_id,
-                        "talare":speaker,
+                        "speaker":speaker,
                         "text": text,
                     }
                     line = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
@@ -129,7 +129,10 @@ class ZipArchiveWriter(ArchiveWriter):
         compresslevel: int = 1,
     ) -> int:
         unknown: str = ConfigValue("display.labels.speaker.unknown", default="unknown").resolve()
+        unknown_doc: str = ConfigValue("display.labels.document_name.unknown", default="unknown").resolve()
+
         speaker_names: dict[str, str] = search_service.get_speaker_names(speech_ids)
+        document_names: dict[str, str] = search_service.get_document_names(speech_ids)
         partial = Path(str(dest_path) + ".partial")
         partial.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -146,7 +149,8 @@ class ZipArchiveWriter(ArchiveWriter):
                     zf.writestr("metadata.txt", metadata_text.encode("utf-8"))
                 for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
                     speaker = speaker_names.get(speech_id, unknown)
-                    filename = f"{_safe_filename_part(speaker)}_{speech_id}.txt"
+                    document_name = document_names.get(speech_id, unknown_doc)
+                    filename = f"{_safe_filename_part(speaker)}_{document_name}.txt"
                     zf.writestr(filename, text.encode("utf-8"))
             partial.replace(dest_path)
             return dest_path.stat().st_size
