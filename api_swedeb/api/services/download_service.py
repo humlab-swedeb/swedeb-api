@@ -52,6 +52,7 @@ class _StreamingBuffer(io.RawIOBase):
 class SpeechMetadata:
     speech_id: str
     speaker: str
+    speech: str
 
 
 class CompressionStrategy(ABC):
@@ -313,6 +314,7 @@ class DownloadService:
     ) -> Callable[[], Generator[bytes, None, None]]:
         ordered_speech_ids: list[str] = list(dict.fromkeys(speech_ids))
         resolved_names: dict[str, str] = id_to_name or search_service.get_speaker_names(ordered_speech_ids)
+        resolved_speeches: dict[str, str] = search_service.get_document_names(ordered_speech_ids)
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         manifest_bytes: bytes = json.dumps(manifest_meta, indent=2, ensure_ascii=False).encode("utf-8")
         extra_files: dict[str, bytes] = {"manifest.json": manifest_bytes}
@@ -320,7 +322,7 @@ class DownloadService:
         def _iter_speeches() -> Generator[tuple[SpeechMetadata, str], None, None]:
             for speech_id, text in search_service.get_speeches_text_batch(ordered_speech_ids):
                 yield (
-                    SpeechMetadata(speech_id=speech_id, speaker=resolved_names.get(speech_id, unknown)),
+                    SpeechMetadata(speech_id=speech_id, speaker=resolved_names.get(speech_id, unknown), speech=resolved_speeches.get(speech_id, unknown)),
                     text,
                 )
 
