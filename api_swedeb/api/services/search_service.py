@@ -175,7 +175,7 @@ class SearchService:
             raise ValueError(f"get_speaker_names only accepts speech_ids (i-* format), got: {ids_list[0]!r}")
 
         prebuilt: pd.DataFrame = self._loader.prebuilt_speech_index
-        names: pd.Series = prebuilt.reindex(ids_list)["document_name"].fillna(unknown)
+        names: pd.Series = prebuilt.reindex(ids_list)["document_name"].fillna(str(unknown))
         return {k: (v if v and v != "Okänt" else unknown) for k, v in zip(ids_list, names)}
 
     def get_speech(self, speech_id: str) -> Speech:

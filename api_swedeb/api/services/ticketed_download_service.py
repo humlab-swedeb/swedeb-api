@@ -101,7 +101,7 @@ class JsonlGzArchiveWriter(ArchiveWriter):
                     speech=resolved_speeches.get(speech_id, unknown)
                     record: dict = {
                         "record_type": "speech",
-                        "speech_ID": speech_id,
+                        "speech_id": speech_id,
                         "speaker":speaker,
                         "speech": speech,
                         "text": text,
@@ -197,7 +197,7 @@ class CsvArchiveWriter(ArchiveWriter):
                 writer.writerow(["speech_id", "speaker_name", "text"])
                 for speech_id, text in search_service.get_speeches_text_batch(speech_ids):
                     speaker_name = speaker_names.get(speech_id, unknown)
-                    writer.writerow([speech_id, speaker_name, text])
+                    writer.writerow([speech_id, speaker_name, text.replace("\n", "\\n")])
             partial.replace(dest_path)
             return dest_path.stat().st_size
         except Exception:
