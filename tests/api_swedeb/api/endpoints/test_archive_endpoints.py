@@ -47,10 +47,12 @@ def make_result_store(tmp_path: Path) -> ResultStore:
     )
 
 
-def make_mock_search_service() -> MagicMock:
+def make_mock_search_service() -> MagicMock: #här
     svc = MagicMock()
     svc.get_speeches_text_batch.return_value = SAMPLE_SPEECHES
     svc.get_speaker_names.return_value = {"i-1": "Alice", "i-2": "Bob"}
+    svc.get_document_names.return_value = {"i-1": "Prot-1", "i-2": "Prot-2", "i-3": "Prot-3"}
+
     return svc
 
 

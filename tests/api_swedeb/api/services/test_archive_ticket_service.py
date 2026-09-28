@@ -48,6 +48,7 @@ def make_mock_search_service(speeches: list[tuple[str, str]] | None = None) -> M
     service = MagicMock()
     service.get_speeches_text_batch.return_value = speeches if speeches is not None else SAMPLE_SPEECHES_TEXT
     service.get_speaker_names.return_value = {"i-1": "Alice", "i-2": "Bob", "i-3": "Carol"}
+    service.get_document_names.return_value = {"i-1": "Prot-1", "i-2": "Prot-2", "i-3": "Prot-3"}
     return service
 
 
