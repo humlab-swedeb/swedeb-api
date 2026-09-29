@@ -45,6 +45,10 @@ sequenceDiagram
         deactivate BG
     and Frontend polls for status
         Frontend->>Frontend: store archiveRetrievalUrl<br/>show copy-link button
+        opt User copies retrieval link
+            Frontend->>DownloadsAPI: POST /v1/downloads/{archive_ticket_id}/copy-link
+            DownloadsAPI->>ResultStore: retain archive and source tickets<br/>using copied_retrieval_url_ttl_seconds
+        end
 
         loop Poll until ready or error
             Frontend->>DownloadsAPI: GET /v1/downloads/{archive_ticket_id}
@@ -119,6 +123,10 @@ sequenceDiagram
         deactivate BG
     and Frontend polls for status
         Frontend->>Frontend: store retrieval_url<br/>show copy-link button
+        opt User copies retrieval link
+            Frontend->>DownloadsAPI: POST /v1/downloads/{archive_ticket_id}/copy-link
+            DownloadsAPI->>ResultStore: retain archive and source tickets<br/>using copied_retrieval_url_ttl_seconds
+        end
 
         loop Poll until ready or error
             Frontend->>DownloadsAPI: GET /v1/downloads/{archive_ticket_id}

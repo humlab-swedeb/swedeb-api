@@ -100,6 +100,7 @@ development:
 cache:
   result_ttl_seconds: 600
   max_absolute_lifetime_seconds: 3600
+  copied_retrieval_url_ttl_seconds: 86400
   cleanup_interval_seconds: 60
   max_artifact_bytes: 2147483648
   max_pending_jobs: 2
@@ -118,6 +119,7 @@ fastapi:
 
 pdf_server:
   base_url: "https://pdf.swedeb.se/riksdagen-records-pdf/"
+  years_with_four_digit_nr_padding: ["199091", "199192", "199293", "199394"]
 
 mappings:
 
@@ -226,6 +228,8 @@ display:
   labels:
     speaker:
       unknown: Okänd
+    document_name:
+      unknown: Okänt
 
   headers:
     translations: {
@@ -233,6 +237,12 @@ display:
       "woman": "Kvinnor",
       "unknown": "metadata saknas"
     }
+
+provenance:
+  records_repository_url: "https://github.com/swerik-project/riksdagen-records"
+  persons_repository_url: "https://github.com/swerik-project/riksdagen-persons"
+  frontend_url: "https://riksdagsdebatter.se"
+  corpus_version: "v1.4.1"
 
 global:
   corpus:

@@ -180,6 +180,32 @@ class TestWordTrendSpeechesTicketEndpoints:
 
         assert excinfo.value.status_code == 429
 
+    def test_submit_rolls_back_ticket_when_celery_dispatch_fails(self):
+        request = WordTrendSpeechesQueryRequest(search=["demokrati"])
+        background_tasks = BackgroundTasks()
+        wt_service = MagicMock()
+        wt_service.submit_query.return_value = self._make_accepted()
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        with (
+            patch("api_swedeb.api.v1.endpoints.word_trends_router.ConfigValue") as mock_config,
+            patch("api_swedeb.celery_app.celery_app.send_task", side_effect=RuntimeError("broker unavailable")),
+        ):
+            mock_config.return_value.resolve.return_value = True
+            with pytest.raises(HTTPException) as excinfo:
+                asyncio.run(
+                    submit_word_trend_speeches_query(
+                        request=request,
+                        background_tasks=background_tasks,
+                        word_trends_service=MagicMock(),
+                        wt_speeches_ticket_service=wt_service,
+                        result_store=result_store,
+                    )
+                )
+
+        assert excinfo.value.status_code == 503
+        result_store.delete_ticket.assert_called_once_with("wt-ticket-1")
+
     # get_word_trend_speeches_status ------------------------------------------
 
     def test_get_status_maps_service_result(self):
@@ -329,6 +355,8 @@ class TestWordTrendSpeechesTicketEndpoints:
             [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
         )
         download_service = DownloadService()
+        result_store = MagicMock()
+        result_store.require_ticket.return_value = MagicMock(manifest_meta=None, query_meta=None)
 
         result = asyncio.run(
             download_word_trend_speeches(
@@ -336,7 +364,8 @@ class TestWordTrendSpeechesTicketEndpoints:
                 file_format=DownloadFormat.csv,
                 wt_speeches_ticket_service=wt_service,
                 download_service=download_service,
-                result_store=MagicMock(),
+                result_store=result_store,
+                metadata_service=MagicMock(),
             )
         )
 
@@ -359,6 +388,8 @@ class TestWordTrendSpeechesTicketEndpoints:
             [{"year": 1970, "name": "A. Svensson", "party_abbrev": "S", "document_name": "prot-1970--1"}]
         )
         download_service = DownloadService()
+        result_store = MagicMock()
+        result_store.require_ticket.return_value = MagicMock(manifest_meta=None, query_meta=None)
 
         result = asyncio.run(
             download_word_trend_speeches(
@@ -366,7 +397,8 @@ class TestWordTrendSpeechesTicketEndpoints:
                 file_format=DownloadFormat.json,
                 wt_speeches_ticket_service=wt_service,
                 download_service=download_service,
-                result_store=MagicMock(),
+                result_store=result_store,
+                metadata_service=MagicMock(),
             )
         )
 

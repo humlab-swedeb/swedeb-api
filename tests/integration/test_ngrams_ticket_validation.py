@@ -199,9 +199,11 @@ def test_ngrams_csv_archive_matches_ticket_rows(
     download_response = ngrams_validation_client.get(f"/v1/downloads/{archive_ticket_id}/download")
     assert download_response.status_code == 200, download_response.text
 
-    # Parse gzipped CSV — use csv.DictReader to handle quoted fields correctly
+    # Parse gzipped CSV — use csv.DictReader to handle quoted fields correctly.
+    # Metadata is written as "## " prefixed comment lines before the header, so skip them.
     with gzip.open(io.BytesIO(download_response.content), "rt", encoding="utf-8") as gz:
-        reader = csv.DictReader(gz)
+        data_lines = (line for line in gz if not line.startswith("##"))
+        reader = csv.DictReader(data_lines)
         assert reader.fieldnames is not None
         assert "ngram" in reader.fieldnames
         assert "window_count" in reader.fieldnames
@@ -245,7 +247,9 @@ def test_ngrams_jsonl_archive_matches_ticket_rows(
     assert download_response.status_code == 200, download_response.text
 
     with gzip.open(io.BytesIO(download_response.content), "rt", encoding="utf-8") as gz:
-        jsonl_rows: list[dict] = [json.loads(line) for line in gz if line.strip()]
+        all_rows: list[dict] = [json.loads(line) for line in gz if line.strip()]
+    # First record is human-readable metadata; the rest are n-gram rows.
+    jsonl_rows: list[dict] = [row for row in all_rows if row.get("record_type") != "metadata"]
 
     assert len(jsonl_rows) == len(ticket_items)
 

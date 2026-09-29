@@ -1,10 +1,13 @@
 """Shared helpers for tool domain routers."""
 
+from collections.abc import Sequence
+from contextlib import suppress
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from loguru import logger
 
 from api_swedeb.api.params import CommonQueryParams
 from api_swedeb.api.services.download_service import DownloadService
@@ -38,6 +41,30 @@ class DownloadFormat(StrEnum):
 def _pending_retry_headers() -> dict[str, str]:
     retry_after_seconds = ConfigValue("cache.ticket_poll_retry_after_seconds", default=2).resolve()
     return {"Retry-After": str(retry_after_seconds)}
+
+
+def _dispatch_celery_ticket(
+    *,
+    result_store: ResultStore,
+    task_name: str,
+    task_args: Sequence[Any],
+    task_id: str,
+    queue: str,
+) -> None:
+    from api_swedeb.celery_app import celery_app  # pylint: disable=import-outside-toplevel
+
+    try:
+        celery_app.send_task(
+            task_name,
+            args=list(task_args),
+            task_id=task_id,
+            queue=queue,
+        )
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.exception("Failed to dispatch Celery task {} for ticket {}", task_name, task_id)
+        with suppress(ResultStoreNotFound):
+            result_store.delete_ticket(task_id)
+        raise HTTPException(status_code=503, detail="Failed to dispatch ticket job") from exc
 
 
 def _require_ready_ticket(ticket_id: str, result_store: ResultStore) -> TicketMeta:

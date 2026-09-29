@@ -1,4 +1,5 @@
 import asyncio
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -59,6 +60,32 @@ def test_result_store_enforces_pending_job_limit(tmp_path) -> None:
 
         with pytest.raises(ResultStorePendingLimitError):
             store.create_ticket(query_meta={"search": "skatt"})
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_delete_ticket_updates_shared_pending_counter(tmp_path) -> None:
+    fake_redis = fakeredis.FakeRedis(decode_responses=True)
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=10_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+        ticket_state_store=TicketStateStore(client=fake_redis, key_prefix="test:result-store:delete"),
+    )
+    asyncio.run(store.startup())
+
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+
+        assert store.pending_jobs == 1
+
+        store.delete_ticket(ticket.ticket_id)
+
+        assert store.pending_jobs == 0
+        assert store.get_ticket(ticket.ticket_id) is None
     finally:
         asyncio.run(store.shutdown())
 
@@ -151,13 +178,44 @@ def test_result_store_evicts_oldest_ready_ticket_when_budget_is_exceeded(tmp_pat
         asyncio.run(store.shutdown())
 
 
-def test_result_store_startup_keeps_artifacts_and_removes_only_partial_files(tmp_path) -> None:
+def test_result_store_does_not_evict_retained_ready_ticket(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=10_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+
+    try:
+        first = store.create_ticket(query_meta={"search": "first"})
+        first_ready = store.store_ready(first.ticket_id, df=pd.DataFrame([{"node_word": "a" * 5000}]))
+        store.retain_ticket(first.ticket_id, ttl_seconds=24 * 60 * 60)
+
+        store.max_artifact_bytes = (first_ready.artifact_bytes or 0) + 1
+
+        second = store.create_ticket(query_meta={"search": "second"})
+        with pytest.raises(ResultStoreCapacityError):
+            store.store_ready(second.ticket_id, df=pd.DataFrame([{"node_word": "b" * 5000}]))
+
+        assert store.require_ticket(first.ticket_id).status == TicketStatus.READY
+        assert store.require_ticket(second.ticket_id).status == TicketStatus.ERROR
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_startup_keeps_artifacts_and_removes_only_stale_partial_files(tmp_path) -> None:
     stale_artifact = Path(tmp_path) / "stale.feather"
     stale_partial = Path(tmp_path) / "stale.feather.partial"
     stale_tmp = Path(tmp_path) / "stale.tmp"
     stale_artifact.write_bytes(b"artifact")
     stale_partial.write_bytes(b"partial")
     stale_tmp.write_bytes(b"tmp")
+    stale_timestamp = datetime.now(UTC).timestamp() - ResultStore.STALE_PARTIAL_FILE_SECONDS - 1
+    os.utime(stale_partial, (stale_timestamp, stale_timestamp))
+    os.utime(stale_tmp, (stale_timestamp, stale_timestamp))
 
     store = ResultStore(
         root_dir=tmp_path,
@@ -173,6 +231,29 @@ def test_result_store_startup_keeps_artifacts_and_removes_only_partial_files(tmp
         assert stale_artifact.exists() is True
         assert stale_partial.exists() is False
         assert stale_tmp.exists() is False
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_result_store_startup_preserves_recent_partial_files(tmp_path) -> None:
+    recent_partial = Path(tmp_path) / "recent.feather.partial"
+    recent_tmp = Path(tmp_path) / "recent.tmp"
+    recent_partial.write_bytes(b"partial")
+    recent_tmp.write_bytes(b"tmp")
+
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=600,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+
+    asyncio.run(store.startup())
+    try:
+        assert recent_partial.exists() is True
+        assert recent_tmp.exists() is True
     finally:
         asyncio.run(store.shutdown())
 
@@ -913,6 +994,59 @@ def test_cleanup_removes_ticket_at_absolute_cap(tmp_path) -> None:
 
         store.cleanup_expired()
         assert store.get_ticket(ticket.ticket_id) is None
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_retain_ticket_extends_expiry_beyond_absolute_lifetime(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=1,
+        max_absolute_lifetime_seconds=1,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(query_meta={"search": "demokrati"})
+
+        retained = store.retain_ticket(ticket.ticket_id, ttl_seconds=24 * 60 * 60)
+
+        assert retained.retention_until is not None
+        assert retained.expires_at == retained.retention_until
+        assert retained.expires_at >= datetime.now(UTC) + timedelta(hours=23, minutes=59)
+    finally:
+        asyncio.run(store.shutdown())
+
+
+def test_store_archive_ready_preserves_retained_expiry(tmp_path) -> None:
+    store = ResultStore(
+        root_dir=tmp_path,
+        result_ttl_seconds=1,
+        max_absolute_lifetime_seconds=1,
+        cleanup_interval_seconds=0,
+        max_artifact_bytes=1_000_000,
+        max_pending_jobs=2,
+        max_page_size=200,
+    )
+    asyncio.run(store.startup())
+    try:
+        ticket = store.create_ticket(
+            source_ticket_id="source-ticket",
+            archive_format="jsonl_gz",
+        )
+        retained = store.retain_ticket(ticket.ticket_id, ttl_seconds=24 * 60 * 60)
+        artifact_path = store.archive_artifact_path(ticket.ticket_id, "jsonl_gz")
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_bytes(b"{}\n")
+
+        ready = store.store_archive_ready(ticket.ticket_id, artifact_path=artifact_path)
+
+        assert ready.status == TicketStatus.READY
+        assert ready.retention_until == retained.retention_until
+        assert ready.expires_at >= retained.expires_at
     finally:
         asyncio.run(store.shutdown())
 

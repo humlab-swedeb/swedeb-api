@@ -19,7 +19,7 @@ from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.core.configuration.inject import ConfigValue
 
 if TYPE_CHECKING:
-    from api_swedeb.api.v1.endpoints.tool_router import CommonParams
+    from api_swedeb.api.v1.endpoints._router_common import CommonParams
 
 
 class _StreamingBuffer(io.RawIOBase):
@@ -52,6 +52,7 @@ class _StreamingBuffer(io.RawIOBase):
 class SpeechMetadata:
     speech_id: str
     speaker: str
+    speech: str
 
 
 class CompressionStrategy(ABC):
@@ -224,11 +225,14 @@ class DownloadService:
         archive_filename: str,
         content: bytes,
         manifest: dict | None = None,
+        metadata_text: str | None = None,
     ) -> Callable[[], Generator[bytes, None, None]]:
         """Return a generator function that yields a ZIP archive with one file.
 
         If *manifest* is provided it is serialised as ``manifest.json`` and
         included as a second entry in the archive alongside *archive_filename*.
+        If *metadata_text* is provided it is written as ``metadata.txt``, a
+        human-readable description of the query that produced the download.
         """
         manifest_bytes: bytes | None = (
             json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8") if manifest is not None else None
@@ -246,6 +250,12 @@ class DownloadService:
             ) as zf:
                 if manifest_bytes is not None:
                     zf.writestr("manifest.json", manifest_bytes)
+                    chunk = writer.pop()
+                    if chunk:
+                        yield chunk
+
+                if metadata_text:
+                    zf.writestr("metadata.txt", metadata_text)
                     chunk = writer.pop()
                     if chunk:
                         yield chunk
@@ -304,6 +314,7 @@ class DownloadService:
     ) -> Callable[[], Generator[bytes, None, None]]:
         ordered_speech_ids: list[str] = list(dict.fromkeys(speech_ids))
         resolved_names: dict[str, str] = id_to_name or search_service.get_speaker_names(ordered_speech_ids)
+        resolved_speeches: dict[str, str] = search_service.get_document_names(ordered_speech_ids)
         unknown: str = ConfigValue("display.labels.speaker.unknown").resolve()
         manifest_bytes: bytes = json.dumps(manifest_meta, indent=2, ensure_ascii=False).encode("utf-8")
         extra_files: dict[str, bytes] = {"manifest.json": manifest_bytes}
@@ -311,7 +322,7 @@ class DownloadService:
         def _iter_speeches() -> Generator[tuple[SpeechMetadata, str], None, None]:
             for speech_id, text in search_service.get_speeches_text_batch(ordered_speech_ids):
                 yield (
-                    SpeechMetadata(speech_id=speech_id, speaker=resolved_names.get(speech_id, unknown)),
+                    SpeechMetadata(speech_id=speech_id, speaker=resolved_names.get(speech_id, unknown), speech=resolved_speeches.get(speech_id, unknown)),
                     text,
                 )
 

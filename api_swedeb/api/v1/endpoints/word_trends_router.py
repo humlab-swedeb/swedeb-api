@@ -8,13 +8,16 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from api_swedeb.api.dependencies import (
     get_archive_ticket_service,
     get_download_service,
+    get_metadata_service,
     get_result_store,
     get_search_service,
     get_word_trend_speeches_ticket_service,
     get_word_trends_service,
 )
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
+from api_swedeb.api.services.download_metadata import build_metadata_text_from_query_meta
 from api_swedeb.api.services.download_service import DownloadService
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreNotFound,
@@ -28,6 +31,7 @@ from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.v1.endpoints._router_common import (
     CommonParams,
     DownloadFormat,
+    _dispatch_celery_ticket,
     _pending_retry_headers,
     _stream_speech_archive,
 )
@@ -91,11 +95,12 @@ async def submit_word_trend_speeches_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import celery_app, get_default_queue_name  # type: ignore[import]
+        from api_swedeb.celery_app import get_default_queue_name  # type: ignore[import]
 
-        celery_app.send_task(
-            "api_swedeb.execute_word_trend_speeches_ticket",
-            args=[accepted.ticket_id, request.model_dump(mode="json")],
+        _dispatch_celery_ticket(
+            result_store=result_store,
+            task_name="api_swedeb.execute_word_trend_speeches_ticket",
+            task_args=[accepted.ticket_id, request.model_dump(mode="json")],
             task_id=accepted.ticket_id,
             queue=get_default_queue_name(),
         )
@@ -176,6 +181,7 @@ async def download_word_trend_speeches(
     wt_speeches_ticket_service: WordTrendSpeechesTicketService = Depends(get_word_trend_speeches_ticket_service),
     download_service: DownloadService = Depends(get_download_service),
     result_store: ResultStore = Depends(get_result_store),
+    metadata_service: MetadataService = Depends(get_metadata_service),
 ) -> StreamingResponse:
     """Download the full speech list from a ready word trend speeches ticket."""
     try:
@@ -184,8 +190,11 @@ async def download_word_trend_speeches(
         raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
 
     ticket_meta: dict | None = None
+    query_meta: dict | None = None
     try:
-        ticket_meta = result_store.require_ticket(ticket_id).manifest_meta
+        ticket = result_store.require_ticket(ticket_id)
+        ticket_meta = ticket.manifest_meta
+        query_meta = ticket.query_meta
     except ResultStoreNotFound:
         pass
 
@@ -199,12 +208,14 @@ async def download_word_trend_speeches(
     manifest = download_service.build_download_manifest(
         ticket_meta={**(ticket_meta or {}), "file_format": file_format.value, "row_count": len(data)}
     )
+    metadata_text = build_metadata_text_from_query_meta(query_meta, metadata_service)
 
     return StreamingResponse(
         download_service.create_single_file_zip_stream(
             archive_filename=inner_filename,
             content=content,
             manifest=manifest,
+            metadata_text=metadata_text,
         )(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="word_trend_speeches_{ticket_id}.zip"'},
@@ -263,7 +274,7 @@ async def prepare_word_trend_speeches_bulk_archive(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    retrieval_url = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
+    retrieval_url: str = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
     response = response.model_copy(update={"retrieval_url": retrieval_url})
 
     celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())

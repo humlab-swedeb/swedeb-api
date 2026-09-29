@@ -30,6 +30,7 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
     - [7. Speech download flow](#7-speech-download-flow)
     - [8. Bulk archive retrieval flow](#8-bulk-archive-retrieval-flow)
     - [9. Ticketed n-grams flow](#9-ticketed-n-grams-flow)
+      - [N-gram computation algorithm](#n-gram-computation-algorithm)
   - [Data and Persistence Design](#data-and-persistence-design)
     - [Configuration](#configuration)
     - [Read-only runtime data](#read-only-runtime-data)
@@ -41,7 +42,7 @@ It is not the main guide for local setup, contributor workflow, testing policy, 
     - [Performance](#performance)
     - [Security and access model](#security-and-access-model)
   - [Constraints and Assumptions](#constraints-and-assumptions)
-  - [Design Decisions and Tradeoffs](#design-decisions-and-tradeoffs)
+  - [Spring 2026 Refactoring Design Decisions and Tradeoffs](#spring-2026-refactoring-design-decisions-and-tradeoffs)
   - [Known Limitations or Technical Debt](#known-limitations-or-technical-debt)
   - [Related Documents](#related-documents)
 
@@ -312,7 +313,25 @@ Polling the status endpoint never triggers re-execution of the archive job. The 
 
 The n-gram ticket flow mirrors the ticketed KWIC flow and delivers three layered capabilities: a pre-search DTM estimate, a single-process ticket path (development mode), and a progressive multiprocess running-aggregate path (production mode).
 
-**Pre-search estimate**: `GET /v1/tools/ngrams/estimate` returns a DTM-based hit count (`estimated_hits`, `in_vocabulary`) via `WordTrendsService.estimate_hits()` without running a CQP query. For multi-token inputs, the first whitespace-separated token is used as a proxy (the result is a loose upper bound for phrase queries and wide n-gram widths). The frontend debounces this call and shows colour-coded guidance near the search button, consistent with the KWIC UX.
+**Pre-search estimate**: `GET /v1/tools/ngrams/estimate` returns a DTM-based hit count (`estimated_hits`, `in_vocabulary`) via `WordTrendsService.estimate_hits()` without running a CQP query. Estimates are only available for single-token inputs because the DTM estimator counts individual token columns; phrase inputs return `null` estimate fields and the frontend hides the estimate display. The frontend debounces this call and shows colour-coded guidance near the search button, consistent with the KWIC UX.
+
+#### N-gram computation algorithm
+
+The current n-gram computation is implemented in `api_swedeb/core/n_grams/compute.py` and is shared by the single-process development path and the per-shard production path.
+
+1. The client submits `search`, `width`, `target`, `mode`, and metadata filters in a `NGramsQueryRequest`.
+2. The service turns the search and filters into CQP options, then calls `n_grams()`.
+3. `n_grams()` derives the extraction mode: `sliding` stays sliding, while `left-aligned` and `right-aligned` become locked-window extraction.
+4. `n_grams()` computes CWB context. Sliding mode requests enough left and right context for every focus-token position in the requested width. For example, width 3 and a one-token query request context 2, allowing `left left focus`, `left focus right`, and `focus right right`. Aligned modes use explicit `(left, right)` context: left-aligned uses `(0, width - query_words)` and right-aligned uses `(width - query_words, 0)`.
+5. `query_keyword_windows()` executes the CWB query and asks for simple concordance rows with the requested positional attribute (`word` or `lemma`) plus `speech_id`.
+6. `query_keyword_windows()` groups identical concordance window strings into rows with `window`, `count`, and comma-separated unique `documents`.
+7. `compile_n_grams()` converts grouped windows into final n-grams.
+8. In sliding mode, each `window` string is split on whitespace, every contiguous `width`-token sequence is generated, and the generated n-grams are grouped by text. `window_count` is summed and `documents` are unioned and sorted.
+9. In locked mode, the whole returned `window` is treated as the n-gram; `window` is renamed to `ngram` and `count` to `window_count`.
+10. If a threshold is provided, rows with `window_count` below the threshold are removed.
+11. The result is a DataFrame indexed by `ngram` with `window_count` and `documents`; ticket services reset the index before writing paged artifacts so `ngram` is a regular column in stored results.
+
+The main current limitation is tokenization: `compile_n_grams()` uses whitespace splitting on the CWB display window, so delimiter or punctuation tokens count as ordinary n-gram tokens when they appear as separate space-delimited corpus tokens. Supporting "ignore delimiters for computation but preserve them for display" would require separating the compute key from the display form and preserving enough token-position information to generate display spans after delimiter filtering.
 
 **Production mode** (`celery_enabled: true`):
 
@@ -425,20 +444,20 @@ Bulk archive retrieval URLs (`/v1/downloads/{archive_ticket_id}`) use a bearer-l
 - Multi-process correctness depends on both a shared `cache.root_dir` and a shared ticket-state backend when `cache.ticket_state_backend_url` is enabled.
 - The active backend design centers on the prebuilt repository path, not the archived ZIP-based legacy runtime.
 
-## Design Decisions and Tradeoffs
+## Spring 2026 Refactoring Design Decisions and Tradeoffs
 
-- Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through an explicit app-scoped container built during FastAPI lifespan.
+- Service dependency injection instead of a big monolithic facade: simpler routing and clearer ownership. Dependency lifecycle is handled through an explicit app-scoped container with a lifecycle aligned with FastAPI lifespan.
 - Prebuilt speech corpus instead of runtime ZIP parsing: much faster speech retrieval and cleaner batch access, but it adds a required offline build artifact and version-alignment constraint.
 - DataFrame-centric service boundaries: efficient for analytical operations and mapper projection, but it keeps much of the domain logic tied to pandas and Arrow-style structures.
-- Celery + Redis for production multiprocessing-capable ticket execution: moves heavyweight ticket queries into a separate worker process so `multiprocessing.Pool` can be used safely. Adds Redis and a dedicated worker container to the deployment while keeping the default queue available for lighter jobs. A `development.celery_enabled` toggle preserves the simpler `BackgroundTasks` path for local development without Redis.
-- Disk-backed ticket artifacts alongside Celery: Redis holds only small task metadata; large KWIC DataFrames remain in the filesystem `ResultStore`. This keeps Redis memory bounded and reuses the existing artifact lifecycle management.
+- Celery + Redis for multiprocessing-capable ticket execution: moves heavyweight ticket queries into a separate worker process so `multiprocessing.Pool` can be used safely. Adds Redis and a dedicated worker container to the deployment while keeping the default queue available for lighter jobs. A `development.celery_enabled` toggle preserves the simpler `BackgroundTasks` path for local development without Redis.
+- Disk-backed ticket artifacts alongside Celery: Redis holds only small task metadata; large KWIC DataFrames remain in the filesystem `ResultStore`. This keeps Redis memory usage low and reuses the existing artifact lifecycle management.
 - Shared ticket metadata alongside disk artifacts: `TicketStateStore` moves pending-job counting, artifact-byte accounting, and ticket status lookup out of process-local memory, which makes API multi-worker and worker-churn scenarios correct but adds a Redis-backed control-plane dependency in production.
 - Archived legacy runtime kept in-repo: useful for compatibility and rollback analysis, but it creates a second code path that must be clearly excluded from new feature work.
 
 ## Known Limitations or Technical Debt
 
 - `ResultStore` is still host-local and filesystem-backed, so ticket execution and artifact lookup are not designed for deployment shapes that do not share the same `cache.root_dir` volume.
-- The current shared-state design assumes one Redis-reachable deployment unit. It has been validated for multi-process and staged multi-worker setups, but not yet for a fully horizontally scaled multi-host artifact store.
+- The current shared-state design assumes one Redis-reachable deployment container. It has been validated for multi-process and staged multi-worker setups, but not yet for a fully horizontally scaled multi-host artifact store.
 - Multiprocessing-capable queries require Celery workers in production. Development mode (`celery_enabled: false`) disables multiprocessing to avoid deadlocking FastAPI's `BackgroundTasks` thread pool.
 - There is no built-in authentication/authorization layer in the backend.
 - The `/v1/tools/topics` endpoint is still a stub.

@@ -130,7 +130,7 @@ Additional broader download sample:
 ## Frontend Rollout Path
 
 - Keep `GET /v1/tools/kwic/{search}` available throughout rollout.
-- Keep the frontend KWIC ticket flow explicitly controlled by `kwicDataStore.useTicketFlow`.
+- The frontend KWIC flow now uses the ticketed path directly; only the deprecated backend endpoint remains for backward compatibility.
 - Keep CSV/XLSX export on the synchronous endpoint for the MVP.
 - Keep speech ZIP download on the ticket path only when a completed KWIC ticket exists.
 - Defer n-gram pagination to `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`.

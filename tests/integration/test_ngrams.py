@@ -60,14 +60,13 @@ def test_n_gram_service_fails_if_target_is_lemma(corpus: Corpus):
     assert sliding_result is not None
 
 
-@pytest.mark.skip("FIXME: When phrase is used, to many sliding windows are created ")
 def test_n_gram_service_with_phrase(corpus: Corpus):
     ngram_service = NGramsService()
     common_opts: cp.CommonQueryParams = cp.CommonQueryParams(from_year=1970, to_year=1975)
     opts: dict[str, Any] = {
         'search_term': ['sverige', 'vara'],
         'search_target': "lemma",
-        'display_target': "word",
+        'display_target': "lemma",
         'n_gram_width': 5,
     }
 
@@ -110,7 +109,6 @@ def test_n_gram_service_with_phrase_word(corpus: Corpus):
     assert all('sverige är' in ngram for ngram in lower_ngram_list)
 
 
-@pytest.mark.skip("FIXME: Phrase are not handled correctly in n-grams")
 def test_n_gram_service_with_smaller_window(corpus: Corpus):
     # test n-gram with a phrase and
     ngram_service = NGramsService()

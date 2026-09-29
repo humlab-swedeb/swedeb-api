@@ -54,6 +54,7 @@ class KWICQueryRequest(BaseModel):
         default_factory=_default_cut_off,
         description="Deprecated: ignored by the ticket pipeline in Phase 3. Retained for backward compatibility.",
     )
+    merge_speeches: bool = False # merge speeches for inner n-gram requests
     filters: KWICFilterRequest = Field(default_factory=KWICFilterRequest)
 
 

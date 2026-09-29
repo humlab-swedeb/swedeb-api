@@ -47,10 +47,12 @@ def make_result_store(tmp_path: Path) -> ResultStore:
     )
 
 
-def make_mock_search_service() -> MagicMock:
+def make_mock_search_service() -> MagicMock: #här
     svc = MagicMock()
     svc.get_speeches_text_batch.return_value = SAMPLE_SPEECHES
     svc.get_speaker_names.return_value = {"i-1": "Alice", "i-2": "Bob"}
+    svc.get_document_names.return_value = {"i-1": "Prot-1", "i-2": "Prot-2", "i-3": "Prot-3"}
+
     return svc
 
 
@@ -219,7 +221,10 @@ def test_download_wt_archive_returns_file_for_ready_ticket(archive_client):
     assert r.headers["content-type"].startswith("application/gzip")
     # Verify it is valid jsonl.gz
     records = [json.loads(line) for line in gzip.decompress(r.content).splitlines()]
-    assert len(records) == len(SAMPLE_SPEECH_IDS)
+    
+    # Filter to speech records only (skip metadata record if present)
+    speech_records = [r for r in records if r.get("record_type") == "speech"]
+    assert len(speech_records) == len(SAMPLE_SPEECH_IDS)
 
 
 def test_download_speeches_archive_returns_file_for_ready_ticket(archive_client):

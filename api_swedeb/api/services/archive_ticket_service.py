@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from api_swedeb.api.services.download_metadata import build_metadata_text_from_query_meta
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreCapacityError,
@@ -83,6 +85,8 @@ def execute_archive_task(archive_ticket_id: str) -> dict:
 
 
 class ArchiveTicketService:
+    COPIED_RETRIEVAL_URL_TTL_SECONDS = 24 * 60 * 60
+
     def prepare(
         self,
         *,
@@ -158,18 +162,22 @@ class ArchiveTicketService:
 
             archive_format = BulkArchiveFormat(archive_format_str)
             source_ticket: TicketMeta = result_store.require_ticket(source_ticket_id)
-            if source_ticket.speech_ids is None:
+            speech_ids: list[str] | None = archive_ticket.speech_ids or source_ticket.speech_ids
+            if speech_ids is None:
                 raise ValueError("Source ticket has no speech IDs")
 
-            speech_ids: list[str] = source_ticket.speech_ids
             dest_path: Path = result_store.archive_artifact_path(archive_ticket_id, archive_format_str)
-            manifest_meta: dict = self._build_manifest(archive_ticket, source_ticket)
+            manifest_meta: dict = archive_ticket.manifest_meta or self._build_manifest(archive_ticket, source_ticket)
+
+            # Generate human-readable metadata from source query
+            metadata_text: str | None = self._build_metadata_text(source_ticket, search_service)
 
             TicketedDownloadService.for_format(archive_format).write(
                 speech_ids=speech_ids,
                 search_service=search_service,
                 dest_path=dest_path,
                 manifest_meta=manifest_meta,
+                metadata_text=metadata_text,
             )
 
             result_store.store_archive_ready(
@@ -237,6 +245,24 @@ class ArchiveTicketService:
         ticket: TicketMeta = result_store.require_ticket(archive_ticket_id)
         return self._status_model(ticket)
 
+    def retain_copied_retrieval_link(self, archive_ticket_id: str, result_store: ResultStore) -> ArchiveTicketStatus:
+        ttl_seconds: int = ConfigValue(
+            "cache.copied_retrieval_url_ttl_seconds",
+            default=self.COPIED_RETRIEVAL_URL_TTL_SECONDS,
+        ).resolve()
+        ticket: TicketMeta = result_store.retain_ticket(archive_ticket_id, ttl_seconds=ttl_seconds)
+
+        # If archive generation is still pending, the worker may still need the
+        # source ticket/artifact to build the downloadable archive.
+        if ticket.source_ticket_id is not None:
+            try:
+                result_store.retain_ticket(ticket.source_ticket_id, ttl_seconds=ttl_seconds)
+            except ResultStoreNotFound:
+                if ticket.status != TicketStatus.READY:
+                    raise
+
+        return self._status_model(ticket)
+
     def _status_model(self, ticket: TicketMeta) -> ArchiveTicketStatus:
         return ArchiveTicketStatus(
             archive_ticket_id=ticket.ticket_id,
@@ -258,3 +284,12 @@ class ArchiveTicketService:
             "corpus_version": os.environ.get("CORPUS_VERSION", "unknown"),
             "source_query": source_ticket.query_meta,
         }
+
+    def _build_metadata_text(self, source_ticket: TicketMeta, search_service: SearchService) -> str | None:
+        """Build human-readable metadata text from source ticket query_meta.
+
+        Returns None if query_meta is empty or metadata cannot be generated.
+        """
+        metadata_service = MetadataService(search_service.loader)
+        return build_metadata_text_from_query_meta(source_ticket.query_meta, metadata_service)
+

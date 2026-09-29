@@ -7,12 +7,20 @@ from fastapi import BackgroundTasks, Depends, HTTPException, Query, Request, Res
 from fastapi.responses import JSONResponse
 
 from api_swedeb.api.dependencies import (
+    get_archive_ticket_service,
     get_cwb_corpus_opts,
+    get_ngram_speeches_archive_service,
     get_ngrams_archive_service,
     get_ngrams_service,
     get_ngrams_ticket_service,
     get_result_store,
+    get_search_service,
     get_word_trends_service,
+)
+from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
+from api_swedeb.api.services.ngram_speeches_archive_service import (
+    EmptyNGramSpeechArchiveError,
+    NGramSpeechesArchiveService,
 )
 from api_swedeb.api.services.ngrams_archive_service import NGramsArchiveService
 from api_swedeb.api.services.ngrams_service import NGramsService
@@ -23,8 +31,14 @@ from api_swedeb.api.services.result_store import (
     ResultStoreNotFound,
     ResultStorePendingLimitError,
 )
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
-from api_swedeb.api.v1.endpoints._router_common import CommonParams, _pending_retry_headers
+from api_swedeb.api.v1.endpoints._router_common import (
+    CommonParams,
+    _dispatch_celery_ticket,
+    _pending_retry_headers,
+)
+from api_swedeb.celery_app import get_multiprocessing_queue_name
 from api_swedeb.core.configuration import ConfigValue
 from api_swedeb.schemas.bulk_archive_schema import ArchivePrepareResponse, BulkArchiveFormat
 from api_swedeb.schemas.ngrams_schema import (
@@ -42,21 +56,22 @@ router = fastapi.APIRouter()
 
 @router.get("/ngrams/estimate", response_model=NGramsEstimateResult)
 async def estimate_ngrams_hits(
-    word: Annotated[str, Query(description="Word (or first token of phrase) to estimate hit count for")],
+    word: Annotated[str, Query(description="Single word to estimate hit count for")],
     commons: CommonParams,
     word_trends_service: WordTrendsService = Depends(get_word_trends_service),
 ) -> NGramsEstimateResult:
     """Return an approximate hit count for an n-gram search word using DTM column sums.
 
-    For multi-token searches the first whitespace-separated token is used as the proxy;
-    the returned estimate is therefore a loose upper bound for phrase queries and wide
-    n-gram widths.  The estimate respects the same metadata filters as a real search
-    but does not run a CQP query.
+    Phrase estimates are not available from the DTM-backed estimator because it
+    only counts individual token columns.  The estimate respects the same metadata
+    filters as a real search but does not run a CQP query.
     """
-    # Use only the first token as the proxy for multi-token inputs.
-    proxy_token = word.split()[0] if word else word
+    tokens = word.split()
+    if len(tokens) != 1:
+        return NGramsEstimateResult(in_vocabulary=None, estimated_hits=None)
+
     filter_opts = commons.get_filter_opts(include_year=True)
-    count = word_trends_service.estimate_hits(proxy_token, filter_opts)
+    count = word_trends_service.estimate_hits(tokens[0], filter_opts)
     return NGramsEstimateResult(
         in_vocabulary=count is not None,
         estimated_hits=count,
@@ -83,13 +98,12 @@ async def submit_ngrams_query(
         ) from exc
 
     if ConfigValue("development.celery_enabled", default=False).resolve():
-        from api_swedeb.celery_app import celery_app  # pylint: disable=import-outside-toplevel
-
-        celery_app.send_task(
-            "api_swedeb.execute_ngrams_ticket",
-            args=[accepted.ticket_id, request.model_dump(mode="json"), cwb_opts],
+        _dispatch_celery_ticket(
+            result_store=result_store,
+            task_name="api_swedeb.execute_ngrams_ticket",
+            task_args=[accepted.ticket_id, request.model_dump(mode="json"), cwb_opts],
             task_id=accepted.ticket_id,
-            queue="celery",
+            queue=get_multiprocessing_queue_name(),
         )
     else:
         background_tasks.add_task(
@@ -159,6 +173,7 @@ async def prepare_ngrams_archive(
     archive_format: BulkArchiveFormat = Query(BulkArchiveFormat.csv_gz, description="Archive format"),
     ngrams_archive_service: NGramsArchiveService = Depends(get_ngrams_archive_service),
     result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
 ) -> ArchivePrepareResponse:
     """Prepare a bulk archive of n-gram results for download."""
     try:
@@ -179,5 +194,50 @@ async def prepare_ngrams_archive(
         ngrams_archive_service.execute_archive_task,
         archive_ticket_id=response.archive_ticket_id,
         result_store=result_store,
+        search_service=search_service,
     )
+    return response
+
+
+@router.post("/ngrams/speeches/archive/{ticket_id}", response_model=ArchivePrepareResponse, status_code=202)
+async def prepare_ngrams_speeches_archive(
+    ticket_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    archive_format: BulkArchiveFormat = Query(BulkArchiveFormat.zip, description="Speech archive format"),
+    ngram_speeches_archive_service: NGramSpeechesArchiveService = Depends(get_ngram_speeches_archive_service),
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
+) -> ArchivePrepareResponse:
+    """Prepare a speech archive from the union of speeches referenced by an n-gram ticket."""
+    try:
+        response = ngram_speeches_archive_service.prepare(
+            source_ticket_id=ticket_id,
+            archive_format=archive_format,
+            result_store=result_store,
+        )
+    except ResultStoreNotFound as exc:
+        raise HTTPException(status_code=404, detail="Ticket not found or expired") from exc
+    except EmptyNGramSpeechArchiveError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    retrieval_url = str(request.base_url).rstrip("/") + f"/v1/downloads/{response.archive_ticket_id}"
+    response = response.model_copy(update={"retrieval_url": retrieval_url})
+
+    celery_enabled: bool = bool(ConfigValue("development.celery_enabled", default=False).resolve())
+    if celery_enabled:
+        import importlib  # pylint: disable=import-outside-toplevel
+
+        celery_tasks = importlib.import_module("api_swedeb.celery_tasks")
+        celery_tasks.execute_archive_task_celery_task.delay(response.archive_ticket_id)
+    else:
+        background_tasks.add_task(
+            archive_ticket_service.execute_archive_task,
+            archive_ticket_id=response.archive_ticket_id,
+            result_store=result_store,
+            search_service=search_service,
+        )
     return response

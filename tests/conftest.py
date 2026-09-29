@@ -26,6 +26,11 @@ logger.remove()
 logger.add(sys.stderr, backtrace=True, diagnose=True)
 
 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None)
+
+
 def generate_config_file(output_folder: Path, corpus_folder: Path, corpus_version: str, metadata_version: str) -> Path:
     """Creates a temporary config file for testing. Uses Jinja2 template found in tests/templates/config.yml.jinja.
     The config file is created once per test session and shared across tests.

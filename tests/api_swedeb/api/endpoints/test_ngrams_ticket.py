@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import asyncio
 import gzip
+import io
 import json
+import zipfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Generator, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -29,11 +31,20 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from api_swedeb.api.dependencies import (
+    get_archive_ticket_service,
     get_cwb_corpus,
+    get_ngram_speeches_archive_service,
     get_ngrams_archive_service,
     get_ngrams_service,
     get_ngrams_ticket_service,
     get_result_store,
+    get_search_service,
+)
+from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
+from api_swedeb.api.services.ngram_speeches_archive_service import (
+    EmptyNGramSpeechArchiveError,
+    NGramSpeechesArchiveService,
+    extract_ordered_speech_ids,
 )
 from api_swedeb.api.services.ngrams_archive_service import NGramsArchiveService
 from api_swedeb.api.services.ngrams_ticket_service import NGramsTicketService
@@ -51,6 +62,7 @@ from api_swedeb.api.v1.endpoints.ngrams_router import (
     get_ngrams_ticket_status,
     submit_ngrams_query,
 )
+from api_swedeb.schemas.bulk_archive_schema import BulkArchiveFormat
 from api_swedeb.schemas.ngrams_schema import (
     NGramResult,
     NGramResultItem,
@@ -105,6 +117,19 @@ def make_ready_ngram_ticket(store: ResultStore) -> TicketMeta:
     return store.require_ticket(ticket.ticket_id)
 
 
+def make_empty_ready_ngram_ticket(store: ResultStore) -> TicketMeta:
+    """Create a READY n-gram source ticket whose rows do not reference speeches."""
+    ticket = store.create_ticket(query_meta={"search": "demokrati", "width": 2})
+    frame = pd.DataFrame(
+        [
+            {"ngram": "empty one", "window_count": 0, "documents": "", "_ticket_row_id": 0},
+            {"ngram": "empty two", "window_count": 0, "documents": None, "_ticket_row_id": 1},
+        ]
+    )
+    store.store_ready(ticket.ticket_id, df=frame, query_meta={"search": "demokrati"})
+    return store.require_ticket(ticket.ticket_id)
+
+
 def make_ready_ngram_archive(store: ResultStore, source_ticket_id: str, fmt: str = "jsonl_gz") -> TicketMeta:
     """Execute a real NGramsArchiveService task and return the ready archive ticket."""
     archive_ticket = store.create_ticket(source_ticket_id=source_ticket_id, archive_format=fmt)
@@ -152,13 +177,21 @@ class TestEstimateNgramsHits:
         assert result.in_vocabulary is False
         assert result.estimated_hits is None
 
-    def test_uses_first_token_of_phrase_as_proxy(self):
+    def test_phrase_estimate_is_unavailable(self):
         svc = _make_word_trends_service_mock(count=50)
-        asyncio.run(
+        result = asyncio.run(
             estimate_ngrams_hits(word="social demokrati", commons=_make_commons_mock(), word_trends_service=svc)
         )
-        call_args = svc.estimate_hits.call_args
-        assert call_args[0][0] == "social"
+        assert result.in_vocabulary is None
+        assert result.estimated_hits is None
+        svc.estimate_hits.assert_not_called()
+
+    def test_whitespace_only_estimate_is_unavailable(self):
+        svc = _make_word_trends_service_mock(count=50)
+        result = asyncio.run(estimate_ngrams_hits(word="   ", commons=_make_commons_mock(), word_trends_service=svc))
+        assert result.in_vocabulary is None
+        assert result.estimated_hits is None
+        svc.estimate_hits.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +244,30 @@ class TestSubmitNgramsQuery:
         )
         bt.add_task.assert_called_once()
         assert bt.add_task.call_args[0][0] == ticket_svc.execute_ticket
+
+    def test_rolls_back_ticket_when_celery_dispatch_fails(self):
+        ticket_svc = MagicMock(spec=NGramsTicketService)
+        ticket_svc.submit_query.return_value = MagicMock(ticket_id="t-3", status="pending", expires_at=None)
+        result_store = MagicMock(cleanup_interval_seconds=60)
+
+        with (
+            patch("api_swedeb.api.v1.endpoints.ngrams_router.ConfigValue.resolve", return_value=True),
+            patch("api_swedeb.celery_app.celery_app.send_task", side_effect=RuntimeError("broker unavailable")),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                asyncio.run(
+                    submit_ngrams_query(
+                        request=_SAMPLE_REQUEST,
+                        background_tasks=BackgroundTasks(),
+                        ngrams_service=_make_ngrams_service_mock(),
+                        ngrams_ticket_service=ticket_svc,
+                        result_store=result_store,
+                        cwb_opts=self._MOCK_CWB_OPTS,
+                    )
+                )
+
+        assert exc_info.value.status_code == 503
+        result_store.delete_ticket.assert_called_once_with("t-3")
 
 
 # ---------------------------------------------------------------------------
@@ -340,6 +397,101 @@ class TestGetNgramsTicketPage:
 
 
 # ---------------------------------------------------------------------------
+# Unit tests — n-gram speech archive service
+# ---------------------------------------------------------------------------
+
+
+class TestNGramSpeechesArchiveService:
+    def test_extract_ordered_speech_ids_deduplicates_first_seen_order(self):
+        data = pd.DataFrame(
+            {
+                "documents": [
+                    "i-2,i-1",
+                    "i-1,,i-3",
+                    None,
+                    ["i-3", "i-4"],
+                    float("nan"),
+                ]
+            }
+        )
+
+        assert extract_ordered_speech_ids(data) == ["i-2", "i-1", "i-3", "i-4"]
+
+    def test_prepare_creates_archive_ticket_with_speech_ids_and_manifest(self, tmp_path):
+        store = make_result_store(tmp_path)
+        asyncio.run(store.startup())
+
+        try:
+            source = make_ready_ngram_ticket(store)
+            response = NGramSpeechesArchiveService().prepare(
+                source_ticket_id=source.ticket_id,
+                archive_format=BulkArchiveFormat.zip,
+                result_store=store,
+            )
+
+            archive_ticket = store.require_ticket(response.archive_ticket_id)
+            assert response.status == "pending"
+            assert archive_ticket.source_ticket_id == source.ticket_id
+            assert archive_ticket.archive_format == "zip"
+            assert archive_ticket.speech_ids == ["doc-1", "doc-2", "doc-3", "doc-4", "doc-5", "doc-6"]
+            assert archive_ticket.manifest_meta is not None
+            assert archive_ticket.manifest_meta["speech_count"] == 6
+            assert archive_ticket.manifest_meta["source_query"] == {"search": "demokrati"}
+            assert archive_ticket.manifest_meta["checksum"]
+        finally:
+            asyncio.run(store.shutdown())
+
+    def test_prepare_rejects_pending_source_ticket(self, tmp_path):
+        store = make_result_store(tmp_path)
+        asyncio.run(store.startup())
+
+        try:
+            pending = store.create_ticket(query_meta={"search": "demokrati"})
+
+            with pytest.raises(ValueError, match="not ready"):
+                NGramSpeechesArchiveService().prepare(
+                    source_ticket_id=pending.ticket_id,
+                    archive_format=BulkArchiveFormat.zip,
+                    result_store=store,
+                )
+        finally:
+            asyncio.run(store.shutdown())
+
+    def test_prepare_rejects_error_source_ticket(self, tmp_path):
+        store = make_result_store(tmp_path)
+        asyncio.run(store.startup())
+
+        try:
+            ticket = store.create_ticket(query_meta={"search": "demokrati"})
+            store.store_error(ticket.ticket_id, message="failed")
+
+            with pytest.raises(ValueError, match="error state"):
+                NGramSpeechesArchiveService().prepare(
+                    source_ticket_id=ticket.ticket_id,
+                    archive_format=BulkArchiveFormat.zip,
+                    result_store=store,
+                )
+        finally:
+            asyncio.run(store.shutdown())
+
+    def test_prepare_rejects_empty_speech_set(self, tmp_path):
+        store = make_result_store(tmp_path)
+        asyncio.run(store.startup())
+
+        try:
+            source = make_empty_ready_ngram_ticket(store)
+
+            with pytest.raises(EmptyNGramSpeechArchiveError):
+                NGramSpeechesArchiveService().prepare(
+                    source_ticket_id=source.ticket_id,
+                    archive_format=BulkArchiveFormat.zip,
+                    result_store=store,
+                )
+        finally:
+            asyncio.run(store.shutdown())
+
+
+# ---------------------------------------------------------------------------
 # Integration fixture
 # ---------------------------------------------------------------------------
 
@@ -351,6 +503,13 @@ def _ngrams_client(tmp_path: Path) -> Generator[tuple[TestClient, ResultStore], 
     asyncio.run(store.startup())
 
     mock_ngrams_service = _make_ngrams_service_mock()
+    mock_search_service = MagicMock()
+    mock_search_service.get_speaker_names.side_effect = lambda speech_ids: {
+        speech_id: f"Speaker {speech_id}" for speech_id in speech_ids
+    }
+    mock_search_service.get_speeches_text_batch.side_effect = lambda speech_ids: (
+        (speech_id, f"Speech text for {speech_id}") for speech_id in speech_ids
+    )
 
     app = FastAPI()
     app.include_router(tool_router.router)
@@ -359,7 +518,10 @@ def _ngrams_client(tmp_path: Path) -> Generator[tuple[TestClient, ResultStore], 
     app.dependency_overrides[get_result_store] = lambda: store
     app.dependency_overrides[get_ngrams_ticket_service] = NGramsTicketService
     app.dependency_overrides[get_ngrams_archive_service] = NGramsArchiveService
+    app.dependency_overrides[get_ngram_speeches_archive_service] = NGramSpeechesArchiveService
+    app.dependency_overrides[get_archive_ticket_service] = ArchiveTicketService
     app.dependency_overrides[get_ngrams_service] = lambda: mock_ngrams_service
+    app.dependency_overrides[get_search_service] = lambda: mock_search_service
     app.dependency_overrides[get_cwb_corpus] = MagicMock
 
     try:
@@ -436,6 +598,76 @@ class TestPrepareNgramsArchive:
 
         assert r.status_code == 202
         assert r.json()["archive_format"] == "csv_gz"
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: POST /v1/tools/ngrams/speeches/archive/{ticket_id}
+# ---------------------------------------------------------------------------
+
+
+class TestPrepareNgramSpeechesArchive:
+    def test_returns_202_with_retrieval_url(self, ngrams_client):
+        client, store = ngrams_client
+        source = make_ready_ngram_ticket(store)
+
+        r = client.post(
+            f"/v1/tools/ngrams/speeches/archive/{source.ticket_id}",
+            params={"archive_format": "zip"},
+        )
+
+        assert r.status_code == 202
+        body = r.json()
+        assert body["status"] == "pending"
+        assert body["source_ticket_id"] == source.ticket_id
+        assert body["archive_format"] == "zip"
+        assert f"/v1/downloads/{body['archive_ticket_id']}" in body["retrieval_url"]
+
+    def test_prepared_archive_uses_generic_download_flow(self, ngrams_client):
+        client, store = ngrams_client
+        source = make_ready_ngram_ticket(store)
+
+        prepare = client.post(
+            f"/v1/tools/ngrams/speeches/archive/{source.ticket_id}",
+            params={"archive_format": "zip"},
+        )
+        assert prepare.status_code == 202
+        archive_id = prepare.json()["archive_ticket_id"]
+
+        status = client.get(f"/v1/downloads/{archive_id}")
+        assert status.status_code == 200
+        assert status.json()["status"] == "ready"
+        assert status.json()["speech_count"] == 6
+
+        download = client.get(f"/v1/downloads/{archive_id}/download")
+        assert download.status_code == 200
+        with zipfile.ZipFile(io.BytesIO(download.content), "r") as archive:
+            names = archive.namelist()
+            assert "manifest.json" in names
+            assert "metadata.txt" in names  # Metadata now included in ZIP archives
+            assert len([name for name in names if name.endswith(".txt") and name != "metadata.txt"]) == 6
+            first_text = archive.read(next(name for name in names if "doc-1_" in name)).decode("utf-8")
+            assert first_text == "Speech text for doc-1"
+
+    def test_returns_422_when_source_ticket_has_no_speeches(self, ngrams_client):
+        client, store = ngrams_client
+        source = make_empty_ready_ngram_ticket(store)
+
+        r = client.post(f"/v1/tools/ngrams/speeches/archive/{source.ticket_id}")
+
+        assert r.status_code == 422
+
+    def test_copy_link_retention_uses_generic_downloads_route(self, ngrams_client):
+        client, store = ngrams_client
+        source = make_ready_ngram_ticket(store)
+
+        prepare = client.post(f"/v1/tools/ngrams/speeches/archive/{source.ticket_id}")
+        assert prepare.status_code == 202
+        archive_id = prepare.json()["archive_ticket_id"]
+
+        copied = client.post(f"/v1/downloads/{archive_id}/copy-link")
+
+        assert copied.status_code == 200
+        assert copied.json()["archive_ticket_id"] == archive_id
 
 
 # ---------------------------------------------------------------------------

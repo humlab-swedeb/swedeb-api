@@ -60,3 +60,20 @@ async def download_archive(
         filename_stem="archive",
         result_store=result_store,
     )
+
+
+@router.post(
+    "/{archive_ticket_id}/copy-link",
+    response_model=ArchiveTicketStatus,
+    summary="Extend retention after a retrieval link is copied",
+)
+async def retain_copied_retrieval_link(
+    archive_ticket_id: str,
+    archive_ticket_service: ArchiveTicketService = Depends(get_archive_ticket_service),
+    result_store: ResultStore = Depends(get_result_store),
+) -> ArchiveTicketStatus:
+    """Apply the copied-link retention TTL to an archive ticket."""
+    try:
+        return archive_ticket_service.retain_copied_retrieval_link(archive_ticket_id, result_store)
+    except ResultStoreNotFound as e:
+        raise HTTPException(status_code=404, detail="Archive ticket not found or expired") from e

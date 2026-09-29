@@ -43,9 +43,23 @@ def speeches_df() -> pd.DataFrame:
 
 
 def test_speeches_to_api_frame_projects_expected_columns(speeches_df: pd.DataFrame):
+    """Test that speeches_to_api_frame returns a DataFrame with the expected columns and values.
+    The configuration values patched are:
+    - "display.labels.speaker.unknown": "Unknown"
+    - "pdf_server.base_url": "https://pdf.swedeb.se/riksdagen-records-pdf/"
+    - "pdf_server.years_with_four_digit_nr_padding": []
+    - "mappings.speech_name": {"Okänt": "Unknown"}
+
+    """
+
     with patch(
         "api_swedeb.mappers.speeches.ConfigValue.resolve",
-        side_effect=["Unknown", "https://pdf.swedeb.se/riksdagen-records-pdf/", {"Okänt": "Unknown"}],
+        side_effect=[
+            "Unknown",
+            "https://pdf.swedeb.se/riksdagen-records-pdf/",
+            [],
+            {"Okänt": "Unknown"},
+        ],
     ):
         result = speeches_to_api_frame(speeches_df)
 
@@ -68,7 +82,7 @@ def test_speeches_to_api_frame_projects_expected_columns(speeches_df: pd.DataFra
 def test_speeches_to_api_model_returns_schema_model(speeches_df: pd.DataFrame):
     with patch(
         "api_swedeb.mappers.speeches.ConfigValue.resolve",
-        side_effect=["Unknown", "https://pdf.swedeb.se/riksdagen-records-pdf/", {"Okänt": "Unknown"}],
+        side_effect=["Unknown", "https://pdf.swedeb.se/riksdagen-records-pdf/", [], {"Okänt": "Unknown"}],
     ):
         result = speeches_to_api_model(speeches_df)
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import gzip
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Generator
 from unittest.mock import MagicMock
@@ -57,6 +58,8 @@ def make_mock_search_service() -> MagicMock:
     svc = MagicMock()
     svc.get_speeches_text_batch.return_value = SAMPLE_SPEECHES
     svc.get_speaker_names.return_value = {"i-1": "Alice", "i-2": "Bob"}
+    svc.get_document_names.return_value = {"i-1": "Prot-1", "i-2": "Prot-2"}
+
     return svc
 
 
@@ -210,6 +213,39 @@ def test_downloads_status_does_not_trigger_archive_regeneration(downloads_client
 
 
 # ---------------------------------------------------------------------------
+# Tests: POST /v1/downloads/{archive_ticket_id}/copy-link
+# ---------------------------------------------------------------------------
+
+
+def test_downloads_copy_link_extends_archive_and_source_ticket(downloads_client):
+    client, store, _ = downloads_client
+    source = make_ready_source_ticket(store)
+    archive_ticket = store.create_ticket(
+        source_ticket_id=source.ticket_id,
+        archive_format="jsonl_gz",
+    )
+
+    r = client.post(f"/v1/downloads/{archive_ticket.ticket_id}/copy-link")
+
+    assert r.status_code == 200
+    minimum_expiry = datetime.now(UTC) + timedelta(hours=23, minutes=59)
+    assert datetime.fromisoformat(r.json()["expires_at"]) >= minimum_expiry
+    archive = store.require_ticket(archive_ticket.ticket_id)
+    retained_source = store.require_ticket(source.ticket_id)
+    assert archive.expires_at >= minimum_expiry
+    assert archive.retention_until is not None
+    assert retained_source.expires_at >= minimum_expiry
+
+
+def test_downloads_copy_link_returns_404_for_missing_ticket(downloads_client):
+    client, *_ = downloads_client
+
+    r = client.post("/v1/downloads/nonexistent-ticket-id/copy-link")
+
+    assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
 # Tests: GET /v1/downloads/{archive_ticket_id}/download — file endpoint
 # ---------------------------------------------------------------------------
 
@@ -224,7 +260,10 @@ def test_downloads_download_returns_artifact_for_ready_ticket(downloads_client):
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/gzip")
     records = [json.loads(line) for line in gzip.decompress(r.content).splitlines()]
-    assert len(records) == len(SAMPLE_SPEECH_IDS)
+    
+    # Filter to speech records only (skip metadata record if present)
+    speech_records = [r for r in records if r.get("record_type") == "speech"]
+    assert len(speech_records) == len(SAMPLE_SPEECH_IDS)
 
 
 def test_downloads_download_returns_404_for_missing_ticket(downloads_client):
