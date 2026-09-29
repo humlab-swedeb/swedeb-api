@@ -150,6 +150,7 @@ def _build_ticket_app(*, result_store: ResultStore, search_service, word_trends_
             speeches_ticket_service=SpeechesTicketService(),
             word_trend_speeches_ticket_service=WordTrendSpeechesTicketService(),
             download_service=DownloadService(),
+            metadata_service=MagicMock(),
         )
         try:
             yield
@@ -298,7 +299,7 @@ def test_word_trend_speeches_download_by_ticket_works_across_api_instances(tmp_p
         assert download_response.status_code == 200, download_response.text
 
         names, archive_entries = _read_zip_entries(download_response)
-        assert names == ["manifest.json", f"word_trend_speeches_{ticket_id}.json"]
+        assert names == ["manifest.json", "metadata.txt", f"word_trend_speeches_{ticket_id}.json"]
 
         manifest = json.loads(archive_entries["manifest.json"].decode("utf-8"))
         assert manifest["ticket_id"] == ticket_id
@@ -338,7 +339,7 @@ def test_word_trend_speeches_download_csv_works_across_api_instances(tmp_path):
         assert download_response.status_code == 200, download_response.text
 
         names, archive_entries = _read_zip_entries(download_response)
-        assert names == ["manifest.json", f"word_trend_speeches_{ticket_id}.csv"]
+        assert names == ["manifest.json", "metadata.txt", f"word_trend_speeches_{ticket_id}.csv"]
 
         csv_payload = archive_entries[f"word_trend_speeches_{ticket_id}.csv"].decode("utf-8")
         assert "speech_id" in csv_payload.splitlines()[0]

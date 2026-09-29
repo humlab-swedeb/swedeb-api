@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from api_swedeb.api.services.download_metadata import build_metadata_text_from_query_meta
+from api_swedeb.api.services.metadata_service import MetadataService
 from api_swedeb.api.services.result_store import (
     ResultStore,
     ResultStoreCapacityError,
@@ -167,11 +169,15 @@ class ArchiveTicketService:
             dest_path: Path = result_store.archive_artifact_path(archive_ticket_id, archive_format_str)
             manifest_meta: dict = archive_ticket.manifest_meta or self._build_manifest(archive_ticket, source_ticket)
 
+            # Generate human-readable metadata from source query
+            metadata_text: str | None = self._build_metadata_text(source_ticket, search_service)
+
             TicketedDownloadService.for_format(archive_format).write(
                 speech_ids=speech_ids,
                 search_service=search_service,
                 dest_path=dest_path,
                 manifest_meta=manifest_meta,
+                metadata_text=metadata_text,
             )
 
             result_store.store_archive_ready(
@@ -278,3 +284,12 @@ class ArchiveTicketService:
             "corpus_version": os.environ.get("CORPUS_VERSION", "unknown"),
             "source_query": source_ticket.query_meta,
         }
+
+    def _build_metadata_text(self, source_ticket: TicketMeta, search_service: SearchService) -> str | None:
+        """Build human-readable metadata text from source ticket query_meta.
+
+        Returns None if query_meta is empty or metadata cannot be generated.
+        """
+        metadata_service = MetadataService(search_service.loader)
+        return build_metadata_text_from_query_meta(source_ticket.query_meta, metadata_service)
+

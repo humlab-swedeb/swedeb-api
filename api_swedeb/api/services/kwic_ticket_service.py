@@ -160,6 +160,9 @@ class KWICTicketService:
             logger.info(f"KWIC query completed for ticket {ticket_id}, found {len(data)} rows")
             logger.debug(f"Converting to API frame for ticket {ticket_id}")
 
+            if request.merge_speeches:
+                data = data.drop_duplicates(subset = ['speech_id'])
+
             if is_multiprocess[0]:
                 # Shards have been written; merge from disk and transition to READY
                 api_frame: pd.DataFrame = kwic_to_api_frame(data).reset_index(drop=True)

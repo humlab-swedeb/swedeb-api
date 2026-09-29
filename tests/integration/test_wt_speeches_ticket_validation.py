@@ -343,7 +343,7 @@ def test_download_csv_is_parseable(wt_ticket_client: TestClient, wt_ticket_sampl
     )
     assert response.status_code == 200
     names, entries = _read_zip_entries(response)
-    assert names == ["manifest.json", f"word_trend_speeches_{ticket_id}.csv"]
+    assert names == ["manifest.json", "metadata.txt", f"word_trend_speeches_{ticket_id}.csv"]
 
     reader = csv.DictReader(io.StringIO(entries[f"word_trend_speeches_{ticket_id}.csv"].decode("utf-8")))
     rows = list(reader)
@@ -370,7 +370,7 @@ def test_download_json_is_parseable(wt_ticket_client: TestClient, wt_ticket_samp
     )
     assert response.status_code == 200
     names, entries = _read_zip_entries(response)
-    assert names == ["manifest.json", f"word_trend_speeches_{ticket_id}.json"]
+    assert names == ["manifest.json", "metadata.txt", f"word_trend_speeches_{ticket_id}.json"]
 
     rows = json.loads(entries[f"word_trend_speeches_{ticket_id}.json"].decode("utf-8"))
     total_hits = wt_ticket_sample["first_page"]["total_hits"]

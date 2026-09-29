@@ -12,6 +12,7 @@ import gzip
 import json
 from pathlib import Path
 from typing import Generator
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -22,6 +23,7 @@ from api_swedeb.api.dependencies import (
     get_archive_ticket_service,
     get_kwic_archive_service,
     get_result_store,
+    get_search_service,
 )
 from api_swedeb.api.services.archive_ticket_service import ArchiveTicketService
 from api_swedeb.api.services.kwic_archive_service import KWICArchiveService
@@ -120,6 +122,7 @@ def _kwic_archive_client(tmp_path: Path) -> Generator[tuple[TestClient, ResultSt
     app.dependency_overrides[get_result_store] = lambda: store
     app.dependency_overrides[get_kwic_archive_service] = KWICArchiveService
     app.dependency_overrides[get_archive_ticket_service] = ArchiveTicketService
+    app.dependency_overrides[get_search_service] = lambda: MagicMock(loader=MagicMock())
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -291,6 +294,121 @@ def test_execute_archive_task_marks_error_when_source_missing(tmp_path):
 
     ticket = store.require_ticket(archive_ticket.ticket_id)
     assert ticket.status == TicketStatus.ERROR
+
+    asyncio.run(store.shutdown())
+
+
+# ---------------------------------------------------------------------------
+# Tests: execute_archive_task metadata generation (unit-level)
+# ---------------------------------------------------------------------------
+
+
+def _make_search_service() -> MagicMock:
+    return MagicMock(loader=MagicMock())
+
+
+def test_execute_archive_task_jsonl_gz_includes_metadata_record(tmp_path):
+    store = make_result_store(tmp_path)
+    asyncio.run(store.startup())
+
+    source = make_ready_kwic_ticket(store)
+    archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="jsonl_gz")
+
+    svc = KWICArchiveService()
+    svc.execute_archive_task(
+        archive_ticket_id=archive_ticket.ticket_id,
+        result_store=store,
+        search_service=_make_search_service(),
+    )
+
+    ready = store.require_ticket(archive_ticket.ticket_id)
+    assert ready.artifact_path is not None
+    records = [json.loads(line) for line in gzip.decompress(ready.artifact_path.read_bytes()).splitlines()]
+
+    assert records[0]["record_type"] == "metadata"
+    assert "Valda talare:" in records[0]["content"]
+    assert "Årsintervall:" in records[0]["content"]
+    assert len(records) == len(SAMPLE_KWIC_ROWS) + 1
+
+    asyncio.run(store.shutdown())
+
+
+def test_execute_archive_task_csv_gz_includes_metadata_comments(tmp_path):
+    store = make_result_store(tmp_path)
+    asyncio.run(store.startup())
+
+    source = make_ready_kwic_ticket(store)
+    archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="csv_gz")
+
+    svc = KWICArchiveService()
+    svc.execute_archive_task(
+        archive_ticket_id=archive_ticket.ticket_id,
+        result_store=store,
+        search_service=_make_search_service(),
+    )
+
+    ready = store.require_ticket(archive_ticket.ticket_id)
+    assert ready.artifact_path is not None
+    content = gzip.decompress(ready.artifact_path.read_bytes()).decode("utf-8")
+    lines = content.splitlines()
+
+    metadata_lines = [line for line in lines if line.startswith("## ")]
+    assert any("Valda talare:" in line for line in metadata_lines)
+    assert lines[len(metadata_lines)].startswith("left_word")
+
+    asyncio.run(store.shutdown())
+
+
+def test_execute_archive_task_zip_includes_metadata_file(tmp_path):
+    store = make_result_store(tmp_path)
+    asyncio.run(store.startup())
+
+    source = make_ready_kwic_ticket(store)
+    archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="zip")
+
+    svc = KWICArchiveService()
+    svc.execute_archive_task(
+        archive_ticket_id=archive_ticket.ticket_id,
+        result_store=store,
+        search_service=_make_search_service(),
+    )
+
+    ready = store.require_ticket(archive_ticket.ticket_id)
+
+    import zipfile  # pylint: disable=import-outside-toplevel
+
+    with zipfile.ZipFile(str(ready.artifact_path), "r") as zf:
+        names = zf.namelist()
+        assert "metadata.txt" in names
+        assert "Valda talare:" in zf.read("metadata.txt").decode("utf-8")
+
+    asyncio.run(store.shutdown())
+
+
+def test_execute_archive_task_xlsx_includes_metadata_sheet(tmp_path):
+    store = make_result_store(tmp_path)
+    asyncio.run(store.startup())
+
+    source = make_ready_kwic_ticket(store)
+    archive_ticket = store.create_ticket(source_ticket_id=source.ticket_id, archive_format="xlsx")
+
+    svc = KWICArchiveService()
+    svc.execute_archive_task(
+        archive_ticket_id=archive_ticket.ticket_id,
+        result_store=store,
+        search_service=_make_search_service(),
+    )
+
+    ready = store.require_ticket(archive_ticket.ticket_id)
+
+    import openpyxl  # pylint: disable=import-outside-toplevel
+
+    wb = openpyxl.load_workbook(str(ready.artifact_path))
+    assert "Data" in wb.sheetnames
+    assert "Metadata" in wb.sheetnames
+    metadata_ws = wb["Metadata"]
+    metadata_text = "\n".join(str(row[0]) for row in metadata_ws.iter_rows(values_only=True))
+    assert "Valda talare:" in metadata_text
 
     asyncio.run(store.shutdown())
 

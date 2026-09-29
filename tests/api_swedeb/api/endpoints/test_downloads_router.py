@@ -58,6 +58,8 @@ def make_mock_search_service() -> MagicMock:
     svc = MagicMock()
     svc.get_speeches_text_batch.return_value = SAMPLE_SPEECHES
     svc.get_speaker_names.return_value = {"i-1": "Alice", "i-2": "Bob"}
+    svc.get_document_names.return_value = {"i-1": "Prot-1", "i-2": "Prot-2"}
+
     return svc
 
 
@@ -258,7 +260,10 @@ def test_downloads_download_returns_artifact_for_ready_ticket(downloads_client):
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/gzip")
     records = [json.loads(line) for line in gzip.decompress(r.content).splitlines()]
-    assert len(records) == len(SAMPLE_SPEECH_IDS)
+    
+    # Filter to speech records only (skip metadata record if present)
+    speech_records = [r for r in records if r.get("record_type") == "speech"]
+    assert len(speech_records) == len(SAMPLE_SPEECH_IDS)
 
 
 def test_downloads_download_returns_404_for_missing_ticket(downloads_client):

@@ -13,6 +13,7 @@ from api_swedeb.api.dependencies import (
     get_kwic_service,
     get_kwic_ticket_service,
     get_result_store,
+    get_search_service,
     get_word_trends_service,
 )
 from api_swedeb.api.services.download_service import DownloadService
@@ -25,6 +26,7 @@ from api_swedeb.api.services.result_store import (
     ResultStorePendingLimitError,
     TicketStatus,
 )
+from api_swedeb.api.services.search_service import SearchService
 from api_swedeb.api.services.word_trends_service import WordTrendsService
 from api_swedeb.api.v1.endpoints._router_common import (
     CommonParams,
@@ -226,6 +228,7 @@ async def prepare_kwic_bulk_archive(
     archive_format: BulkArchiveFormat = Query(default=BulkArchiveFormat.jsonl_gz),
     kwic_archive_service: KWICArchiveService = Depends(get_kwic_archive_service),
     result_store: ResultStore = Depends(get_result_store),
+    search_service: SearchService = Depends(get_search_service),
 ) -> ArchivePrepareResponse:
     """Start async archive generation for a ready KWIC ticket.
 
@@ -250,6 +253,7 @@ async def prepare_kwic_bulk_archive(
         kwic_archive_service.execute_archive_task,
         archive_ticket_id=response.archive_ticket_id,
         result_store=result_store,
+        search_service=search_service,
     )
 
     return response
