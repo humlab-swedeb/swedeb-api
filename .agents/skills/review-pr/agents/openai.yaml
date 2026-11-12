@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review GitHub PR"
+  short_description: "Review PR changes and publish approved inline feedback"
+  default_prompt: "Review a GitHub pull request, preview findings, and publish only with explicit approval."
