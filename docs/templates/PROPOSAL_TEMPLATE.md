@@ -4,6 +4,8 @@ Use this template for new design proposals unless there is a strong reason to us
 
 Keep it lean. Use the smallest set of sections that makes the decision clear.
 
+After creating a proposal, add or update its row in the [proposal index](../proposals/README.md) with its title, status, and a one-line decision summary. The index lists decision documents only; do not add phase plans, task plans, handoffs, completion notes, validation reports, or execution reports.
+
 ## Title
 
 One-line title that describes the actual decision or change.
