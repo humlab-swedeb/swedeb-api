@@ -2,7 +2,7 @@
 
 **Status**: Complete — all phases (0–4) implemented; pending end-to-end testing with live Celery worker  
 **Primary area**: `api_swedeb/api/v1/endpoints/tool_router.py`, `WordTrendsService`, speeches retrieval  
-**Related**: `docs/change_requests/PAGED_KWIC_RESULTS_DESIGN.md` (same ticket-based paging pattern)  
+**Related**: `docs/proposals/done/PAGED_KWIC_RESULTS_DESIGN.md` (same ticket-based paging pattern)
 **Affects**: API, frontend (`wordTrendsSpeechTable.vue` (new), `wordTrendsDataStore.js`, `WordTrendsPage.vue`)
 
 ---

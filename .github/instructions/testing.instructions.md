@@ -1,6 +1,7 @@
 ---
 description: "Use for TESTING.md and other testing-focused documentation in swedeb-api, including test strategy, test levels, validation scope, quality expectations, and repository-specific testing guidance."
 name: "Testing Docs"
+applyTo: "docs/TESTING.md"
 ---
 # Testing Docs
 
@@ -10,6 +11,7 @@ name: "Testing Docs"
 - Keep `docs/TESTING.md` focused on how the codebase is validated, what kinds of tests exist, what each test level is responsible for, and how contributors should run and interpret tests.
 - Write for developers and maintainers who need to understand or apply the repository's testing approach.
 - Treat the current test suite, test configuration, CI workflows, and repository tooling as the primary source of truth.
+- Preserve an existing document's structure unless the user requests reorganization.
 
 ## What belongs in `docs/TESTING.md`
 

@@ -12,3 +12,5 @@ name: "GitHub Workflow"
 - Include `Closes #<issue>` or `Fixes #<issue>` when the commit should close the related issue.
 - For issue creation, keep the body concise with three sections: `Problem`, `Solution`, and `Files`.
 - If `gh issue create` is needed, prefer `--body-file - <<'EOF'` to avoid shell substitution problems.
+- Use the repository's feature-branch-to-`dev` flow. Promotions proceed sequentially from `dev` to `test`, `staging`, and `main`; do not treat a promotion as an ordinary feature PR.
+- Follow applicable repository templates and workflows when present. Do not assume scripts or templates copied from another project exist here.

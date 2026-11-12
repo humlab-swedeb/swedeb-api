@@ -4,15 +4,15 @@
 
 Current execution progress:
 
-- Proposal approved as the implementation baseline: `docs/change_requests/PAGED_KWIC_RESULTS_DESIGN.md`
-- Follow-up n-gram proposal split out: `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`
+- Proposal approved as the implementation baseline: `docs/proposals/done/PAGED_KWIC_RESULTS_DESIGN.md`
+- Follow-up n-gram proposal split out: `docs/proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md`
 - Phase 0 finalized in the design: request/response contracts, manifest metadata, sort rules, and module targets are now frozen
 - Phase 1 foundation implemented: shared `create_app()`, lifespan-managed `ResultStore`, dependency wiring, and cache config keys
 - Phase 2 store foundation implemented: ticket metadata, Feather artifacts, expiry cleanup, sweeper loop, and eviction rules
 - Phase 3 API implemented: ticket schemas, submit/status/results endpoints, shared filter normalization, and ticket paging behavior
 - Phase 4 download integration implemented: ticket-based speech download, direct artifact-backed archive generation, and `ticket_id` conflict handling
 - Phase 5 frontend migration implemented: ticket submit/poll/page flow, server-side KWIC pagination, ticket-based speech download, and synchronous CSV/XLSX export preservation
-- Phase 6 local validation completed: parity, download validation, reliability checks, and local latency baselines are recorded in `docs/change_requests/PAGED_KWIC_RESULTS_VALIDATION.md`
+- Phase 6 local validation completed: parity, download validation, reliability checks, and local latency baselines are recorded in `docs/proposals/done/PAGED_KWIC_RESULTS_VALIDATION.md`
 - Backend implementation: **COMPLETED**
 - Frontend implementation: **COMPLETED**
 - Validation and benchmarks: **COMPLETED (LOCAL)**
@@ -29,7 +29,7 @@ Status by phase:
 
 ## Scope
 
-This plan implements `docs/change_requests/PAGED_KWIC_RESULTS_DESIGN.md`.
+This plan implements `docs/proposals/done/PAGED_KWIC_RESULTS_DESIGN.md`.
 
 Target outcomes:
 
@@ -44,7 +44,7 @@ Target outcomes:
 
 This plan does not implement:
 
-1. n-gram paging; see `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`
+1. n-gram paging; see `docs/proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md`
 2. within-ticket re-filtering of KWIC results
 3. ticket-based CSV/XLSX export for the frontend
 4. multi-worker shared-cache support

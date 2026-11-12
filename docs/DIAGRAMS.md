@@ -2,13 +2,13 @@
 
 This document collects architecture and design diagrams for the Swedeb API: sequence diagrams, state diagrams, component diagrams, and other visual documentation of system behavior and structure.
 
-Diagrams here describe the **current or proposed active runtime**. Historical diagrams belong in `docs/archive/`. Proposal-specific diagrams may live in `docs/change_requests/` alongside the relevant proposal and be promoted here once implemented.
+Diagrams here describe the **current or proposed active runtime**. Historical diagrams belong in `docs/archive/`. Proposal-specific diagrams may live in `docs/proposals/` alongside the relevant proposal and be promoted here once implemented.
 
 ---
 
 ## KWIC Async Archive Export
 
-**Status**: Implemented. See [docs/change_requests/done/KWIC_ASYNC_ARCHIVE_EXPORT.md](change_requests/done/KWIC_ASYNC_ARCHIVE_EXPORT.md) for the full proposal.
+**Status**: Implemented. See [docs/proposals/done/KWIC_ASYNC_ARCHIVE_EXPORT.md](proposals/done/KWIC_ASYNC_ARCHIVE_EXPORT.md) for the full proposal.
 
 ### Sequence: Async archive preparation and retrieval
 
@@ -76,7 +76,7 @@ sequenceDiagram
 
 ## Ticket-Based Bulk Archive Generation (Speeches / Word-Trend Speeches)
 
-**Status**: Implemented. See [docs/change_requests/done/TICKET_BASED_BULK_ARCHIVE_GENERATION.md](change_requests/done/TICKET_BASED_BULK_ARCHIVE_GENERATION.md) for the full proposal.
+**Status**: Implemented. See [docs/proposals/done/TICKET_BASED_BULK_ARCHIVE_GENERATION.md](proposals/done/TICKET_BASED_BULK_ARCHIVE_GENERATION.md) for the full proposal.
 
 This flow applies to both:
 - `POST /v1/tools/speeches/archive/{ticket_id}`
@@ -154,7 +154,7 @@ sequenceDiagram
 
 ## Download Retrieval Page — Four States
 
-**Status**: Implemented. See [docs/change_requests/done/TICKET_DOWNLOAD_URL_RETRIEVAL_PAGE.md](change_requests/done/TICKET_DOWNLOAD_URL_RETRIEVAL_PAGE.md) for the full proposal.
+**Status**: Implemented. See [docs/proposals/done/TICKET_DOWNLOAD_URL_RETRIEVAL_PAGE.md](proposals/done/TICKET_DOWNLOAD_URL_RETRIEVAL_PAGE.md) for the full proposal.
 
 The Vue frontend route `/download/:archiveTicketId` (`DownloadRetrievalPage.vue`) renders one of four states based on the ticket status returned by `GET /v1/downloads/{archive_ticket_id}`. The inline polling flow (user stays on the tool page) is the primary path; the retrieval page is the fallback for tab-close, network loss, or sharing.
 
@@ -220,7 +220,7 @@ stateDiagram-v2
 
 ## Progressive KWIC Loading
 
-**Status**: Implemented (all three phases). See [docs/change_requests/done/PROGRESSIVE-KWIC-LOADING.md](change_requests/done/PROGRESSIVE-KWIC-LOADING.md) for the full proposal.
+**Status**: Implemented (all three phases). See [docs/proposals/done/PROGRESSIVE-KWIC-LOADING.md](proposals/done/PROGRESSIVE-KWIC-LOADING.md) for the full proposal.
 
 Three layered capabilities shipped together:
 - **Phase 1** — Pre-search estimate via `GET /v1/tools/kwic/estimate` (DTM column sum, < 20 ms)
@@ -647,7 +647,7 @@ sequenceDiagram
 
 ## N-grams Flow
 
-**Status**: Active runtime. Three-phase delivery: pre-search estimate (Phase 1), single-process ticketed path (Phase 2), and progressive multiprocess running aggregate (Phase 3). See [docs/change_requests/done/PAGED_NGRAM_RESULTS_DESIGN.md](change_requests/done/PAGED_NGRAM_RESULTS_DESIGN.md) for the full proposal.
+**Status**: Active runtime. Three-phase delivery: pre-search estimate (Phase 1), single-process ticketed path (Phase 2), and progressive multiprocess running aggregate (Phase 3). See [docs/proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md](proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md) for the full proposal.
 
 The synchronous `GET /v1/tools/ngrams/{search}` endpoint has been moved to `deprecated_endpoints.py`; the ticketed path is the primary flow. The pre-search estimate reuses `WordTrendsService.estimate_hits()` (DTM column sum), consistent with the KWIC estimate endpoint. The ticket query itself uses the CWB/CQP path.
 

@@ -1,6 +1,7 @@
 ---
 description: "Use for DEVELOPMENT.md and other developer-facing documentation in swedeb-api, including local setup, contributor workflow, development practices, code quality checks, and day-to-day implementation guidance."
 name: "Development Docs"
+applyTo: "docs/DEVELOPMENT.md"
 ---
 # Development Docs
 
@@ -10,6 +11,7 @@ name: "Development Docs"
 - Keep `docs/DEVELOPMENT.md` focused on how contributors set up, understand, modify, validate, and extend the codebase during day-to-day development.
 - Write for developers working on the repository, not for operators of deployed environments.
 - Treat the current repository structure, configuration, scripts, tool definitions, and documented development conventions as the primary source of truth.
+- Preserve an existing document's structure unless the user requests reorganization.
 
 ## What belongs in `docs/DEVELOPMENT.md`
 
@@ -61,6 +63,7 @@ Those topics belong in operations documentation, design/architecture documentati
 - Every section should answer a real developer question related to setup, editing, validating, debugging, or contributing.
 - If a section does not support developer action, shorten it or remove it.
 - When a process is intentionally not defined yet, keep the section present and mark it clearly as `TBD` instead of inventing process.
+- Use repository-specific commands and paths verified in the current files; distinguish local workflow from CI behavior.
 
 ## Concision and size expectations
 

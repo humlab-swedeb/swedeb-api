@@ -270,7 +270,7 @@ Status note:
 
 - The findings and risk statements above describe the baseline assessment that motivated this work.
 - This implementation plan now covers Phase 1 and Phase 2 only.
-- Phase 3 multi-container work is tracked separately in `docs/change_requests/MULTIUSER_PHASE3_MULTI_CONTAINER_SCALING.md`.
+- Phase 3 multi-container work is tracked separately in `docs/proposals/future/MULTIUSER_PHASE3_MULTI_CONTAINER_SCALING.md`.
 - The checklists below track implementation progress after that assessment.
 - Items marked complete reflect code and focused validation already added in the repository.
 - Items marked remaining are still needed before the phase should be treated as complete.
@@ -364,8 +364,8 @@ Remaining:
 
 Deferred follow-up:
 
-- Phase 3 multi-container deployment work has been split into `docs/change_requests/MULTIUSER_PHASE3_MULTI_CONTAINER_SCALING.md`.
-- Future reconsideration of a dedicated speeches Celery queue has been split into `docs/change_requests/SPEECHES_DEDICATED_QUEUE_FOLLOWUP.md`.
+- Phase 3 multi-container deployment work has been split into `docs/proposals/future/MULTIUSER_PHASE3_MULTI_CONTAINER_SCALING.md`.
+- Future reconsideration of a dedicated speeches Celery queue has been split into `docs/proposals/future/SPEECHES_DEDICATED_QUEUE_FOLLOWUP.md`.
 
 ### Staged load-test baseline
 
@@ -731,4 +731,4 @@ Treat the concurrency work as complete only when all of the following are true:
 - integration tests cover restart and multi-process API scenarios
 - validation confirms the Phase 1 and Phase 2 deployment shapes are deployable without Phase 3 work
 
-Horizontal scaling across multiple API containers or replicas is intentionally excluded from this definition of done. The dedicated follow-up scope lives in `docs/change_requests/MULTIUSER_PHASE3_MULTI_CONTAINER_SCALING.md`.
+Horizontal scaling across multiple API containers or replicas is intentionally excluded from this definition of done. The dedicated follow-up scope lives in `docs/proposals/future/MULTIUSER_PHASE3_MULTI_CONTAINER_SCALING.md`.

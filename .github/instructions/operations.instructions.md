@@ -1,6 +1,7 @@
 ---
 description: "Use for OPERATIONS.md, deployment/runbook docs, environments, runtime configuration, CI/CD, observability, rollback, and incident-readiness documentation in swedeb-api."
 name: "Operations Docs"
+applyTo: "docs/OPERATIONS.md"
 ---
 # Operations Docs
 
@@ -10,6 +11,7 @@ name: "Operations Docs"
 - Keep `docs/OPERATIONS.md` focused on how the running system is built, configured, promoted, deployed, verified, monitored, rolled back, and recovered.
 - Write for operators and maintainers of deployed environments, not for day-to-day feature development.
 - Treat current workflow files, scripts, container definitions, and runtime configuration as the primary source of truth.
+- Preserve an existing document's structure unless the user requests reorganization.
 
 ## What belongs in `docs/OPERATIONS.md`
 

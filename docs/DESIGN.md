@@ -66,7 +66,7 @@ It does not cover:
 - detailed unit-test catalogs or CI workflow commentary
 - archived designs unless they still explain an active constraint
 
-Treat `docs/archive/` and `docs/change_requests/` as supporting context, not as the source of truth for the active runtime design.
+Treat `docs/archive/` and `docs/proposals/` as supporting context, not as the source of truth for the active runtime design.
 
 ## System Context and Boundaries
 

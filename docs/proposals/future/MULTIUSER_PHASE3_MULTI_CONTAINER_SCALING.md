@@ -41,7 +41,7 @@ This change request does not cover:
 - worker-churn and shared-counter work already completed in Phases 1 and 2
 - blocking deployment of the Phase 1 and Phase 2 rollout on multi-container validation
 - redesigning the existing Phase 1 and Phase 2 architecture unless multi-container validation proves it necessary
-- reconsidering whether speeches should move to their own Celery queue; that future tuning question is tracked separately in `docs/change_requests/SPEECHES_DEDICATED_QUEUE_FOLLOWUP.md`
+- reconsidering whether speeches should move to their own Celery queue; that future tuning question is tracked separately in `docs/proposals/future/SPEECHES_DEDICATED_QUEUE_FOLLOWUP.md`
 
 ## Current Behavior
 

@@ -1,4 +1,8 @@
-## Mermaid diagram style guidance
+---
+description: "Use when creating or editing Mermaid diagrams for the active Swedeb API runtime."
+applyTo: "**/*.md"
+---
+# Mermaid Diagram Style
 
 When creating or editing Mermaid diagrams, prefer diagrams that are clean, polished, and easy to scan.
 
