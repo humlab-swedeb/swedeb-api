@@ -1,13 +1,10 @@
 ---
-description: "Use when writing or updating Swedeb API design proposals under docs/proposals."
-name: "Proposal Writing Guide"
+description: "Use when writing or updating design proposals. Covers style, naming, and Copilot workflow for proposals; structure lives in proposal-document-structure.instructions.md."
 applyTo: "docs/proposals/**/*.md"
 ---
 # Proposal Writing Guide
 
-Use this instruction when writing or updating design proposals for this repository.
-
-Follow [Change-request document structure](./proposal-document-structure.instructions.md) and the [proposal template](../../docs/templates/PROPOSAL_TEMPLATE.md). Keep new proposals under `docs/proposals/`.
+Use this guide when writing or updating design proposals for this repository.
 
 ## Style
 
@@ -39,11 +36,10 @@ Follow [Change-request document structure](./proposal-document-structure.instruc
 - Recommend a concrete path forward.
 - Call out tradeoffs, risks, and open questions.
 - Make implementation and validation expectations clear enough for follow-up work.
-- Give observable acceptance criteria stable IDs such as `P-AC-1`.
+- Give solution-level acceptance criteria stable IDs such as `P-AC-1`.
 
 ## What A Proposal Should Not Become
 
-- Do not turn a proposal into a full implementation spec unless that level of detail is needed.
 - Do not pad the document with background that does not affect the decision.
 - Do not mix multiple unrelated decisions into one proposal.
 - Do not hide the recommendation behind neutral brainstorming.
@@ -52,27 +48,9 @@ Follow [Change-request document structure](./proposal-document-structure.instruc
 
 ## Structure
 
-Use `docs/templates/PROPOSAL_TEMPLATE.md` by default.
+Follow the required proposal shape in [proposal-document-structure.instructions.md](./proposal-document-structure.instructions.md) and the template at [docs/templates/PROPOSAL_TEMPLATE.md](../../docs/templates/PROPOSAL_TEMPLATE.md).
 
-Not every section must be used. The default expectation is that proposals are organized around a small core:
-
-- Summary
-- Problem
-- Scope
-- Proposed design
-- Tradeoffs and risks
-- Validation and acceptance criteria
-- Final recommendation
-
-Add optional sections only when they earn their place, for example:
-
-- Current behavior
-- Alternatives considered
-- Open questions
-- Delivery order
-- Implementation handoff
-
-The default shape should feel lean, not exhaustive.
+Keep the shape lean: use only the sections that earn their place and stop once the decision is clear. For work that will use a phase plan, add a compact `Planning Handoff` after Acceptance Criteria. State confirmed decisions, constraints and behavior to preserve, expected validation outcomes, and open questions with the phase by which each must be resolved. For major efforts, link to a separate phase plan instead of embedding a full execution document.
 
 ## Naming
 
@@ -82,10 +60,11 @@ The default shape should feel lean, not exhaustive.
 
 ## Working With Copilot
 
-- If you want strict adherence, explicitly reference this instruction and the proposal template when asking for a new proposal.
+- If you want strict adherence, explicitly reference this guide and the proposal template when asking for a new proposal.
 - If proposal-writing rules are also captured in repo instructions, you do not need to repeat them every time.
-- Inspect only enough repository context to support a decision. Label unverified claims as assumptions or open questions; do not turn proposal work into a task-level implementation inventory.
-- When a phase plan will follow, include a concise Planning Handoff with fixed decisions, constraints, behavior to preserve, expected validation outcomes, and questions that may block a phase.
+- **Keep proposal work focused.** Inspect the repository only far enough to support a decision about current behavior, feasibility, interfaces, constraints, or migration risk. Do not perform the task-level inventory required for a phase task plan.
+- **Label unverified claims.** When repository inspection is not warranted or cannot establish a claim, record it as an assumption or open question instead of presenting it as current behavior.
+- **Draft in a single pass.** Do not iterate section by section across multiple turns. Ask the user one clarifying question if needed, then produce the full draft.
 
 ## Practical Rule Of Thumb
 
