@@ -64,7 +64,16 @@ Describe how the proposal should be validated.
 
 ## Acceptance Criteria
 
-List the conditions that must be true for the proposal to be considered complete.
+List observable solution outcomes using stable IDs such as `P-AC-1`. Keep these IDs as source references in phase plans and phase task plans.
+
+## Planning Handoff
+
+Include when the proposal will use a phase plan. Keep this section decision-focused:
+
+- confirmed decisions and rejected alternatives that constrain implementation
+- behavior, contracts, data, security, or compatibility rules to preserve
+- expected validation outcomes
+- open questions and the phase by which each must be resolved
 
 ## Recommended Delivery Order
 
