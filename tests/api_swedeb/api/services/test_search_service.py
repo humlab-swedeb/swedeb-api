@@ -37,6 +37,8 @@ def mock_loader() -> MagicMock:
             "chamber_abbrev": ["ak", "fk", "ak"],
         }
     )
+    loader.chamber_person_ids = {"ak": {"p1", "p3"}, "fk": {"p2"}}
+    loader.party_person_ids = {1: {"p1", "p3"}, 2: {"p2"}}
 
     loader.document_index = pd.DataFrame({"speech_id": ["i-1", "i-2"]})
     loader.prebuilt_speech_index = pd.DataFrame(
@@ -163,6 +165,7 @@ def test_get_filtered_speakers_handles_mixed_case_chamber_values(service: Search
             "chamber_abbrev": ["Ak", "FK", "aK"],
         }
     )
+    mock_loader.chamber_person_ids = {"ak": {"p1", "p3"}, "fk": {"p2"}}
     speakers = pd.DataFrame(
         {"name": ["Alice", "Bob", "Charlie"]},
         index=pd.Index(["p1", "p2", "p3"], name="person_id"),
@@ -197,6 +200,8 @@ def test_get_filtered_speakers_normalizes_index_value_type(service: SearchServic
             "chamber_abbrev": ["AK", "FK", "AK"],
         }
     )
+    mock_loader.party_person_ids = {1: {"1", "3"}, 2: {"2"}}
+    mock_loader.chamber_person_ids = {"ak": {"1", "3"}, "fk": {"2"}}
     speakers = pd.DataFrame(
         {"name": ["Alice", "Bob", "Charlie"]},
         index=pd.Index([1, 2, 3], name="person_id"),
