@@ -20,7 +20,7 @@ Create only the document type requested. Separate documents when a request needs
 
 ## Location and naming
 
-- New proposals belong under `docs/proposals/`. Existing `candidates/` and `done/` folders represent current proposal states; use them only when appropriate to the request.
+- New proposals belong under `docs/proposals/`. Existing `future/` and `done/` folders represent current proposal states; use them only when appropriate to the request.
 - Keep related phase and task plans near their source proposal. Existing flat-file conventions may be preserved; use a topic folder when it materially improves navigation for multiple related documents.
 - Prefer descriptive names consistent with nearby files. Recommended suffixes are `<TOPIC>_PHASE_PLAN.md` and `<TOPIC>_PHASE_<N>_TASK_PLAN.md`.
 - An explicit user or conversation target takes precedence. Do not rename or relocate an existing document as an incidental cleanup.

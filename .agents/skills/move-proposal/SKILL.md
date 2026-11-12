@@ -12,7 +12,7 @@ Move one proposal file or topic folder under `docs/proposals/`, preserve its con
 | User request | Destination |
 |---|---|
 | `done` | `docs/proposals/done/` |
-| `candidate`, `future`, or `onhold` | `docs/proposals/candidates/` |
+| `candidate`, `future`, or `onhold` | `docs/proposals/future/` |
 | `subfolder` | `docs/proposals/<TOPIC>/<TOPIC>.md` for a standalone file |
 
 An explicit source or destination path takes precedence. Preserve the source shape when moving a folder. If both a topic file and folder exist, use the folder only when it is clearly the requested source; otherwise ask.
