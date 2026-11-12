@@ -53,7 +53,8 @@ Use the repository instructions and template for project-specific rules if they 
 4. Draft the complete proposal using the required structure, omitting optional sections that do not help the decision.
 5. Check that claims are labeled as verified facts, assumptions, or open questions; acceptance criteria are checkable; and planned behavior is not described as current behavior.
 6. Include a Planning Handoff when later work will require a phase plan.
-7. Keep the proposal in `docs/proposals/`. Do not create an index; update an existing index only if one is present and the requested change requires it.
+7. Keep the proposal in `docs/proposals/`.
+8. Add or update its row in `docs/proposals/README.md` with its title, status, and one-line decision summary. Do not add phase plans, task plans, handoffs, completion notes, validation reports, or execution reports to the index.
 
 ## Limits
 
@@ -62,8 +63,8 @@ Use the repository instructions and template for project-specific rules if they 
 - Do not perform a file-by-file implementation inventory.
 - Do not invent repository facts, paths, commands, APIs, tests, owners, or dates.
 - Use `TBD` only when a required field cannot be meaningfully completed.
-- Repository inspection outside the target document must be read-only.
-- Modify only the target document unless the user explicitly requests related documentation changes.
+- Repository inspection outside the target proposal must be read-only, except for updating the required proposal index row.
+- Modify only the target proposal and the required index row unless the user explicitly requests other related documentation changes.
 - If the target already exists, update it only when the user clearly requested an update. Otherwise, ask before replacing it.
 
 ## Output
@@ -71,6 +72,7 @@ Use the repository instructions and template for project-specific rules if they 
 When editing is authorized and filesystem tools are available:
 
 1. Write the proposal to the target document.
-3. Return a concise completion message with the target path.
+2. Update the proposal index.
+3. Return a concise completion message with the target path and index update.
 
 Otherwise, return the completed proposal Markdown.
