@@ -1,99 +1,48 @@
 # Swedeb API - AI Coding Instructions
 
-This file should stay small and always-on. Put detailed backend guidance in `.github/instructions/*.instructions.md` so it loads only when relevant.
+Keep this file small and always-on. Put detailed guidance in `.github/instructions/*.instructions.md`.
 
-## Documentation scope
+## Sources of truth
 
-- Trust current runtime and deployment docs in `docs/`.
-- Start with `docs/DESIGN.md`, `docs/OPERATIONS.md`, and `docs/DEVELOPMENT.md`.
-- Use `docs/DIAGRAMS.md` for visual design diagrams (sequence, state, component, and other structural or behavioral diagrams of the active runtime). Add new diagrams here after a proposal is implemented.
-- For proposal work, use `.github/instructions/proposal-writing-guide.instructions.md`, `docs/templates/PROPOSAL_TEMPLATE.md`, and place new documents in `docs/change_requests/`.
-- Treat `docs/change_requests/` as the home for all design proposals and migration context. It is not the source of truth for current behavior unless the task is explicitly proposal-related.
-- Ignore `docs/archive/` for implementation decisions.
+- Start with `docs/DESIGN.md`, `docs/OPERATIONS.md`, and `docs/DEVELOPMENT.md` when relevant.
+- Use current code, configuration, tests, workflows, and generated API definitions to verify behavior.
+- `docs/proposals/` contains proposals and migration context, not current runtime truth. Ignore `docs/archive/` for implementation decisions.
+- Use `docs/DIAGRAMS.md` for diagrams of the active runtime. Promote proposal diagrams there after implementation.
 
-## Repository structure
+## Repository boundaries
 
-Swedeb API is a FastAPI backend with a direct service-injection architecture.
+- This repository is the Swedeb FastAPI backend. Routes, services, schemas, mappers, core logic, and active tests live under `api_swedeb/` and `tests/`.
+- Prefer active code in `api_swedeb/api/` and `api_swedeb/core/`. Treat `api_swedeb/legacy/` as archived fallback code; change it only for explicit legacy work.
+- Keep routers thin: inject a service, call it, map the result, and return a schema. Keep business logic in services or core modules and mappers pure.
+- Do not add pass-through utility wrappers or new production logic to compatibility shims.
+- Initialize configuration with `get_config_store().configure_context(source='config/config.yml')` before resolving settings. Read values with `ConfigValue("...").resolve()`. Update both production and test config when adding keys.
 
-- `api_swedeb/api/v1/endpoints/`: API routes
-- `api_swedeb/api/services/`: service layer
-- `api_swedeb/api/dependencies.py`: singleton dependency wiring
-- `api_swedeb/mappers/`: DataFrame-to-schema mappers
-- `api_swedeb/schemas/`: API response and request models
-- `api_swedeb/core/`: active corpus, CWB, config, and load logic
-- `api_swedeb/legacy/`: archived fallback runtime; debug-only unless the task explicitly targets it
-- `tests/api_swedeb/` and `tests/integration/`: active runtime tests
-- `tests/legacy/`: legacy-only coverage
+## Working approach
 
-## Always-on architecture rules
+- Check the worktree and inspect only the relevant code and instructions. Preserve unrelated user changes.
+- Fix the root cause with a narrow, repository-consistent change. Avoid speculative refactors and unrelated cleanup.
+- Surface errors using existing conventions; do not hide failures with broad catches or silent fallbacks.
+- Run the smallest relevant test or quality check, then broader checks when the change crosses boundaries.
+- Do not claim success without fresh validation output. Report failures, skipped checks, and residual risks.
+- Update documentation that directly describes changed behavior or workflow.
 
-### Router, service, mapper boundaries
+## Common commands
 
-- Keep routers thin: inject a service, call a service method, apply a mapper, return a schema.
-- Keep business logic out of routers and mappers.
-- Keep mappers pure and schema-focused.
-- Do not add pass-through util wrappers around service calls.
-
-### Active vs legacy code
-
-- Prefer active runtime code in `api_swedeb/api/` and `api_swedeb/core/`.
-- Use `api_swedeb/legacy/` only for explicit legacy-runtime work.
-- Do not add new production behavior to compatibility shims.
-
-### Configuration and data access
-
-- Initialize config with `get_config_store().configure_context(source='config/config.yml')` before resolving settings.
-- Use `ConfigValue("...").resolve()` for configuration reads.
-- When adding config keys, update both `config/config.yml` and `tests/config.yml`.
-- Prefer Feather/Arrow-backed storage patterns already used in the repo.
-
-## Workflow expectations
-
-- Use the repository virtual environment and existing Make/uv commands.
-- Common commands:
-  - `uv run uvicorn main:app --reload`
-  - `uv run pytest tests/`
-  - `make tidy`
-  - `make coverage`
-  - `make profile-kwic-pyinstrument`
-- Run targeted tests for the changed area before finishing.
-- Run broader tests when a change crosses router, service, config, or corpus boundaries.
-- Validate config-driven changes with the test config as well as production config files.
-
-## Code conventions
-
-- Follow the existing FastAPI + service + mapper pattern.
-- Keep changes minimal and local to the correct layer.
-- Use explicit types and response models.
-- Raise `HTTPException` for user-facing API errors.
-- Use `loguru` for logging where the codebase already does.
-- Prefer absolute imports within the package.
-- Use Black/isort style via `make tidy`.
-
-## Safe change defaults
-
-- Add new API behavior in services and schemas before touching routers.
-- Reuse existing dependency factories and mappers before introducing new abstractions.
-- Prefer extending active modules over creating parallel code paths.
-- If a task touches CWB, config, speech loading, or request contracts, check the relevant docs first and test the affected path directly.
-- When a change only applies to rollback or forensic debugging, keep it in `api_swedeb/legacy/` and do not mix it into active runtime code.
-
-## Validation before finishing
-
-- Run at least one targeted test for the changed area.
-- Run broader tests when you cross API, config, or corpus boundaries.
-- Keep unrelated user changes untouched.
-- Call out config updates, migration effects, or residual risks in the handoff.
+- `uv run uvicorn main:app --reload`
+- `uv run pytest tests/`
+- `make tidy`
+- `make coverage`
+- `make profile-kwic-pyinstrument`
 
 ## Task-specific instructions
 
-Use the targeted files under `.github/instructions/` instead of expanding this file again:
-
-- `python.instructions.md`: backend architecture, config, CWB, testing, and Python change patterns
-- `github-workflow.instructions.md`: issue creation, staging discipline, and commit message rules
-- `operations.instructions.md`: operations-doc scope, environments, runtime config, CI/CD, observability, and recovery documentation (e.g. in `docs/OPERATIONS.md`)
-- `proposal-writing-guide.instructions.md`: proposal-writing style, scope, and default structure for design/change proposals
-- `design-docs.instructions.md`: design-doc style, scope, and default structure for design documentation (e.g. `docs/DESIGN.md` and `docs/DIAGRAMS.md`)
-- `diagrams.instructions.md`: style guidance for Mermaid diagrams in the repo (e.g. in `docs/DIAGRAMS.md` or proposals)
-- `development.instructions.md`: development environment setup, common commands, and workflow tips (e.g. in `docs/DEVELOPMENT.md`)
-- `testing.instructions.md`: testing scope, patterns, and tips for the active runtime (e.g. in `docs/TESTING.md` and test files)
+- `coding-practices.instructions.md`: general change and verification practices
+- `python.instructions.md`: FastAPI layers, configuration, CWB, data loading, and Python tests
+- `testing.instructions.md`: test scope, fixtures, and validation guidance
+- `design.instructions.md`, `diagrams.instructions.md`: design documentation and Mermaid diagrams
+- `development.instructions.md`, `operations.instructions.md`: developer and runtime operations documentation
+- `readme.instructions.md`: root README scope
+- `proposal-writing-guide.instructions.md`, `proposal-document-structure.instructions.md`: proposals under `docs/proposals/`
+- `phase-plan.instructions.md`, `task-plan.instructions.md`: planning and implementation handoff
+- `writing-style.instructions.md`: technical prose and docstrings
+- `github-workflow.instructions.md`: issues, commits, and branch workflow

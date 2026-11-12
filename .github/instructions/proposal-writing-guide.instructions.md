@@ -1,5 +1,5 @@
 ---
-description: "Use when writing or updating design proposals and change-request documents for swedeb-api."
+description: "Use when writing or updating Swedeb API design proposals under docs/proposals."
 name: "Proposal Writing Guide"
 applyTo: "docs/proposals/**/*.md"
 ---

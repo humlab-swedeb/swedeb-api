@@ -3,7 +3,7 @@ name: move-proposal
 description: Move a Swedeb API proposal or related change-request document within docs/proposals, updating links and any existing index. Use when asked to archive, defer, or group a proposal. Do not use to write, review, or implement one.
 ---
 
-# Move A Change-Request Document
+# Move A Proposal
 
 Move one proposal file or topic folder under `docs/proposals/`, preserve its content, and keep relative links valid.
 

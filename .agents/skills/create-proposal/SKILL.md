@@ -18,7 +18,7 @@ Determine from the user's request or current conversation:
 
 Infer proposal details when the conversation or verified repository content establishes them.
 
-An explicit target from the user or the current conversation takes precedence. Otherwise, place a new proposal under `docs/proposals/` and name it descriptively, following [Change-request document structure](../../../.github/instructions/proposal-document-structure.instructions.md). If the proposed work cannot be named specifically enough, ask one concise clarifying question.
+An explicit target from the user or the current conversation takes precedence. Otherwise, place a new proposal under `docs/proposals/` and name it descriptively, following [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md). If the proposed work cannot be named specifically enough, ask one concise clarifying question.
 
 Preserve the path of an existing proposal when updating it. If a user-supplied target does not follow the convention, confirm the path before writing.
 
@@ -29,7 +29,7 @@ Do not treat labels, examples, or placeholder text as input values.
 Before drafting, read:
 
 - [Proposal writing guide](../../../.github/instructions/proposal-writing-guide.instructions.md)
-- [Change-request document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
+- [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
 - [Proposal template](../../../docs/templates/PROPOSAL_TEMPLATE.md)
 - the repository [AGENTS.md](../../../AGENTS.md)
 - [Writing style](../../../.github/instructions/writing-style.instructions.md)

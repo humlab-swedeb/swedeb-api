@@ -2,7 +2,7 @@
 
 **Status**: Revised proposal with accepted implementation decisions and assessment responses  
 **Primary area**: `api_swedeb/api/v1/endpoints/tool_router.py`, `KWICService`, download flow  
-**Follow-up area**: n-gram paging is covered separately in `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`  
+**Follow-up area**: n-gram paging is covered separately in `docs/proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md`
 **Affects**: API, frontend (`kwicDataStore.js`, `kwicDataTable.vue`), download flow
 
 ---
@@ -51,7 +51,7 @@ This proposal should be narrowed to a **KWIC-first MVP**.
 
 1. Re-filtering a cached result with new year/party/gender constraints.
 2. Returning `total_hits` in the initial submit response.
-3. N-gram paging; see `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`.
+3. N-gram paging; see `docs/proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md`.
 
 Changing the search term or any metadata filter still creates a **new** ticket. The cache is for reuse of one completed query result, not for incremental recomputation of new filtered subsets.
 
@@ -454,7 +454,7 @@ Model and sorting decisions:
 
 ## 5. Related Follow-Up Proposal
 
-N-gram paging has been split into a separate follow-up proposal: `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md`.
+N-gram paging has been split into a separate follow-up proposal: `docs/proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md`.
 
 This KWIC proposal does not define the n-gram cache payload, export story, or API contract beyond deferring that work to the follow-up design.
 
@@ -594,7 +594,7 @@ During rollout, both endpoint families should remain live:
 | **Phase 1** | Add KWIC ticket registry, disk-backed result artifacts, `POST /kwic/query`, `GET /kwic/status/{ticket_id}`, and `GET /kwic/results/{ticket_id}`. |
 | **Phase 2** | Update `kwicDataStore.js` and `kwicDataTable.vue` to submit, poll, then request pages in server-side pagination mode.                            |
 | **Phase 3** | Update `/speeches/download` to accept `ticket_id` and build the manifest from cached query metadata plus speech IDs.                             |
-| **Phase 4** | Implement the follow-up design in `docs/change_requests/PAGED_NGRAM_RESULTS_DESIGN.md` after the KWIC ticket flow is validated.                 |
+| **Phase 4** | Implement the follow-up design in `docs/proposals/done/PAGED_NGRAM_RESULTS_DESIGN.md` after the KWIC ticket flow is validated.                 |
 | **Phase 5** | If multi-worker deployment becomes necessary, replace local-only ticket storage with shared metadata and shared result storage.                  |
 
 

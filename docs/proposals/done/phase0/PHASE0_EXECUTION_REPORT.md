@@ -18,7 +18,7 @@ Completed in this step:
 
 Location:
 
-- docs/change_requests/phase0/
+- docs/proposals/done/phase0/
 
 ## Baseline Metrics (Current Implementation)
 

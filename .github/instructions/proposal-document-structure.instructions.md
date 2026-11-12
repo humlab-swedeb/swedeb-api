@@ -2,7 +2,7 @@
 description: "Use when creating or editing proposals, phase plans, task plans, handoffs, or completion notes under docs/proposals."
 applyTo: "docs/proposals/**/*.md"
 ---
-# Change-Request Document Structure
+# Proposal Document Structure
 
 Use this guide to keep proposals and implementation plans under `docs/proposals/` distinct and traceable. Follow the user's explicit target path and preserve the location of an existing document when updating it.
 
@@ -35,7 +35,7 @@ Create only the document type requested. Separate documents when a request needs
 - Distinguish current behavior, proposed behavior, and completed work.
 - Use `TBD` only for decisions or details that repository evidence and the user cannot establish.
 
-There is no required change-request index. Do not create one unless the user requests it or the repository adds an established index.
+There is no required proposal index. Do not create one unless the user requests it or the repository adds an established index.
 
 ## Before finishing
 

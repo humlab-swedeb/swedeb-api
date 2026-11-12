@@ -53,7 +53,7 @@ Also fixed a typo in `resolve_pdf_link_for_speech()` where the page-PDF URL had 
 
 Created:
 
-- `docs/change_requests/PAGEWISE_PDF_VIEWER_DESIGN.md`
+- `docs/proposals/done/PAGEWISE_PDF_VIEWER_DESIGN.md`
 - GitHub issue `#288`: `Add and harden pagewise PDF viewer for protocol page PDFs`
 
 The design note records:

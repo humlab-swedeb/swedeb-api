@@ -24,7 +24,7 @@ Before reviewing, read:
 
 - the complete proposal
 - [Proposal writing guide](../../../.github/instructions/proposal-writing-guide.instructions.md)
-- [Change-request document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
+- [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
 - [Proposal template](../../../docs/templates/PROPOSAL_TEMPLATE.md)
 - [Writing style](../../../.github/instructions/writing-style.instructions.md)
 - applicable repository instruction files, including `AGENTS.md`

@@ -109,5 +109,5 @@ full persons-table queries.
 - `api_swedeb/api/services/word_trends_service.py`
 - `api_swedeb/api/services/corpus_loader.py` — `prebuilt_speech_index` property
 - `api_swedeb/core/kwic/simple.py` — completed migration reference
-- `docs/change_requests/SPEECH_REPOSITORY_PREBUILT_INDEX.md` — related: SpeechRepository migration
+- `docs/proposals/candidates/SPEECH_REPOSITORY_PREBUILT_INDEX.md` — related: SpeechRepository migration
 - GitHub issue #253 (KWIC migration — completed)

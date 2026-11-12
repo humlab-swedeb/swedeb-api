@@ -18,7 +18,7 @@ Determine from the user's request or current conversation:
 
 Infer details when the conversation or verified repository content establishes them.
 
-An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the phase plan according to [Change-request document structure](../../../.github/instructions/proposal-document-structure.instructions.md). If the source proposal path is unknown, ask one concise clarifying question.
+An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the phase plan according to [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md). If the source proposal path is unknown, ask one concise clarifying question.
 
 Preserve the path of an existing phase plan when updating it. If a user-supplied target does not follow the convention, confirm the path before writing.
 
@@ -29,7 +29,7 @@ Do not treat labels, examples, or placeholder text as input values.
 Before writing or revising a phase plan, read:
 
 - [Phase plan guide](../../../.github/instructions/phase-plan.instructions.md)
-- [Change-request document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
+- [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
 - applicable repository instruction files, including `AGENTS.md`
 
 ## Workflow
