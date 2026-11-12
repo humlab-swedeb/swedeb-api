@@ -1,6 +1,7 @@
 ---
 description: "Use for DESIGN.md and other design-focused documentation in swedeb-api, including architecture, system structure, major design decisions, cross-cutting concerns, and technical rationale."
 name: "Design Docs"
+applyTo: "docs/DESIGN.md"
 ---
 # Design Docs
 
@@ -10,6 +11,8 @@ name: "Design Docs"
 - Keep `docs/DESIGN.md` focused on how the system is structured, what its major components and boundaries are, how key flows work, and which technical decisions shape the design.
 - Write for developers and maintainers who need to understand the architecture and design of the repository.
 - Treat the current codebase, repository structure, configuration, architectural decision records, and generated API definitions as the primary source of truth.
+- Preserve an existing document's structure unless the user requests reorganization.
+- Prioritize content scope, then writing rules, then size expectations.
 
 ## What belongs in `docs/DESIGN.md`
 
@@ -54,7 +57,7 @@ Those topics belong in development documentation, operations documentation, test
 - Prefer concrete repository-specific wording: modules, packages, services, boundaries, data stores, integrations, interfaces, flows, and constraints.
 - Prefer short sections, concrete bullets, and focused explanations over long narrative prose.
 - Avoid restating implementation detail that is already obvious from the code unless it clarifies an important design boundary, flow, or constraint.
-- Distinguish current design from planned or aspirational design.
+- Distinguish current design from planned work with an agreed implementation timeline and aspirational work without one. Mark undecided or unimplemented sections clearly.
 - Distinguish stable architectural decisions from incidental implementation detail.
 - Distinguish design description from design rationale when ADRs or separate decision records exist.
 - Describe external interfaces and dependencies at the level needed to understand structure and behavior, not as exhaustive operational or API reference material.

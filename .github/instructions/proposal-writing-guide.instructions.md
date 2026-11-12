@@ -1,10 +1,13 @@
 ---
 description: "Use when writing or updating design proposals and change-request documents for swedeb-api."
 name: "Proposal Writing Guide"
+applyTo: "docs/proposals/**/*.md"
 ---
 # Proposal Writing Guide
 
 Use this instruction when writing or updating design proposals for this repository.
+
+Follow [Change-request document structure](./proposal-document-structure.instructions.md) and the [proposal template](../../docs/templates/PROPOSAL_TEMPLATE.md). Keep new proposals under `docs/proposals/`.
 
 ## Style
 
@@ -36,6 +39,7 @@ Use this instruction when writing or updating design proposals for this reposito
 - Recommend a concrete path forward.
 - Call out tradeoffs, risks, and open questions.
 - Make implementation and validation expectations clear enough for follow-up work.
+- Give observable acceptance criteria stable IDs such as `P-AC-1`.
 
 ## What A Proposal Should Not Become
 
@@ -80,6 +84,8 @@ The default shape should feel lean, not exhaustive.
 
 - If you want strict adherence, explicitly reference this instruction and the proposal template when asking for a new proposal.
 - If proposal-writing rules are also captured in repo instructions, you do not need to repeat them every time.
+- Inspect only enough repository context to support a decision. Label unverified claims as assumptions or open questions; do not turn proposal work into a task-level implementation inventory.
+- When a phase plan will follow, include a concise Planning Handoff with fixed decisions, constraints, behavior to preserve, expected validation outcomes, and questions that may block a phase.
 
 ## Practical Rule Of Thumb
 

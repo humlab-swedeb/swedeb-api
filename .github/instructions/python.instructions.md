@@ -1,13 +1,14 @@
 ---
 description: "Use for Python, FastAPI, service, mapper, config, cache, and test work in swedeb-api."
 name: "Python Backend"
+applyTo: "api_swedeb/**/*.py, tests/**/*.py, main.py"
 ---
 # Python Backend
 
 ## Trust first
 
 - Start with `docs/DESIGN.md`, `docs/OPERATIONS.md`, and `docs/DEVELOPMENT.md`.
-- Treat `docs/change_requests/` as the home for all design proposals and migration context; it is not authoritative runtime behavior unless the user is explicitly working on proposal work.
+- Treat `docs/proposals/` as the home for all design proposals and migration context; it is not authoritative runtime behavior unless the user is explicitly working on proposal work.
 - Ignore `docs/archive/` for implementation decisions.
 
 ## Architecture rules
